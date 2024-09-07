@@ -1,29 +1,33 @@
 <?php
- /**
-  *------
-  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
-  * SeasOfHavoc implementation : © <Your name here> <Your email address here>
-  * 
-  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
-  * See http://en.boardgamearena.com/#!doc/Studio for more information.
-  * -----
-  * 
-  * seasofhavoc.game.php
-  *
-  * This is the main file for your game logic.
-  *
-  * In this PHP file, you are going to defines the rules of the game.
-  *
-  */
+
+/**
+ *------
+ * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
+ * SeasOfHavoc implementation : © <Your name here> <Your email address here>
+ * 
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ * 
+ * seasofhavoc.game.php
+ *
+ * This is the main file for your game logic.
+ *
+ * In this PHP file, you are going to defines the rules of the game.
+ *
+ */
 
 
-require_once( APP_GAMEMODULE_PATH.'module/table/table.game.php' );
+require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
 
 
 class SeasOfHavoc extends Table
 {
-	function __construct( )
-	{
+    // for IDE (form material.inc.php)
+    //private $resource_types;
+
+    function __construct()
+    {
         // Your global variables labels:
         //  Here, you can assign labels to global variables you are using for this game.
         //  You can use any number of global variables with IDs between 10 and 99.
@@ -31,22 +35,22 @@ class SeasOfHavoc extends Table
         //  the corresponding ID in gameoptions.inc.php.
         // Note: afterwards, you can get/set the global variables with getGameStateValue/setGameStateInitialValue/setGameStateValue
         parent::__construct();
-        
-        self::initGameStateLabels( array( 
+
+        self::initGameStateLabels(array(
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
             //    "my_first_game_variant" => 100,
             //    "my_second_game_variant" => 101,
             //      ...
-        ) );        
-	}
-	
-    protected function getGameName( )
+        ));
+    }
+
+    protected function getGameName()
     {
-		// Used for translations and stuff. Please do not modify.
+        // Used for translations and stuff. Please do not modify.
         return "seasofhavoc";
-    }	
+    }
 
     /*
         setupNewGame:
@@ -55,47 +59,89 @@ class SeasOfHavoc extends Table
         In this method, you must setup the game according to the game rules, so that
         the game is ready to be played.
     */
-    protected function setupNewGame( $players, $options = array() )
-    {    
+    protected function setupNewGame($players, $options = array())
+    {
         // Set the colors of the players with HTML color code
         // The default below is red/green/blue/orange/brown
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
         $default_colors = $gameinfos['player_colors'];
- 
+
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
         $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ";
         $values = array();
-        foreach( $players as $player_id => $player )
-        {
-            $color = array_shift( $default_colors );
-            $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes( $player['player_name'] )."','".addslashes( $player['player_avatar'] )."')";
+        foreach ($players as $player_id => $player) {
+            $color = array_shift($default_colors);
+            $values[] = "('" . $player_id . "','$color','" . $player['player_canal'] . "','" . addslashes($player['player_name']) . "','" . addslashes($player['player_avatar']) . "')";
         }
-        $sql .= implode( ',', $values );
-        self::DbQuery( $sql );
-        self::reattributeColorsBasedOnPreferences( $players, $gameinfos['player_colors'] );
+        $sql .= implode(',', $values);
+        self::DbQuery($sql);
+        self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
-        
+
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
         //self::setGameStateInitialValue( 'my_first_global_variable', 0 );
-        
+
         // Init game statistics
         // (note: statistics used in this file must be defined in your stats.inc.php file)
         //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
         // TODO: setup the initial game situation here
-       
-
-        // Activate first player (which is in general a good idea :) )
-        $this->activeNextPlayer();
+        
 
         /************ End of the game initialization *****/
+        //$this->gamestate->nextState( );
+
     }
 
+    function stMyGameSetup() 
+    {
+        //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
+        self::trace('stMyGameSetup');
+        $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
+        $base_resources = array_fill_keys($this->resource_types, 1);
+        $this->dump("base resources", $base_resources);
+        $player_infos = $this->loadPlayersBasicInfos();
+
+        $values = array();
+        foreach ($player_infos as $playerid => $player) {
+            $player_resources = $base_resources;
+            self::trace( "player is " . $playerid );
+
+            switch ($player['player_no']) {
+                case 1:
+                    break;
+                case 2:
+                    $player_resources['sail'] += 1;
+                    break;
+                case 3:
+                    $player_resources['cannonball'] += 1;
+                    break;
+                case 4:
+                    $player_resources['sail'] += 1;
+                    $player_resources['cannonball'] += 1;
+                    break;
+                case 5:
+                    $player_resources['cannonball'] += 1;
+                    $player_resources['doubloon'] += 1;
+                    break;
+                default:
+                    throw new Exception ('Unknonwn player number' . $player['player_no']);
+            }
+            foreach ($player_resources as $resource_type => $resource_count) {
+                $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
+            }
+        }
+        $sql .= implode(',', $values);
+        self::DbQuery($sql);
+        
+        // Activate first player (which is in general a good idea :) )
+        $this->activeNextPlayer();
+    }
     /*
         getAllDatas: 
         
@@ -108,16 +154,18 @@ class SeasOfHavoc extends Table
     protected function getAllDatas()
     {
         $result = array();
-    
+
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
-    
+
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score FROM player ";
-        $result['players'] = self::getCollectionFromDb( $sql );
-  
+        $result['players'] = self::getCollectionFromDb($sql);
+
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
-  
+
+        $result['resources'] = $this->getGameResources($current_player_id);
+
         return $result;
     }
 
@@ -138,10 +186,27 @@ class SeasOfHavoc extends Table
         return 0;
     }
 
+    /*
+        getGameResources:
+        
+        Gather all relevant resources about current game situation (visible by the current player).
+    */
+    function getGameResources($player_id)
+    {
+        $sql = "
+    		SELECT
+    		    player_id, resource_key, resource_count
+    		FROM resource
+    	";
+        if ($player_id != null) {
+            // Player private counters: concatenate extra SQL request with UNION using the $player_id parameter
+        }
 
-//////////////////////////////////////////////////////////////////////////////
-//////////// Utility functions
-////////////    
+        return $this->getObjectListFromDB($sql);
+    }
+    //////////////////////////////////////////////////////////////////////////////
+    //////////// Utility functions
+    ////////////    
 
     /*
         In this space, you can put any utility methods useful for your game logic
@@ -149,9 +214,9 @@ class SeasOfHavoc extends Table
 
 
 
-//////////////////////////////////////////////////////////////////////////////
-//////////// Player actions
-//////////// 
+    //////////////////////////////////////////////////////////////////////////////
+    //////////// Player actions
+    //////////// 
 
     /*
         Each time a player is doing some game action, one of the methods below is called.
@@ -184,10 +249,10 @@ class SeasOfHavoc extends Table
     
     */
 
-    
-//////////////////////////////////////////////////////////////////////////////
-//////////// Game state arguments
-////////////
+
+    //////////////////////////////////////////////////////////////////////////////
+    //////////// Game state arguments
+    ////////////
 
     /*
         Here, you can create methods defined as "game state arguments" (see "args" property in states.inc.php).
@@ -212,15 +277,15 @@ class SeasOfHavoc extends Table
     }    
     */
 
-//////////////////////////////////////////////////////////////////////////////
-//////////// Game state actions
-////////////
+    //////////////////////////////////////////////////////////////////////////////
+    //////////// Game state actions
+    ////////////
 
     /*
         Here, you can create methods defined as "game state actions" (see "action" property in states.inc.php).
         The action method of state X is called everytime the current game state is set to X.
     */
-    
+
     /*
     
     Example for game state "MyGameState":
@@ -234,9 +299,9 @@ class SeasOfHavoc extends Table
     }    
     */
 
-//////////////////////////////////////////////////////////////////////////////
-//////////// Zombie
-////////////
+    //////////////////////////////////////////////////////////////////////////////
+    //////////// Zombie
+    ////////////
 
     /*
         zombieTurn:
@@ -251,15 +316,15 @@ class SeasOfHavoc extends Table
         you must _never_ use getCurrentPlayerId() or getCurrentPlayerName(), otherwise it will fail with a "Not logged" error message. 
     */
 
-    function zombieTurn( $state, $active_player )
+    function zombieTurn($state, $active_player)
     {
-    	$statename = $state['name'];
-    	
+        $statename = $state['name'];
+
         if ($state['type'] === "activeplayer") {
             switch ($statename) {
                 default:
-                    $this->gamestate->nextState( "zombiePass" );
-                	break;
+                    $this->gamestate->nextState("zombiePass");
+                    break;
             }
 
             return;
@@ -267,17 +332,17 @@ class SeasOfHavoc extends Table
 
         if ($state['type'] === "multipleactiveplayer") {
             // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive( $active_player, '' );
-            
+            $this->gamestate->setPlayerNonMultiactive($active_player, '');
+
             return;
         }
 
-        throw new feException( "Zombie mode not supported at this game state: ".$statename );
+        throw new feException("Zombie mode not supported at this game state: " . $statename);
     }
-    
-///////////////////////////////////////////////////////////////////////////////////:
-////////// DB upgrade
-//////////
+
+    ///////////////////////////////////////////////////////////////////////////////////:
+    ////////// DB upgrade
+    //////////
 
     /*
         upgradeTableDb:
@@ -289,32 +354,32 @@ class SeasOfHavoc extends Table
         update the game database and allow the game to continue to run with your new version.
     
     */
-    
-    function upgradeTableDb( $from_version )
+
+    function upgradeTableDb($from_version)
     {
         // $from_version is the current version of this game database, in numerical form.
         // For example, if the game was running with a release of your game named "140430-1345",
         // $from_version is equal to 1404301345
-        
+
         // Example:
-//        if( $from_version <= 1404301345 )
-//        {
-//            // ! important ! Use DBPREFIX_<table_name> for all tables
-//
-//            $sql = "ALTER TABLE DBPREFIX_xxxxxxx ....";
-//            self::applyDbUpgradeToAllDB( $sql );
-//        }
-//        if( $from_version <= 1405061421 )
-//        {
-//            // ! important ! Use DBPREFIX_<table_name> for all tables
-//
-//            $sql = "CREATE TABLE DBPREFIX_xxxxxxx ....";
-//            self::applyDbUpgradeToAllDB( $sql );
-//        }
-//        // Please add your future database scheme changes here
-//
-//
+        //        if( $from_version <= 1404301345 )
+        //        {
+        //            // ! important ! Use DBPREFIX_<table_name> for all tables
+        //
+        //            $sql = "ALTER TABLE DBPREFIX_xxxxxxx ....";
+        //            self::applyDbUpgradeToAllDB( $sql );
+        //        }
+        //        if( $from_version <= 1405061421 )
+        //        {
+        //            // ! important ! Use DBPREFIX_<table_name> for all tables
+        //
+        //            $sql = "CREATE TABLE DBPREFIX_xxxxxxx ....";
+        //            self::applyDbUpgradeToAllDB( $sql );
+        //        }
+        //        // Please add your future database scheme changes here
+        //
+        //
 
 
-    }    
+    }
 }

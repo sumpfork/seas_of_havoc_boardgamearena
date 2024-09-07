@@ -42,13 +42,63 @@
            Consequently, don't hesitate to put as many comments as necessary.
 */
 
-
 /* Note: you must not use any @import directive */
-
 
 /********* You can start writing your CSS below this line: **********/
 
+.cp_board {
+	clear: both;
+}
 
+.board {
+  position: relative;
+  width: 1000px;
+  height: 680px;
+  margin-bottom: 5px;
+  background-image: url(img/board.jpg);
+}
+
+.skiff_slot_capitol {
+	top: 183px;
+	left: 152px;
+}
+.skiff_slot {
+	position: absolute;
+	width: 26px;
+	height: 26px;
+    border-radius: 50%;
+	/* padding: 9px 7px 6px 4px; */
+    margin: 2px;
+    background-color: rgba(0, 34, 255, 0.306);
+}
+.skiff_slot:hover {
+	outline-color: rgba(113, 74, 35, 0.7);
+	outline-style: solid;
+	outline-width: 2px;
+}
+.resource {
+    width: 30px;
+    height: 30px;
+    background-image: url('img/resources.png');
+    background-repeat: none;
+    display: inline-block;
+}
+.cannoball {
+    background-position: 0% 0%;
+}
+.sail {
+    background-position: 100% 0%;
+}
+.doubloon {
+    background-position: 0% 100%;
+}
+.infamy {
+    background-position: 100% 100%;
+}
+.resource_count {
+    position: relative;
+    top: -10px;
+}
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
 
@@ -66,7 +116,3 @@
         background-repeat: none;
     }
 */
-
-
-
-

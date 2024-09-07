@@ -10,28 +10,38 @@
  * seasofhavoc.js
  *
  * SeasOfHavoc user interface script
- * 
+ *
  * In this file, you are describing the logic of your user interface, in Javascript language.
  *
  */
 
 define([
-    "dojo","dojo/_base/declare",
-    "ebg/core/gamegui",
-    "ebg/counter"
-],
-function (dojo, declare) {
-    return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
-        constructor: function(){
-            console.log('seasofhavoc constructor');
-              
-            // Here, you can init the global variables of your user interface
-            // Example:
-            // this.myGlobalValue = 0;
+  "dojo",
+  "dojo/_base/declare",
+  "ebg/core/gamegui",
+  "ebg/counter",
+], function (dojo, declare) {
+  return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
+    constructor: function () {
+      console.log("seasofhavoc constructor");
 
-        },
-        
-        /*
+      // Here, you can init the global variables of your user interface
+      // Example:
+      // this.myGlobalValue = 0;
+    },
+
+    updateResources: function (resources) {
+      console.log(resources);
+      for (const resource of resources) {
+        console.log(resource);
+        console.log(`${resource.resource_key}count_p${resource.player_id}`);
+        document.getElementById(
+          `${resource["resource_key"]}count_p${resource["player_id"]}`
+        ).innerText = resource.resource_count;
+      }
+    },
+
+    /*
             setup:
             
             This method must set up the game user interface according to current game situation specified
@@ -43,43 +53,46 @@ function (dojo, declare) {
             
             "gamedatas" argument contains all datas retrieved by your "getAllDatas" PHP method.
         */
-        
-        setup: function( gamedatas )
-        {
-            console.log( "Starting game setup" );
-            
-            // Setting up player boards
-            for( var player_id in gamedatas.players )
-            {
-                var player = gamedatas.players[player_id];
-                         
-                // TODO: Setting up players boards if needed
-            }
-            
-            // TODO: Set up your game interface here, according to "gamedatas"
-            
- 
-            // Setup game notifications to handle (see "setupNotifications" method below)
-            this.setupNotifications();
 
-            console.log( "Ending game setup" );
-        },
-       
+    setup: function (gamedatas) {
+      console.log("Starting game setup");
 
-        ///////////////////////////////////////////////////
-        //// Game & client states
-        
-        // onEnteringState: this method is called each time we are entering into a new game state.
-        //                  You can use this method to perform some user interface changes at this moment.
-        //
-        onEnteringState: function( stateName, args )
-        {
-            console.log( 'Entering state: '+stateName );
-            
-            switch( stateName )
-            {
-            
-            /* Example:
+      // Setting up player boards
+      for (var player_id in gamedatas.players) {
+        var player = gamedatas.players[player_id];
+
+        document.getElementById("player_board_" + player_id).insertAdjacentHTML(
+          "beforeend",
+          `
+                    <div class="cp_board">
+                        <div id="sail_p${player.id}" class="sail resource"></div><span id="sailcount_p${player.id}" class="resource_count">0</span>
+                        <div id="cannonball_p${player.id}" class="cannonball resource"></div><span id="cannonballcount_p${player.id}" class="resource_count">0</span>
+                        <div id="doubloon_p${player.id}" class="doubloon resource"></div><span id="doublooncount_p${player.id}" class="resource_count">0</span>
+                    </div>
+                    `
+        );
+      }
+
+      // TODO: Set up your game interface here, according to "gamedatas"
+      this.updateResources(gamedatas.resources);
+
+      // Setup game notifications to handle (see "setupNotifications" method below)
+      this.setupNotifications();
+
+      console.log("Ending game setup");
+    },
+
+    ///////////////////////////////////////////////////
+    //// Game & client states
+
+    // onEnteringState: this method is called each time we are entering into a new game state.
+    //                  You can use this method to perform some user interface changes at this moment.
+    //
+    onEnteringState: function (stateName, args) {
+      console.log("Entering state: " + stateName);
+
+      switch (stateName) {
+        /* Example:
             
             case 'myGameState':
             
@@ -88,24 +101,20 @@ function (dojo, declare) {
                 
                 break;
            */
-           
-           
-            case 'dummmy':
-                break;
-            }
-        },
 
-        // onLeavingState: this method is called each time we are leaving a game state.
-        //                 You can use this method to perform some user interface changes at this moment.
-        //
-        onLeavingState: function( stateName )
-        {
-            console.log( 'Leaving state: '+stateName );
-            
-            switch( stateName )
-            {
-            
-            /* Example:
+        case "dummmy":
+          break;
+      }
+    },
+
+    // onLeavingState: this method is called each time we are leaving a game state.
+    //                 You can use this method to perform some user interface changes at this moment.
+    //
+    onLeavingState: function (stateName) {
+      console.log("Leaving state: " + stateName);
+
+      switch (stateName) {
+        /* Example:
             
             case 'myGameState':
             
@@ -114,25 +123,22 @@ function (dojo, declare) {
                 
                 break;
            */
-           
-           
-            case 'dummmy':
-                break;
-            }               
-        }, 
 
-        // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
-        //                        action status bar (ie: the HTML links in the status bar).
-        //        
-        onUpdateActionButtons: function( stateName, args )
-        {
-            console.log( 'onUpdateActionButtons: '+stateName );
-                      
-            if( this.isCurrentPlayerActive() )
-            {            
-                switch( stateName )
-                {
-/*               
+        case "dummmy":
+          break;
+      }
+    },
+
+    // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
+    //                        action status bar (ie: the HTML links in the status bar).
+    //
+    onUpdateActionButtons: function (stateName, args) {
+      console.log("onUpdateActionButtons: " + stateName);
+
+      if (this.isCurrentPlayerActive()) {
+        switch (
+          stateName
+          /*               
                  Example:
  
                  case 'myGameState':
@@ -144,25 +150,25 @@ function (dojo, declare) {
                     this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
                     break;
 */
-                }
-            }
-        },        
+        ) {
+        }
+      }
+    },
 
-        ///////////////////////////////////////////////////
-        //// Utility methods
-        
-        /*
+    ///////////////////////////////////////////////////
+    //// Utility methods
+
+    /*
         
             Here, you can defines some utility methods that you can use everywhere in your javascript
             script.
         
         */
 
+    ///////////////////////////////////////////////////
+    //// Player's action
 
-        ///////////////////////////////////////////////////
-        //// Player's action
-        
-        /*
+    /*
         
             Here, you are defining methods to handle player's action (ex: results of mouse click on 
             game objects).
@@ -172,8 +178,8 @@ function (dojo, declare) {
             _ make a call to the game server
         
         */
-        
-        /* Example:
+
+    /* Example:
         
         onMyMethodToCall1: function( evt )
         {
@@ -207,11 +213,10 @@ function (dojo, declare) {
         
         */
 
-        
-        ///////////////////////////////////////////////////
-        //// Reaction to cometD notifications
+    ///////////////////////////////////////////////////
+    //// Reaction to cometD notifications
 
-        /*
+    /*
             setupNotifications:
             
             In this method, you associate each of your game notifications with your local method to handle it.
@@ -220,26 +225,25 @@ function (dojo, declare) {
                   your seasofhavoc.game.php file.
         
         */
-        setupNotifications: function()
-        {
-            console.log( 'notifications subscriptions setup' );
-            
-            // TODO: here, associate your game notifications with local methods
-            
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
-        },  
-        
-        // TODO: from this point and below, you can write your game notifications handling methods
-        
-        /*
+    setupNotifications: function () {
+      console.log("notifications subscriptions setup");
+
+      // TODO: here, associate your game notifications with local methods
+
+      // Example 1: standard notification handling
+      // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
+
+      // Example 2: standard notification handling + tell the user interface to wait
+      //            during 3 seconds after calling the method in order to let the players
+      //            see what is happening in the game.
+      // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
+      // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
+      //
+    },
+
+    // TODO: from this point and below, you can write your game notifications handling methods
+
+    /*
         Example:
         
         notif_cardPlayed: function( notif )
@@ -253,5 +257,5 @@ function (dojo, declare) {
         },    
         
         */
-   });             
+  });
 });

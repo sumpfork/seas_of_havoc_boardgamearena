@@ -1,4 +1,5 @@
 <?php
+
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
@@ -31,7 +32,14 @@ $this->card_types = array(
 );
 
 */
+$this->token_types = array(
+  'skiff_slot_capitol' => array(
+    'type' => 'skiff_slot',
+    'name' => clienttranslate("Capitol"),
+    'tooltip' => clienttranslate("Take the first player token and gain a resource of your choice.")
+  )
+);
 
-
-
-
+$this->resource_types = array(
+  'sail', 'cannonball', 'doubloon'
+);

@@ -33,3 +33,11 @@
 -- Example 2: add a custom field to the standard "player" table
 -- ALTER TABLE `player` ADD `player_my_custom_field` INT UNSIGNED NOT NULL DEFAULT '0';
 
+CREATE TABLE IF NOT EXISTS `resource` (
+  `player_id` int(10) unsigned NOT NULL,
+  `resource_key` varchar(32) NOT NULL,
+  `resource_count` int(10) signed NOT NULL,
+  PRIMARY KEY (`player_id`,`resource_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE resource ADD CONSTRAINT fk_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
