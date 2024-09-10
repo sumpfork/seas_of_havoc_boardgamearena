@@ -19,7 +19,7 @@
 
 
 require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
-
+use \Bga\GameFramework\Actions\Types\StringParam;
 
 class SeasOfHavoc extends Table
 {
@@ -94,7 +94,7 @@ class SeasOfHavoc extends Table
         
 
         /************ End of the game initialization *****/
-        //$this->gamestate->nextState( );
+        $this->gamestate->nextState( );
 
     }
 
@@ -139,9 +139,25 @@ class SeasOfHavoc extends Table
         $sql .= implode(',', $values);
         self::DbQuery($sql);
         
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('capitol', null)");
+
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
+
+        $this->gamestate->nextState( );
     }
+
+    function stNextPlayerIslandPhase()
+    {
+    	$this->trace( "stNextPlayerIslandPhase" );
+    	 
+    	// Go to next player
+    	$active_player = $this->activeNextPlayer();
+    	$this->giveExtraTime( $active_player );    
+    	 
+    	$this->gamestate->nextState( "nextPlayer" );
+    }
+
     /*
         getAllDatas: 
         
@@ -191,7 +207,7 @@ class SeasOfHavoc extends Table
         
         Gather all relevant resources about current game situation (visible by the current player).
     */
-    function getGameResources($player_id)
+    function getGameResources(int $player_id)
     {
         $sql = "
     		SELECT
@@ -222,6 +238,13 @@ class SeasOfHavoc extends Table
         Each time a player is doing some game action, one of the methods below is called.
         (note: each method below must match an input method in seasofhavoc.action.php)
     */
+
+    function aactPlaceSkiff( string $slotname ) {
+        $player_id = self::getActivePlayerId();
+        self::trace(`placeSkiff: $player_id slotname: $slotname`);
+
+        $this->gamestate->nextState( "islandTurnDone" );
+    }
 
     /*
     

@@ -79,9 +79,28 @@ define([
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
+      this.addEventToClass("skiff_slot_capitol", "onclick", "onClickSkiffSlot");
+
       console.log("Ending game setup");
     },
 
+    onClickSkiffSlot: function (event) {
+      console.log("$$$$ Event : onClickSkiffSlot");
+      dojo.stopEvent(event);
+      const source = event.target || event.srcElement;
+
+      if (!this.checkAction("actPlaceSkiff")) {
+        console.log("nope");
+        return;
+      }
+      console.log(source.dataset.slotname);
+
+      if (this.isCurrentPlayerActive()) {
+        this.bgaPerformAction("actPlaceSkiff", {
+          slotname: source.dataset.slotname,
+        });
+      }
+    },
     ///////////////////////////////////////////////////
     //// Game & client states
 

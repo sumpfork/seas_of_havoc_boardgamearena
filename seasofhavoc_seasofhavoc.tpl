@@ -26,7 +26,7 @@
 -->
 
 <div id="board" class="board shadow">
-    <div id="skiff_slot_capitol" class="skiff_slot_capitol skiff_slot"></div>
+    <div id="skiff_slot_capitol" class="skiff_slot_capitol skiff_slot" data-slotname="capitol"></div>
 </div>
 
 

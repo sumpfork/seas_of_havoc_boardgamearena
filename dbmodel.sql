@@ -41,3 +41,11 @@ CREATE TABLE IF NOT EXISTS `resource` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE resource ADD CONSTRAINT fk_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+CREATE TABLE IF NOT EXISTS `islandslots` (
+    `slot_key` varchar(32) NOT NULL,
+    `occupying_player_id` int(10) unsigned,
+  PRIMARY KEY (`slot_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE islandslots ADD CONSTRAINT fk_occupying_player_id FOREIGN KEY (occupying_player_id) REFERENCES player(player_id);
