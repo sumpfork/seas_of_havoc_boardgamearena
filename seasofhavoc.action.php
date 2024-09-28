@@ -41,23 +41,6 @@
   	
   	// TODO: defines your action entry points there
 
-	
-    public function actPlaceSkiff( )
-    {
-        self::setAjaxMode();     
-
-        // Retrieve arguments
-        // Note: these arguments correspond to what has been sent through the javascript "ajaxcall" method
-        $slotname = self::getArg( "slotname", AT_alphanum_dash, true );
-        //$arg2 = self::getArg( "myArgument2", AT_posint, true );
-
-        // Then, call the appropriate method in your game logic, like "playCard" or "myAction"
-        //$this->game->placeSkiff( $arg1, $arg2 );
-
-        $this->game->aactPlaceSkiff( $slotname );
-        self::ajaxResponse( );
-    }
-
   }
   
 

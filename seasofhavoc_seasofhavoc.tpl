@@ -33,7 +33,11 @@
 
 <script type="text/javascript">
     // Javascript HTML templates
-
+    var jstpl_resource_dialog=`<div class="resource_choice_dialog" id="resource_choice_dialog">
+                        <div id="sail_button" class="sail resource resource_button" data-resource="sail"></div>
+                        <div id="cannonball_button" class="cannonball resource resource_button" data-resource="cannonball"></div>
+                        <div id="doubloon_button" class="doubloon resource resource_button" data-resource="doubloon"></div>
+                        </div>`;
     /*
 // Example:
 var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';

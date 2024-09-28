@@ -1,4 +1,5 @@
 <?php
+
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
@@ -49,7 +50,7 @@
 
 //    !! It is not a good idea to modify this file when a game is running !!
 
- 
+
 $machinestates = array(
 
     // The initial state. Please do not modify.
@@ -58,26 +59,26 @@ $machinestates = array(
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => array( "" => 2 )
+        "transitions" => array("" => 2)
     ),
-    
+
     2 => array(
         "name" => "mySetup",
         "description" => "",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => array( "" => 3 )
+        "transitions" => array("" => 3)
     ),
-    
+
     // Note: ID=3 => your first state
 
     3 => array(
-    		"name" => "islandTurn",
-    		"description" => clienttranslate('${actplayer} must place a skiff'),
-    		"descriptionmyturn" => clienttranslate('${you} must place a skiff'),
-    		"type" => "activeplayer",
-    		"possibleactions" => array( "actPlaceSkiff" ),
-    		"transitions" => array( "islandTurnDone" => 4 )
+        "name" => "islandTurn",
+        "description" => clienttranslate('${actplayer} must place a skiff'),
+        "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
+        "type" => "activeplayer",
+        "possibleactions" => array("actPlaceSkiff", "actResourcePickedInDialog"),
+        "transitions" => array("islandTurnDone" => 4, "tutorialStart" => 3)
     ),
 
     4 => array(
@@ -85,10 +86,9 @@ $machinestates = array(
         "description" => '',
         "type" => "game",
         "action" => "stNextPlayerIslandPhase",
-        "transitions" => array( "islandPhaseDone" => 99, "nextPlayer" => 3 )
+        "transitions" => array("islandPhaseDone" => 99, "nextPlayer" => 3)
     ),
-    
-/*
+    /*
     Examples:
     
     2 => array(
@@ -109,8 +109,8 @@ $machinestates = array(
         "transitions" => array( "playCard" => 2, "pass" => 2 )
     ), 
 
-*/    
-   
+*/
+
     // Final state.
     // Please do not modify (and do not overload action/args methods).
     99 => array(
@@ -122,6 +122,3 @@ $machinestates = array(
     )
 
 );
-
-
-

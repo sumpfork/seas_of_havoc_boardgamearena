@@ -248,7 +248,12 @@ define([
       console.log("notifications subscriptions setup");
 
       // TODO: here, associate your game notifications with local methods
-
+      dojo.subscribe(
+        "showResourceChoiceDialog",
+        this,
+        "notifShowResourceChoiceDialog"
+      );
+      dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
 
@@ -261,7 +266,49 @@ define([
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
+    notifShowResourceChoiceDialog: function (notif) {
+      this.myDlg = new ebg.popindialog();
+      this.myDlg.create("resouceDialog");
+      this.myDlg.setTitle(_("Pick a Resource"));
+      this.myDlg.setMaxWidth(500); // Optional
 
+      var html = this.format_block("jstpl_resource_dialog");
+
+      this.myDlg.setContent(html);
+      this.myDlg.hideCloseIcon();
+      this.myDlg.show();
+
+      this.setClientState("client_resourceDialog", {
+        descriptionmyturn: _("${you} must select a resource"),
+      });
+
+      dojo.query(".resource_button").connect("onclick", this, (event) => {
+        console.log("resource button clicked");
+        const source = event.target || event.srcElement;
+
+        var context = notif.args.context;
+        
+        console.log(
+          "resource picked " + source.dataset.resource + " context: " + context
+        );
+
+        event.preventDefault();
+        if (source.dataset.resource != null) {
+          this.bgaPerformAction("actResourcePickedInDialog", {
+            resource: source.dataset.resource,
+            context: context,
+          });
+          this.myDlg.destroy();
+        }
+      });
+    },
+    notifResourcesChanged: function (notif) {
+      console.log("Notification: resourcesChanged");
+      console.log(notif);
+      console.log(notif.args.resources);
+
+      this.updateResources(notif.args.resources);
+    },
     /*
         Example:
         

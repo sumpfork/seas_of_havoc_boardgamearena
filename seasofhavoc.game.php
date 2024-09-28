@@ -19,6 +19,7 @@
 
 
 require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
+
 use \Bga\GameFramework\Actions\Types\StringParam;
 
 class SeasOfHavoc extends Table
@@ -91,17 +92,16 @@ class SeasOfHavoc extends Table
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
         // TODO: setup the initial game situation here
-        
+
 
         /************ End of the game initialization *****/
-        $this->gamestate->nextState( );
-
+        $this->gamestate->nextState();
     }
 
-    function stMyGameSetup() 
+    function stMyGameSetup()
     {
         //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
-        self::trace('stMyGameSetup');
+        $this->trace('stMyGameSetup');
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
         $base_resources = array_fill_keys($this->resource_types, 1);
         $this->dump("base resources", $base_resources);
@@ -110,7 +110,7 @@ class SeasOfHavoc extends Table
         $values = array();
         foreach ($player_infos as $playerid => $player) {
             $player_resources = $base_resources;
-            self::trace( "player is " . $playerid );
+            $this->trace("player is " . $playerid);
 
             switch ($player['player_no']) {
                 case 1:
@@ -130,7 +130,7 @@ class SeasOfHavoc extends Table
                     $player_resources['doubloon'] += 1;
                     break;
                 default:
-                    throw new Exception ('Unknonwn player number' . $player['player_no']);
+                    throw new Exception('Unknonwn player number' . $player['player_no']);
             }
             foreach ($player_resources as $resource_type => $resource_count) {
                 $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
@@ -138,24 +138,24 @@ class SeasOfHavoc extends Table
         }
         $sql .= implode(',', $values);
         self::DbQuery($sql);
-        
+
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('capitol', null)");
 
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
 
-        $this->gamestate->nextState( );
+        $this->gamestate->nextState();
     }
 
     function stNextPlayerIslandPhase()
     {
-    	$this->trace( "stNextPlayerIslandPhase" );
-    	 
-    	// Go to next player
-    	$active_player = $this->activeNextPlayer();
-    	$this->giveExtraTime( $active_player );    
-    	 
-    	$this->gamestate->nextState( "nextPlayer" );
+        $this->trace("stNextPlayerIslandPhase");
+
+        // Go to next player
+        $active_player = $this->activeNextPlayer();
+        $this->giveExtraTime($active_player);
+
+        $this->gamestate->nextState("nextPlayer");
     }
 
     /*
@@ -220,6 +220,17 @@ class SeasOfHavoc extends Table
 
         return $this->getObjectListFromDB($sql);
     }
+
+    function getIslandSlots()
+    {
+        $sql = "
+    		SELECT
+    		    slot_key, occupying_player_id
+    		FROM islandslots
+    	";
+
+        return $this->getCollectionFromDB($sql);
+    }
     //////////////////////////////////////////////////////////////////////////////
     //////////// Utility functions
     ////////////    
@@ -227,8 +238,70 @@ class SeasOfHavoc extends Table
     /*
         In this space, you can put any utility methods useful for your game logic
     */
+    public function getStateName()
+    {
+        $state = $this->gamestate->state();
+        return $state['name'];
+    }
 
+    function sum_array_by_key(array ...$arrays) {     
+        $out = array();
+    
+        foreach ($arrays as $a) {
+            foreach($a as $key => $value) {
+                if(array_key_exists($key, $out)) {
+                    $out[$key] += $value;
+                }else{
+                    $out[$key] = $value;
+                }
+            }
+        }
+    
+        return $out;
+    }
 
+    function playerGainResources($player_id, $resources)
+    {
+        $current_resources = array_column($this->getGameResources($player_id), "resource_count", "resource_key");
+
+        $this->warn("\ncurrent resources:");
+        foreach ($current_resources as $key => $item) {
+            $this->warn("$key => $item");
+        }
+        $this->warn("\nincoming resources:");
+        foreach ($resources as $key => $item) {
+            $this->warn("$key => $item");
+        }
+        $summed_resources = $this->sum_array_by_key($resources, $current_resources);
+        $this->warn("\nsummed resources:");
+        foreach ($summed_resources as $key => $item) {
+            $this->warn("$key => $item");
+        }
+
+        $this->dump("summed resources: ", $summed_resources);
+
+        $sql = "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
+        foreach ($summed_resources as $resource_type => $resource_count) {
+            $values[] = "('" . $player_id . "','$resource_type','" . $resource_count . "')";
+        }
+        $sql .= implode(',', $values);
+        $this->warn("sql: $sql");
+
+        self::DbQuery($sql);
+        $this->notifyAllPlayers(
+            "resourcesChanged",
+            clienttranslate('${player_name} resources changed'),
+            array(
+                'player_name' => self::getActivePlayerName(),
+                'resources' => $this->getGameResources($player_id)
+            )
+        );
+    }
+
+    function showResourceChoiceDialog(string $context)
+    {
+        $this->notifyPlayer(self::getActivePlayerId(), "showResourceChoiceDialog", "", ['context' => $context]);
+    }
 
     //////////////////////////////////////////////////////////////////////////////
     //////////// Player actions
@@ -239,13 +312,39 @@ class SeasOfHavoc extends Table
         (note: each method below must match an input method in seasofhavoc.action.php)
     */
 
-    function aactPlaceSkiff( string $slotname ) {
+    function actPlaceSkiff(string $slotname)
+    {
         $player_id = self::getActivePlayerId();
-        self::trace(`placeSkiff: $player_id slotname: $slotname`);
+        $this->trace("placeSkiff: $player_id slotname: $slotname");
+        $occupancies = $this->getIslandSlots();
 
-        $this->gamestate->nextState( "islandTurnDone" );
+        $this->dump("occupancies", $occupancies);
+
+        if ($occupancies[$slotname]["occupying_player_id"] != null) {
+            throw new BgaUserException($this->_("There is already a skiff on $slotname"));
+        }
+        switch ($slotname) {
+            case 'capitol':
+                //TODO: take first player marker
+                $this->showResourceChoiceDialog($slotname);
+                break;
+            default:
+                $this->error("bad slot name $slotname");
+                break;
+        }
     }
 
+    function actResourcePickedInDialog(string $resource, string $context)
+    {
+        switch ($context) {
+            case 'capitol':
+                $this->playerGainResources($this->getActivePlayerId(), [$resource => 1]);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            default:
+                throw new BgaSystemException("bad context: $context");
+        }
+    }
     /*
     
     Example:
