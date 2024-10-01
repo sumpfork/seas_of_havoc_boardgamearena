@@ -140,6 +140,8 @@ class SeasOfHavoc extends Table
         self::DbQuery($sql);
 
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('capitol', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('bank', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('shipyard', null)");
 
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
@@ -231,6 +233,12 @@ class SeasOfHavoc extends Table
 
         return $this->getCollectionFromDB($sql);
     }
+
+    function occupyIslandSlot(string $player_id, string $slot_name)
+    {
+        self::DbQuery("REPLACE INTO islandslots (slot_key, occupying_player_id) VALUES ('$slot_name', '$player_id')");
+    }
+
     //////////////////////////////////////////////////////////////////////////////
     //////////// Utility functions
     ////////////    
@@ -244,19 +252,33 @@ class SeasOfHavoc extends Table
         return $state['name'];
     }
 
-    function sum_array_by_key(array ...$arrays) {     
-        $out = array();
+    function getActivePlayerColor() {
+        // Get player color
+        $sql = "SELECT
+                    player_id, player_color
+                FROM
+                    player 
+                WHERE 
+                    player_id = $player_id
+               ";
+        $player = $this->getNonEmptyObjectFromDb( $sql );
+        $color = ($player['player_color'] == 'ffffff' ? 'white' : 'black');
+    }
     
+    function sum_array_by_key(array ...$arrays)
+    {
+        $out = array();
+
         foreach ($arrays as $a) {
-            foreach($a as $key => $value) {
-                if(array_key_exists($key, $out)) {
+            foreach ($a as $key => $value) {
+                if (array_key_exists($key, $out)) {
                     $out[$key] += $value;
-                }else{
+                } else {
                     $out[$key] = $value;
                 }
             }
         }
-    
+
         return $out;
     }
 
@@ -264,21 +286,7 @@ class SeasOfHavoc extends Table
     {
         $current_resources = array_column($this->getGameResources($player_id), "resource_count", "resource_key");
 
-        $this->warn("\ncurrent resources:");
-        foreach ($current_resources as $key => $item) {
-            $this->warn("$key => $item");
-        }
-        $this->warn("\nincoming resources:");
-        foreach ($resources as $key => $item) {
-            $this->warn("$key => $item");
-        }
         $summed_resources = $this->sum_array_by_key($resources, $current_resources);
-        $this->warn("\nsummed resources:");
-        foreach ($summed_resources as $key => $item) {
-            $this->warn("$key => $item");
-        }
-
-        $this->dump("summed resources: ", $summed_resources);
 
         $sql = "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
         foreach ($summed_resources as $resource_type => $resource_count) {
@@ -328,18 +336,34 @@ class SeasOfHavoc extends Table
                 //TODO: take first player marker
                 $this->showResourceChoiceDialog($slotname);
                 break;
+            case 'bank':
+                $this->showResourceChoiceDialog($slotname);
+                break;
+            case 'shipyard':
+                $this->playerGainResources($player_id, ["sail" => 2, "cannonball" => 1]);
+                $this->occupyIslandSlot($player_id, $slotname);
+                $this->gamestate->nextState("islandTurnDone");        
+                break;
             default:
-                $this->error("bad slot name $slotname");
+                throw new BgaSystemException("bad skiff slot: $slotname");
                 break;
         }
     }
 
     function actResourcePickedInDialog(string $resource, string $context)
     {
+        $player_id = $this->getActivePlayerId();
         switch ($context) {
             case 'capitol':
-                $this->playerGainResources($this->getActivePlayerId(), [$resource => 1]);
+                $this->playerGainResources($player_id, [$resource => 1]);
+                $this->occupyIslandSlot($player_id, $context);
                 $this->gamestate->nextState("islandTurnDone");
+                break;
+            case 'bank':
+                $this->playerGainResources($player_id, [$resource => 1]);
+                $this->playerGainResources($player_id, ["doubloon" => 1]);
+                $this->occupyIslandSlot($player_id, $context);
+                $this->gamestate->nextState("islandTurnDone");        
                 break;
             default:
                 throw new BgaSystemException("bad context: $context");

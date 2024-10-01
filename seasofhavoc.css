@@ -59,8 +59,16 @@
 }
 
 .skiff_slot_capitol {
-	top: 183px;
+	top: 180px;
 	left: 152px;
+}
+.skiff_slot_bank {
+	top: 309px;
+	left: 138px;
+}
+.skiff_slot_shipyard {
+    top: 148px;
+    left: 848px;
 }
 .skiff_slot {
 	position: absolute;
@@ -98,4 +106,16 @@
 .resource_count {
     position: relative;
     top: -10px;
+}
+.skiff {
+    width: 45px;
+    height: 45px;
+    background-image: url('img/skiffs.png');
+    display: inline-block;
+}
+.skiff[data-colour="944027"] {
+    background-position: 0% 0%;
+}
+.skiff[data-colour="8E55A1"] {
+    background-position: 0% 110%;
 }

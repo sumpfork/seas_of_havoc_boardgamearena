@@ -56,10 +56,16 @@ define([
 
     setup: function (gamedatas) {
       console.log("Starting game setup");
-
+      
       // Setting up player boards
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];
+        console.log(`player color: ${player.color}`);
+        
+        var skiff = this.format_block( 'jstpl_skiff', {
+          player_color: player.color
+        });
+        console.log(skiff);
 
         document.getElementById("player_board_" + player_id).insertAdjacentHTML(
           "beforeend",
@@ -68,6 +74,7 @@ define([
                         <div id="sail_p${player.id}" class="sail resource"></div><span id="sailcount_p${player.id}" class="resource_count">0</span>
                         <div id="cannonball_p${player.id}" class="cannonball resource"></div><span id="cannonballcount_p${player.id}" class="resource_count">0</span>
                         <div id="doubloon_p${player.id}" class="doubloon resource"></div><span id="doublooncount_p${player.id}" class="resource_count">0</span>
+                        ${skiff}
                     </div>
                     `
         );
@@ -80,7 +87,9 @@ define([
       this.setupNotifications();
 
       this.addEventToClass("skiff_slot_capitol", "onclick", "onClickSkiffSlot");
-
+      this.addEventToClass("skiff_slot_bank", "onclick", "onClickSkiffSlot");
+      this.addEventToClass("skiff_slot_shipyard", "onclick", "onClickSkiffSlot");
+      
       console.log("Ending game setup");
     },
 
