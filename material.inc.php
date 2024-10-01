@@ -41,5 +41,5 @@ $this->token_types = array(
 );
 
 $this->resource_types = array(
-  'sail', 'cannonball', 'doubloon'
+  'sail', 'cannonball', 'doubloon', 'skiff'
 );

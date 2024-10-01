@@ -104,6 +104,8 @@ class SeasOfHavoc extends Table
         $this->trace('stMyGameSetup');
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
         $base_resources = array_fill_keys($this->resource_types, 1);
+        $base_resources['skiff'] = 3;
+        
         $this->dump("base resources", $base_resources);
         $player_infos = $this->loadPlayersBasicInfos();
 
@@ -252,7 +254,7 @@ class SeasOfHavoc extends Table
         return $state['name'];
     }
 
-    function getActivePlayerColor() {
+    function getPlayerColor(string $player_id) {
         // Get player color
         $sql = "SELECT
                     player_id, player_color
@@ -264,7 +266,7 @@ class SeasOfHavoc extends Table
         $player = $this->getNonEmptyObjectFromDb( $sql );
         $color = ($player['player_color'] == 'ffffff' ? 'white' : 'black');
     }
-    
+
     function sum_array_by_key(array ...$arrays)
     {
         $out = array();
