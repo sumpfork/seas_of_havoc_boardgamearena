@@ -86,7 +86,15 @@ $machinestates = array(
         "description" => '',
         "type" => "game",
         "action" => "stNextPlayerIslandPhase",
-        "transitions" => array("islandPhaseDone" => 99, "nextPlayer" => 3)
+        "transitions" => array("islandPhaseDone" => 5, "nextPlayer" => 3)
+    ),
+
+    5 => array(
+        "name" => "cardPurchases",
+        "description" => clienttranslate("Players may purchase cards"),
+        "type" => "multipleactiveplayer",
+        "action" => "stCardPurchases",
+        "transitions" => array("cardPurchasesDone" => 99)
     ),
     /*
     Examples:

@@ -101,18 +101,18 @@ class SeasOfHavoc extends Table
     function stMyGameSetup()
     {
         //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
-        $this->trace('stMyGameSetup');
+        $this->mytrace('stMyGameSetup');
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
         $base_resources = array_fill_keys($this->resource_types, 1);
         $base_resources['skiff'] = 3;
-        
+
         $this->dump("base resources", $base_resources);
         $player_infos = $this->loadPlayersBasicInfos();
 
         $values = array();
         foreach ($player_infos as $playerid => $player) {
             $player_resources = $base_resources;
-            $this->trace("player is " . $playerid);
+            $this->mytrace("player is " . $playerid);
 
             switch ($player['player_no']) {
                 case 1:
@@ -153,14 +153,36 @@ class SeasOfHavoc extends Table
 
     function stNextPlayerIslandPhase()
     {
-        $this->trace("stNextPlayerIslandPhase");
+        $this->mytrace("stNextPlayerIslandPhase");
+
+        $resources = $this->getGameResourcesHierarchical();
+        $this->dump("fetched resources:", $resources);
+
+        #$total_resources = array_column($resources, "resource_count", "resource_key");
+        #$this->dump("total resources:", $total_resources);
+
+        $total_skiffs = array_sum(array_column(array_values($resources), "skiff"));
+        $this->mytrace("total skiffs left: $total_skiffs");
+
+        if (array_sum(array_column(array_values($resources), "skiff")) == 0) {
+            $this->mytrace("next state, transition: islandPhaseDone");
+            # $this->gamestate->nextState("islandPhaseDone");
+        }
 
         // Go to next player
         $active_player = $this->activeNextPlayer();
-        $this->giveExtraTime($active_player);
+        #$resources_by_player = $this->subindexArray($resources, "player_id");
+        #$this->dump("resources_by_player: ", $resources_by_player);
+        // while ($resources_by_player[$active_player]["skiff"] == 0) {
+        //     $active_player = $this->activeNextPlayer();
+        //     $resources_by_player = $this->subindexArray($resources, "player_id");
+        // }
 
+        $this->giveExtraTime($active_player);
         $this->gamestate->nextState("nextPlayer");
     }
+
+    function stCardPurchases() {}
 
     /*
         getAllDatas: 
@@ -184,7 +206,7 @@ class SeasOfHavoc extends Table
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
-        $result['resources'] = $this->getGameResources($current_player_id);
+        $result['resources'] = $this->getGameResources();
 
         return $result;
     }
@@ -211,7 +233,7 @@ class SeasOfHavoc extends Table
         
         Gather all relevant resources about current game situation (visible by the current player).
     */
-    function getGameResources(int $player_id)
+    function getGameResources(int $player_id = null)
     {
         $sql = "
     		SELECT
@@ -219,10 +241,32 @@ class SeasOfHavoc extends Table
     		FROM resource
     	";
         if ($player_id != null) {
-            // Player private counters: concatenate extra SQL request with UNION using the $player_id parameter
+            $sql .= " WHERE player_id = $player_id";
         }
-
         return $this->getObjectListFromDB($sql);
+    }
+
+    function getGameResourcesHierarchical(int $player_id = null)
+    {
+        $resources = $this->getGameResources($player_id);
+        $hierarchical_resources = array();
+        foreach ($resources as $row) {
+            if (!array_key_exists($row["player_id"], $hierarchical_resources)) {
+                $hierarchical_resources[$row["player_id"]] = array();
+            }
+            $hierarchical_resources[$row["player_id"]][$row["resource_key"]] = intval($row["resource_count"]);
+        }
+        return $hierarchical_resources;
+    }
+
+    function subindexArray($arr_arr, $top_key)
+    {
+        print($top_key);
+        $new_arr = array();
+        foreach ($arr_arr as $arr) {
+            unset($arr[$top_key]);
+            $new_arr[$top_key] = $arr;
+        }
     }
 
     function getIslandSlots()
@@ -241,6 +285,10 @@ class SeasOfHavoc extends Table
         self::DbQuery("REPLACE INTO islandslots (slot_key, occupying_player_id) VALUES ('$slot_name', '$player_id')");
     }
 
+    function mytrace(string $msg)
+    {
+        $this->trace("[SoH] " . $msg);
+    }
     //////////////////////////////////////////////////////////////////////////////
     //////////// Utility functions
     ////////////    
@@ -254,7 +302,8 @@ class SeasOfHavoc extends Table
         return $state['name'];
     }
 
-    function getPlayerColor(string $player_id) {
+    function getPlayerColor(string $player_id)
+    {
         // Get player color
         $sql = "SELECT
                     player_id, player_color
@@ -263,8 +312,8 @@ class SeasOfHavoc extends Table
                 WHERE 
                     player_id = $player_id
                ";
-        $player = $this->getNonEmptyObjectFromDb( $sql );
-        $color = ($player['player_color'] == 'ffffff' ? 'white' : 'black');
+        $player = $this->getNonEmptyObjectFromDb($sql);
+        return $player['player_color'];
     }
 
     function sum_array_by_key(array ...$arrays)
@@ -286,16 +335,20 @@ class SeasOfHavoc extends Table
 
     function playerGainResources($player_id, $resources)
     {
-        $current_resources = array_column($this->getGameResources($player_id), "resource_count", "resource_key");
+        $this->mytrace("playerGainResources");
+        $this->dump("incoming resources", $resources);
+        $current_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        $this->dump("current resources", $current_resources);
 
         $summed_resources = $this->sum_array_by_key($resources, $current_resources);
+        $this->dump("summed resources", $summed_resources);
 
         $sql = "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
         foreach ($summed_resources as $resource_type => $resource_count) {
             $values[] = "('" . $player_id . "','$resource_type','" . $resource_count . "')";
         }
         $sql .= implode(',', $values);
-        $this->warn("sql: $sql");
+        $this->mytrace("gain resources sql: $sql");
 
         self::DbQuery($sql);
         $this->notifyAllPlayers(
@@ -325,7 +378,7 @@ class SeasOfHavoc extends Table
     function actPlaceSkiff(string $slotname)
     {
         $player_id = self::getActivePlayerId();
-        $this->trace("placeSkiff: $player_id slotname: $slotname");
+        $this->mytrace("placeSkiff: $player_id slotname: $slotname");
         $occupancies = $this->getIslandSlots();
 
         $this->dump("occupancies", $occupancies);
@@ -342,9 +395,9 @@ class SeasOfHavoc extends Table
                 $this->showResourceChoiceDialog($slotname);
                 break;
             case 'shipyard':
-                $this->playerGainResources($player_id, ["sail" => 2, "cannonball" => 1]);
+                $this->playerGainResources($player_id, ["sail" => 2, "cannonball" => 1, "skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname);
-                $this->gamestate->nextState("islandTurnDone");        
+                $this->gamestate->nextState("islandTurnDone");
                 break;
             default:
                 throw new BgaSystemException("bad skiff slot: $slotname");
@@ -357,15 +410,15 @@ class SeasOfHavoc extends Table
         $player_id = $this->getActivePlayerId();
         switch ($context) {
             case 'capitol':
-                $this->playerGainResources($player_id, [$resource => 1]);
+                $this->playerGainResources($player_id, [$resource => 1, "skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $context);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
             case 'bank':
                 $this->playerGainResources($player_id, [$resource => 1]);
-                $this->playerGainResources($player_id, ["doubloon" => 1]);
+                $this->playerGainResources($player_id, ["doubloon" => 1, "skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $context);
-                $this->gamestate->nextState("islandTurnDone");        
+                $this->gamestate->nextState("islandTurnDone");
                 break;
             default:
                 throw new BgaSystemException("bad context: $context");
