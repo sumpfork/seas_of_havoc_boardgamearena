@@ -108,14 +108,8 @@
     top: -10px;
 }
 .skiff {
-    width: 45px;
-    height: 45px;
-    background-image: url('img/skiffs.png');
+    width: 40px;
+    height: 40px;
     display: inline-block;
-}
-.skiff[data-colour="944027"] {
-    background-position: 0% 0%;
-}
-.skiff[data-colour="8E55A1"] {
-    background-position: 0% 110%;
+    position: relative;
 }

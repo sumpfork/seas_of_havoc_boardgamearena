@@ -64,7 +64,7 @@ define([
 
         var skiff = this.format_block("jstpl_skiff", {
           player_color: player.color,
-          player_id: player.id
+          id: "skiff_p" + player.id,
         });
         console.log(skiff);
 
@@ -264,6 +264,7 @@ define([
         "notifShowResourceChoiceDialog"
       );
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
+      dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
 
@@ -318,6 +319,25 @@ define([
       console.log(notif.args.resources);
 
       this.updateResources(notif.args.resources);
+    },
+    notifSkiffPlaced: function (notif) {
+      console.log("Skiff placed");
+      console.log(notif);
+      var skiff_id =
+        "skiff_p" + notif.args.player_id + "_" + notif.args.slot_name;
+      console.log("skiff_id: " + skiff_id);
+      var player_board_id = "overall_player_board_" + notif.args.player_id;
+      console.log("player board id: " + player_board_id);
+
+      var skiff = this.format_block("jstpl_skiff", {
+        player_color: notif.args.player_color,
+        id: skiff_id,
+      });
+      dojo.place(skiff, "skiff_slot_" + notif.args.slot_name);
+      this.placeOnObject(skiff_id, player_board_id);
+      dojo.style( skiff_id, 'zIndex', 1 );
+      this.slideToObject(skiff_id, "skiff_slot_" + notif.args.slot_name, 1000).play();
+      //slide.play();
     },
     /*
         Example:

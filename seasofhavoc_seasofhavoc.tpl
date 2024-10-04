@@ -45,10 +45,11 @@
                         <div id="sail_p\${player_id}" class="sail resource"></div><span id="sailcount_p\${player_id}" class="resource_count">0</span>
                         <div id="cannonball_p\${player_id}" class="cannonball resource"></div><span id="cannonballcount_p\${player_id}" class="resource_count">0</span>
                         <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
-                        \${skiff}
+                        \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
                     </div>
                     `;
-    var jstpl_skiff=`<div id="skiff_p\${player_id}" class="skiff">
+    var jstpl_skiff=`<div id="\${id}" class="skiff">
+    
     <svg width="100%" height="100%" viewBox="0 0 298 265" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
     <g transform="matrix(1,0,0,1,-702.792,-710.191)">
         <g transform="matrix(4.16667,0,0,4.16667,703.292,801.562)">
@@ -58,8 +59,7 @@
             </g>
         </g>
     </g>
-    </svg></div>
-    <span id="skiffcount_p\${player_id}" class="resource_count">0</span>`;
+    </svg></div>`;
 </script>
 
 {OVERALL_GAME_FOOTER}

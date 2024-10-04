@@ -283,6 +283,16 @@ class SeasOfHavoc extends Table
     function occupyIslandSlot(string $player_id, string $slot_name)
     {
         self::DbQuery("REPLACE INTO islandslots (slot_key, occupying_player_id) VALUES ('$slot_name', '$player_id')");
+        $this->notifyAllPlayers(
+            "skiffPlaced",
+            clienttranslate('${player_name} placed a skiff'),
+            array(
+                'player_name' => self::getActivePlayerName(),
+                'player_id' => $player_id,
+                'player_color' => $this->getPlayerColor($player_id),
+                'slot_name' => $slot_name
+            )
+        );
     }
 
     function mytrace(string $msg)
