@@ -144,6 +144,7 @@ class SeasOfHavoc extends Table
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('capitol', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('bank', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('shipyard', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('blacksmith', null)");
 
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
@@ -407,6 +408,11 @@ class SeasOfHavoc extends Table
                 break;
             case 'shipyard':
                 $this->playerGainResources($player_id, ["sail" => 2, "cannonball" => 1, "skiff" => -1]);
+                $this->occupyIslandSlot($player_id, $slotname);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            case 'blacksmith':
+                $this->playerGainResources($player_id, ["cannonball" => 2, "skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname);
                 $this->gamestate->nextState("islandTurnDone");
                 break;

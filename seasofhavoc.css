@@ -58,17 +58,21 @@
   background-image: url(img/board.jpg);
 }
 
-.skiff_slot_capitol {
+#skiff_slot_capitol {
 	top: 180px;
 	left: 152px;
 }
-.skiff_slot_bank {
+#skiff_slot_bank {
 	top: 309px;
 	left: 138px;
 }
-.skiff_slot_shipyard {
+#skiff_slot_shipyard {
     top: 148px;
     left: 848px;
+}
+#skiff_slot_blacksmith {
+    top: 431px;
+    left: 845px;
 }
 .skiff_slot {
 	position: absolute;

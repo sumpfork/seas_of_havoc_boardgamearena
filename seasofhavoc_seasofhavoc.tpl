@@ -26,9 +26,11 @@
 -->
 
 <div id="board" class="board shadow">
-    <div id="skiff_slot_capitol" class="skiff_slot_capitol skiff_slot" data-slotname="capitol"></div>
-    <div id="skiff_slot_bank" class="skiff_slot_bank skiff_slot" data-slotname="bank"></div>
-    <div id="skiff_slot_shipyard" class="skiff_slot_shipyard skiff_slot" data-slotname="shipyard"></div>
+    <div id="skiff_slot_capitol" class="skiff_slot" data-slotname="capitol"></div>
+    <div id="skiff_slot_bank" class="skiff_slot" data-slotname="bank"></div>
+    <div id="skiff_slot_shipyard" class="skiff_slot" data-slotname="shipyard"></div>   
+    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>
+    
 </div>
 
 
