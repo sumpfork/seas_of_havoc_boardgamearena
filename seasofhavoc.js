@@ -41,6 +41,25 @@ define([
       }
     },
 
+    updateIslandSlots: function (islandslots, players) {
+      console.log("updating island slots");
+      console.log(islandslots);
+      console.log(players);
+      for (const [slot, info] of Object.entries(islandslots)) {
+        var occupant = info['occupying_player_id'];
+        console.log("occupant: " + occupant);
+        if (occupant != null) {
+          var skiff_id = "skiff_p" + occupant + "_" + slot;
+          console.log("skiff_id: " + skiff_id);
+
+          var skiff = this.format_block("jstpl_skiff", {
+            player_color: players[occupant].color,
+            id: skiff_id,
+          });
+          dojo.place(skiff, "skiff_slot_" + slot);
+        }
+      }
+    },
     /*
             setup:
             
@@ -79,17 +98,12 @@ define([
 
       // TODO: Set up your game interface here, according to "gamedatas"
       this.updateResources(gamedatas.resources);
+      this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
 
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
-      this.addEventToClass("skiff_slot_capitol", "onclick", "onClickSkiffSlot");
-      this.addEventToClass("skiff_slot_bank", "onclick", "onClickSkiffSlot");
-      this.addEventToClass(
-        "skiff_slot_shipyard",
-        "onclick",
-        "onClickSkiffSlot"
-      );
+      this.addEventToClass("skiff_slot", "onclick", "onClickSkiffSlot");
 
       console.log("Ending game setup");
     },
@@ -98,9 +112,14 @@ define([
       console.log("$$$$ Event : onClickSkiffSlot");
       dojo.stopEvent(event);
       const source = event.target || event.srcElement;
-
+  
       if (!this.checkAction("actPlaceSkiff")) {
         console.log("nope");
+        return;
+      }
+
+      if (!source.classList.contains("skiff_slot")) {
+        console.log("not a skiff slot");
         return;
       }
       console.log(source.dataset.slotname);
@@ -335,8 +354,12 @@ define([
       });
       dojo.place(skiff, "skiff_slot_" + notif.args.slot_name);
       this.placeOnObject(skiff_id, player_board_id);
-      dojo.style( skiff_id, 'zIndex', 1 );
-      this.slideToObject(skiff_id, "skiff_slot_" + notif.args.slot_name, 1000).play();
+      dojo.style(skiff_id, "zIndex", 1);
+      this.slideToObject(
+        skiff_id,
+        "skiff_slot_" + notif.args.slot_name,
+        1000
+      ).play();
       //slide.play();
     },
     /*

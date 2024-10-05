@@ -207,6 +207,7 @@ class SeasOfHavoc extends Table
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
         $result['resources'] = $this->getGameResources();
+        $result['islandslots'] = $this->getIslandSlots();
 
         return $result;
     }
