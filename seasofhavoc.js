@@ -20,6 +20,7 @@ define([
   "dojo/_base/declare",
   "ebg/core/gamegui",
   "ebg/counter",
+  "ebg/stock",
 ], function (dojo, declare) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
@@ -46,7 +47,7 @@ define([
       console.log(islandslots);
       console.log(players);
       for (const [slot, info] of Object.entries(islandslots)) {
-        var occupant = info['occupying_player_id'];
+        var occupant = info["occupying_player_id"];
         console.log("occupant: " + occupant);
         if (occupant != null) {
           var skiff_id = "skiff_p" + occupant + "_" + slot;
@@ -75,7 +76,27 @@ define([
 
     setup: function (gamedatas) {
       console.log("Starting game setup");
+      console.log(gamedatas);
 
+      this.playerHand = new ebg.stock(); // new stock object for hand
+      this.playerHand.create(this, $("myhand"), 287, 396);
+      this.playerHand.image_items_per_row = 6; // 13 images per row
+      this.playerHand.horizontal_overlap = 90;
+      //this.playerHand.resizeItems(71, 100);
+      for (const card of gamedatas.starting_cards) {
+        console.log(card);
+        this.playerHand.addItemType(
+          card.card_id,
+          0,
+          g_gamethemeurl + "img/starting_cards.jpg",
+          card.image_id
+        );
+        console.log("adding card type " + card.card_id + " to player hand");
+        for (var i = 0; i < card.count; i++) {
+          console.log("adding card " + card.card_id + " to player hand");
+          this.playerHand.addToStock(card.card_id);
+        }
+      }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];
@@ -112,7 +133,7 @@ define([
       console.log("$$$$ Event : onClickSkiffSlot");
       dojo.stopEvent(event);
       const source = event.target || event.srcElement;
-  
+
       if (!this.checkAction("actPlaceSkiff")) {
         console.log("nope");
         return;

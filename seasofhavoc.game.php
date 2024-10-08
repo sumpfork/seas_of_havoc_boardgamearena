@@ -209,6 +209,7 @@ class SeasOfHavoc extends Table
 
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
+        $result ['starting_cards'] = $this->starting_cards;
 
         return $result;
     }

@@ -32,14 +32,44 @@ $this->card_types = array(
 );
 
 */
-$this->token_types = array(
-  'skiff_slot_capitol' => array(
-    'type' => 'skiff_slot',
-    'name' => clienttranslate("Capitol"),
-    'tooltip' => clienttranslate("Take the first player token and gain a resource of your choice.")
-  )
+$this->resource_types = array(
+  'sail',
+  'cannonball',
+  'doubloon',
+  'skiff'
 );
 
-$this->resource_types = array(
-  'sail', 'cannonball', 'doubloon', 'skiff'
+$this->starting_cards = array(
+  array(
+    'ship_name' => 'Xebec',
+    'cost' => array('sail' => 1),
+    'actions' => array(
+      array('action' => 'forward'),
+      array('action' => 'forward', 'cost' => array('sail' => 1))
+    ),
+    "image_id" => 0,
+    "card_id" => 0,
+    "count" => 2
+  ),
+  array(
+    'ship_name' => 'Xebec',
+    'cost' => array('sail' => 1),
+    'actions' => array(
+      array('action' => 'forward'),
+      array('action' => 'choice', array('action' => "left", 'action' => "right"))
+    ),
+    "image_id" => 1,
+    "card_id" => 1,
+    "count" => 2,
+  ),
+  array(
+    'ship_name' => 'Xebec',
+    'cost' => array('sail' => 1),
+    'actions' => array(
+      array('action' => 'fire', 'range' => 3)
+    ),
+    "image_id" => 2,
+    "card_id" => 2,
+    "count" => 2,
+  ),
 );

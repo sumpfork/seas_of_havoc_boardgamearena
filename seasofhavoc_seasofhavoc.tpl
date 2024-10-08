@@ -29,10 +29,13 @@
     <div id="skiff_slot_capitol" class="skiff_slot" data-slotname="capitol"></div>
     <div id="skiff_slot_bank" class="skiff_slot" data-slotname="bank"></div>
     <div id="skiff_slot_shipyard" class="skiff_slot" data-slotname="shipyard"></div>   
-    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>
-    
+    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>    
 </div>
-
+<div id="myhand_wrap" class="whiteblock">
+    <h3>My Hand</h3>
+    <div id="myhand">
+    </div>
+</div>
 
 
 <script type="text/javascript">
