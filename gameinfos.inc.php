@@ -28,10 +28,10 @@ $gameinfos = array(
     'publisher' => 'Rock Manor Games',
 
     // Url of game publisher website
-    'publisher_website' => 'http://www.mypublishingcompany.com/',
+    'publisher_website' => 'https://rockmanorgames.com/',
 
     // Board Game Geek ID of the publisher
-    'publisher_bgg_id' => 1234,
+    'publisher_bgg_id' => 32996,
 
     // Board game geek ID of the game
     'bgg_id' => 343525,
@@ -100,11 +100,11 @@ $gameinfos = array(
     'diplomacy' => 3,
 
     // Colors attributed to players
-    'player_colors' => array("944027", "8E55A1", "C9354A", "F4AA23", "3E8855", "57C2B9"),
+    'player_colors' => array("Xebec" => "C9364B", "Ship-of-the-Line" => "3E8956", "944027", "8E55A1", "F4AA23", "57C2B9"),
 
     // Favorite colors support : if set to "true", support attribution of favorite colors based on player's preferences (see reattributeColorsBasedOnPreferences PHP method)
     // NB: this parameter is used only to flag games supporting this feature; you must use (or not use) reattributeColorsBasedOnPreferences PHP method to actually enable or disable the feature.
-    'favorite_colors_support' => true,
+    'favorite_colors_support' => false,
 
     // When doing a rematch, the player order is swapped using a "rotation" so the starting player is not the same
     // If you want to disable this, set this to true

@@ -55,7 +55,6 @@ $this->starting_cards = array(
     'ship_name' => 'Xebec',
     'cost' => array('sail' => 1),
     'actions' => array(
-      array('action' => 'forward'),
       array('action' => 'choice', array('action' => "left", 'action' => "right"))
     ),
     "image_id" => 1,
@@ -64,12 +63,42 @@ $this->starting_cards = array(
   ),
   array(
     'ship_name' => 'Xebec',
-    'cost' => array('sail' => 1),
+    'cost' => array('cannonball' => 1),
     'actions' => array(
-      array('action' => 'fire', 'range' => 3)
+      array('action' => 'fire', 'range' => 3, 'cost' => array('cannonball' => 1))
     ),
     "image_id" => 2,
     "card_id" => 2,
+    "count" => 2,
+  ),
+  array(
+    'ship_name' => 'Ship-of-the-Line',
+    'cost' => array('cannonball' => 1),
+    'actions' => array(
+      array('action' => 'fire', 'range' => 3, 'cost' => array('cannonball' => 1))
+    ),
+    "image_id" => 3,
+    "card_id" => 3,
+    "count" => 2,
+  ),
+  array(
+    'ship_name' => 'Ship-of-the-Line',
+    'cost' => array('sail' => 1),
+    'actions' => array(
+      array('action' => 'choice', array('action' => "left", 'action' => "right"))
+    ),
+    "image_id" => 4,
+    "card_id" => 4,
+    "count" => 2,
+  ),
+  array(
+    'ship_name' => 'Ship-of-the-Line',
+    'cost' => array('sail' => 1, 'doubloon' => 1),
+    'actions' => array(
+      array('action' => 'choice', array('action' => "left", 'action' => 'forward', 'action' => "right"))
+    ),
+    "image_id" => 5,
+    "card_id" => 5,
     "count" => 2,
   ),
 );

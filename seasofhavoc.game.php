@@ -70,15 +70,19 @@ class SeasOfHavoc extends Table
 
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ";
+        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_ship) VALUES ";
         $values = array();
+        $this->dump("default_colours", $default_colors);
+        $this->dump("players", $players);
         foreach ($players as $player_id => $player) {
-            $color = array_shift($default_colors);
-            $values[] = "('" . $player_id . "','$color','" . $player['player_canal'] . "','" . addslashes($player['player_name']) . "','" . addslashes($player['player_avatar']) . "')";
+            $ship_colour = array_splice($default_colors, 0, 1);
+            $ship = array_key_first($ship_colour);
+            $color = $ship_colour[$ship];
+            $values[] = "('" . $player_id . "','$color','" . $player['player_canal'] . "','" . addslashes($player['player_name']) . "','" . addslashes($player['player_avatar']) . "','$ship'" . ")";
         }
         $sql .= implode(',', $values);
         self::DbQuery($sql);
-        self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
+        //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
         /************ Start the game initialization *****/
@@ -146,6 +150,17 @@ class SeasOfHavoc extends Table
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('shipyard', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('blacksmith', null)");
 
+        $this->cards = $this->getNew("module.common.deck");
+        $this->cards->init("card");
+
+        $player_infos = $this->getPlayerInfo();
+        foreach ($player_infos as $playerid => $player) {
+            $this->dump("player info", $player);
+            $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
+                return $v["ship_name"] == $player["player_ship"];
+            });
+        }
+
         // Activate first player (which is in general a good idea :) )
         $this->activeNextPlayer();
 
@@ -209,7 +224,7 @@ class SeasOfHavoc extends Table
 
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
-        $result ['starting_cards'] = $this->starting_cards;
+        $result['starting_cards'] = $this->starting_cards;
 
         return $result;
     }
@@ -238,15 +253,19 @@ class SeasOfHavoc extends Table
     */
     function getGameResources(int $player_id = null)
     {
-        $sql = "
-    		SELECT
-    		    player_id, resource_key, resource_count
-    		FROM resource
-    	";
-        if ($player_id != null) {
-            $sql .= " WHERE player_id = $player_id";
+        static $game_resources = null;
+        if ($game_resources === null) {
+            $sql = "
+                SELECT
+                    player_id, resource_key, resource_count
+                FROM resource
+            ";
+            if ($player_id != null) {
+                $sql .= " WHERE player_id = $player_id";
+            }
+            $game_resources = $this->getObjectListFromDB($sql);
         }
-        return $this->getObjectListFromDB($sql);
+        return $game_resources;
     }
 
     function getGameResourcesHierarchical(int $player_id = null)
@@ -260,6 +279,20 @@ class SeasOfHavoc extends Table
             $hierarchical_resources[$row["player_id"]][$row["resource_key"]] = intval($row["resource_count"]);
         }
         return $hierarchical_resources;
+    }
+
+    function getPlayerInfo(int $player_id = null)
+    {
+        static $player_info = null;
+        if ($player_info === null) {
+            $sql = "SELECT player_id, player_no, player_name, player_score, player_score_aux, player_ship, player_color
+                FROM player";
+            if ($player_id !== null) {
+                $sql .= " WHERE player_id = $player_id";
+            }
+            $player_info = $this->getCollectionFromDB($sql);
+        }
+        return $player_info;
     }
 
     function subindexArray($arr_arr, $top_key)
