@@ -84,16 +84,16 @@ define([
       this.playerHand.horizontal_overlap = 90;
       //this.playerHand.resizeItems(71, 100);
       for (const card of gamedatas.starting_cards) {
-        console.log(card);
+        //console.log(card);
         this.playerHand.addItemType(
           card.card_id,
           0,
           g_gamethemeurl + "img/starting_cards.jpg",
           card.image_id
         );
-        console.log("adding card type " + card.card_id + " to player hand");
+        //console.log("adding card type " + card.card_id + " to player hand");
         for (var i = 0; i < card.count; i++) {
-          console.log("adding card " + card.card_id + " to player hand");
+          //console.log("adding card " + card.card_id + " to player hand");
           this.playerHand.addToStock(card.card_id);
         }
       }
@@ -106,7 +106,6 @@ define([
           player_color: player.color,
           id: "skiff_p" + player.id,
         });
-        console.log(skiff);
 
         document.getElementById("player_board_" + player_id).insertAdjacentHTML(
           "beforeend",
@@ -126,9 +125,33 @@ define([
 
       this.addEventToClass("skiff_slot", "onclick", "onClickSkiffSlot");
 
+      this.showDummyDialog();
       console.log("Ending game setup");
     },
+    showDummyDialog: function () {
+      this.myDlg = new ebg.popindialog();
+      this.myDlg.create("dummyDialog");
+      this.myDlg.setTitle(_("Yep, this is dumb"));
+      this.myDlg.setMaxWidth(500); // Optional
 
+      var html = this.format_block("jstpl_dummy_dialog");
+
+      this.myDlg.setContent(html);
+      this.myDlg.hideCloseIcon();
+      this.myDlg.show();
+
+      this.setClientState("client_dummyDialog", {
+        descriptionmyturn: _("${you} must abide by BGA's dumb logging"),
+      });
+
+      dojo.query(".dummy_button").connect("onclick", this, (event) => {
+        console.log("dummy button clicked");
+
+        event.preventDefault();
+        this.bgaPerformAction("actExitDummyStart", {});
+        this.myDlg.destroy();
+      });
+    },
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
       dojo.stopEvent(event);
@@ -161,6 +184,8 @@ define([
       console.log("Entering state: " + stateName);
 
       switch (stateName) {
+        case "dummyStart":
+          //this.bgaPerformAction("actExitDummyStart", {});
         /* Example:
             
             case 'myGameState':
@@ -305,6 +330,7 @@ define([
       );
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
+      dojo.subscribe("dummystart", this, "notifDummyStart");
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
 
@@ -352,6 +378,10 @@ define([
           this.myDlg.destroy();
         }
       });
+    },
+    notifDummyStart: function (notif) {
+      console.log("dummystart");
+      this.bgaPerformAction("actExitDummyStart", {});
     },
     notifResourcesChanged: function (notif) {
       console.log("Notification: resourcesChanged");

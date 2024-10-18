@@ -61,35 +61,39 @@ $machinestates = array(
         "action" => "stGameSetup",
         "transitions" => array("" => 2)
     ),
-
     2 => array(
+         "name" => "DummyStart",
+         "description" => "only exists because debugging doesn't work in start states",
+         "type" => "activeplayer",
+         //"action" => "stDummyStart",
+         "possibleactions" => array("actExitDummyStart"),
+         "transitions" => array("" => 3)
+    ),
+    3 => array(
         "name" => "mySetup",
-        "description" => "",
+        "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => array("" => 3)
+        "transitions" => array("" => 4)
     ),
-
-    // Note: ID=3 => your first state
-
-    3 => array(
+    4 => array(
         "name" => "islandTurn",
         "description" => clienttranslate('${actplayer} must place a skiff'),
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
         "possibleactions" => array("actPlaceSkiff", "actResourcePickedInDialog"),
-        "transitions" => array("islandTurnDone" => 4, "tutorialStart" => 3)
+        "transitions" => array("islandTurnDone" => 5, "tutorialStart" => 4)
     ),
 
-    4 => array(
+    5 => array(
         "name" => "nextPlayerIslandPhase",
         "description" => '',
         "type" => "game",
         "action" => "stNextPlayerIslandPhase",
-        "transitions" => array("islandPhaseDone" => 5, "nextPlayer" => 3)
+        "transitions" => array("islandPhaseDone" => 6, "nextPlayer" => 4)
     ),
 
-    5 => array(
+    6 => array(
         "name" => "cardPurchases",
         "description" => clienttranslate("Players may purchase cards"),
         "type" => "multipleactiveplayer",

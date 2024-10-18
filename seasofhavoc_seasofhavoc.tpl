@@ -45,6 +45,9 @@
                         <div id="cannonball_button" class="cannonball resource resource_button" data-resource="cannonball"></div>
                         <div id="doubloon_button" class="doubloon resource resource_button" data-resource="doubloon"></div>
                         </div>`;
+    var jstpl_dummy_dialog=`<div class="dummy_dialog" id="dummy_dialog">
+                        <div id="dummy_button" class="dummy_button">Yep, this is dumb</div>
+                        </div>`;
     var jstpl_resources_playerboard=`
                     <div class="cp_board">
                         <div id="sail_p\${player_id}" class="sail resource"></div><span id="sailcount_p\${player_id}" class="resource_count">0</span>

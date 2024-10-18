@@ -99,11 +99,23 @@ class SeasOfHavoc extends Table
 
 
         /************ End of the game initialization *****/
-        $this->gamestate->nextState();
+        $this->activeNextPlayer();
+        //$this->gamestate->nextState();
+    }
+
+    function stDummyStart()
+    {
+        //$this->notifyPlayer(self::getActivePlayerId(), "dummystart", "", []);
+        //throw new BgaSystemException("dummy");
+        //only exists to make BGA debugging in setup code work
+        //$this->stMyGameSetup();
+        //$this->gamestate->nextState();
     }
 
     function stMyGameSetup()
     {
+        //throw new BgaSystemException("mysetup start");
+
         //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
         $this->mytrace('stMyGameSetup');
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
@@ -154,15 +166,27 @@ class SeasOfHavoc extends Table
         $this->cards->init("card");
 
         $player_infos = $this->getPlayerInfo();
+        $this->dump("player infos", $player_infos);
+        $this->mytrace("foo");
+
         foreach ($player_infos as $playerid => $player) {
             $this->dump("player info", $player);
             $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
                 return $v["ship_name"] == $player["player_ship"];
             });
+            $this->dump("player starting cards", $player_starting_cards);
+            $start_deck = array();
+            foreach ($player_starting_cards as $starting_card) {
+                $start_deck[] = array("type" => $starting_card["card_id"], "type_arg" => 0, "nbr" => $starting_card["count"]);
+            }
+            $this->dump("start deck", $start_deck);
+            $this->cards->createCards($start_deck, "player_deck", $playerid);
+            $this->dump("sample", $this->cards->countCardsInLocations( ));
         }
 
         // Activate first player (which is in general a good idea :) )
-        $this->activeNextPlayer();
+        // $this->activeNextPlayer();
+        //throw new BgaSystemException("mysetup end");
 
         $this->gamestate->nextState();
     }
@@ -225,7 +249,7 @@ class SeasOfHavoc extends Table
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
         $result['starting_cards'] = $this->starting_cards;
-
+        $result['playerinfo'] = $this->getPlayerInfo();
         return $result;
     }
 
@@ -454,6 +478,14 @@ class SeasOfHavoc extends Table
                 throw new BgaSystemException("bad skiff slot: $slotname");
                 break;
         }
+    }
+
+
+    function actExitDummyStart()
+    {
+        //throw new BgaSystemException("act dummy");
+        //only exists to make BGA debugging in setup code work
+        $this->gamestate->nextState();
     }
 
     function actResourcePickedInDialog(string $resource, string $context)
