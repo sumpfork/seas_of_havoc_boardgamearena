@@ -91,11 +91,13 @@ define([
           g_gamethemeurl + "img/starting_cards.jpg",
           card.image_id
         );
-        //console.log("adding card type " + card.card_id + " to player hand");
-        for (var i = 0; i < card.count; i++) {
+      }
+      //console.log("adding card type " + card.card_id + " to player hand");
+      for ( var i in  gamedatas.hand) {
           //console.log("adding card " + card.card_id + " to player hand");
-          this.playerHand.addToStock(card.card_id);
-        }
+          var card = this.gamedatas.hand[i];
+          this.playerHand.addToStockWithId(card.type, card.id);
+          //this.playerHand.addToStock(card.card_id);
       }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
@@ -125,7 +127,7 @@ define([
 
       this.addEventToClass("skiff_slot", "onclick", "onClickSkiffSlot");
 
-      this.showDummyDialog();
+      //this.showDummyDialog();
       console.log("Ending game setup");
     },
     showDummyDialog: function () {
@@ -185,7 +187,7 @@ define([
 
       switch (stateName) {
         case "dummyStart":
-          //this.bgaPerformAction("actExitDummyStart", {});
+        //this.bgaPerformAction("actExitDummyStart", {});
         /* Example:
             
             case 'myGameState':
@@ -330,7 +332,8 @@ define([
       );
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
-      dojo.subscribe("dummystart", this, "notifDummyStart");
+      dojo.subscribe("newHand", this, "notifyNewHand");
+
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
 
@@ -412,6 +415,16 @@ define([
         1000
       ).play();
       //slide.play();
+    },
+    notifyNewHand: function (notif) {
+      this.playerHand.removeAll();
+
+      for ( var i in notif.args.cards) {
+          var card = notif.args.cards[i];
+          var color = card.type;
+          var value = card.type_arg;
+          this.playerHand.addToStockWithId(this.getCardUniqueId(color, value), card.id);
+      }
     },
     /*
         Example:

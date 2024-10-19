@@ -59,16 +59,15 @@ $machinestates = array(
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => array("" => 2)
+        "transitions" => array("" => 3)
     ),
-    2 => array(
-         "name" => "DummyStart",
-         "description" => "only exists because debugging doesn't work in start states",
-         "type" => "activeplayer",
-         //"action" => "stDummyStart",
-         "possibleactions" => array("actExitDummyStart"),
-         "transitions" => array("" => 3)
-    ),
+    // 2 => array(
+    //      "name" => "DummyStart",
+    //      "description" => "only exists because debugging doesn't work in start states",
+    //      "type" => "activeplayer",
+    //      "possibleactions" => array("actExitDummyStart"),
+    //      "transitions" => array("" => 3)
+    // ),
     3 => array(
         "name" => "mySetup",
         "description" => "f",

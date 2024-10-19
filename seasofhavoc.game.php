@@ -45,6 +45,12 @@ class SeasOfHavoc extends Table
             //    "my_second_game_variant" => 101,
             //      ...
         ));
+
+        
+        $this->cards = $this->getNew("module.common.deck");
+        $this->cards->init("card");
+        //$this->cards->autoreshuffle = true;
+        $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
     }
 
     protected function getGameName()
@@ -85,6 +91,7 @@ class SeasOfHavoc extends Table
         //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
+
         /************ Start the game initialization *****/
 
         // Init global values with their initial values
@@ -100,15 +107,6 @@ class SeasOfHavoc extends Table
 
         /************ End of the game initialization *****/
         $this->activeNextPlayer();
-        //$this->gamestate->nextState();
-    }
-
-    function stDummyStart()
-    {
-        //$this->notifyPlayer(self::getActivePlayerId(), "dummystart", "", []);
-        //throw new BgaSystemException("dummy");
-        //only exists to make BGA debugging in setup code work
-        //$this->stMyGameSetup();
         //$this->gamestate->nextState();
     }
 
@@ -162,26 +160,22 @@ class SeasOfHavoc extends Table
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('shipyard', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('blacksmith', null)");
 
-        $this->cards = $this->getNew("module.common.deck");
-        $this->cards->init("card");
-
         $player_infos = $this->getPlayerInfo();
-        $this->dump("player infos", $player_infos);
-        $this->mytrace("foo");
 
         foreach ($player_infos as $playerid => $player) {
-            $this->dump("player info", $player);
             $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
                 return $v["ship_name"] == $player["player_ship"];
             });
-            $this->dump("player starting cards", $player_starting_cards);
             $start_deck = array();
             foreach ($player_starting_cards as $starting_card) {
                 $start_deck[] = array("type" => $starting_card["card_id"], "type_arg" => 0, "nbr" => $starting_card["count"]);
             }
-            $this->dump("start deck", $start_deck);
             $this->cards->createCards($start_deck, "player_deck", $playerid);
-            $this->dump("sample", $this->cards->countCardsInLocations( ));
+        }
+        //$this->cards->shuffle("player_deck");
+        foreach ($player_infos as $playerid => $player) {
+            $this->cards->pickCards(4, "player_deck", $playerid);
+            //$this->notifyPlayer($playerid, 'newHand', '', array ('cards' => $handcards ));
         }
 
         // Activate first player (which is in general a good idea :) )
@@ -249,6 +243,8 @@ class SeasOfHavoc extends Table
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
         $result['starting_cards'] = $this->starting_cards;
+        $result['hand'] = $this->cards->getPlayerHand($current_player_id);
+        //$result['allcards'] = $this->cards->countCardsInLocations();
         $result['playerinfo'] = $this->getPlayerInfo();
         return $result;
     }
