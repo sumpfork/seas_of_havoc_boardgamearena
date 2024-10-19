@@ -110,6 +110,10 @@ class SeasOfHavoc extends Table
         //$this->gamestate->nextState();
     }
 
+    function playerDeckName($player_id) {
+        return "player_deck_" . $player_id;
+    }
+
     function stMyGameSetup()
     {
         //throw new BgaSystemException("mysetup start");
@@ -170,13 +174,13 @@ class SeasOfHavoc extends Table
             foreach ($player_starting_cards as $starting_card) {
                 $start_deck[] = array("type" => $starting_card["card_id"], "type_arg" => 0, "nbr" => $starting_card["count"]);
             }
-            $this->cards->createCards($start_deck, "player_deck", $playerid);
+            $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
+            $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
         }
         //$this->cards->shuffle("player_deck");
-        foreach ($player_infos as $playerid => $player) {
-            $this->cards->pickCards(4, "player_deck", $playerid);
-            //$this->notifyPlayer($playerid, 'newHand', '', array ('cards' => $handcards ));
-        }
+        // foreach ($player_infos as $playerid => $player) {
+        //     //$this->notifyPlayer($playerid, 'newHand', '', array ('cards' => $handcards ));
+        // }
 
         // Activate first player (which is in general a good idea :) )
         // $this->activeNextPlayer();

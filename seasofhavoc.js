@@ -79,12 +79,17 @@ define([
       console.log(gamedatas);
 
       this.playerHand = new ebg.stock(); // new stock object for hand
-      this.playerHand.create(this, $("myhand"), 287, 396);
-      this.playerHand.image_items_per_row = 6; // 13 images per row
+      this.playerHand.create(this, $("myhand"), 143, 198);
+      this.playerHand.image_items_per_row = 3; // 13 images per row
       this.playerHand.horizontal_overlap = 90;
-      //this.playerHand.resizeItems(71, 100);
+      this.playerHand.setSelectionMode(1); // one item selected
+
+      this.playerHand.resizeItems(143, 198, 861, 1188);
       for (const card of gamedatas.starting_cards) {
         //console.log(card);
+        console.log(
+          "adding card " + card.card_id + "/" + card.image_id + " to stock"
+        );
         this.playerHand.addItemType(
           card.card_id,
           0,
@@ -93,11 +98,13 @@ define([
         );
       }
       //console.log("adding card type " + card.card_id + " to player hand");
-      for ( var i in  gamedatas.hand) {
-          //console.log("adding card " + card.card_id + " to player hand");
-          var card = this.gamedatas.hand[i];
-          this.playerHand.addToStockWithId(card.type, card.id);
-          //this.playerHand.addToStock(card.card_id);
+      for (var i in gamedatas.hand) {
+        var card = this.gamedatas.hand[i];
+        console.log(
+          "adding card " + card.type + "/" + card.id + " to player hand"
+        );
+        this.playerHand.addToStockWithId(card.type, card.id);
+        //this.playerHand.addToStock(card.card_id);
       }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
@@ -419,11 +426,14 @@ define([
     notifyNewHand: function (notif) {
       this.playerHand.removeAll();
 
-      for ( var i in notif.args.cards) {
-          var card = notif.args.cards[i];
-          var color = card.type;
-          var value = card.type_arg;
-          this.playerHand.addToStockWithId(this.getCardUniqueId(color, value), card.id);
+      for (var i in notif.args.cards) {
+        var card = notif.args.cards[i];
+        var color = card.type;
+        var value = card.type_arg;
+        this.playerHand.addToStockWithId(
+          this.getCardUniqueId(color, value),
+          card.id
+        );
       }
     },
     /*
