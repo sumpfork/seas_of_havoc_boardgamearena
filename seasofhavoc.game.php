@@ -22,10 +22,80 @@ require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
 
 use \Bga\GameFramework\Actions\Types\StringParam;
 
+class SeaBoard
+{
+
+    const WIDTH = 5;
+    const HEIGHT = 5;
+
+    const NO_HEADING = 0;
+    const NORTH = 1;
+    const EAST = 2;
+    const SOUTH = 3;
+    const WEST = 4;
+
+    private $contents;
+    private $sqlfunc;
+
+    function __construct($sql)
+    {
+        $row = array_fill(0, self::WIDTH, array());
+        $this->contents = array_fill(0, self::HEIGHT, $row);
+        $this->sqlfunc = $sql;
+    }
+
+    public function getObjects(int $x, int $y)
+    {
+        assert($x >= 0 && $x < self::WIDTH);
+        assert($y >= 0 && $y < self::HEIGHT);
+        return $this->contents[$x][$y];
+    }
+
+    public function getObjectsOfTypes(int $x, int $y, array $types)
+    {
+        assert($x >= 0 && $x < self::WIDTH);
+        assert($y >= 0 && $y < self::HEIGHT);
+        $contents = $this->contents[$x][$y];
+        return array_filter($contents, function ($k) use ($types) {
+            in_array($k["type"], $types);
+        });
+    }
+
+    public function placeObject(int $x, int $y, array $object)
+    {
+        assert($x >= 0 && $x < self::WIDTH);
+        assert($y >= 0 && $y < self::HEIGHT);
+        $this->contents[$x][$y][] = $object;
+        $this->syncToDB();
+    }
+
+    public function syncToDB()
+    {
+        $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ";
+        $values = array();
+        foreach ($this->contents as $x => $row) {
+            foreach ($row as $y => $contents) {
+                foreach($contents as $entry) {
+                    $values[] = "('" . $x . "','" . $y . "','" . $entry["type"] . "','" . $entry["arg"] . "','" . $entry["heading"] . "')";
+                }
+            }
+        }
+        $sql .= implode(',', $values);
+        call_user_func($this->sqlfunc, $sql);
+    }
+
+    function dump($f)
+    {
+        $f("seaboard", $this->contents);
+    }
+}
+
 class SeasOfHavoc extends Table
 {
     // for IDE (form material.inc.php)
     //private $resource_types;
+
+    private SeaBoard $seaboard;
 
     function __construct()
     {
@@ -46,11 +116,13 @@ class SeasOfHavoc extends Table
             //      ...
         ));
 
-        
+
         $this->cards = $this->getNew("module.common.deck");
         $this->cards->init("card");
         //$this->cards->autoreshuffle = true;
         $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
+
+        $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
     }
 
     protected function getGameName()
@@ -110,7 +182,8 @@ class SeasOfHavoc extends Table
         //$this->gamestate->nextState();
     }
 
-    function playerDeckName($player_id) {
+    function playerDeckName($player_id)
+    {
         return "player_deck_" . $player_id;
     }
 
@@ -167,6 +240,11 @@ class SeasOfHavoc extends Table
         $player_infos = $this->getPlayerInfo();
 
         foreach ($player_infos as $playerid => $player) {
+            $this->seaboard->placeObject(
+                rand(0, SeaBoard::WIDTH - 1),
+                rand(0, SeaBoard::HEIGHT - 1),
+                array("type" => "player_ship", "arg" => $playerid, "heading" => SeaBoard::NORTH)
+            );
             $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
                 return $v["ship_name"] == $player["player_ship"];
             });

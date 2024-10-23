@@ -49,3 +49,11 @@ CREATE TABLE IF NOT EXISTS `card` (
   `card_location_arg` int(11) NOT NULL,
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+CREATE TABLE IF NOT EXISTS `sea` (
+  `x` int(1) unsigned NOT NULL,
+  `y` int(1) unsigned NOT NULL,
+  `type` varchar(32) NOT NULL,
+  `arg` varchar(32),
+  `heading` int(1) unsigned NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
