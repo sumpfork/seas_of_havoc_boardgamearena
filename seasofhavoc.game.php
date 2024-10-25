@@ -36,25 +36,54 @@ class SeaBoard
 
     private $contents;
     private $sqlfunc;
+    private $getobjectlistfunc;
 
-    function __construct($sql)
+    function __construct($dbquery, $getobjectlist)
+    {
+        $this->sqlfunc = $dbquery;
+        $this->getobjectlistfunc = $getobjectlist;
+        $this->contents = null;
+    }
+
+    private function init()
     {
         $row = array_fill(0, self::WIDTH, array());
         $this->contents = array_fill(0, self::HEIGHT, $row);
-        $this->sqlfunc = $sql;
     }
 
     public function getObjects(int $x, int $y)
     {
         assert($x >= 0 && $x < self::WIDTH);
         assert($y >= 0 && $y < self::HEIGHT);
+        $this->syncFromDB();
         return $this->contents[$x][$y];
+    }
+
+    public function getAllObjectsFlat()
+    {
+        $this->syncFromDB();
+        $flat_contents = array();
+        foreach ($this->contents as $x => $row) {
+            foreach ($row as $y => $contents) {
+                foreach ($contents as $entry) {
+                    $flat_contents[] = array(
+                        "x" => $x,
+                        "y" => $y,
+                        "type" => $entry["type"],
+                        "arg" => $entry["arg"],
+                        "heading" => $entry["heading"]
+                    );
+                }
+            }
+        }
+        return $flat_contents;
     }
 
     public function getObjectsOfTypes(int $x, int $y, array $types)
     {
         assert($x >= 0 && $x < self::WIDTH);
         assert($y >= 0 && $y < self::HEIGHT);
+        $this->syncFromDB();
         $contents = $this->contents[$x][$y];
         return array_filter($contents, function ($k) use ($types) {
             in_array($k["type"], $types);
@@ -65,6 +94,7 @@ class SeaBoard
     {
         assert($x >= 0 && $x < self::WIDTH);
         assert($y >= 0 && $y < self::HEIGHT);
+        $this->syncFromDB();
         $this->contents[$x][$y][] = $object;
         $this->syncToDB();
     }
@@ -73,15 +103,23 @@ class SeaBoard
     {
         $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ";
         $values = array();
-        foreach ($this->contents as $x => $row) {
-            foreach ($row as $y => $contents) {
-                foreach($contents as $entry) {
-                    $values[] = "('" . $x . "','" . $y . "','" . $entry["type"] . "','" . $entry["arg"] . "','" . $entry["heading"] . "')";
-                }
-            }
+        foreach ($this->getAllObjectsFlat() as $entry) {
+            $values[] = "('" . $entry["x"] . "','" . $entry["y"] . "','" . $entry["type"] . "','" . $entry["arg"] . "','" . $entry["heading"] . "')";
         }
         $sql .= implode(',', $values);
         call_user_func($this->sqlfunc, $sql);
+    }
+
+    public function syncFromDB()
+    {
+        if ($this->contents === null) {
+            $sql = "select x, y, type, arg, heading from sea";
+            $result = call_user_func($this->getobjectlistfunc, $sql);
+            $this->init();
+            foreach ($result as $row) {
+                $this->placeObject(intval($row["x"]), intval($row["y"]), array("type" => $row["type"], "arg" => $row["arg"], "heading" => $row["heading"]));
+            }
+        }
     }
 
     function dump($f)
@@ -122,7 +160,7 @@ class SeasOfHavoc extends Table
         //$this->cards->autoreshuffle = true;
         $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
 
-        $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
+        $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", "SeasOfHavoc::DBQUery");
     }
 
     protected function getGameName()
@@ -328,6 +366,7 @@ class SeasOfHavoc extends Table
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         //$result['allcards'] = $this->cards->countCardsInLocations();
         $result['playerinfo'] = $this->getPlayerInfo();
+        $result['seaboard'] = $this->seaboard->getAllObjectsFlat();
         return $result;
     }
 

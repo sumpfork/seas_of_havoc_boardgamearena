@@ -79,12 +79,15 @@ define([
       console.log(gamedatas);
 
       this.playerHand = new ebg.stock(); // new stock object for hand
-      this.playerHand.create(this, $("myhand"), 143, 198);
+      //this.playerHand.create(this, $("myhand"), 287, 396);
+      this.playerHand.create(this, $("myhand"), 144, 198);
       this.playerHand.image_items_per_row = 3; // 13 images per row
-      this.playerHand.horizontal_overlap = 90;
+      this.playerHand.horizontal_overlap = 0;
       this.playerHand.setSelectionMode(1); // one item selected
 
-      this.playerHand.resizeItems(143, 198, 861, 1188);
+      //resize background to 1/2 of actual size, card size accordingly
+      this.playerHand.resizeItems(144, 198, 432, 1189);
+
       for (const card of gamedatas.starting_cards) {
         //console.log(card);
         console.log(
