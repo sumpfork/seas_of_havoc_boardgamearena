@@ -34,14 +34,12 @@ class SeaBoard
     const SOUTH = 3;
     const WEST = 4;
 
-    private $contents;
-    private $sqlfunc;
-    private $getobjectlistfunc;
+    private array | null $contents;
+    private string $sqlfunc;
 
-    function __construct($dbquery, $getobjectlist)
+    function __construct($dbquery)
     {
         $this->sqlfunc = $dbquery;
-        $this->getobjectlistfunc = $getobjectlist;
         $this->contents = null;
     }
 
@@ -99,8 +97,17 @@ class SeaBoard
         $this->syncToDB();
     }
 
+    private function syncObjectToDB(int $x, int $y, array $object)
+    {
+        $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ('"
+            . $x . "','" . $y . "','" . $object["type"] . "','" . $object["arg"] . "','" . $object["heading"] . "')";
+        call_user_func($this->sqlfunc, $sql);
+    }
+
     public function syncToDB()
     {
+        call_user_func($this->sqlfunc, "DELETE FROM sea");
+
         $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ";
         $values = array();
         foreach ($this->getAllObjectsFlat() as $entry) {
@@ -114,7 +121,7 @@ class SeaBoard
     {
         if ($this->contents === null) {
             $sql = "select x, y, type, arg, heading from sea";
-            $result = call_user_func($this->getobjectlistfunc, $sql);
+            $result = call_user_func($this->sqlfunc, $sql);
             $this->init();
             foreach ($result as $row) {
                 $this->placeObject(intval($row["x"]), intval($row["y"]), array("type" => $row["type"], "arg" => $row["arg"], "heading" => $row["heading"]));
@@ -160,7 +167,7 @@ class SeasOfHavoc extends Table
         //$this->cards->autoreshuffle = true;
         $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
 
-        $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", "SeasOfHavoc::DBQUery");
+        $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
     }
 
     protected function getGameName()
