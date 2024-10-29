@@ -139,8 +139,8 @@
 
 .seaboardlocation {
     position: relative;
-    width: 2px;
+    /* width: 2px;
     height: 2px;
     background-color: red;
-    z-index: 1;
+    z-index: 1; */
 }

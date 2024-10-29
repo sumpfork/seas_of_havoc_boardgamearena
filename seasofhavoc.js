@@ -18,10 +18,11 @@
 define([
   "dojo",
   "dojo/_base/declare",
+  "dojo/dom-style",
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare) {
+], function (dojo, declare, domstyle) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -140,8 +141,8 @@ define([
           });
           dojo.place(location, "seaboard");
           var seaboard = $("seaboard");
-          var target_x = -seaboard.offsetWidth / 2 + 64 * x;
-          var target_y = -seaboard.offsetWidth / 2 + 64 * y;
+          var target_x = -seaboard.offsetWidth / 2 + 32 + 64 * x;
+          var target_y = -seaboard.offsetWidth / 2 + 32 + 64 * y;
           this.placeOnObjectPos($(id), "seaboard", target_x, target_y);
         }
       }
@@ -159,13 +160,24 @@ define([
             var ship = this.format_block("jstpl_player_ship", subs);
             dojo.place(ship, "seaboard");
             console.log(target_id);
-            this.placeOnObjectPos(
+            this.placeOnObject(
               shipid,
               target_id,
-              $(shipid).offsetWidth / 2,
-              $(shipid).offsetHeight / 2 + 7
             );
-          //this.slideToObject(shipid, target_id, 10 ).play();
+            console.log(entry.heading);
+            switch(entry.heading) {
+              case "1":
+                domstyle.set(shipid, "rotate", "90deg");
+                console.log("NORTH!");
+                break;
+              case "2":
+                dojo.attr(shipid, "transform", "scaleX(-1)");
+                break;
+              case "3":
+                dojo.attr(shipid, "rotate", "-90deg");
+                break;
+            }
+            //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
       // Setup game notifications to handle (see "setupNotifications" method below)
