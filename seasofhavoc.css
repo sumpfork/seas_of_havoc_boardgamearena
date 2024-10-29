@@ -57,7 +57,13 @@
   margin-bottom: 5px;
   background-image: url(img/board.jpg);
 }
-
+#seaboard {
+    position: relative;
+    top: 97px;
+    left: 310px;
+    width: 380px;
+    height: 380px;
+}
 #skiff_slot_capitol {
 	top: 180px;
 	left: 152px;
@@ -118,9 +124,23 @@
     position: relative;
 }
 .player_ship {
-    width: 202;
-    height: 138px;
+    width: 60px;
+    height: 45.5px;
+    background-image: url('img/bga_ships.png');
+    background-size: 60px;
+    position: relative;
 }
 .player_ship[data-shipname="Xebec"] {
-    background-position: 0% 400%;
+    background-position: 0% -400%;
+}
+.player_ship[data-shipname="Ship-of-the-Line"] {
+    background-position: 0% -200%;
+}
+
+.seaboardlocation {
+    position: relative;
+    width: 2px;
+    height: 2px;
+    background-color: red;
+    z-index: 1;
 }

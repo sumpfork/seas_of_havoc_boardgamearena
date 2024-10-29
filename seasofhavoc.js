@@ -132,6 +132,42 @@ define([
       this.updateResources(gamedatas.resources);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
 
+      for (var x = 0; x < 6; x++) {
+        for (var y = 0; y < 6; y++) {
+          var id = "seaboardlocation_" + x + "_" + y;
+          var location = this.format_block("jstpl_seaboard_location", {
+            id: id,
+          });
+          dojo.place(location, "seaboard");
+          var seaboard = $("seaboard");
+          var target_x = -seaboard.offsetWidth / 2 + 64 * x;
+          var target_y = -seaboard.offsetWidth / 2 + 64 * y;
+          this.placeOnObjectPos($(id), "seaboard", target_x, target_y);
+        }
+      }
+
+      for (const entry of gamedatas.seaboard) {
+        var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
+        switch (entry.type) {
+          case "player_ship":
+            var shipid = "player_ship_" + entry.arg;
+            var subs = {
+              id: shipid,
+              //player id is in 'arg'
+              shipname: gamedatas.playerinfo[entry.arg].player_ship,
+            };
+            var ship = this.format_block("jstpl_player_ship", subs);
+            dojo.place(ship, "seaboard");
+            console.log(target_id);
+            this.placeOnObjectPos(
+              shipid,
+              target_id,
+              $(shipid).offsetWidth / 2,
+              $(shipid).offsetHeight / 2 + 7
+            );
+          //this.slideToObject(shipid, target_id, 10 ).play();
+        }
+      }
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
@@ -424,7 +460,6 @@ define([
         "skiff_slot_" + notif.args.slot_name,
         1000
       ).play();
-      //slide.play();
     },
     notifyNewHand: function (notif) {
       this.playerHand.removeAll();

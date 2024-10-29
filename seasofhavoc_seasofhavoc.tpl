@@ -29,7 +29,8 @@
     <div id="skiff_slot_capitol" class="skiff_slot" data-slotname="capitol"></div>
     <div id="skiff_slot_bank" class="skiff_slot" data-slotname="bank"></div>
     <div id="skiff_slot_shipyard" class="skiff_slot" data-slotname="shipyard"></div>   
-    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>    
+    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>
+    <div id="seaboard"></div>
 </div>
 <div id="myhand_wrap" class="whiteblock">
     <h3>My Hand</h3>
@@ -68,6 +69,9 @@
         </g>
     </g>
     </svg></div>`;
+    var jstpl_seaboard_location=`<div class="seaboardlocation" id="\${id}"></div>`;
+    var jstpl_player_ship=`<div class="player_ship" id="\${id}" 
+        data-shipname="\${shipname}"></div>`
 </script>
 
 {OVERALL_GAME_FOOTER}
