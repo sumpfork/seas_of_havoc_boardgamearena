@@ -141,6 +141,9 @@ class SeasOfHavoc extends Table
     //private $resource_types;
 
     private SeaBoard $seaboard;
+    //private array $starting_cards;
+    private array $all_cards;
+    private $cards;
 
     function __construct()
     {
@@ -168,6 +171,12 @@ class SeasOfHavoc extends Table
         $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
+
+        $starting_cards = array_combine(array_column($this->starting_cards, "card_id"), array_values($this->starting_cards));
+        assert(count($starting_cards) == count($this->starting_cards));
+        $this->starting_cards = $starting_cards;
+
+        $this->all_cards = $this->starting_cards;
     }
 
     protected function getGameName()

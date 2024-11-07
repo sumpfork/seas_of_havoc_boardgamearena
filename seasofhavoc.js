@@ -89,7 +89,11 @@ define([
       //resize background to 1/2 of actual size, card size accordingly
       this.playerHand.resizeItems(144, 198, 432, 1189);
 
-      for (const card of gamedatas.starting_cards) {
+      this.starting_cards = gamedatas.starting_cards;
+
+      dojo.connect(this.playerHand, 'onChangeSelection', this, 'onCardSelectedPlayerHand');
+
+      for (const card of this.starting_cards) {
         //console.log(card);
         console.log(
           "adding card " + card.card_id + "/" + card.image_id + " to stock"
@@ -233,6 +237,17 @@ define([
           slotname: source.dataset.slotname,
         });
       }
+    },
+    onCardSelectedPlayerHand: function (name, item_id) {
+      console.log("player hand selection " + name + " " + item_id);
+      var items = this.playerHand.getSelectedItems();
+      if (items.length == 1) {
+        var card_type = items[0].type;
+        console.log("type: " + card_type);
+        var card = this.starting_cards[card_type];
+        console.log(card);
+      }
+      console.log(items);
     },
     ///////////////////////////////////////////////////
     //// Game & client states

@@ -73,7 +73,7 @@ $machinestates = array(
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => array("" => 4)
+        "transitions" => array("" => 7)
     ),
     4 => array(
         "name" => "islandTurn",
@@ -81,7 +81,7 @@ $machinestates = array(
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
         "possibleactions" => array("actPlaceSkiff", "actResourcePickedInDialog"),
-        "transitions" => array("islandTurnDone" => 5, "tutorialStart" => 4)
+        "transitions" => array("islandTurnDone" => 5)
     ),
 
     5 => array(
@@ -98,6 +98,14 @@ $machinestates = array(
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
         "transitions" => array("cardPurchasesDone" => 99)
+    ),
+    7 => array(
+        "name" => "seaTurn",
+        "description" => clienttranslate('${actplayer} must play a card'),
+        "descriptionmyturn" => clienttranslate('${you} must play a card'),
+        "type" => "activeplayer",
+        "possibleactions" => array("actPlayCard"),
+        "transitions" => array("seaTurnDone" => 5)
     ),
     /*
     Examples:
