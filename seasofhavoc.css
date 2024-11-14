@@ -144,3 +144,11 @@
     background-color: red;
     z-index: 1; */
 }
+#card_display_dialog {
+    width: 350px;
+    background-color: white;
+    height: 210px;
+    margin-top: -200px;
+    z-index: 20;
+    position: relative;
+}

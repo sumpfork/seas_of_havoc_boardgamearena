@@ -49,6 +49,10 @@
     var jstpl_dummy_dialog=`<div class="dummy_dialog" id="dummy_dialog">
                         <div id="dummy_button" class="dummy_button">Yep, this is dumb</div>
                         </div>`;
+    var jstpl_card_play_dialog=`<div id="card_display_dialog">
+                        <div id="card_display"></div>
+                        <div id="card_choices"></div>
+                        </div>`;
     var jstpl_resources_playerboard=`
                     <div class="cp_board">
                         <div id="sail_p\${player_id}" class="sail resource"></div><span id="sailcount_p\${player_id}" class="resource_count">0</span>

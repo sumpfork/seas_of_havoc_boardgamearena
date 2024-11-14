@@ -19,10 +19,11 @@ define([
   "dojo",
   "dojo/_base/declare",
   "dojo/dom-style",
+  "dojo/dom-attr",
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, domstyle) {
+], function (dojo, declare, domstyle, attr) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -91,9 +92,13 @@ define([
 
       this.starting_cards = gamedatas.starting_cards;
 
-      dojo.connect(this.playerHand, 'onChangeSelection', this, 'onCardSelectedPlayerHand');
-
-      for (const card of this.starting_cards) {
+      dojo.connect(
+        this.playerHand,
+        "onChangeSelection",
+        this,
+        "onCardSelectedPlayerHand"
+      );
+      for (const card of Object.values(this.starting_cards)) {
         //console.log(card);
         console.log(
           "adding card " + card.card_id + "/" + card.image_id + " to stock"
@@ -164,12 +169,9 @@ define([
             var ship = this.format_block("jstpl_player_ship", subs);
             dojo.place(ship, "seaboard");
             console.log(target_id);
-            this.placeOnObject(
-              shipid,
-              target_id,
-            );
+            this.placeOnObject(shipid, target_id);
             console.log(entry.heading);
-            switch(entry.heading) {
+            switch (entry.heading) {
               case "1":
                 domstyle.set(shipid, "rotate", "90deg");
                 console.log("NORTH!");
@@ -181,7 +183,7 @@ define([
                 dojo.attr(shipid, "rotate", "-90deg");
                 break;
             }
-            //this.slideToObject(shipid, target_id, 10 ).play();
+          //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
       // Setup game notifications to handle (see "setupNotifications" method below)
@@ -216,6 +218,29 @@ define([
         this.myDlg.destroy();
       });
     },
+    showCardPlayDialog: function (card, card_id) {
+      var dlg = this.format_block("jstpl_card_play_dialog");
+      dojo.place(dlg, "myhand_wrap", "first");
+      var dlg_dom = dojo.byId("card_display_dialog");
+      var existing_card_dom = dojo.byId(card_id);
+      console.log(dlg_dom);
+      var card_pos = dojo.position(existing_card_dom);
+      console.log(card_pos);
+      console.log(
+        `${card_pos.x - card_pos.offsetWidth / 2}px`
+      );
+      dojo.style(
+        dlg_dom,
+        "left",
+        `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`
+      );
+      var new_card_dom = dojo.clone(existing_card_dom);
+      attr.set(new_card_dom, "id", "tmp_display_card");
+
+      dojo.place(new_card_dom, "card_display");
+      dojo.style(new_card_dom, "top", "5px");
+      dojo.style(new_card_dom, "left", "5px");
+    },
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
       dojo.stopEvent(event);
@@ -246,6 +271,7 @@ define([
         console.log("type: " + card_type);
         var card = this.starting_cards[card_type];
         console.log(card);
+        this.showCardPlayDialog(card, this.playerHand.getItemDivId(item_id));
       }
       console.log(items);
     },
