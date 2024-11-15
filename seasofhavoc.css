@@ -139,10 +139,6 @@
 
 .seaboardlocation {
     position: relative;
-    /* width: 2px;
-    height: 2px;
-    background-color: red;
-    z-index: 1; */
 }
 #card_display_dialog {
     width: 350px;
@@ -150,5 +146,23 @@
     height: 210px;
     margin-top: -200px;
     z-index: 20;
+    position: absolute;
+}
+#card_choices {
+    font-size: 18px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    right: -50%;
+    width: 50%;
+    height: 95%;
     position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.card_choice_radio {
+    display: inline;
+}
+.card_choice_row_num {
+    display: inline;
+    margin-right: 10px;
 }

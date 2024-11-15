@@ -55,7 +55,7 @@ $this->starting_cards = [
     'ship_name' => 'Xebec',
     'cost' => ['sail' => 1],
     'actions' => [
-      ['action' => 'choice', [['action' => "left"], ['action' => "right"]]]
+      ['action' => 'choice', 'choices' => [['action' => "left"], ['action' => "right"]]]
     ],
     "image_id" => 1,
     "card_id" => 1,
@@ -85,7 +85,7 @@ $this->starting_cards = [
     'ship_name' => 'Ship-of-the-Line',
     'cost' => ['sail' => 1],
     'actions' => [
-      ['action' => 'choice', [['action' => "left"], ['action' => "right"]]]
+      ['action' => 'choice', 'choices' => [['action' => "left"], ['action' => "right"]]]
     ],
     "image_id" => 4,
     "card_id" => 4,
@@ -105,7 +105,7 @@ $this->starting_cards = [
     'ship_name' => 'Sloop-of-War',
     'cost' => ['sail' => 1, 'doubloon' => 1],
     'actions' => [
-      ['action' => 'choice', [['action' => "left"], ['action' => 'forward'], ['action' => "right"]]]
+      ['action' => 'choice', 'choices' => [['action' => "left"], ['action' => 'forward'], ['action' => "right"]]]
     ],
     "image_id" => 13,
     "card_id" => 13,

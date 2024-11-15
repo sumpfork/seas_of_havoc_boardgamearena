@@ -223,12 +223,7 @@ define([
       dojo.place(dlg, "myhand_wrap", "first");
       var dlg_dom = dojo.byId("card_display_dialog");
       var existing_card_dom = dojo.byId(card_id);
-      console.log(dlg_dom);
-      var card_pos = dojo.position(existing_card_dom);
-      console.log(card_pos);
-      console.log(
-        `${card_pos.x - card_pos.offsetWidth / 2}px`
-      );
+      //var card_pos = dojo.position(existing_card_dom);
       dojo.style(
         dlg_dom,
         "left",
@@ -238,8 +233,51 @@ define([
       attr.set(new_card_dom, "id", "tmp_display_card");
 
       dojo.place(new_card_dom, "card_display");
-      dojo.style(new_card_dom, "top", "5px");
-      dojo.style(new_card_dom, "left", "5px");
+      dojo.style(new_card_dom, { top: "5px", left: "5px" });
+
+      console.log(card);
+      var choice_count = 0;
+      var bga = this;
+      var make_choice_rows = function (actions) {
+        var rows = [];
+        for (const action of actions) {
+          switch (action.action) {
+            case "choice":
+              var option_count = 0;
+              var rendered_choices = [];
+              for (const option of action.choices) {
+                var choice_name = option.action;
+                var id =
+                  card.card_id +
+                  "_choice_" +
+                  choice_count +
+                  "_option_" +
+                  option_count;
+                option_count++;
+                rendered_choices.push(
+                  bga.format_block("jstpl_card_choice_radio", {
+                    id: id,
+                    name: "choice_" + choice_count,
+                    value: choice_name,
+                    label: choice_name,
+                  })
+                );
+              }
+              choice_count++;
+              row_html = bga.format_block("jstpl_card_choices_row", {
+                row_number: choice_count + ".",
+                card_choices: rendered_choices.join("\n"),
+              });
+              rows.push(row_html);
+              rows = rows.concat(make_choice_rows(action.choices));
+          }
+        }
+        return rows;
+      };
+      var rows = make_choice_rows(card.actions);
+      console.log(rows);
+      var choices_html = rows.join("\n");
+      dojo.place(choices_html, "card_choices");
     },
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
