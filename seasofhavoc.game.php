@@ -176,7 +176,11 @@ class SeasOfHavoc extends Table
         assert(count($starting_cards) == count($this->starting_cards));
         $this->starting_cards = $starting_cards;
 
-        $this->all_cards = $this->starting_cards;
+        $market_cards = array_combine(array_column($this->market_cards, "card_id"), array_values($this->market_cards));
+        assert(count($market_cards) == count($this->market_cards));
+        $this->market_cards = $market_cards;
+
+        $this->all_cards = array_merge($this->starting_cards, $this->market_cards);
     }
 
     protected function getGameName()
@@ -290,6 +294,11 @@ class SeasOfHavoc extends Table
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('bank', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('shipyard', null)");
         self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('blacksmith', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('market1', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('market2', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('market3', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('market4', null)");
+        self::DbQuery("INSERT INTO islandslots (slot_key, occupying_player_id) VALUES ('market5', null)");
 
         $player_infos = $this->getPlayerInfo();
 
@@ -307,7 +316,18 @@ class SeasOfHavoc extends Table
                 $start_deck[] = array("type" => $starting_card["card_id"], "type_arg" => 0, "nbr" => $starting_card["count"]);
             }
             $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
+            $this->cards->shuffle($this->playerDeckName($playerid));
             $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
+        }
+
+        $market_deck = array();
+        foreach($this->market_cards as $market_card) {
+            $market_deck[] = ["type" => $market_card["card_id"], "type_arg" => 0, "nbr" => $market_card["count"]];
+        }
+        $this->cards->createCards($market_deck, "market_deck");
+        $this->cards->shuffle("market_deck");
+        for ($i = 1; $i < 6; $i++) {
+            $this->cards->pickCardForLocation("market_deck", "market", $i);
         }
         //$this->cards->shuffle("player_deck");
         // foreach ($player_infos as $playerid => $player) {
@@ -379,6 +399,8 @@ class SeasOfHavoc extends Table
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
         $result['starting_cards'] = $this->starting_cards;
+        $result['market_cards'] = $this->market_cards;
+        $result['market'] = $this->cards->getCardsInLocation("market");
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         //$result['allcards'] = $this->cards->countCardsInLocations();
         $result['playerinfo'] = $this->getPlayerInfo();

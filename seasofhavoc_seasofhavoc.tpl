@@ -33,6 +33,8 @@
     <div id="seaboard"></div>
 </div>
 <div id="myhand_wrap" class="whiteblock">
+    <h3>Market</h3>
+    <div id="market"></div>
     <h3>My Hand</h3>
     <div id="myhand">
     </div>
@@ -52,6 +54,7 @@
     var jstpl_card_play_dialog=`<div id="card_display_dialog">
                         <div id="card_display"></div>
                         <div id="card_choices"></div>
+                        <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card<div>
                         </div>`;
     var jstpl_resources_playerboard=`
                     <div class="cp_board">

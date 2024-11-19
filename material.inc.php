@@ -112,3 +112,73 @@ $this->starting_cards = [
     "count" => 2,
   ],
 ];
+
+$this->market_cards = [
+  [
+    'cost' => ['cannonball' => 1],
+    'actions' => [
+      ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]]
+    ],
+    "image_id" => 0,
+    "card_id" => 14,
+    "count" => 1,
+    "flag" => "green"
+  ],
+  [
+    'cost' => ['cannonball' => 2],
+    'actions' => [
+      ['action' => 'choice', 'choices' =>
+      [
+        ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]],
+        ['action' => '2 x fire', 'range' => 2, 'cost' => ['cannonball' => 2]]
+      ]]
+    ],
+    "image_id" => 1,
+    "card_id" => 15,
+    "count" => 1,
+    "flag" => "green"
+  ],
+  [
+    'cost' => ['cannonball' => 3],
+    'actions' => [
+      ['action' => 'choice', 'choices' =>
+      [
+        ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]],
+        ['action' => '2 x fire', 'range' => 2, 'cost' => ['cannonball' => 2]],
+        ['action' => '3 x fire', 'range' => 1, 'cost' => ['cannonball' => 3]]
+      ]]
+    ],
+    "image_id" => 2,
+    "card_id" => 16,
+    "count" => 1,
+    "flag" => "green"
+  ],
+  [
+    'cost' => ['sail' => 1, 'doubloon' => 1],
+    'actions' => [
+      ['action' => 'choice', 'choices' => [['action' => "left"], ['action' => 'forward'], ['action' => "right"]]]
+    ],
+    "image_id" => 3,
+    "card_id" => 17,
+    "count" => 1,
+    "flag" => "green"
+  ],
+  [
+    'cost' => ['sail' => 2, 'doubloon' => 1],
+    'actions' => [
+      ['action' => 'choice', 'choices' => [
+        ['action' => "left"],
+        ['actions' => [['action' => 'forward'], [
+          'action' => 'choice',
+          'choices' => [['action' => "left"], ['action' => 'forward'], ['action' => "right"]]
+        ]], 'name' => 'forward', 'cost' => ['sail' => 1]],
+        ['action' => "right"]
+      ]]
+    ],
+    "image_id" => 4,
+    "card_id" => 18,
+    "count" => 1,
+    "flag" => "green"
+  ],
+
+];

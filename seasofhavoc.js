@@ -90,7 +90,15 @@ define([
       //resize background to 1/2 of actual size, card size accordingly
       this.playerHand.resizeItems(144, 198, 432, 1189);
 
+      this.market = new ebg.stock();
+      this.market.create(this, $("market"), 144, 198);
+      this.market.image_items_per_row = 3;
+      this.market.horizontal_overlap = 0;
+      this.market.setSelectionMode(0);
+      this.market.resizeItems(144, 198, 432, 3567);
+
       this.starting_cards = gamedatas.starting_cards;
+      this.market_cards = gamedatas.market_cards;
 
       dojo.connect(
         this.playerHand,
@@ -110,6 +118,24 @@ define([
           card.image_id
         );
       }
+      for (const card of Object.values(this.market_cards)) {
+        //console.log(card);
+        console.log(
+          "adding card " + card.card_id + "/" + card.image_id + " to stock"
+        );
+        this.playerHand.addItemType(
+          card.card_id,
+          0,
+          g_gamethemeurl + "img/market_cards.jpg",
+          card.image_id
+        );
+        this.market.addItemType(
+          card.card_id,
+          0,
+          g_gamethemeurl + "img/market_cards.jpg",
+          card.image_id
+        );
+      }
       //console.log("adding card type " + card.card_id + " to player hand");
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
@@ -118,6 +144,13 @@ define([
         );
         this.playerHand.addToStockWithId(card.type, card.id);
         //this.playerHand.addToStock(card.card_id);
+      }
+      for (var i in gamedatas.market) {
+        var card = this.gamedatas.market[i];
+        console.log(
+          "adding card " + card.type + "/" + card.id + " to market"
+        );
+        this.market.addToStockWithId(card.type, card.id);
       }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
@@ -275,9 +308,12 @@ define([
         return rows;
       };
       var rows = make_choice_rows(card.actions);
-      console.log(rows);
-      var choices_html = rows.join("\n");
-      dojo.place(choices_html, "card_choices");
+      if (rows.length > 0) {
+        dojo.attr("play_card_button", "disabled", true);
+        console.log(rows);
+        var choices_html = rows.join("\n");
+        dojo.place(choices_html, "card_choices");
+      }
     },
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
