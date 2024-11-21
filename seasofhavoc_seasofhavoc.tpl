@@ -26,11 +26,16 @@
 -->
 
 <div id="board" class="board shadow">
-    <div id="skiff_slot_capitol" class="skiff_slot" data-slotname="capitol"></div>
-    <div id="skiff_slot_bank" class="skiff_slot" data-slotname="bank"></div>
-    <div id="skiff_slot_shipyard" class="skiff_slot" data-slotname="shipyard"></div>   
-    <div id="skiff_slot_blacksmith" class="skiff_slot" data-slotname="blacksmith"></div>
+    <div id="skiff_slot_capitol_n1" class="skiff_slot" data-slotname="capitol" data-number="n1"></div>
+    <div id="skiff_slot_bank_n1" class="skiff_slot" data-slotname="bank" data-number="n1"></div>
+    <div id="skiff_slot_shipyard_n1" class="skiff_slot" data-slotname="shipyard" data-number="n1"></div>   
+    <div id="skiff_slot_blacksmith_n1" class="skiff_slot" data-slotname="blacksmith" data-number="n1"></div>
     <div id="seaboard"></div>
+    <div id="skiff_slot_market_n1" class="skiff_slot" data-slotname="market" data-number="n1"></div>
+    <div id="skiff_slot_market_n2" class="skiff_slot" data-slotname="market" data-number="n2"></div>
+    <div id="skiff_slot_market_n3" class="skiff_slot" data-slotname="market" data-number="n3"></div>
+    <div id="skiff_slot_market_n4" class="skiff_slot" data-slotname="market" data-number="n4"></div>
+    <div id="skiff_slot_market_n5" class="skiff_slot" data-slotname="market" data-number="n5"></div>
 </div>
 <div id="myhand_wrap" class="whiteblock">
     <h3>Market</h3>

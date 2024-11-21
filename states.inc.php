@@ -73,7 +73,7 @@ $machinestates = array(
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => array("" => 7)
+        "transitions" => array("" => 4)
     ),
     4 => array(
         "name" => "islandTurn",

@@ -48,18 +48,19 @@ define([
       console.log("updating island slots");
       console.log(islandslots);
       console.log(players);
-      for (const [slot, info] of Object.entries(islandslots)) {
-        var occupant = info["occupying_player_id"];
-        console.log("occupant: " + occupant);
-        if (occupant != null) {
-          var skiff_id = "skiff_p" + occupant + "_" + slot;
-          console.log("skiff_id: " + skiff_id);
+      for (const [slot, numbers] of Object.entries(islandslots)) {
+        for (const [number, occupant] of Object.entries(numbers)) {
+          console.log("occupant: " + occupant);
+          if (occupant != null) {
+            var skiff_id = "skiff_p" + occupant + "_" + slot;
+            console.log("skiff_id: " + skiff_id);
 
-          var skiff = this.format_block("jstpl_skiff", {
-            player_color: players[occupant].color,
-            id: skiff_id,
-          });
-          dojo.place(skiff, "skiff_slot_" + slot);
+            var skiff = this.format_block("jstpl_skiff", {
+              player_color: players[occupant].color,
+              id: skiff_id,
+            });
+            dojo.place(skiff, "skiff_slot_" + slot + "_" + number);
+          }
         }
       }
     },
@@ -147,10 +148,11 @@ define([
       }
       for (var i in gamedatas.market) {
         var card = this.gamedatas.market[i];
-        console.log(
-          "adding card " + card.type + "/" + card.id + " to market"
-        );
+        console.log("adding card " + card.type + "/" + card.id + " to market");
         this.market.addToStockWithId(card.type, card.id);
+        var card_div = this.market.getItemDivId(card.id);
+        var skiff_slot = dojo.query(`.skiff_slot[data-slotname="market"][data-number]="n${i+1}"`)[0];
+        dojo.place(skiff_slot, card_div);
       }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
@@ -329,11 +331,12 @@ define([
         console.log("not a skiff slot");
         return;
       }
-      console.log(source.dataset.slotname);
+      console.log(source.dataset.slotname, source.dataset.number);
 
       if (this.isCurrentPlayerActive()) {
         this.bgaPerformAction("actPlaceSkiff", {
           slotname: source.dataset.slotname,
+          number: source.dataset.number,
         });
       }
     },
@@ -540,9 +543,15 @@ define([
         const source = event.target || event.srcElement;
 
         var context = notif.args.context;
+        var number = notif.args.context_number;
 
         console.log(
-          "resource picked " + source.dataset.resource + " context: " + context
+          "resource picked " +
+            source.dataset.resource +
+            " context: " +
+            context +
+            " number: " +
+            number
         );
 
         event.preventDefault();
@@ -550,6 +559,7 @@ define([
           this.bgaPerformAction("actResourcePickedInDialog", {
             resource: source.dataset.resource,
             context: context,
+            number: number,
           });
           this.myDlg.destroy();
         }
@@ -569,8 +579,16 @@ define([
     notifSkiffPlaced: function (notif) {
       console.log("Skiff placed");
       console.log(notif);
+      var slot_name = notif.args.slot_name;
+      var slot_number = notif.args.slot_number;
+      var postfix = "_" +
+        slot_name +
+        "_" +
+        slot_number;
       var skiff_id =
-        "skiff_p" + notif.args.player_id + "_" + notif.args.slot_name;
+        "skiff_p" +
+        notif.args.player_id + postfix;
+        
       console.log("skiff_id: " + skiff_id);
       var player_board_id = "overall_player_board_" + notif.args.player_id;
       console.log("player board id: " + player_board_id);
@@ -579,12 +597,21 @@ define([
         player_color: notif.args.player_color,
         id: skiff_id,
       });
-      dojo.place(skiff, "skiff_slot_" + notif.args.slot_name);
+      var skiff_slot = dojo.query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
+      console.log("skiff slot:");
+      console.log(skiff_slot);
+
+      dojo.place(
+        skiff,
+        //"skiff_slot" + postfix
+        skiff_slot
+      );
       this.placeOnObject(skiff_id, player_board_id);
       dojo.style(skiff_id, "zIndex", 1);
       this.slideToObject(
         skiff_id,
-        "skiff_slot_" + notif.args.slot_name,
+        //"skiff_slot" + postfix,
+        skiff_slot,
         1000
       ).play();
     },

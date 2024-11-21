@@ -64,22 +64,29 @@
     width: 380px;
     height: 380px;
 }
-#skiff_slot_capitol {
+.skiff_slot[data-slotname="capitol"][data-number="n1"] {
 	top: 180px;
 	left: 152px;
 }
-#skiff_slot_bank {
+.skiff_slot[data-slotname="bank"][data-number="n1"] {
 	top: 309px;
 	left: 138px;
 }
-#skiff_slot_shipyard {
+.skiff_slot[data-slotname="shipyard"][data-number="n1"] {
     top: 148px;
     left: 848px;
 }
-#skiff_slot_blacksmith {
+.skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
     top: 431px;
     left: 845px;
 }
+.skiff_slot[data-slotname="market"] {
+    position: absolute;
+    bottom: 3px;
+    right: 2px;
+    z-index: 2;
+}
+
 .skiff_slot {
 	position: absolute;
 	width: 26px;
