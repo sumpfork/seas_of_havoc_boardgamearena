@@ -373,7 +373,10 @@ define([
                 
                 break;
            */
-
+        case "cardPurchases": {
+          
+          break;
+        }
         case "dummmy":
           break;
       }

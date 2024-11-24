@@ -373,7 +373,10 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState("nextPlayer");
     }
 
-    function stCardPurchases() {}
+    function stCardPurchases()
+    {
+        $this->gamestate->setAllPlayersMultiactive();
+    }
 
     /*
         getAllDatas: 
@@ -433,18 +436,15 @@ class SeasOfHavoc extends Table
     */
     function getGameResources(int $player_id = null)
     {
-        static $game_resources = null;
-        if ($game_resources === null) {
-            $sql = "
+        $sql = "
                 SELECT
                     player_id, resource_key, resource_count
                 FROM resource
             ";
-            if ($player_id != null) {
-                $sql .= " WHERE player_id = $player_id";
-            }
-            $game_resources = $this->getObjectListFromDB($sql);
+        if ($player_id != null) {
+            $sql .= " WHERE player_id = $player_id";
         }
+        $game_resources = $this->getObjectListFromDB($sql);
         return $game_resources;
     }
 
@@ -562,6 +562,18 @@ class SeasOfHavoc extends Table
         }
 
         return $out;
+    }
+
+    function makeCostNegative($cost)
+    {
+        return array_map(fn($value): int => -$value, $cost);
+    }
+    function canPayFor($cost, $resources)
+    {
+        $cost = $this->makeCostNegative($cost);
+        $result = $this->sum_array_by_key($resources, $cost);
+        #php 8.4: return array_any($result, fn($value): bool => $value < 0);
+        return array_reduce($result, fn($carry, $value): bool => !$carry ? false : $value > 0, true);
     }
 
     function playerGainResources($player_id, $resources)

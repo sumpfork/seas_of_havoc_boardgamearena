@@ -95,9 +95,10 @@ $machinestates = array(
     6 => array(
         "name" => "cardPurchases",
         "description" => clienttranslate("Players may purchase cards"),
+        "descriptionmyturn" => clienttranslate("You may purchase cards"),
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
-        "transitions" => array("cardPurchasesDone" => 99)
+        "transitions" => array("cardPurchasesDone" => 7)
     ),
     7 => array(
         "name" => "seaTurn",
