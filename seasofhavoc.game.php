@@ -172,11 +172,11 @@ class SeasOfHavoc extends Table
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
 
-        $starting_cards = array_combine(array_column($this->starting_cards, "card_id"), array_values($this->starting_cards));
+        $starting_cards = array_combine(array_column($this->starting_cards, "card_type"), array_values($this->starting_cards));
         assert(count($starting_cards) == count($this->starting_cards));
         $this->starting_cards = $starting_cards;
 
-        $market_cards = array_combine(array_column($this->market_cards, "card_id"), array_values($this->market_cards));
+        $market_cards = array_combine(array_column($this->market_cards, "card_type"), array_values($this->market_cards));
         assert(count($market_cards) == count($this->market_cards));
         $this->market_cards = $market_cards;
 
@@ -313,7 +313,7 @@ class SeasOfHavoc extends Table
             });
             $start_deck = array();
             foreach ($player_starting_cards as $starting_card) {
-                $start_deck[] = array("type" => $starting_card["card_id"], "type_arg" => 0, "nbr" => $starting_card["count"]);
+                $start_deck[] = array("type" => $starting_card["card_type"], "type_arg" => 0, "nbr" => $starting_card["count"]);
             }
             $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
             $this->cards->shuffle($this->playerDeckName($playerid));
@@ -322,7 +322,7 @@ class SeasOfHavoc extends Table
 
         $market_deck = array();
         foreach ($this->market_cards as $market_card) {
-            $market_deck[] = ["type" => $market_card["card_id"], "type_arg" => 0, "nbr" => $market_card["count"]];
+            $market_deck[] = ["type" => $market_card["card_type"], "type_arg" => 0, "nbr" => $market_card["count"]];
         }
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");

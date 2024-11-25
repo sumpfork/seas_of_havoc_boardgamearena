@@ -96,7 +96,7 @@
     margin: 2px;
     background-color: rgba(0, 34, 255, 0.306);
 }
-.skiff_slot:hover {
+.skiff_slot.unoccupied:hover {
 	outline-color: rgba(113, 74, 35, 0.7);
 	outline-style: solid;
 	outline-width: 2px;
@@ -178,6 +178,11 @@
     top: 5px;
     position: relative;   
 }
-#play_card_button:disabled {
-    font-size:500px;
+.purchase_card_button {
+    left: 13px;
+    top: 100%;
+    position: absolute;
+}
+a.disabled {
+    pointer-events: none;
 }

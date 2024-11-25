@@ -26,16 +26,16 @@
 -->
 
 <div id="board" class="board shadow">
-    <div id="skiff_slot_capitol_n1" class="skiff_slot" data-slotname="capitol" data-number="n1"></div>
-    <div id="skiff_slot_bank_n1" class="skiff_slot" data-slotname="bank" data-number="n1"></div>
-    <div id="skiff_slot_shipyard_n1" class="skiff_slot" data-slotname="shipyard" data-number="n1"></div>   
-    <div id="skiff_slot_blacksmith_n1" class="skiff_slot" data-slotname="blacksmith" data-number="n1"></div>
+    <div id="skiff_slot_capitol_n1" class="skiff_slot unoccupied" data-slotname="capitol" data-number="n1"></div>
+    <div id="skiff_slot_bank_n1" class="skiff_slot unoccupied" data-slotname="bank" data-number="n1"></div>
+    <div id="skiff_slot_shipyard_n1" class="skiff_slot unoccupied" data-slotname="shipyard" data-number="n1"></div>   
+    <div id="skiff_slot_blacksmith_n1" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n1"></div>
     <div id="seaboard"></div>
-    <div id="skiff_slot_market_n1" class="skiff_slot" data-slotname="market" data-number="n1"></div>
-    <div id="skiff_slot_market_n2" class="skiff_slot" data-slotname="market" data-number="n2"></div>
-    <div id="skiff_slot_market_n3" class="skiff_slot" data-slotname="market" data-number="n3"></div>
-    <div id="skiff_slot_market_n4" class="skiff_slot" data-slotname="market" data-number="n4"></div>
-    <div id="skiff_slot_market_n5" class="skiff_slot" data-slotname="market" data-number="n5"></div>
+    <div id="skiff_slot_market_n1" class="skiff_slot unoccupied" data-slotname="market" data-number="n1"></div>
+    <div id="skiff_slot_market_n2" class="skiff_slot unoccupied" data-slotname="market" data-number="n2"></div>
+    <div id="skiff_slot_market_n3" class="skiff_slot unoccupied" data-slotname="market" data-number="n3"></div>
+    <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
+    <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
 </div>
 <div id="myhand_wrap" class="whiteblock">
     <h3>Market</h3>
@@ -59,7 +59,7 @@
     var jstpl_card_play_dialog=`<div id="card_display_dialog">
                         <div id="card_display"></div>
                         <div id="card_choices"></div>
-                        <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card<div>
+                        <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card</div>
                         </div>`;
     var jstpl_resources_playerboard=`
                     <div class="cp_board">
@@ -68,6 +68,7 @@
                         <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
                         \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
                     </div>`;
+    var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotindex="\${slotindex}">Purchase Card</a>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
     var jstpl_card_choice_radio=`<div class="card_choice_radio"><input type="radio" id="\${id}" name="\${name}" value="\${value}/><label for="\${id}">\${label}</label></div>`;
     var jstpl_skiff=`<div id="\${id}" class="skiff">
