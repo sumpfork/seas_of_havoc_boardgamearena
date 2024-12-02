@@ -68,7 +68,7 @@
                         <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
                         \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
                     </div>`;
-    var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotindex="\${slotindex}">Purchase Card</a>`;
+    var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
     var jstpl_card_choice_radio=`<div class="card_choice_radio"><input type="radio" id="\${id}" name="\${name}" value="\${value}/><label for="\${id}">\${label}</label></div>`;
     var jstpl_skiff=`<div id="\${id}" class="skiff">
@@ -84,7 +84,8 @@
     </svg></div>`;
     var jstpl_seaboard_location=`<div class="seaboardlocation" id="\${id}"></div>`;
     var jstpl_player_ship=`<div class="player_ship" id="\${id}" 
-        data-shipname="\${shipname}"></div>`
+        data-shipname="\${shipname}"></div>`;
+
 </script>
 
 {OVERALL_GAME_FOOTER}

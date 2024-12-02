@@ -119,7 +119,7 @@ $this->market_cards = [
     'actions' => [
       ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]]
     ],
-    "image_id" => 24,
+    "image_id" => 18,
     "card_type" => 14,
     "count" => 1,
     "flag" => "green"
@@ -133,7 +133,7 @@ $this->market_cards = [
         ['action' => '2 x fire', 'range' => 2, 'cost' => ['cannonball' => 2]]
       ]]
     ],
-    "image_id" => 25,
+    "image_id" => 19,
     "card_type" => 15,
     "count" => 1,
     "flag" => "green"
@@ -148,7 +148,7 @@ $this->market_cards = [
         ['action' => '3 x fire', 'range' => 1, 'cost' => ['cannonball' => 3]]
       ]]
     ],
-    "image_id" => 26,
+    "image_id" => 20,
     "card_type" => 16,
     "count" => 1,
     "flag" => "green"
@@ -158,7 +158,7 @@ $this->market_cards = [
     'actions' => [
       ['action' => 'choice', 'choices' => [['action' => "left"], ['action' => 'forward'], ['action' => "right"]]]
     ],
-    "image_id" => 27,
+    "image_id" => 21,
     "card_type" => 17,
     "count" => 1,
     "flag" => "green"
@@ -175,7 +175,7 @@ $this->market_cards = [
         ['action' => "right"]
       ]]
     ],
-    "image_id" => 28,
+    "image_id" => 22,
     "card_type" => 18,
     "count" => 1,
     "flag" => "green"

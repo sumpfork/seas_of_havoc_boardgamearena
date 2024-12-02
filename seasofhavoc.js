@@ -19,13 +19,17 @@ define([
   "dojo",
   "dojo/_base/declare",
   "dojo/on",
+  "dojo/dom",
   "dojo/dom-style",
   "dojo/dom-attr",
   "dojo/_base/lang",
+  "dojo/query",
+  "dojo/NodeList-traverse",
+  "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, on, domstyle, attr, lang) {
+], function (dojo, declare, on, dom, domstyle, attr, lang, query) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -81,10 +85,14 @@ define([
           if (!Object.hasOwn(resource_cost, resource.resource_key)) {
             continue;
           }
-          var diff = resource.resource_count - resource_cost[resource.resource_key];
+          var diff =
+            resource.resource_count - resource_cost[resource.resource_key];
           console.log("diff for " + resource.resource_key + ": " + diff);
           if (diff < 0) {
-            this.showMessage(_('Player tried to spend more than they have'), 'error');
+            this.showMessage(
+              _("Player tried to spend more than they have"),
+              "error"
+            );
           }
           resource.resource_count = diff;
         }
@@ -123,6 +131,7 @@ define([
 
     setup: function (gamedatas) {
       console.log("Starting game setup");
+      console.log("dojo version: " + dojo.version);
       console.log(gamedatas);
 
       this.playerHand = new ebg.stock(); // new stock object for hand
@@ -142,7 +151,9 @@ define([
       this.market.setSelectionMode(0);
       this.market.resizeItems(144, 198, 864, 2378);
       this.market.centerItems = true;
-
+      this.market.jstpl_stock_item = `<div class="market_card_container"><div id="\${id}" class="stockitem \${extra_classes}" 
+      style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
+      </div></div>`;
       this.starting_cards = gamedatas.starting_cards;
       this.market_cards = gamedatas.market_cards;
 
@@ -155,7 +166,11 @@ define([
       for (const card of Object.values(this.starting_cards)) {
         //console.log(card);
         console.log(
-          "adding card type: " + card.card_type + " img id: " + card.image_id + " to hand stock"
+          "adding card type: " +
+            card.card_type +
+            " img id: " +
+            card.image_id +
+            " to hand stock"
         );
         this.playerHand.addItemType(
           card.card_type,
@@ -167,7 +182,11 @@ define([
       for (const card of Object.values(this.market_cards)) {
         //console.log(card);
         console.log(
-          "adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market stock"
+          "adding card type: " +
+            card.card_type +
+            " img id: " +
+            card.image_id +
+            " to hand/market stock"
         );
         this.playerHand.addItemType(
           card.card_type,
@@ -185,19 +204,31 @@ define([
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
         console.log(
-          "adding card type: " + card.type + " id: " + card.id + " to player hand"
+          "adding card type: " +
+            card.type +
+            " id: " +
+            card.id +
+            " to player hand"
         );
         this.playerHand.addToStockWithId(card.type, card.id);
       }
-      for (var i in gamedatas.market) {
-        var card = this.gamedatas.market[i];
-        console.log("adding card type: " + card.type + " id: " + card.id + " to market");
+      var slotno = 1;
+      for (var card_id in gamedatas.market) {
+        var card = this.gamedatas.market[card_id];
+        console.log(
+          "adding card type: " + card.type + " id: " + card.id + " to market"
+        );
         this.market.addToStockWithId(card.type, card.id);
         var card_div = this.market.getItemDivId(card.id);
+        attr.set(card_div, "data-slotnumber", "n" + slotno);
+        attr.set(card_div, "data-cardid", card.id);
+
+        // stick a buy skiff slot on it
         var skiff_slot = dojo.query(
-          `.skiff_slot[data-slotname="market"][data-number]="n${i + 1}"`
+          `.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`
         )[0];
         dojo.place(skiff_slot, card_div);
+        slotno++;
       }
       // Setting up player boards
       for (var player_id in gamedatas.players) {
@@ -218,7 +249,6 @@ define([
         );
       }
 
-      // TODO: Set up your game interface here, according to "gamedatas"
       this.islandSlots = gamedatas.islandslots;
       this.players = gamedatas.players;
       this.resources = gamedatas.resources;
@@ -273,9 +303,11 @@ define([
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
-
       var skiffslot_class = dojo.query(".skiff_slot");
-      var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
+      var handlers = skiffslot_class.on(
+        "click",
+        lang.hitch(this, "onClickSkiffSlot")
+      );
 
       //this.showDummyDialog();
       console.log("Ending game setup");
@@ -307,8 +339,8 @@ define([
     showCardPlayDialog: function (card, card_type) {
       var dlg = this.format_block("jstpl_card_play_dialog");
       dojo.place(dlg, "myhand_wrap", "first");
-      var dlg_dom = dojo.byId("card_display_dialog");
-      var existing_card_dom = dojo.byId(card_type);
+      var dlg_dom = dom.byId("card_display_dialog");
+      var existing_card_dom = dom.byId(card_type);
       //var card_pos = dojo.position(existing_card_dom);
       dojo.style(
         dlg_dom,
@@ -377,8 +409,27 @@ define([
             console.log("market occupant: " + occupant);
             if (occupant == this.player_id) {
               var button_id = "purchase_button_" + number;
-              var slotindex = Number(number[1]) - 1;
-              var slot_card = this.market.getAllItems()[slotindex];
+              console.log("number " + number + " is ours");
+              var slot_card = null;
+              for (const cardspec of this.market.getAllItems()) {
+                console.log(cardspec);
+                var div = this.market.getItemDivId(cardspec.id);
+                console.log(div);
+                console.log("children");
+                var test = query("#" + div);
+                console.log(test.children(".skiff_slot")[0]);
+                //console.log(query(div));
+                var slotnum = attr.get(query("#" + div).children(".skiff_slot")[0], "data-number")
+                console.log("slotnum " + slotnum);
+                if (slotnum == number) {
+                  slot_card = cardspec;
+                  console.log("found it");
+                  break;
+                }
+              }
+              if (slot_card === null) {
+                return;
+              }
               var card = this.market_cards[slot_card.type];
               console.log(card);
               if (create) {
@@ -386,14 +437,15 @@ define([
                   "jstpl_card_purchase_button",
                   {
                     id: button_id,
-                    slotindex: slotindex 
+                    slotnumber: slotnum,
                   }
                 );
                 var card_div = this.market.getItemDivId(slot_card.id);
                 //dojo.place(purchase_button, "skiff_slot_" + slot + "_" + number);
                 console.log(card_div);
                 console.log(
-                  "placing on " + card_div +
+                  "placing on " +
+                    card_div +
                     " card purchase button: " +
                     purchase_button
                 );
@@ -406,27 +458,42 @@ define([
                 dojo.addClass(button_id, "disabled");
                 dojo.html.set(button_id, "Cannot Afford");
               } else {
-                console.log("connecting purchase handler to " + dojo.query(button_id));
-                on(dojo.byId(button_id), "click", lang.hitch(this, "onClickPurchaseButton"));
+                console.log(
+                  "connecting purchase handler to " + dojo.query(button_id)
+                );
+                on(
+                  dojo.byId(button_id),
+                  "click",
+                  lang.hitch(this, "onClickPurchaseButton")
+                );
               }
             }
           }
         }
       }
     },
-    onClickPurchaseButton: function(event) {
+    onClickPurchaseButton: function (event) {
       console.log("onClickPurchaseButton");
       console.log(event);
       dojo.stopEvent(event);
       const source = event.target || event.srcElement;
-      const slotindex = source.dataset.slotindex;
-      console.log("slotindex: " + slotindex);
-      var slot_card = this.market.getAllItems()[slotindex];
+      const slotnumber = source.dataset.slotnumber;
+      console.log("slotnumber: " + slotnumber);
+      var card_dom = query(`.stockitem[data-slotnumber=${slotnumber}`)[0];
+      console.log(card_dom);
+      var card_id = attr.get(card_dom, "data-cardid");
+      console.log("card id " + card_id);
+      var slot_card = this.market.getItemById(card_id);
+      console.log(slot_card);
       var card = this.market_cards[slot_card.type];
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
-      this.playerHand.addToStockWithId(slot_card.type, slot_card.id, this.market.getItemDivId(slot_card.id));
+      this.playerHand.addToStockWithId(
+        slot_card.type,
+        slot_card.id,
+        this.market.getItemDivId(slot_card.id)
+      );
       this.market.removeFromStockById(slot_card.id);
       this.updateCardPurchaseButtons(false);
     },
