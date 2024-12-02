@@ -20,7 +20,7 @@
 
 require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
 
-use \Bga\GameFramework\Actions\Types\StringParam;
+use \Bga\GameFramework\Actions\Types\JsonParam;
 
 class SeaBoard
 {
@@ -575,7 +575,11 @@ class SeasOfHavoc extends Table
         #php 8.4: return array_any($result, fn($value): bool => $value < 0);
         return array_reduce($result, fn($carry, $value): bool => !$carry ? false : $value > 0, true);
     }
-
+    function pay($player_id, $cost) {
+        assert($this->canPayFor($cost, $this->getGameResources($player_id)));
+        $cost = $this->makeCostNegative($cost);
+        $this->playerGainResources($player_id, $cost);
+    }
     function playerGainResources($player_id, $resources)
     {
         $this->mytrace("playerGainResources");
@@ -686,6 +690,20 @@ class SeasOfHavoc extends Table
             default:
                 throw new BgaSystemException("bad context: $context");
         }
+    }
+
+    function actCompletePurchases(#[JsonParam] array $cards_purchased) {
+        $player_id = $this->getCurrentPlayerId();
+        $this->dump("cards_purchased", $cards_purchased);
+        foreach ($cards_purchased as $card_id) {
+            $this->dump("market cards", $this->market_cards);
+            $card = $this->cards->getCard($card_id);
+            $this->dump("card", $card);
+            $market_card = $this->market_cards[$card["type"]];
+            $this->pay($player_id, $market_card["cost"]);
+            $this->cards->moveCard($card_id, "hand", $player_id);
+        }
+        $this->gamestate->setPlayerNonMultiactive( $player_id, "cardPurchasesDone" );
     }
     /*
     

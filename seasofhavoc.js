@@ -157,6 +157,8 @@ define([
       this.starting_cards = gamedatas.starting_cards;
       this.market_cards = gamedatas.market_cards;
 
+      this.cards_purchased = [];
+
       dojo.connect(
         this.playerHand,
         "onChangeSelection",
@@ -462,7 +464,7 @@ define([
                   "connecting purchase handler to " + dojo.query(button_id)
                 );
                 on(
-                  dojo.byId(button_id),
+                  dom.byId(button_id),
                   "click",
                   lang.hitch(this, "onClickPurchaseButton")
                 );
@@ -483,7 +485,7 @@ define([
       console.log(card_dom);
       var card_id = attr.get(card_dom, "data-cardid");
       console.log("card id " + card_id);
-      var slot_card = this.market.getItemById(card_id);
+      var slot_card = this.market.getItemById(parseInt(card_id));
       console.log(slot_card);
       var card = this.market_cards[slot_card.type];
       this.playerSpendResources(card.cost);
@@ -496,6 +498,14 @@ define([
       );
       this.market.removeFromStockById(slot_card.id);
       this.updateCardPurchaseButtons(false);
+      this.cards_purchased.push(slot_card.id);
+    },
+    onCompletePurchasesClicked: function (event) {
+      console.log("onCompletePurchasesClicked");
+      console.log(this.cards_purchased);
+      this.bgaPerformAction("actCompletePurchases", {
+        cards_purchased: JSON.stringify(this.cards_purchased)
+      });
     },
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
@@ -554,6 +564,7 @@ define([
                 break;
            */
         case "cardPurchases": {
+          this.cards_purchased = [];
           this.updateCardPurchaseButtons(true);
           break;
         }
@@ -606,6 +617,8 @@ define([
                     break;
 */
         ) {
+          case 'cardPurchases':
+            this.addActionButton('complete_purchase_phase_button', _('Complete Purchases'), 'onCompletePurchasesClicked');
         }
       }
     },

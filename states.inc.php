@@ -98,6 +98,7 @@ $machinestates = array(
         "descriptionmyturn" => clienttranslate("You may purchase cards"),
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
+        "possibleactions" => array("actCompletePurchases"),
         "transitions" => array("cardPurchasesDone" => 7)
     ),
     7 => array(
