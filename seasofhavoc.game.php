@@ -180,7 +180,7 @@ class SeasOfHavoc extends Table
         assert(count($market_cards) == count($this->market_cards));
         $this->market_cards = $market_cards;
 
-        $this->all_cards = array_merge($this->starting_cards, $this->market_cards);
+        $this->playable_cards = $this->starting_cards + $this->market_cards;
     }
 
     protected function getGameName()
@@ -402,8 +402,9 @@ class SeasOfHavoc extends Table
 
         $result['resources'] = $this->getGameResources();
         $result['islandslots'] = $this->getIslandSlots();
-        $result['starting_cards'] = $this->starting_cards;
-        $result['market_cards'] = $this->market_cards;
+        //$result['starting_cards'] = $this->starting_cards;
+        //$result['market_cards'] = $this->market_cards;
+        $result['playable_cards'] = $this->playable_cards;
         $result['market'] = $this->cards->getCardsInLocation("market");
         $result['hand'] = $this->cards->getPlayerHand($current_player_id);
         //$result['allcards'] = $this->cards->countCardsInLocations();

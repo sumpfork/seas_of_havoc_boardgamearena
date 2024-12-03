@@ -30,7 +30,17 @@ define([
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, on, dom, domConstruct, domstyle, attr, lang, query) {
+], function (
+  dojo,
+  declare,
+  on,
+  dom,
+  domConstruct,
+  domstyle,
+  attr,
+  lang,
+  query
+) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -156,8 +166,7 @@ define([
       this.market.jstpl_stock_item = `<div class="market_card_container"><div id="\${id}" class="stockitem \${extra_classes}" 
       style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
       </div></div>`;
-      this.starting_cards = gamedatas.starting_cards;
-      this.market_cards = gamedatas.market_cards;
+      this.playable_cards = gamedatas.playable_cards;
 
       this.cards_purchased = [];
 
@@ -167,23 +176,7 @@ define([
         this,
         "onCardSelectedPlayerHand"
       );
-      for (const card of Object.values(this.starting_cards)) {
-        //console.log(card);
-        console.log(
-          "adding card type: " +
-            card.card_type +
-            " img id: " +
-            card.image_id +
-            " to hand stock"
-        );
-        this.playerHand.addItemType(
-          card.card_type,
-          0,
-          g_gamethemeurl + "img/playable_cards.jpg",
-          card.image_id
-        );
-      }
-      for (const card of Object.values(this.market_cards)) {
+      for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
         console.log(
           "adding card type: " +
@@ -341,6 +334,7 @@ define([
       });
     },
     showCardPlayDialog: function (card, card_type) {
+      domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       dojo.place(dlg, "myhand_wrap", "first");
       var dlg_dom = dom.byId("card_display_dialog");
@@ -358,17 +352,24 @@ define([
       dojo.style(new_card_dom, { top: "5px", left: "5px" });
 
       console.log(card);
-      var choice_count = 0;
       var bga = this;
-      var make_choice_rows = function (actions) {
-        var rows = [];
+      var make_choice_rows = function (actions, choice_count) {
+        var result = {rows: [], dependencies: {}, num_choices: 0};
         for (const action of actions) {
+          console.log("considering action:");
+          console.log(action);
           switch (action.action) {
+            case "sequence":
+              descendant_result = make_choice_rows(action.actions, choice_count);
+              result.rows = result.rows.concat(descendant_result.rows);
+              break;
             case "choice":
               var option_count = 0;
               var rendered_choices = [];
+              var descendant_rows = [];
+              var num_descendant_choices = 0;
               for (const option of action.choices) {
-                var choice_name = option.action;
+                var choice_name = option.name || option.action;
                 var id =
                   card.card_type +
                   "_choice_" +
@@ -376,6 +377,7 @@ define([
                   "_option_" +
                   option_count;
                 option_count++;
+                console.log("rendering choice " + choice_name + " " + id);
                 rendered_choices.push(
                   bga.format_block("jstpl_card_choice_radio", {
                     id: id,
@@ -384,25 +386,33 @@ define([
                     label: choice_name,
                   })
                 );
+                descendant_result = make_choice_rows([option], choice_count + num_descendant_choices + 1);
+                descendant_rows = descendant_rows.concat(descendant_result.rows);
+                num_descendant_choices += descendant_result.num_choices;
               }
               choice_count++;
+              choice_count += num_descendant_choices;
+
+              console.log("rendering choice row " + choice_count + ".");
               row_html = bga.format_block("jstpl_card_choices_row", {
                 row_number: choice_count + ".",
                 card_choices: rendered_choices.join("\n"),
               });
-              rows.push(row_html);
-              rows = rows.concat(make_choice_rows(action.choices));
+              result.rows.push(row_html);
+              result.rows = result.rows.concat(descendant_rows);
           }
         }
-        return rows;
+        return result;
       };
-      var rows = make_choice_rows(card.actions);
-      if (rows.length > 0) {
+      var result = make_choice_rows(card.actions, 0);
+      if (result.rows.length > 0) {
         dojo.attr("play_card_button", "disabled", true);
-        console.log(rows);
-        var choices_html = rows.join("\n");
+        dojo.addClass("play_card_button", "bgabutton_disabled");
+        console.log(result.rows);
+        var choices_html = result.rows.join("\n");
         dojo.place(choices_html, "card_choices");
       }
+      this.cardPlayDialogShown = true;
     },
     updateCardPurchaseButtons: function (create) {
       console.log("showing card purchase buttons");
@@ -423,7 +433,10 @@ define([
                 var test = query("#" + div);
                 console.log(test.children(".skiff_slot")[0]);
                 //console.log(query(div));
-                var slotnum = attr.get(query("#" + div).children(".skiff_slot")[0], "data-number")
+                var slotnum = attr.get(
+                  query("#" + div).children(".skiff_slot")[0],
+                  "data-number"
+                );
                 console.log("slotnum " + slotnum);
                 if (slotnum == number) {
                   slot_card = cardspec;
@@ -434,7 +447,7 @@ define([
               if (slot_card === null) {
                 return;
               }
-              var card = this.market_cards[slot_card.type];
+              var card = this.playable_cards[slot_card.type];
               console.log(card);
               if (create) {
                 var purchase_button = this.format_block(
@@ -489,7 +502,7 @@ define([
       console.log("card id " + card_id);
       var slot_card = this.market.getItemById(parseInt(card_id));
       console.log(slot_card);
-      var card = this.market_cards[slot_card.type];
+      var card = this.playable_cards[slot_card.type];
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
@@ -506,7 +519,7 @@ define([
       console.log("onCompletePurchasesClicked");
       console.log(this.cards_purchased);
       this.bgaPerformAction("actCompletePurchases", {
-        cards_purchased: JSON.stringify(this.cards_purchased)
+        cards_purchased: JSON.stringify(this.cards_purchased),
       });
     },
     onClickSkiffSlot: function (event) {
@@ -538,7 +551,7 @@ define([
       if (items.length == 1) {
         var card_type = items[0].type;
         console.log("type: " + card_type);
-        var card = this.starting_cards[card_type];
+        var card = this.playable_cards[card_type];
         console.log(card);
         this.showCardPlayDialog(card, this.playerHand.getItemDivId(item_id));
       }
@@ -563,6 +576,7 @@ define([
         }
         case "seaTurn": {
           query(".skiff").forEach(domConstruct.destroy);
+          query(".purchase_card_button").forEach(domConstruct.destroy);
           break;
         }
         case "dummmy":
@@ -599,8 +613,7 @@ define([
       console.log("onUpdateActionButtons: " + stateName);
 
       if (this.isCurrentPlayerActive()) {
-        switch (
-          stateName
+        switch (stateName) {
           /*               
                  Example:
  
@@ -613,9 +626,12 @@ define([
                     this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
                     break;
 */
-        ) {
-          case 'cardPurchases':
-            this.addActionButton('complete_purchase_phase_button', _('Complete Purchases'), 'onCompletePurchasesClicked');
+          case "cardPurchases":
+            this.addActionButton(
+              "complete_purchase_phase_button",
+              _("Complete Purchases"),
+              "onCompletePurchasesClicked"
+            );
         }
       }
     },

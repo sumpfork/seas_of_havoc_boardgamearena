@@ -37,9 +37,12 @@
     <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
     <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
 </div>
-<div id="myhand_wrap" class="whiteblock">
+<div class="whiteblock">
     <h3>Market</h3>
     <div id="market"></div>
+</div>
+
+<div id="myhand_wrap" class="whiteblock">
     <h3>My Hand</h3>
     <div id="myhand">
     </div>
