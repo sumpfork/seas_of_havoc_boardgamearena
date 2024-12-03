@@ -20,6 +20,7 @@ define([
   "dojo/_base/declare",
   "dojo/on",
   "dojo/dom",
+  "dojo/dom-construct",
   "dojo/dom-style",
   "dojo/dom-attr",
   "dojo/_base/lang",
@@ -29,7 +30,7 @@ define([
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, on, dom, domstyle, attr, lang, query) {
+], function (dojo, declare, on, dom, domConstruct, domstyle, attr, lang, query) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -40,6 +41,7 @@ define([
     },
 
     updateResources: function (resources) {
+      console.log("updating resources");
       console.log(resources);
       for (const resource of resources) {
         console.log(resource);
@@ -554,18 +556,13 @@ define([
       switch (stateName) {
         case "dummyStart":
         //this.bgaPerformAction("actExitDummyStart", {});
-        /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
         case "cardPurchases": {
           this.cards_purchased = [];
           this.updateCardPurchaseButtons(true);
+          break;
+        }
+        case "seaTurn": {
+          query(".skiff").forEach(domConstruct.destroy);
           break;
         }
         case "dummmy":
@@ -767,8 +764,9 @@ define([
     },
     notifResourcesChanged: function (notif) {
       console.log("Notification: resourcesChanged");
-      console.log(notif);
       console.log(notif.args.resources);
+      console.log("current resources:");
+      console.log(this.resources);
 
       this.resources = notif.args.resources;
       this.updateResources(notif.args.resources);

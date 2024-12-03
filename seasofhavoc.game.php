@@ -600,10 +600,9 @@ class SeasOfHavoc extends Table
         self::DbQuery($sql);
         $this->notifyAllPlayers(
             "resourcesChanged",
-            clienttranslate('${player_name} resources changed'),
+            clienttranslate('resources changed'),
             array(
-                'player_name' => self::getActivePlayerName(),
-                'resources' => $this->getGameResources($player_id)
+                'resources' => $this->getGameResources()
             )
         );
     }
