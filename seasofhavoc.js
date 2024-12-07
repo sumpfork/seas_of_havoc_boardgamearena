@@ -353,63 +353,132 @@ define([
 
       console.log(card);
       var bga = this;
-      var make_choice_rows = function (actions, choice_count) {
-        var result = {rows: [], dependencies: {}, num_choices: 0};
+      var make_card_dependency_tree = function (actions, choice_count) {
+        var tree = new Map();
+        if (typeof choice_count === "undefined") {
+          choice_count = 0;
+        }
         for (const action of actions) {
-          console.log("considering action:");
+          console.log("tree considering action:");
           console.log(action);
+          var option_count = 0;
+          var num_descendant_choices = 0;
           switch (action.action) {
-            case "sequence":
-              descendant_result = make_choice_rows(action.actions, choice_count);
-              result.rows = result.rows.concat(descendant_result.rows);
-              break;
             case "choice":
-              var option_count = 0;
-              var rendered_choices = [];
-              var descendant_rows = [];
-              var num_descendant_choices = 0;
+              var tree_choices = [];
               for (const option of action.choices) {
                 var choice_name = option.name || option.action;
                 var id =
-                  card.card_type +
-                  "_choice_" +
-                  choice_count +
-                  "_option_" +
-                  option_count;
-                option_count++;
-                console.log("rendering choice " + choice_name + " " + id);
-                rendered_choices.push(
-                  bga.format_block("jstpl_card_choice_radio", {
-                    id: id,
-                    name: "choice_" + choice_count,
-                    value: choice_name,
-                    label: choice_name,
-                  })
+                  "card_choice_" + choice_count + "_option_" + option_count;
+                children = make_card_dependency_tree(
+                  [option],
+                  choice_count + num_descendant_choices + 1
                 );
-                descendant_result = make_choice_rows([option], choice_count + num_descendant_choices + 1);
-                descendant_rows = descendant_rows.concat(descendant_result.rows);
-                num_descendant_choices += descendant_result.num_choices;
+                entry = {
+                  name: choice_name,
+                  id: id,
+                  children: children,
+                };
+                if (typeof option.cost !== "undefined") {
+                  entry.cost = option.cost;
+                }
+                if (typeof action.cost !== "undefined") {
+                  //propagate parent cost down
+                  if (typeof entry.cost !== "undefined") {
+                    console.warn("overwriting cost for " + choice_name);
+                  }
+                  entry.cost = action.cost;
+                }
+
+                tree_choices.push(entry);
+                console.log("choice added: " + choice_name + " " + id);
+                num_descendant_choices += children.size;
+                option_count++;
               }
+              if (typeof action.cost !== "undefined") {
+                tree_choices.push({
+                  name: "Skip",
+                  id: "card_choice_" + choice_count + "_option_" + option_count,
+                  children: new Map(),
+                });
+                option_count++;
+              }
+              tree.set("choice_" + choice_count, tree_choices);
               choice_count++;
               choice_count += num_descendant_choices;
-
-              console.log("rendering choice row " + choice_count + ".");
-              row_html = bga.format_block("jstpl_card_choices_row", {
-                row_number: choice_count + ".",
-                card_choices: rendered_choices.join("\n"),
+              break;
+            case "sequence":
+              children = make_card_dependency_tree(
+                action.actions,
+                choice_count
+              );
+              children.forEach((value, key) => {
+                tree.set(key, value);
               });
-              result.rows.push(row_html);
-              result.rows = result.rows.concat(descendant_rows);
+              break;
+            default:
+              if (typeof action.cost !== "undefined") {
+                console.log("cost!");
+                var tree_choices = [];
+                var choice_name = action.name || action.action;
+                tree_choices.push({
+                  name: choice_name,
+                  id: "card_choice_" + choice_count + "_option_0",
+                  children: new Map(),
+                });
+                tree_choices.push({
+                  name: "Skip",
+                  id: "card_choice_" + choice_count + "_option_1",
+                  cost: action.cost,
+                  children: new Map(),
+                });
+                tree.set("choice_" + choice_count, tree_choices);
+                choice_count++;
+                num_descendant_choices += 1;
+              }
           }
         }
-        return result;
+        console.log("returning tree");
+        console.log(tree);
+        return tree;
       };
-      var result = make_choice_rows(card.actions, 0);
-      if (result.rows.length > 0) {
+      console.log("dep tree:");
+      var dep_tree = make_card_dependency_tree(card.actions);
+      console.log(dep_tree);
+
+      var render_rows = function (tree, row_number) {
+        var rendered_choices = [];
+        var row_number = row_number || 1;
+        tree.forEach((options) => {
+          var rendered_options = [];
+          console.log(options);
+          for (var option of options) {
+            console.log("rendering option " + option.name);
+            rendered_options.push(
+              bga.format_block("jstpl_card_choice_radio", {
+                id: option.id,
+                name: option.name,
+                value: option.name,
+                label: option.name,
+              })
+            );
+            rendered_choices = rendered_choices.concat(render_rows(option.children, row_number + 1));
+          }
+          var choice_html = bga.format_block("jstpl_card_choices_row", {
+            row_number: row_number + ".",
+            card_choices: rendered_options.join("\n"),
+          });
+          rendered_choices.unshift(choice_html);
+          row_number++;
+        });
+        return rendered_choices;
+      };
+      var result = render_rows(dep_tree);
+      console.log(result);
+      if (result.length > 0) {
         dojo.attr("play_card_button", "disabled", true);
         dojo.addClass("play_card_button", "bgabutton_disabled");
-        console.log(result.rows);
-        var choices_html = result.rows.join("\n");
+        var choices_html = result.join("\n");
         dojo.place(choices_html, "card_choices");
       }
       this.cardPlayDialogShown = true;

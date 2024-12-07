@@ -217,10 +217,10 @@ $this->market_cards = [
                                     ["action" => "forward"],
                                     ["action" => "right"],
                                 ],
+                                "cost" => ["sail" => 1],
                             ],
                         ],
-                        "name" => "forward",
-                        "cost" => ["sail" => 1],
+                        "name" => "forward"
                     ],
                     ["action" => "right"],
                 ],
