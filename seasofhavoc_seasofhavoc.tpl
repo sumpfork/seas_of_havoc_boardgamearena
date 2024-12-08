@@ -73,7 +73,7 @@
                     </div>`;
     var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
-    var jstpl_card_choice_radio=`<div class="card_choice_radio"><input type="radio" id="\${id}" name="\${name}" value="\${value}/><label for="\${id}">\${label}</label></div>`;
+    var jstpl_card_choice_radio=`<div class="card_choice_radio_container"><input type="radio" class="card_choice_radio" id="\${id}" name="\${name}" value="\${value}/><label for="\${id}">\${label}</label></div>`;
     var jstpl_skiff=`<div id="\${id}" class="skiff">
     <svg width="100%" height="100%" viewBox="0 0 298 265" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
     <g transform="matrix(1,0,0,1,-702.792,-710.191)">

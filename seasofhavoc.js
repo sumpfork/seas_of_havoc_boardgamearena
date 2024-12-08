@@ -449,7 +449,7 @@ define([
       var render_rows = function (tree, row_number) {
         var rendered_choices = [];
         var row_number = row_number || 1;
-        tree.forEach((options) => {
+        tree.forEach((options, choice_id) => {
           var rendered_options = [];
           console.log(options);
           for (var option of options) {
@@ -457,7 +457,7 @@ define([
             rendered_options.push(
               bga.format_block("jstpl_card_choice_radio", {
                 id: option.id,
-                name: option.name,
+                name: choice_id,
                 value: option.name,
                 label: option.name,
               })
@@ -480,6 +480,9 @@ define([
         dojo.addClass("play_card_button", "bgabutton_disabled");
         var choices_html = result.join("\n");
         dojo.place(choices_html, "card_choices");
+        dojo.query(".card_choice_radio").connect("onchange", this, (event) => {
+          console.log(event);
+        });
       }
       this.cardPlayDialogShown = true;
     },
