@@ -443,8 +443,8 @@ define([
         return tree;
       };
       console.log("dep tree:");
-      var dep_tree = make_card_dependency_tree(card.actions);
-      console.log(dep_tree);
+      this.dep_tree = make_card_dependency_tree(card.actions);
+      console.log(this.dep_tree);
 
       var render_rows = function (tree, row_number) {
         var rendered_choices = [];
@@ -473,8 +473,29 @@ define([
         });
         return rendered_choices;
       };
-      var result = render_rows(dep_tree);
+      var result = render_rows(this.dep_tree);
       console.log(result);
+      
+      var showHideControls = function(tree, hide) {
+        console.log("showing/hiding controls " + hide);
+        tree.forEach((options) => {
+          for (var option of options) {
+            var checkbox = dom.byId(option.id);
+            console.log(option);
+            console.log(checkbox);
+            console.log(checkbox.checked);
+            if (hide) {
+              checkbox.checked = false;
+              domstyle.set(checkbox.parentNode.parentNode, "display", "none");
+              showHideControls(option.children, true);
+            } else {
+              domstyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
+              showHideControls(option.children, !checkbox.checked);
+            }
+          }
+        });
+      };
+
       if (result.length > 0) {
         dojo.attr("play_card_button", "disabled", true);
         dojo.addClass("play_card_button", "bgabutton_disabled");
@@ -482,8 +503,10 @@ define([
         dojo.place(choices_html, "card_choices");
         dojo.query(".card_choice_radio").connect("onchange", this, (event) => {
           console.log(event);
+          showHideControls(this.dep_tree);
         });
       }
+      showHideControls(this.dep_tree);
       this.cardPlayDialogShown = true;
     },
     updateCardPurchaseButtons: function (create) {
