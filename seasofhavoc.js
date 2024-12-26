@@ -85,15 +85,29 @@ define([
     getPlayerResources: function () {
       var playerResources = {};
       for (const resource of this.resources) {
-        if (resource.player_id == this.player_id) {
+        if (resource.player_id == this.getActivePlayerId()) {
+          console.log("player in get resources is " + this.getActivePlayerId());
           playerResources[resource.resource_key] = resource.resource_count;
         }
       }
       return playerResources;
     },
+    addResources: function (r1, r2) {
+      var sum = {};
+      for (const [resource_key, num] of Object.entries(r1)) {
+        sum[resource_key] = num;
+      }
+      for (const [resource_key, num] of Object.entries(r2)) {
+        if (Object.hasOwn(resource_key))
+          sum[resource_key] += num;
+        else
+          sum[resource_key] = num;
+      }
+      return sum;
+    },
     playerSpendResources: function (resource_cost) {
       for (var resource of this.resources) {
-        if (resource.player_id == this.player_id) {
+        if (resource.player_id == this.getActivePlayerId()) {
           if (!Object.hasOwn(resource_cost, resource.resource_key)) {
             continue;
           }
@@ -117,11 +131,15 @@ define([
       console.log(playerResources);
       console.log("cost is");
       console.log(resource_cost);
+      if (typeof resource_cost === "undefined") {
+        //can always afford something without cost
+        return true;
+      }
       for (const [resource_key, num] of Object.entries(resource_cost)) {
         var player_has = playerResources[resource_key] || 0;
         if (player_has - num < 0) {
           console.log(
-            "not enough " + resource_key + "(" + player_has + " vs " + num + ")"
+            "not enough " + resource_key + " (" + player_has + " vs " + num + ")"
           );
           return false;
         }
@@ -424,12 +442,12 @@ define([
                 tree_choices.push({
                   name: choice_name,
                   id: "card_choice_" + choice_count + "_option_0",
+                  cost: action.cost,
                   children: new Map(),
                 });
                 tree_choices.push({
                   name: "Skip",
                   id: "card_choice_" + choice_count + "_option_1",
-                  cost: action.cost,
                   children: new Map(),
                 });
                 tree.set("choice_" + choice_count, tree_choices);
@@ -462,7 +480,9 @@ define([
                 label: option.name,
               })
             );
-            rendered_choices = rendered_choices.concat(render_rows(option.children, row_number + 1));
+            rendered_choices = rendered_choices.concat(
+              render_rows(option.children, row_number + 1)
+            );
           }
           var choice_html = bga.format_block("jstpl_card_choices_row", {
             row_number: row_number + ".",
@@ -475,9 +495,34 @@ define([
       };
       var result = render_rows(this.dep_tree);
       console.log(result);
-      
-      var showHideControls = function(tree, hide) {
+
+      var bga = this;
+      var computeTotalPlayCost = function (tree, costAcc) {
+        if (typeof costAcc === "undefined") {
+          costAcc = {};
+        }
+        console.log("computing total play cost " + costAcc);
+        tree.forEach((options) => {
+          for (var option of options) {
+            console.log(option);
+            var checkbox = dom.byId(option.id);
+            console.log("checked: " + checkbox.checked);
+            if (checkbox.checked && typeof option.cost != "undefined") {
+              costAcc = bga.addResources(option.cost, costAcc);
+            }
+            costAcc = computeTotalPlayCost(option.children, costAcc);
+          }
+        });
+        return costAcc;
+      };
+
+      var showHideControls = function (tree, hide, totalCost) {
         console.log("showing/hiding controls " + hide);
+        if (typeof totalCost === "undefined") {
+          totalCost = computeTotalPlayCost(tree);
+          console.log("total play cost is:");
+          console.log(totalCost);
+        }
         tree.forEach((options) => {
           for (var option of options) {
             var checkbox = dom.byId(option.id);
@@ -487,10 +532,29 @@ define([
             if (hide) {
               checkbox.checked = false;
               domstyle.set(checkbox.parentNode.parentNode, "display", "none");
-              showHideControls(option.children, true);
+              showHideControls(option.children, true, totalCost);
             } else {
-              domstyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
-              showHideControls(option.children, !checkbox.checked);
+              domstyle.set(
+                checkbox.parentNode.parentNode,
+                "display",
+                "inline-block"
+              );
+              if (typeof option.cost !== "undefined") {
+                console.log("option cost:");
+                console.log(option.cost);
+                console.log("totalCost:");
+                console.log(totalCost);
+                var adjustedCost = bga.addResources(option.cost, totalCost);
+                console.log("adjusted cost:");
+                console.log(adjustedCost);
+                if (bga.canPlayerAfford(adjustedCost)) {
+                  attr.remove(checkbox, "disabled");
+                } else {
+                  console.log("player cannot afford, disabling " + checkbox);
+                  attr.set(checkbox, "disabled", "true");
+                }
+              }
+              showHideControls(option.children, !checkbox.checked, totalCost);
             }
           }
         });
@@ -516,7 +580,7 @@ define([
         if (slot == "market") {
           for (const [number, occupant] of Object.entries(numbers)) {
             console.log("market occupant: " + occupant);
-            if (occupant == this.player_id) {
+            if (occupant == this.getActivePlayerId()) {
               var button_id = "purchase_button_" + number;
               console.log("number " + number + " is ours");
               var slot_card = null;
