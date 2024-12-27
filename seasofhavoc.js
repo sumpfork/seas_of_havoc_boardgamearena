@@ -20,6 +20,7 @@ define([
   "dojo/_base/declare",
   "dojo/on",
   "dojo/dom",
+  "dojo/dom-class",
   "dojo/dom-construct",
   "dojo/dom-style",
   "dojo/dom-attr",
@@ -35,6 +36,7 @@ define([
   declare,
   on,
   dom,
+  domClass,
   domConstruct,
   domstyle,
   attr,
@@ -84,9 +86,10 @@ define([
     },
     getPlayerResources: function () {
       var playerResources = {};
+      console.log("adtive player id: " + this.getActivePlayerId());
+      console.log("this.player_id: " + this.player_id);
       for (const resource of this.resources) {
-        if (resource.player_id == this.getActivePlayerId()) {
-          console.log("player in get resources is " + this.getActivePlayerId());
+        if (resource.player_id == this.player_id) {
           playerResources[resource.resource_key] = resource.resource_count;
         }
       }
@@ -98,16 +101,16 @@ define([
         sum[resource_key] = num;
       }
       for (const [resource_key, num] of Object.entries(r2)) {
-        if (Object.hasOwn(resource_key))
-          sum[resource_key] += num;
-        else
-          sum[resource_key] = num;
+        if (Object.hasOwn(resource_key)) sum[resource_key] += num;
+        else sum[resource_key] = num;
       }
       return sum;
     },
     playerSpendResources: function (resource_cost) {
+      console.log("player " + this.player_id + " spending resources:");
+      console.log(resource_cost);
       for (var resource of this.resources) {
-        if (resource.player_id == this.getActivePlayerId()) {
+        if (resource.player_id == this.player_id) {
           if (!Object.hasOwn(resource_cost, resource.resource_key)) {
             continue;
           }
@@ -139,7 +142,13 @@ define([
         var player_has = playerResources[resource_key] || 0;
         if (player_has - num < 0) {
           console.log(
-            "not enough " + resource_key + " (" + player_has + " vs " + num + ")"
+            "not enough " +
+              resource_key +
+              " (" +
+              player_has +
+              " vs " +
+              num +
+              ")"
           );
           return false;
         }
@@ -550,7 +559,6 @@ define([
                 if (bga.canPlayerAfford(adjustedCost)) {
                   attr.remove(checkbox, "disabled");
                 } else {
-                  console.log("player cannot afford, disabling " + checkbox);
                   attr.set(checkbox, "disabled", "true");
                 }
               }
@@ -560,17 +568,73 @@ define([
         });
       };
 
+      var checkIsCardReadyToBePlayed = function (tree) {
+        var isReady = true;
+        if (tree.length == 0) {
+          return;
+        }
+        console.log("starting ready to play check");
+        tree.forEach((options) => {
+          if (!isReady) {
+            return;
+          }
+          var anythingChecked = false;
+          for (var option of options) {
+            var checkbox = dom.byId(option.id);
+            console.log("starting to check option:");
+            console.log(option);
+            console.log("parent display: " + domstyle.get(checkbox.parentNode.parentNode, "display"));
+            if (
+              domstyle.get(checkbox.parentNode.parentNode, "display") != "none"
+            ) {
+              console.log("checking children:");
+              console.log(option.children);
+              if (!checkIsCardReadyToBePlayed(option.children)) {
+                console.log("nothing checked in children");
+                isReady = false;
+                return;
+              }
+              anythingChecked |= checkbox.checked;
+              console.log("checkbox is checked: " + checkbox.checked);
+              console.log("anything checked now: " + anythingChecked);
+            } else {
+              console.log("skipping because option is hidden:");
+              console.log(option);
+              return;
+            }
+            console.log("anything checked at end of loop " + anythingChecked);
+          }
+          console.log("after options anything checked: " + anythingChecked);
+          isReady &= anythingChecked;
+          console.log("updated isReady to " + isReady);
+        });
+        console.log("final ready to play: " + isReady);
+        return isReady;
+      };
+
+      var updatePlayCardButton = function () {
+        const button_id = "play_card_button";
+        if (checkIsCardReadyToBePlayed(bga.dep_tree)) {
+          console.log("ready to play card");
+          domClass.add(button_id, "bgabutton_green");
+          domClass.remove(button_id, "bgabutton_disabled");
+        } else {
+          console.log("not ready to play card");
+          domClass.remove(button_id, "bgabutton_green");
+          domClass.add(button_id, "bgabutton_disabled");
+        }
+      };
       if (result.length > 0) {
-        dojo.attr("play_card_button", "disabled", true);
-        dojo.addClass("play_card_button", "bgabutton_disabled");
         var choices_html = result.join("\n");
         dojo.place(choices_html, "card_choices");
         dojo.query(".card_choice_radio").connect("onchange", this, (event) => {
           console.log(event);
           showHideControls(this.dep_tree);
+          updatePlayCardButton();
         });
       }
       showHideControls(this.dep_tree);
+      updatePlayCardButton();
       this.cardPlayDialogShown = true;
     },
     updateCardPurchaseButtons: function (create) {
@@ -580,7 +644,7 @@ define([
         if (slot == "market") {
           for (const [number, occupant] of Object.entries(numbers)) {
             console.log("market occupant: " + occupant);
-            if (occupant == this.getActivePlayerId()) {
+            if (occupant == this.player_id) {
               var button_id = "purchase_button_" + number;
               console.log("number " + number + " is ours");
               var slot_card = null;
