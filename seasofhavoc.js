@@ -364,6 +364,17 @@ define([
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       dojo.place(dlg, "myhand_wrap", "first");
+      dojo.query(".play_card_button").connect("onclick", this, (event) => {
+        console.log("play card button clicked");
+        event.preventDefault();
+        this.bgaPerformAction("actPlayCard", {
+          card: card,
+          card_type: card_type,
+          choice_tree: JSON.stringify(this.dep_tree),
+        });
+        this.dep_tree = null;
+        domConstruct.destroy("card_display_dialog");
+      });
       var dlg_dom = dom.byId("card_display_dialog");
       var existing_card_dom = dom.byId(card_type);
       //var card_pos = dojo.position(existing_card_dom);
@@ -583,7 +594,10 @@ define([
             var checkbox = dom.byId(option.id);
             console.log("starting to check option:");
             console.log(option);
-            console.log("parent display: " + domstyle.get(checkbox.parentNode.parentNode, "display"));
+            console.log(
+              "parent display: " +
+                domstyle.get(checkbox.parentNode.parentNode, "display")
+            );
             if (
               domstyle.get(checkbox.parentNode.parentNode, "display") != "none"
             ) {
@@ -618,10 +632,12 @@ define([
           console.log("ready to play card");
           domClass.add(button_id, "bgabutton_green");
           domClass.remove(button_id, "bgabutton_disabled");
+          dojo.removeClass(button_id, "disabled");
         } else {
           console.log("not ready to play card");
           domClass.remove(button_id, "bgabutton_green");
           domClass.add(button_id, "bgabutton_disabled");
+          dojo.addClass(button_id, "disabled");
         }
       };
       if (result.length > 0) {

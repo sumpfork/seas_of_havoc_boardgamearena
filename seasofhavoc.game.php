@@ -705,6 +705,12 @@ class SeasOfHavoc extends Table
         }
         $this->gamestate->setPlayerNonMultiactive( $player_id, "cardPurchasesDone" );
     }
+
+    function actPlayCard(string $card, string $card_type, #[JsonParam] $choice_tree) {
+        $this->dump("card", $card);
+        $this->dump("card_type", $card_type);
+        $this->dump("dep tree", $choice_tree);
+    }
     /*
     
     Example:
