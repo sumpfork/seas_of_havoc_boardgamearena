@@ -4,11 +4,11 @@
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
  * SeasOfHavoc implementation : © <Your name here> <Your email address here>
- * 
+ *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
  * -----
- * 
+ *
  * seasofhavoc.game.php
  *
  * This is the main file for your game logic.
@@ -17,14 +17,12 @@
  *
  */
 
+require_once APP_GAMEMODULE_PATH . "module/table/table.game.php";
 
-require_once(APP_GAMEMODULE_PATH . 'module/table/table.game.php');
-
-use \Bga\GameFramework\Actions\Types\JsonParam;
+use Bga\GameFramework\Actions\Types\JsonParam;
 
 class SeaBoard
 {
-
     const WIDTH = 5;
     const HEIGHT = 5;
 
@@ -36,7 +34,7 @@ class SeaBoard
     const NORTHEAST = 6;
     const NORTHWEST = 7;
 
-    private array | null $contents;
+    private array|null $contents;
     private string $sqlfunc;
 
     function __construct($dbquery)
@@ -47,7 +45,7 @@ class SeaBoard
 
     private function init()
     {
-        $row = array_fill(0, self::WIDTH, array());
+        $row = array_fill(0, self::WIDTH, []);
         $this->contents = array_fill(0, self::HEIGHT, $row);
     }
 
@@ -62,17 +60,17 @@ class SeaBoard
     public function getAllObjectsFlat()
     {
         $this->syncFromDB();
-        $flat_contents = array();
+        $flat_contents = [];
         foreach ($this->contents as $x => $row) {
             foreach ($row as $y => $contents) {
                 foreach ($contents as $entry) {
-                    $flat_contents[] = array(
+                    $flat_contents[] = [
                         "x" => $x,
                         "y" => $y,
                         "type" => $entry["type"],
                         "arg" => $entry["arg"],
-                        "heading" => $entry["heading"]
-                    );
+                        "heading" => $entry["heading"],
+                    ];
                 }
             }
         }
@@ -105,8 +103,11 @@ class SeaBoard
         }
     }
 
-    public function moveObjectForward(string $object_type, string $arg, array $collision_types)
-    {
+    public function moveObjectForward(
+        string $object_type,
+        string $arg,
+        array $collision_types
+    ) {
         $object_info = $this->findObject($object_type, $arg);
         $new_x = $object_info["x"];
         $new_y = $object_info["y"];
@@ -138,11 +139,24 @@ class SeaBoard
         }
         $collided = $this->getObjectsOfTypes($new_x, $new_y, $collision_types);
         if (count($collided) == 0) {
-            $this->removeObject($object_info["x"], $object_info["y"], $object_info["type"], $object_info["arg"]);
+            $this->removeObject(
+                $object_info["x"],
+                $object_info["y"],
+                $object_info["type"],
+                $object_info["arg"]
+            );
             $this->placeObject($new_x, $new_y, $object_info["object"]);
-            return ["colliders" => $collided, "new_x" => $new_x, "new_y" => $new_y];
+            return [
+                "colliders" => $collided,
+                "new_x" => $new_x,
+                "new_y" => $new_y,
+            ];
         }
-        return ["colliders" => $collided, "new_x" => $object_info["x"], "new_y" => object_info["y"]];
+        return [
+            "colliders" => $collided,
+            "new_x" => $object_info["x"],
+            "new_y" => object_info["y"],
+        ];
     }
 
     public function placeObject(int $x, int $y, array $object)
@@ -154,16 +168,33 @@ class SeaBoard
         $this->syncToDB();
     }
 
-    public function removeObject(int $x, int $y, string $object_type, string $arg)
-    {
-        $this->contents[$x][$y] = array_filter($this->contents[$x][$y], fn($o) => $o["type"] != $object_type || $o["arg"] != $arg);
+    public function removeObject(
+        int $x,
+        int $y,
+        string $object_type,
+        string $arg
+    ) {
+        $this->contents[$x][$y] = array_filter(
+            $this->contents[$x][$y],
+            fn($o) => $o["type"] != $object_type || $o["arg"] != $arg
+        );
         $this->syncToDB();
     }
 
     private function syncObjectToDB(int $x, int $y, array $object)
     {
-        $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ('"
-            . $x . "','" . $y . "','" . $object["type"] . "','" . $object["arg"] . "','" . $object["heading"] . "')";
+        $sql =
+            "INSERT INTO sea (x, y, type, arg, heading) VALUES ('" .
+            $x .
+            "','" .
+            $y .
+            "','" .
+            $object["type"] .
+            "','" .
+            $object["arg"] .
+            "','" .
+            $object["heading"] .
+            "')";
         call_user_func($this->sqlfunc, $sql);
     }
 
@@ -172,11 +203,22 @@ class SeaBoard
         call_user_func($this->sqlfunc, "DELETE FROM sea");
 
         $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ";
-        $values = array();
+        $values = [];
         foreach ($this->getAllObjectsFlat() as $entry) {
-            $values[] = "('" . $entry["x"] . "','" . $entry["y"] . "','" . $entry["type"] . "','" . $entry["arg"] . "','" . $entry["heading"] . "')";
+            $values[] =
+                "('" .
+                $entry["x"] .
+                "','" .
+                $entry["y"] .
+                "','" .
+                $entry["type"] .
+                "','" .
+                $entry["arg"] .
+                "','" .
+                $entry["heading"] .
+                "')";
         }
-        $sql .= implode(',', $values);
+        $sql .= implode(",", $values);
         call_user_func($this->sqlfunc, $sql);
     }
 
@@ -187,7 +229,11 @@ class SeaBoard
             $result = call_user_func($this->sqlfunc, $sql);
             $this->init();
             foreach ($result as $row) {
-                $this->placeObject(intval($row["x"]), intval($row["y"]), array("type" => $row["type"], "arg" => $row["arg"], "heading" => $row["heading"]));
+                $this->placeObject(intval($row["x"]), intval($row["y"]), [
+                    "type" => $row["type"],
+                    "arg" => $row["arg"],
+                    "heading" => $row["heading"],
+                ]);
             }
         }
     }
@@ -218,28 +264,35 @@ class SeasOfHavoc extends Table
         // Note: afterwards, you can get/set the global variables with getGameStateValue/setGameStateInitialValue/setGameStateValue
         parent::__construct();
 
-        self::initGameStateLabels(array(
+        self::initGameStateLabels([
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
             //    "my_first_game_variant" => 100,
             //    "my_second_game_variant" => 101,
             //      ...
-        ));
-
+        ]);
 
         $this->cards = $this->getNew("module.common.deck");
         $this->cards->init("card");
         //$this->cards->autoreshuffle = true;
-        $this->cards->autoreshuffle_custom = array('player_deck' => 'player_discard');
+        $this->cards->autoreshuffle_custom = [
+            "player_deck" => "player_discard",
+        ];
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery");
 
-        $starting_cards = array_combine(array_column($this->starting_cards, "card_type"), array_values($this->starting_cards));
+        $starting_cards = array_combine(
+            array_column($this->starting_cards, "card_type"),
+            array_values($this->starting_cards)
+        );
         assert(count($starting_cards) == count($this->starting_cards));
         $this->starting_cards = $starting_cards;
 
-        $market_cards = array_combine(array_column($this->market_cards, "card_type"), array_values($this->market_cards));
+        $market_cards = array_combine(
+            array_column($this->market_cards, "card_type"),
+            array_values($this->market_cards)
+        );
         assert(count($market_cards) == count($this->market_cards));
         $this->market_cards = $market_cards;
 
@@ -259,31 +312,41 @@ class SeasOfHavoc extends Table
         In this method, you must setup the game according to the game rules, so that
         the game is ready to be played.
     */
-    protected function setupNewGame($players, $options = array())
+    protected function setupNewGame($players, $options = [])
     {
         // Set the colors of the players with HTML color code
         // The default below is red/green/blue/orange/brown
         // The number of colors defined here must correspond to the maximum number of players allowed for the gams
         $gameinfos = self::getGameinfos();
-        $default_colors = $gameinfos['player_colors'];
+        $default_colors = $gameinfos["player_colors"];
 
         // Create players
         // Note: if you added some extra field on "player" table in the database (dbmodel.sql), you can initialize it there.
-        $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_ship) VALUES ";
-        $values = array();
+        $sql =
+            "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar, player_ship) VALUES ";
+        $values = [];
         $this->dump("default_colours", $default_colors);
         $this->dump("players", $players);
         foreach ($players as $player_id => $player) {
             $ship_colour = array_splice($default_colors, 0, 1);
             $ship = array_key_first($ship_colour);
             $color = $ship_colour[$ship];
-            $values[] = "('" . $player_id . "','$color','" . $player['player_canal'] . "','" . addslashes($player['player_name']) . "','" . addslashes($player['player_avatar']) . "','$ship'" . ")";
+            $values[] =
+                "('" .
+                $player_id .
+                "','$color','" .
+                $player["player_canal"] .
+                "','" .
+                addslashes($player["player_name"]) .
+                "','" .
+                addslashes($player["player_avatar"]) .
+                "','$ship'" .
+                ")";
         }
-        $sql .= implode(',', $values);
+        $sql .= implode(",", $values);
         self::DbQuery($sql);
         //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
-
 
         /************ Start the game initialization *****/
 
@@ -296,7 +359,6 @@ class SeasOfHavoc extends Table
         //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
 
         // TODO: setup the initial game situation here
-
 
         /************ End of the game initialization *****/
         $this->activeNextPlayer();
@@ -313,55 +375,81 @@ class SeasOfHavoc extends Table
         //throw new BgaSystemException("mysetup start");
 
         //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
-        $this->mytrace('stMyGameSetup');
-        $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
+        $this->mytrace("stMyGameSetup");
+        $sql =
+            "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
         $base_resources = array_fill_keys($this->resource_types, 1);
-        $base_resources['skiff'] = 3;
+        $base_resources["skiff"] = 3;
 
         $this->dump("base resources", $base_resources);
         $player_infos = $this->loadPlayersBasicInfos();
 
-        $values = array();
+        $values = [];
         foreach ($player_infos as $playerid => $player) {
             $player_resources = $base_resources;
             $this->mytrace("player is " . $playerid);
 
-            switch ($player['player_no']) {
+            switch ($player["player_no"]) {
                 case 1:
                     break;
                 case 2:
-                    $player_resources['sail'] += 1;
+                    $player_resources["sail"] += 1;
                     break;
                 case 3:
-                    $player_resources['cannonball'] += 1;
+                    $player_resources["cannonball"] += 1;
                     break;
                 case 4:
-                    $player_resources['sail'] += 1;
-                    $player_resources['cannonball'] += 1;
+                    $player_resources["sail"] += 1;
+                    $player_resources["cannonball"] += 1;
                     break;
                 case 5:
-                    $player_resources['cannonball'] += 1;
-                    $player_resources['doubloon'] += 1;
+                    $player_resources["cannonball"] += 1;
+                    $player_resources["doubloon"] += 1;
                     break;
                 default:
-                    throw new Exception('Unknonwn player number' . $player['player_no']);
+                    throw new Exception(
+                        "Unknonwn player number" . $player["player_no"]
+                    );
             }
             foreach ($player_resources as $resource_type => $resource_count) {
-                $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
+                $values[] =
+                    "('" .
+                    $playerid .
+                    "','$resource_type','" .
+                    $resource_count .
+                    "')";
             }
         }
-        $sql .= implode(',', $values);
+        $sql .= implode(",", $values);
         self::DbQuery($sql);
 
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('blacksmith', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n2', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('blacksmith', 'n1', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n1', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n2', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)"
+        );
+        self::DbQuery(
+            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)"
+        );
 
         $player_infos = $this->getPlayerInfo();
 
@@ -369,23 +457,45 @@ class SeasOfHavoc extends Table
             $this->seaboard->placeObject(
                 rand(0, SeaBoard::WIDTH - 1),
                 rand(0, SeaBoard::HEIGHT - 1),
-                array("type" => "player_ship", "arg" => $playerid, "heading" => SeaBoard::NORTH)
+                [
+                    "type" => "player_ship",
+                    "arg" => $playerid,
+                    "heading" => SeaBoard::NORTH,
+                ]
             );
-            $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
-                return $v["ship_name"] == $player["player_ship"];
-            });
-            $start_deck = array();
+            $player_starting_cards = array_filter(
+                $this->starting_cards,
+                function ($v) use ($player) {
+                    return $v["ship_name"] == $player["player_ship"];
+                }
+            );
+            $start_deck = [];
             foreach ($player_starting_cards as $starting_card) {
-                $start_deck[] = array("type" => $starting_card["card_type"], "type_arg" => 0, "nbr" => $starting_card["count"]);
+                $start_deck[] = [
+                    "type" => $starting_card["card_type"],
+                    "type_arg" => 0,
+                    "nbr" => $starting_card["count"],
+                ];
             }
-            $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
+            $this->cards->createCards(
+                $start_deck,
+                $this->playerDeckName($playerid)
+            );
             $this->cards->shuffle($this->playerDeckName($playerid));
-            $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
+            $this->cards->pickCards(
+                4,
+                $this->playerDeckName($playerid),
+                $playerid
+            );
         }
 
-        $market_deck = array();
+        $market_deck = [];
         foreach ($this->market_cards as $market_card) {
-            $market_deck[] = ["type" => $market_card["card_type"], "type_arg" => 0, "nbr" => $market_card["count"]];
+            $market_deck[] = [
+                "type" => $market_card["card_type"],
+                "type_arg" => 0,
+                "nbr" => $market_card["count"],
+            ];
         }
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");
@@ -414,7 +524,9 @@ class SeasOfHavoc extends Table
         #$total_resources = array_column($resources, "resource_count", "resource_key");
         #$this->dump("total resources:", $total_resources);
 
-        $total_skiffs = array_sum(array_column(array_values($resources), "skiff"));
+        $total_skiffs = array_sum(
+            array_column(array_values($resources), "skiff")
+        );
         $this->mytrace("total skiffs left: $total_skiffs");
 
         if (array_sum(array_column(array_values($resources), "skiff")) == 0) {
@@ -446,7 +558,6 @@ class SeasOfHavoc extends Table
         $active_player = $this->activeNextPlayer();
         $this->giveExtraTime($active_player);
         $this->gamestate->nextState("nextPlayer");
-
     }
 
     /*
@@ -460,27 +571,27 @@ class SeasOfHavoc extends Table
     */
     protected function getAllDatas()
     {
-        $result = array();
+        $result = [];
 
-        $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
+        $current_player_id = self::getCurrentPlayerId(); // !! We must only return informations visible by this player !!
 
         // Get information about players
         // Note: you can retrieve some extra field you added for "player" table in "dbmodel.sql" if you need it.
         $sql = "SELECT player_id id, player_score score FROM player ";
-        $result['players'] = self::getCollectionFromDb($sql);
+        $result["players"] = self::getCollectionFromDb($sql);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
-        $result['resources'] = $this->getGameResources();
-        $result['islandslots'] = $this->getIslandSlots();
+        $result["resources"] = $this->getGameResources();
+        $result["islandslots"] = $this->getIslandSlots();
         //$result['starting_cards'] = $this->starting_cards;
         //$result['market_cards'] = $this->market_cards;
-        $result['playable_cards'] = $this->playable_cards;
-        $result['market'] = $this->cards->getCardsInLocation("market");
-        $result['hand'] = $this->cards->getPlayerHand($current_player_id);
+        $result["playable_cards"] = $this->playable_cards;
+        $result["market"] = $this->cards->getCardsInLocation("market");
+        $result["hand"] = $this->cards->getPlayerHand($current_player_id);
         //$result['allcards'] = $this->cards->countCardsInLocations();
-        $result['playerinfo'] = $this->getPlayerInfo();
-        $result['seaboard'] = $this->seaboard->getAllObjectsFlat();
+        $result["playerinfo"] = $this->getPlayerInfo();
+        $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         return $result;
     }
 
@@ -523,12 +634,14 @@ class SeasOfHavoc extends Table
     function getGameResourcesHierarchical(int $player_id = null)
     {
         $resources = $this->getGameResources($player_id);
-        $hierarchical_resources = array();
+        $hierarchical_resources = [];
         foreach ($resources as $row) {
             if (!array_key_exists($row["player_id"], $hierarchical_resources)) {
-                $hierarchical_resources[$row["player_id"]] = array();
+                $hierarchical_resources[$row["player_id"]] = [];
             }
-            $hierarchical_resources[$row["player_id"]][$row["resource_key"]] = intval($row["resource_count"]);
+            $hierarchical_resources[$row["player_id"]][
+                $row["resource_key"]
+            ] = intval($row["resource_count"]);
         }
         return $hierarchical_resources;
     }
@@ -549,8 +662,8 @@ class SeasOfHavoc extends Table
 
     function subindexArray($arr_arr, $top_key)
     {
-        print($top_key);
-        $new_arr = array();
+        print $top_key;
+        $new_arr = [];
         foreach ($arr_arr as $arr) {
             unset($arr[$top_key]);
             $new_arr[$top_key] = $arr;
@@ -567,24 +680,30 @@ class SeasOfHavoc extends Table
         $slots = $this->getObjectListFromDB($sql);
         $indexed_slots = [];
         foreach ($slots as $slot) {
-            $indexed_slots[$slot["slot_key"]][$slot["number"]] = $slot["occupying_player_id"];
+            $indexed_slots[$slot["slot_key"]][$slot["number"]] =
+                $slot["occupying_player_id"];
         }
         return $indexed_slots;
     }
 
-    function occupyIslandSlot(string $player_id, string $slot_name, string $number)
-    {
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_name', '$number', '$player_id')");
+    function occupyIslandSlot(
+        string $player_id,
+        string $slot_name,
+        string $number
+    ) {
+        self::DbQuery(
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_name', '$number', '$player_id')"
+        );
         $this->notifyAllPlayers(
             "skiffPlaced",
             clienttranslate('${player_name} placed a skiff'),
-            array(
-                'player_name' => self::getActivePlayerName(),
-                'player_id' => $player_id,
-                'player_color' => $this->getPlayerColor($player_id),
-                'slot_name' => $slot_name,
-                'slot_number' => $number
-            )
+            [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+                "player_color" => $this->getPlayerColor($player_id),
+                "slot_name" => $slot_name,
+                "slot_number" => $number,
+            ]
         );
     }
 
@@ -594,7 +713,7 @@ class SeasOfHavoc extends Table
     }
     //////////////////////////////////////////////////////////////////////////////
     //////////// Utility functions
-    ////////////    
+    ////////////
 
     /*
         In this space, you can put any utility methods useful for your game logic
@@ -602,7 +721,7 @@ class SeasOfHavoc extends Table
     public function getStateName()
     {
         $state = $this->gamestate->state();
-        return $state['name'];
+        return $state["name"];
     }
 
     function getPlayerColor(string $player_id)
@@ -616,12 +735,12 @@ class SeasOfHavoc extends Table
                     player_id = $player_id
                ";
         $player = $this->getNonEmptyObjectFromDb($sql);
-        return $player['player_color'];
+        return $player["player_color"];
     }
 
     function sum_array_by_key(array ...$arrays)
     {
-        $out = array();
+        $out = [];
 
         foreach ($arrays as $a) {
             foreach ($a as $key => $value) {
@@ -645,7 +764,11 @@ class SeasOfHavoc extends Table
         $cost = $this->makeCostNegative($cost);
         $result = $this->sum_array_by_key($resources, $cost);
         #php 8.4: return array_any($result, fn($value): bool => $value < 0);
-        return array_reduce($result, fn($carry, $value): bool => !$carry ? false : $value > 0, true);
+        return array_reduce(
+            $result,
+            fn($carry, $value): bool => !$carry ? false : $value > 0,
+            true
+        );
     }
     function pay($player_id, $cost)
     {
@@ -657,37 +780,53 @@ class SeasOfHavoc extends Table
     {
         $this->mytrace("playerGainResources");
         $this->dump("incoming resources", $resources);
-        $current_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        $current_resources = $this->getGameResourcesHierarchical($player_id)[
+            $player_id
+        ];
         $this->dump("current resources", $current_resources);
 
-        $summed_resources = $this->sum_array_by_key($resources, $current_resources);
+        $summed_resources = $this->sum_array_by_key(
+            $resources,
+            $current_resources
+        );
         $this->dump("summed resources", $summed_resources);
 
-        $sql = "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
+        $sql =
+            "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
         foreach ($summed_resources as $resource_type => $resource_count) {
-            $values[] = "('" . $player_id . "','$resource_type','" . $resource_count . "')";
+            $values[] =
+                "('" .
+                $player_id .
+                "','$resource_type','" .
+                $resource_count .
+                "')";
         }
-        $sql .= implode(',', $values);
+        $sql .= implode(",", $values);
         $this->mytrace("gain resources sql: $sql");
 
         self::DbQuery($sql);
         $this->notifyAllPlayers(
             "resourcesChanged",
-            clienttranslate('resources changed'),
-            array(
-                'resources' => $this->getGameResources()
-            )
+            clienttranslate("resources changed"),
+            [
+                "resources" => $this->getGameResources(),
+            ]
         );
     }
 
     function showResourceChoiceDialog(string $context, string $context_number)
     {
-        $this->notifyPlayer(self::getActivePlayerId(), "showResourceChoiceDialog", "", ['context' => $context, 'context_number' => $context_number]);
+        $this->notifyPlayer(
+            self::getActivePlayerId(),
+            "showResourceChoiceDialog",
+            "",
+            ["context" => $context, "context_number" => $context_number]
+        );
     }
 
     //////////////////////////////////////////////////////////////////////////////
     //////////// Player actions
-    //////////// 
+    ////////////
 
     /*
         Each time a player is doing some game action, one of the methods below is called.
@@ -697,35 +836,46 @@ class SeasOfHavoc extends Table
     function actPlaceSkiff(string $slotname, string $number)
     {
         $player_id = self::getActivePlayerId();
-        $this->mytrace("placeSkiff: $player_id slotname: $slotname number: $number");
+        $this->mytrace(
+            "placeSkiff: $player_id slotname: $slotname number: $number"
+        );
         $occupancies = $this->getIslandSlots();
 
         $this->dump("occupancies", $occupancies);
         $this->dump("slotnames", $occupancies[$slotname]);
 
         if ($occupancies[$slotname][$number] != null) {
-            throw new BgaUserException($this->_("There is already a skiff on $slotname"));
+            throw new BgaUserException(
+                $this->_("There is already a skiff on $slotname")
+            );
             return;
         }
         switch ($slotname) {
-            case 'capitol':
+            case "capitol":
                 //TODO: take first player marker
                 $this->showResourceChoiceDialog($slotname, $number);
                 break;
-            case 'bank':
+            case "bank":
                 $this->showResourceChoiceDialog($slotname, $number);
                 break;
-            case 'shipyard':
-                $this->playerGainResources($player_id, ["sail" => 2, "cannonball" => 1, "skiff" => -1]);
+            case "shipyard":
+                $this->playerGainResources($player_id, [
+                    "sail" => 2,
+                    "cannonball" => 1,
+                    "skiff" => -1,
+                ]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
-            case 'blacksmith':
-                $this->playerGainResources($player_id, ["cannonball" => 2, "skiff" => -1]);
+            case "blacksmith":
+                $this->playerGainResources($player_id, [
+                    "cannonball" => 2,
+                    "skiff" => -1,
+                ]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
-            case 'market':
+            case "market":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
@@ -736,7 +886,6 @@ class SeasOfHavoc extends Table
         }
     }
 
-
     function actExitDummyStart()
     {
         //throw new BgaSystemException("act dummy");
@@ -744,18 +893,27 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState();
     }
 
-    function actResourcePickedInDialog(string $resource, string $context, string $number)
-    {
+    function actResourcePickedInDialog(
+        string $resource,
+        string $context,
+        string $number
+    ) {
         $player_id = $this->getActivePlayerId();
         switch ($context) {
-            case 'capitol':
-                $this->playerGainResources($player_id, [$resource => 1, "skiff" => -1]);
+            case "capitol":
+                $this->playerGainResources($player_id, [
+                    $resource => 1,
+                    "skiff" => -1,
+                ]);
                 $this->occupyIslandSlot($player_id, $context, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
-            case 'bank':
+            case "bank":
                 $this->playerGainResources($player_id, [$resource => 1]);
-                $this->playerGainResources($player_id, ["doubloon" => 1, "skiff" => -1]);
+                $this->playerGainResources($player_id, [
+                    "doubloon" => 1,
+                    "skiff" => -1,
+                ]);
                 $this->occupyIslandSlot($player_id, $context, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
@@ -776,7 +934,10 @@ class SeasOfHavoc extends Table
             $this->pay($player_id, $market_card["cost"]);
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
-        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
+        $this->gamestate->setPlayerNonMultiactive(
+            $player_id,
+            "cardPurchasesDone"
+        );
     }
 
     function actPlayCard(int $card_type, #[JsonParam] $decisions)
@@ -793,16 +954,20 @@ class SeasOfHavoc extends Table
         foreach ($card["actions"] as $action) {
             switch ($action["action"]) {
                 case "forward":
-                    $outcome = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                    $outcome = $this->seaboard->moveObjectForward(
+                        "player_ship",
+                        $player_id,
+                        ["rock", "player_ship"]
+                    );
                     if (count($outcome["colliders"]) == 0) {
                         $this->notifyAllPlayers(
                             "shipMove",
                             clienttranslate('${player_name} moves forward'),
-                            array(
-                                'player_id' => $player_id,
-                                'new_x' => $outcome['new_x'],
-                                'new_y' => $outcome['new_y']
-                            )
+                            [
+                                "player_id" => $player_id,
+                                "new_x" => $outcome["new_x"],
+                                "new_y" => $outcome["new_y"],
+                            ]
                         );
                         break;
                     }
@@ -835,7 +1000,6 @@ class SeasOfHavoc extends Table
     }
     
     */
-
 
     //////////////////////////////////////////////////////////////////////////////
     //////////// Game state arguments
@@ -905,9 +1069,9 @@ class SeasOfHavoc extends Table
 
     function zombieTurn($state, $active_player)
     {
-        $statename = $state['name'];
+        $statename = $state["name"];
 
-        if ($state['type'] === "activeplayer") {
+        if ($state["type"] === "activeplayer") {
             switch ($statename) {
                 default:
                     $this->gamestate->nextState("zombiePass");
@@ -917,14 +1081,16 @@ class SeasOfHavoc extends Table
             return;
         }
 
-        if ($state['type'] === "multipleactiveplayer") {
+        if ($state["type"] === "multipleactiveplayer") {
             // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive($active_player, '');
+            $this->gamestate->setPlayerNonMultiactive($active_player, "");
 
             return;
         }
 
-        throw new feException("Zombie mode not supported at this game state: " . $statename);
+        throw new feException(
+            "Zombie mode not supported at this game state: " . $statename
+        );
     }
 
     ///////////////////////////////////////////////////////////////////////////////////:
@@ -966,7 +1132,5 @@ class SeasOfHavoc extends Table
         //        // Please add your future database scheme changes here
         //
         //
-
-
     }
 }

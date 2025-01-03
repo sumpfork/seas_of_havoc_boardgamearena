@@ -8,7 +8,7 @@
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
  * -----
- * 
+ *
  * states.inc.php
  *
  * SeasOfHavoc game states description
@@ -50,17 +50,15 @@
 
 //    !! It is not a good idea to modify this file when a game is running !!
 
-
-$machinestates = array(
-
+$machinestates = [
     // The initial state. Please do not modify.
-    1 => array(
+    1 => [
         "name" => "gameSetup",
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => array("" => 3)
-    ),
+        "transitions" => ["" => 3],
+    ],
     // exists only for debugging initial php setup that doesn't produce log messages
     // unless some player states have been active
     // 2 => array(
@@ -70,63 +68,62 @@ $machinestates = array(
     //      "possibleactions" => array("actExitDummyStart"),
     //      "transitions" => array("" => 3)
     // ),
-    3 => array(
+    3 => [
         "name" => "mySetup",
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => array("" => 4)
-    ),
-    4 => array(
+        "transitions" => ["" => 4],
+    ],
+    4 => [
         "name" => "islandTurn",
         "description" => clienttranslate('${actplayer} must place a skiff'),
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
-        "possibleactions" => array("actPlaceSkiff", "actResourcePickedInDialog"),
-        "transitions" => array("islandTurnDone" => 5)
-    ),
+        "possibleactions" => ["actPlaceSkiff", "actResourcePickedInDialog"],
+        "transitions" => ["islandTurnDone" => 5],
+    ],
 
-    5 => array(
+    5 => [
         "name" => "nextPlayerIslandPhase",
-        "description" => '',
+        "description" => "",
         "type" => "game",
         "action" => "stNextPlayerIslandPhase",
-        "transitions" => array("islandPhaseDone" => 6, "nextPlayer" => 4)
-    ),
+        "transitions" => ["islandPhaseDone" => 6, "nextPlayer" => 4],
+    ],
 
-    6 => array(
+    6 => [
         "name" => "cardPurchases",
         "description" => clienttranslate("Players may purchase cards"),
         "descriptionmyturn" => clienttranslate("You may purchase cards"),
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
-        "possibleactions" => array("actCompletePurchases"),
-        "transitions" => array("cardPurchasesDone" => 7)
-    ),
-    7 => array(
+        "possibleactions" => ["actCompletePurchases"],
+        "transitions" => ["cardPurchasesDone" => 7],
+    ],
+    7 => [
         "name" => "seaTurn",
         "description" => clienttranslate('${actplayer} must play a card'),
         "descriptionmyturn" => clienttranslate('${you} must play a card'),
         "type" => "activeplayer",
-        "possibleactions" => array("actPlayCard"),
-        "transitions" => array("seaTurnDone" => 8)
-    ),
+        "possibleactions" => ["actPlayCard"],
+        "transitions" => ["seaTurnDone" => 8],
+    ],
 
-    8 => array(
+    8 => [
         "name" => "nextPlayerSeaPhase",
-        "description" => '',
+        "description" => "",
         "type" => "game",
         "action" => "stNextPlayerSeaPhase",
-        "transitions" => array("seaPhaseDone" => 4, "nextPlayer" => 7)
-    ),
+        "transitions" => ["seaPhaseDone" => 4, "nextPlayer" => 7],
+    ],
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    99 => array(
+    99 => [
         "name" => "gameEnd",
         "description" => clienttranslate("End of game"),
         "type" => "manager",
         "action" => "stGameEnd",
-        "args" => "argGameEnd"
-    )
-
-);
+        "args" => "argGameEnd",
+    ],
+];
