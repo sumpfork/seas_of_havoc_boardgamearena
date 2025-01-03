@@ -61,6 +61,8 @@ $machinestates = array(
         "action" => "stGameSetup",
         "transitions" => array("" => 3)
     ),
+    // exists only for debugging initial php setup that doesn't produce log messages
+    // unless some player states have been active
     // 2 => array(
     //      "name" => "DummyStart",
     //      "description" => "only exists because debugging doesn't work in start states",
@@ -107,31 +109,16 @@ $machinestates = array(
         "descriptionmyturn" => clienttranslate('${you} must play a card'),
         "type" => "activeplayer",
         "possibleactions" => array("actPlayCard"),
-        "transitions" => array("seaTurnDone" => 5)
+        "transitions" => array("seaTurnDone" => 8)
     ),
-    /*
-    Examples:
-    
-    2 => array(
-        "name" => "nextPlayer",
+
+    8 => array(
+        "name" => "nextPlayerSeaPhase",
         "description" => '',
         "type" => "game",
-        "action" => "stNextPlayer",
-        "updateGameProgression" => true,   
-        "transitions" => array( "endGame" => 99, "nextPlayer" => 10 )
+        "action" => "stNextPlayerSeaPhase",
+        "transitions" => array("seaPhaseDone" => 4, "nextPlayer" => 7)
     ),
-    
-    10 => array(
-        "name" => "playerTurn",
-        "description" => clienttranslate('${actplayer} must play a card or pass'),
-        "descriptionmyturn" => clienttranslate('${you} must play a card or pass'),
-        "type" => "activeplayer",
-        "possibleactions" => array( "playCard", "pass" ),
-        "transitions" => array( "playCard" => 2, "pass" => 2 )
-    ), 
-
-*/
-
     // Final state.
     // Please do not modify (and do not overload action/args methods).
     99 => array(

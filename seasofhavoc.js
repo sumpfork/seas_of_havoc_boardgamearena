@@ -364,13 +364,37 @@ define([
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       dojo.place(dlg, "myhand_wrap", "first");
+      var bga = this;
+      var makeDecisionSummary = function (tree, decisionSummary) {
+        if (typeof decisionSummary === "undefined") {
+          decisionSummary = [];
+        }
+        console.log("making decision summary " + decisionSummary);
+        tree.forEach((options) => {
+          for (var option of options) {
+            console.log(option);
+            var checkbox = dom.byId(option.id);
+            console.log("checked: " + checkbox.checked);
+            if (checkbox.checked) {
+              decisionSummary.push(option.name);
+              makeDecisionSummary(option.children, decisionSummary);
+            }
+          }
+        });
+        return decisionSummary;
+      };
+      
       dojo.query(".play_card_button").connect("onclick", this, (event) => {
         console.log("play card button clicked");
         event.preventDefault();
+        var decisionSummary = makeDecisionSummary(this.dep_tree);
+        console.log("decisions");
+        console.log(decisionSummary);
+        console.log("card ")
+        console.log(card);
         this.bgaPerformAction("actPlayCard", {
-          card: card,
-          card_type: card_type,
-          choice_tree: JSON.stringify(this.dep_tree),
+          card_type: card.card_type,
+          decisions: JSON.stringify(decisionSummary),
         });
         this.dep_tree = null;
         domConstruct.destroy("card_display_dialog");
@@ -415,7 +439,7 @@ define([
                 entry = {
                   name: choice_name,
                   id: id,
-                  children: children,
+                  children: children
                 };
                 if (typeof option.cost !== "undefined") {
                   entry.cost = option.cost;
@@ -435,9 +459,9 @@ define([
               }
               if (typeof action.cost !== "undefined") {
                 tree_choices.push({
-                  name: "Skip",
+                  name: "skip",
                   id: "card_choice_" + choice_count + "_option_" + option_count,
-                  children: new Map(),
+                  children: new Map()
                 });
                 option_count++;
               }
@@ -669,8 +693,6 @@ define([
                 var div = this.market.getItemDivId(cardspec.id);
                 console.log(div);
                 console.log("children");
-                var test = query("#" + div);
-                console.log(test.children(".skiff_slot")[0]);
                 //console.log(query(div));
                 var slotnum = attr.get(
                   query("#" + div).children(".skiff_slot")[0],
@@ -684,7 +706,7 @@ define([
                 }
               }
               if (slot_card === null) {
-                return;
+                continue;
               }
               var card = this.playable_cards[slot_card.type];
               console.log(card);
@@ -713,11 +735,14 @@ define([
                 dojo.addClass(button_id, "bgabutton_disabled");
                 dojo.addClass(button_id, "disabled");
                 dojo.html.set(button_id, "Cannot Afford");
+                if (typeof this.purchase_handler === "undefined") {
+                  this.purchase_handler.remove();
+                }
               } else {
                 console.log(
                   "connecting purchase handler to " + dojo.query(button_id)
                 );
-                on(
+                this.purchase_handler = on(
                   dom.byId(button_id),
                   "click",
                   lang.hitch(this, "onClickPurchaseButton")
@@ -957,6 +982,7 @@ define([
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
       dojo.subscribe("newHand", this, "notifyNewHand");
+      dojo.subscribe("shipMove", this, "notifyShipMove");
 
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -1079,6 +1105,13 @@ define([
         );
       }
     },
+    notifyShipMove: function(notif) {
+      console.log("notified ship move");
+      console.log(notif);
+      var shipid = "player_ship_" + notif.args.player_id;
+      var target_id = "seaboardlocation_" + notif.args.new_x + "_" + notif.args.new_y;
+      this.slideToObject(shipid, target_id, 10 ).play();
+    }
     /*
         Example:
         

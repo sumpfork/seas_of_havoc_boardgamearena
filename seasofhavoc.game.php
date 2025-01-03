@@ -33,6 +33,8 @@ class SeaBoard
     const EAST = 2;
     const SOUTH = 3;
     const WEST = 4;
+    const NORTHEAST = 6;
+    const NORTHWEST = 7;
 
     private array | null $contents;
     private string $sqlfunc;
@@ -88,12 +90,73 @@ class SeaBoard
         });
     }
 
+    public function findObject($type, $arg)
+    {
+        for ($x = 0; $x < self::WIDTH; $x++) {
+            for ($y = 0; $y < self::HEIGHT; $y++) {
+                $objects = $this->getObjectsOfTypes($x, $y, [$type]);
+                #return array_find($objects, fn($o) => $o["arg"] == $arg);
+                foreach ($objects as $o) {
+                    if ($o["arg"] == $arg) {
+                        return ["x" => $x, "y" => $y, "object" => $o];
+                    }
+                }
+            }
+        }
+    }
+
+    public function moveObjectForward(string $object_type, string $arg, array $collision_types)
+    {
+        $object_info = $this->findObject($object_type, $arg);
+        $new_x = $object_info["x"];
+        $new_y = $object_info["y"];
+        switch ($object_info["heading"]) {
+            case self::NORTH:
+                $new_y++;
+                if ($new_y == self::HEIGHT) {
+                    $new_y = 0;
+                }
+                break;
+            case self::EAST:
+                $new_x++;
+                if ($new_x == self::WIDTH) {
+                    $new_x = 0;
+                }
+                break;
+            case self::WEST:
+                $new_x--;
+                if ($new_x == -1) {
+                    $new_x = self::WIDTH - 1;
+                }
+                break;
+            case self::WEST:
+                $new_y--;
+                if ($new_y == -1) {
+                    $new_y = self::HEIGHT - 1;
+                }
+                break;
+        }
+        $collided = $this->getObjectsOfTypes($new_x, $new_y, $collision_types);
+        if (count($collided) == 0) {
+            $this->removeObject($object_info["x"], $object_info["y"], $object_info["type"], $object_info["arg"]);
+            $this->placeObject($new_x, $new_y, $object_info["object"]);
+            return ["colliders" => $collided, "new_x" => $new_x, "new_y" => $new_y];
+        }
+        return ["colliders" => $collided, "new_x" => $object_info["x"], "new_y" => object_info["y"]];
+    }
+
     public function placeObject(int $x, int $y, array $object)
     {
         assert($x >= 0 && $x < self::WIDTH);
         assert($y >= 0 && $y < self::HEIGHT);
         $this->syncFromDB();
         $this->contents[$x][$y][] = $object;
+        $this->syncToDB();
+    }
+
+    public function removeObject(int $x, int $y, string $object_type, string $arg)
+    {
+        $this->contents[$x][$y] = array_filter($this->contents[$x][$y], fn($o) => $o["type"] != $object_type || $o["arg"] != $arg);
         $this->syncToDB();
     }
 
@@ -378,6 +441,14 @@ class SeasOfHavoc extends Table
         $this->gamestate->setAllPlayersMultiactive();
     }
 
+    function stNextPlayerSeaPhase()
+    {
+        $active_player = $this->activeNextPlayer();
+        $this->giveExtraTime($active_player);
+        $this->gamestate->nextState("nextPlayer");
+
+    }
+
     /*
         getAllDatas: 
         
@@ -576,7 +647,8 @@ class SeasOfHavoc extends Table
         #php 8.4: return array_any($result, fn($value): bool => $value < 0);
         return array_reduce($result, fn($carry, $value): bool => !$carry ? false : $value > 0, true);
     }
-    function pay($player_id, $cost) {
+    function pay($player_id, $cost)
+    {
         assert($this->canPayFor($cost, $this->getGameResources($player_id)));
         $cost = $this->makeCostNegative($cost);
         $this->playerGainResources($player_id, $cost);
@@ -692,7 +764,8 @@ class SeasOfHavoc extends Table
         }
     }
 
-    function actCompletePurchases(#[JsonParam] array $cards_purchased) {
+    function actCompletePurchases(#[JsonParam] array $cards_purchased)
+    {
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
         foreach ($cards_purchased as $card_id) {
@@ -703,13 +776,39 @@ class SeasOfHavoc extends Table
             $this->pay($player_id, $market_card["cost"]);
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
-        $this->gamestate->setPlayerNonMultiactive( $player_id, "cardPurchasesDone" );
+        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
 
-    function actPlayCard(string $card, string $card_type, #[JsonParam] $choice_tree) {
-        $this->dump("card", $card);
+    function actPlayCard(int $card_type, #[JsonParam] $decisions)
+    {
         $this->dump("card_type", $card_type);
-        $this->dump("dep tree", $choice_tree);
+        $this->dump("decisions", $decisions);
+        $card_spec = $this->cards->getCard($card_type);
+        $this->dump("card spec played", $card_spec);
+        $card = $this->playable_cards[$card_spec["type"]];
+        $this->dump("card played", $card);
+        $choice_count = 0;
+        $player_id = $this->getActivePlayerId();
+
+        foreach ($card["actions"] as $action) {
+            switch ($action["action"]) {
+                case "forward":
+                    $outcome = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                    if (count($outcome["colliders"]) == 0) {
+                        $this->notifyAllPlayers(
+                            "shipMove",
+                            clienttranslate('${player_name} moves forward'),
+                            array(
+                                'player_id' => $player_id,
+                                'new_x' => $outcome['new_x'],
+                                'new_y' => $outcome['new_y']
+                            )
+                        );
+                        break;
+                    }
+            }
+        }
+        $this->gamestate->nextState();
     }
     /*
     
