@@ -26,13 +26,16 @@ class SeaBoard
     const WIDTH = 5;
     const HEIGHT = 5;
 
+    # headings
     const NO_HEADING = 0;
     const NORTH = 1;
     const EAST = 2;
     const SOUTH = 3;
     const WEST = 4;
-    const NORTHEAST = 6;
-    const NORTHWEST = 7;
+
+    const LEFT = 0;
+    const RIGHT = 1;
+    const AROUND = 2;
 
     private array|null $contents;
     private string $sqlfunc;
@@ -113,29 +116,39 @@ class SeaBoard
         $object = $object_info["object"];
         $this->bga->dump("object being moved forward", $object_info);
         #$this->bga->trace("heading: " . $object_info["heading"]);
+        $teleport_at = null;
+        $teleport_to = null;
         switch (intval($object["heading"])) {
             case self::NORTH:
-                $new_y++;
-                if ($new_y == self::HEIGHT) {
-                    $new_y = 0;
+                $new_y--;
+                if ($new_y == -1) {
+                    $teleport_at = ["x" => $new_x, "y" => $new_y];
+                    $teleport_to = ["x" => $new_x, "y" => self::HEIGHT];
+                    $new_y = self::HEIGHT - 1;
                 }
                 break;
             case self::EAST:
                 $new_x++;
                 if ($new_x == self::WIDTH) {
+                    $teleport_at = ["x" => $new_x, "y" => $new_y];
+                    $teleport_to = ["x" => -1, "y" => $new_y];
                     $new_x = 0;
                 }
                 break;
             case self::WEST:
                 $new_x--;
                 if ($new_x == -1) {
+                    $teleport_at = ["x" => $new_x, "y" => $new_y];
+                    $teleport_to = ["x" => self::WIDTH, "y" => $new_y];
                     $new_x = self::WIDTH - 1;
                 }
                 break;
-            case self::WEST:
-                $new_y--;
-                if ($new_y == -1) {
-                    $new_y = self::HEIGHT - 1;
+            case self::SOUTH:
+                $new_y++;
+                if ($new_y == self::HEIGHT) {
+                    $teleport_at = ["x" => $new_x, "y" => $new_y];
+                    $teleport_to = ["x" => $new_x, "y" => -1];
+                    $new_y = 0;
                 }
                 break;
         }
@@ -147,13 +160,44 @@ class SeaBoard
                 "colliders" => $collided,
                 "new_x" => $new_x,
                 "new_y" => $new_y,
+                "teleport_at" => $teleport_at,
+                "teleport_to" => $teleport_to,
             ];
         }
         return [
+            "type" => "move",
             "colliders" => $collided,
             "new_x" => $object_info["x"],
             "new_y" => $object_info["y"],
+            "teleport_at" => $teleport_at,
+            "teleport_to" => $teleport_to,
         ];
+    }
+
+    public function turnObject(string $object_type, string $arg, int $direction)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject($object_type, $arg);
+        $object = $object_info["object"];
+        $new_heading = $object["heading"];
+
+        switch ($direction) {
+            case self::LEFT:
+                $new_heading -= 1;
+                if ($new_heading == self::NO_HEADING) {
+                    $new_heading = self::WEST;
+                }
+                break;
+            case self::RIGHT:
+            # fallthrough
+            case self::AROUND:
+                $new_heading += $direction == self::RIGHT ? 1 : 2;
+                if ($new_heading > self::WEST) {
+                    $new_heading -= 4;
+                }
+                break;
+        }
+        return ["type" => "turn", "new_heading" => $new_heading];
     }
 
     public function placeObject(int $x, int $y, array $object)
@@ -243,9 +287,12 @@ class SeasOfHavoc extends Table
     //private $resource_types;
 
     private SeaBoard $seaboard;
-    //private array $starting_cards;
-    private array $all_cards;
+    private array $starting_cards;
+    //private array $all_cards;
     private $cards;
+    private array $market_cards;
+    private array $playable_cards;
+    private array $resource_types;
 
     function __construct()
     {
@@ -256,6 +303,8 @@ class SeasOfHavoc extends Table
         //  the corresponding ID in gameoptions.inc.php.
         // Note: afterwards, you can get/set the global variables with getGameStateValue/setGameStateInitialValue/setGameStateValue
         parent::__construct();
+
+        require "modules/material.inc.php";
 
         self::initGameStateLabels([
             //    "my_first_global_variable" => 10,
@@ -863,25 +912,30 @@ class SeasOfHavoc extends Table
         $choice_count = 0;
         $player_id = $this->getActivePlayerId();
 
+        $moveChain = [];
+
         foreach ($card["actions"] as $action) {
             switch ($action["action"]) {
                 case "forward":
-                    $this->seaboard->syncFromDB();
-                    $this->seaboard->dump();
-                    $this->trace("player id:" . $player_id);
-                    $this->dump("get objects", $this->seaboard->getObjectsOfTypes(3, 1, ["player_ship"]));
-                    $this->dump("find objects", $this->seaboard->findObject("player_ship", $player_id));
                     $outcome = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                     if (count($outcome["colliders"]) == 0) {
-                        $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves forward'), [
-                            "player_name" => self::getActivePlayerName(),
-                            "player_id" => $player_id,
-                            "new_x" => $outcome["new_x"],
-                            "new_y" => $outcome["new_y"],
-                        ]);
-                        break;
+                        $moveChain[] = $outcome;
                     }
+                    break;
+                case "left":
+                    $outcome = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::LEFT);
+                    $moveChain[] = $outcome;
+                    break;
+                case "right":
+                    $outcome = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::RIGHT);
+                    $moveChain[] = $outcome;
+                    break;
             }
+            $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves forward'), [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+                "moveChain" => $moveChain,
+            ]);
         }
         $this->gamestate->nextState();
     }

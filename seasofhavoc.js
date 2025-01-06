@@ -15,6 +15,13 @@
  *
  */
 
+//could maybe share these via bga mechanisms
+//but it's awkward, these have to match the php versions though
+const NORTH = 1;
+const EAST = 2;
+const SOUTH = 3;
+const WEST = 4;
+
 define([
   "dojo",
   "dojo/_base/declare",
@@ -26,23 +33,14 @@ define([
   "dojo/dom-attr",
   "dojo/_base/lang",
   "dojo/query",
+  "dojo/_base/fx",
+  "dojo/fx",
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (
-  dojo,
-  declare,
-  on,
-  dom,
-  domClass,
-  domConstruct,
-  domstyle,
-  attr,
-  lang,
-  query
-) {
+], function (dojo, declare, on, dom, domClass, domConstruct, domstyle, attr, lang, query, baseFX, fx) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -51,16 +49,31 @@ define([
       // Example:
       // this.myGlobalValue = 0;
     },
-
+    getRotationDegrees: function(direction) {
+      //assume west is 0
+      let deg = 0;
+      switch (Number(direction)){
+        case NORTH:
+          deg = 90;
+          break;
+        case EAST:
+          deg = 180;
+          break;
+        case SOUTH:
+          deg = 270;
+          break;
+      }
+      console.log(deg + " degrees");
+      return deg;
+    },
     updateResources: function (resources) {
       console.log("updating resources");
       console.log(resources);
       for (const resource of resources) {
         console.log(resource);
         console.log(`${resource.resource_key}count_p${resource.player_id}`);
-        document.getElementById(
-          `${resource["resource_key"]}count_p${resource["player_id"]}`
-        ).innerText = resource.resource_count;
+        document.getElementById(`${resource["resource_key"]}count_p${resource["player_id"]}`).innerText =
+          resource.resource_count;
       }
     },
 
@@ -114,14 +127,10 @@ define([
           if (!Object.hasOwn(resource_cost, resource.resource_key)) {
             continue;
           }
-          var diff =
-            resource.resource_count - resource_cost[resource.resource_key];
+          var diff = resource.resource_count - resource_cost[resource.resource_key];
           console.log("diff for " + resource.resource_key + ": " + diff);
           if (diff < 0) {
-            this.showMessage(
-              _("Player tried to spend more than they have"),
-              "error"
-            );
+            this.showMessage(_("Player tried to spend more than they have"), "error");
           }
           resource.resource_count = diff;
         }
@@ -141,15 +150,7 @@ define([
       for (const [resource_key, num] of Object.entries(resource_cost)) {
         var player_has = playerResources[resource_key] || 0;
         if (player_has - num < 0) {
-          console.log(
-            "not enough " +
-              resource_key +
-              " (" +
-              player_has +
-              " vs " +
-              num +
-              ")"
-          );
+          console.log("not enough " + resource_key + " (" + player_has + " vs " + num + ")");
           return false;
         }
       }
@@ -197,60 +198,29 @@ define([
 
       this.cards_purchased = [];
 
-      dojo.connect(
-        this.playerHand,
-        "onChangeSelection",
-        this,
-        "onCardSelectedPlayerHand"
-      );
+      dojo.connect(this.playerHand, "onChangeSelection", this, "onCardSelectedPlayerHand");
       for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
-        console.log(
-          "adding card type: " +
-            card.card_type +
-            " img id: " +
-            card.image_id +
-            " to hand/market stock"
-        );
-        this.playerHand.addItemType(
-          card.card_type,
-          0,
-          g_gamethemeurl + "img/playable_cards.jpg",
-          card.image_id
-        );
-        this.market.addItemType(
-          card.card_type,
-          0,
-          g_gamethemeurl + "img/playable_cards.jpg",
-          card.image_id
-        );
+        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market stock");
+        this.playerHand.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
+        this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
       }
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
-        console.log(
-          "adding card type: " +
-            card.type +
-            " id: " +
-            card.id +
-            " to player hand"
-        );
+        console.log("adding card type: " + card.type + " id: " + card.id + " to player hand");
         this.playerHand.addToStockWithId(card.type, card.id);
       }
       var slotno = 1;
       for (var card_id in gamedatas.market) {
         var card = this.gamedatas.market[card_id];
-        console.log(
-          "adding card type: " + card.type + " id: " + card.id + " to market"
-        );
+        console.log("adding card type: " + card.type + " id: " + card.id + " to market");
         this.market.addToStockWithId(card.type, card.id);
         var card_div = this.market.getItemDivId(card.id);
         attr.set(card_div, "data-slotnumber", "n" + slotno);
         attr.set(card_div, "data-cardid", card.id);
 
         // stick a buy skiff slot on it
-        var skiff_slot = dojo.query(
-          `.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`
-        )[0];
+        var skiff_slot = dojo.query(`.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`)[0];
         dojo.place(skiff_slot, card_div);
         slotno++;
       }
@@ -269,7 +239,7 @@ define([
           this.format_block("jstpl_resources_playerboard", {
             player_id: player.id,
             skiff: skiff,
-          })
+          }),
         );
       }
 
@@ -280,8 +250,8 @@ define([
       this.updateResources(gamedatas.resources);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
 
-      for (var x = 0; x < 6; x++) {
-        for (var y = 0; y < 6; y++) {
+      for (var x = -1; x <= 6; x++) {
+        for (var y = -1; y <= 6; y++) {
           var id = "seaboardlocation_" + x + "_" + y;
           var location = this.format_block("jstpl_seaboard_location", {
             id: id,
@@ -308,19 +278,7 @@ define([
             dojo.place(ship, "seaboard");
             console.log(target_id);
             this.placeOnObject(shipid, target_id);
-            console.log(entry.heading);
-            switch (entry.heading) {
-              case "1":
-                domstyle.set(shipid, "rotate", "90deg");
-                console.log("NORTH!");
-                break;
-              case "2":
-                dojo.attr(shipid, "transform", "scaleX(-1)");
-                break;
-              case "3":
-                dojo.attr(shipid, "rotate", "-90deg");
-                break;
-            }
+            domstyle.set(shipid, "rotate", this.getRotationDegrees(entry.heading) + "deg");
           //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
@@ -328,10 +286,7 @@ define([
       this.setupNotifications();
 
       var skiffslot_class = dojo.query(".skiff_slot");
-      var handlers = skiffslot_class.on(
-        "click",
-        lang.hitch(this, "onClickSkiffSlot")
-      );
+      var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
 
       //this.showDummyDialog();
       console.log("Ending game setup");
@@ -383,14 +338,14 @@ define([
         });
         return decisionSummary;
       };
-      
+
       dojo.query(".play_card_button").connect("onclick", this, (event) => {
         console.log("play card button clicked");
         event.preventDefault();
         var decisionSummary = makeDecisionSummary(this.dep_tree);
         console.log("decisions");
         console.log(decisionSummary);
-        console.log("card ")
+        console.log("card ");
         console.log(card);
         this.bgaPerformAction("actPlayCard", {
           card_type: card.card_type,
@@ -402,11 +357,7 @@ define([
       var dlg_dom = dom.byId("card_display_dialog");
       var existing_card_dom = dom.byId(card_type);
       //var card_pos = dojo.position(existing_card_dom);
-      dojo.style(
-        dlg_dom,
-        "left",
-        `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`
-      );
+      dojo.style(dlg_dom, "left", `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`);
       var new_card_dom = dojo.clone(existing_card_dom);
       attr.set(new_card_dom, "id", "tmp_display_card");
 
@@ -430,16 +381,12 @@ define([
               var tree_choices = [];
               for (const option of action.choices) {
                 var choice_name = option.name || option.action;
-                var id =
-                  "card_choice_" + choice_count + "_option_" + option_count;
-                children = make_card_dependency_tree(
-                  [option],
-                  choice_count + num_descendant_choices + 1
-                );
+                var id = "card_choice_" + choice_count + "_option_" + option_count;
+                children = make_card_dependency_tree([option], choice_count + num_descendant_choices + 1);
                 entry = {
                   name: choice_name,
                   id: id,
-                  children: children
+                  children: children,
                 };
                 if (typeof option.cost !== "undefined") {
                   entry.cost = option.cost;
@@ -461,7 +408,7 @@ define([
                 tree_choices.push({
                   name: "skip",
                   id: "card_choice_" + choice_count + "_option_" + option_count,
-                  children: new Map()
+                  children: new Map(),
                 });
                 option_count++;
               }
@@ -470,10 +417,7 @@ define([
               choice_count += num_descendant_choices;
               break;
             case "sequence":
-              children = make_card_dependency_tree(
-                action.actions,
-                choice_count
-              );
+              children = make_card_dependency_tree(action.actions, choice_count);
               children.forEach((value, key) => {
                 tree.set(key, value);
               });
@@ -522,11 +466,9 @@ define([
                 name: choice_id,
                 value: option.name,
                 label: option.name,
-              })
+              }),
             );
-            rendered_choices = rendered_choices.concat(
-              render_rows(option.children, row_number + 1)
-            );
+            rendered_choices = rendered_choices.concat(render_rows(option.children, row_number + 1));
           }
           var choice_html = bga.format_block("jstpl_card_choices_row", {
             row_number: row_number + ".",
@@ -578,11 +520,7 @@ define([
               domstyle.set(checkbox.parentNode.parentNode, "display", "none");
               showHideControls(option.children, true, totalCost);
             } else {
-              domstyle.set(
-                checkbox.parentNode.parentNode,
-                "display",
-                "inline-block"
-              );
+              domstyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
               if (typeof option.cost !== "undefined") {
                 console.log("option cost:");
                 console.log(option.cost);
@@ -618,13 +556,8 @@ define([
             var checkbox = dom.byId(option.id);
             console.log("starting to check option:");
             console.log(option);
-            console.log(
-              "parent display: " +
-                domstyle.get(checkbox.parentNode.parentNode, "display")
-            );
-            if (
-              domstyle.get(checkbox.parentNode.parentNode, "display") != "none"
-            ) {
+            console.log("parent display: " + domstyle.get(checkbox.parentNode.parentNode, "display"));
+            if (domstyle.get(checkbox.parentNode.parentNode, "display") != "none") {
               console.log("checking children:");
               console.log(option.children);
               if (!checkIsCardReadyToBePlayed(option.children)) {
@@ -694,10 +627,7 @@ define([
                 console.log(div);
                 console.log("children");
                 //console.log(query(div));
-                var slotnum = attr.get(
-                  query("#" + div).children(".skiff_slot")[0],
-                  "data-number"
-                );
+                var slotnum = attr.get(query("#" + div).children(".skiff_slot")[0], "data-number");
                 console.log("slotnum " + slotnum);
                 if (slotnum == number) {
                   slot_card = cardspec;
@@ -711,22 +641,14 @@ define([
               var card = this.playable_cards[slot_card.type];
               console.log(card);
               if (create) {
-                var purchase_button = this.format_block(
-                  "jstpl_card_purchase_button",
-                  {
-                    id: button_id,
-                    slotnumber: slotnum,
-                  }
-                );
+                var purchase_button = this.format_block("jstpl_card_purchase_button", {
+                  id: button_id,
+                  slotnumber: slotnum,
+                });
                 var card_div = this.market.getItemDivId(slot_card.id);
                 //dojo.place(purchase_button, "skiff_slot_" + slot + "_" + number);
                 console.log(card_div);
-                console.log(
-                  "placing on " +
-                    card_div +
-                    " card purchase button: " +
-                    purchase_button
-                );
+                console.log("placing on " + card_div + " card purchase button: " + purchase_button);
                 dojo.place(purchase_button, card_div);
               }
               if (!this.canPlayerAfford(card.cost)) {
@@ -739,14 +661,8 @@ define([
                   this.purchase_handler.remove();
                 }
               } else {
-                console.log(
-                  "connecting purchase handler to " + dojo.query(button_id)
-                );
-                this.purchase_handler = on(
-                  dom.byId(button_id),
-                  "click",
-                  lang.hitch(this, "onClickPurchaseButton")
-                );
+                console.log("connecting purchase handler to " + dojo.query(button_id));
+                this.purchase_handler = on(dom.byId(button_id), "click", lang.hitch(this, "onClickPurchaseButton"));
               }
             }
           }
@@ -770,11 +686,7 @@ define([
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
-      this.playerHand.addToStockWithId(
-        slot_card.type,
-        slot_card.id,
-        this.market.getItemDivId(slot_card.id)
-      );
+      this.playerHand.addToStockWithId(slot_card.type, slot_card.id, this.market.getItemDivId(slot_card.id));
       this.market.removeFromStockById(slot_card.id);
       this.updateCardPurchaseButtons(false);
       this.cards_purchased.push(slot_card.id);
@@ -894,7 +806,7 @@ define([
             this.addActionButton(
               "complete_purchase_phase_button",
               _("Complete Purchases"),
-              "onCompletePurchasesClicked"
+              "onCompletePurchasesClicked",
             );
         }
       }
@@ -974,11 +886,7 @@ define([
       console.log("notifications subscriptions setup");
 
       // TODO: here, associate your game notifications with local methods
-      dojo.subscribe(
-        "showResourceChoiceDialog",
-        this,
-        "notifShowResourceChoiceDialog"
-      );
+      dojo.subscribe("showResourceChoiceDialog", this, "notifShowResourceChoiceDialog");
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
       dojo.subscribe("newHand", this, "notifyNewHand");
@@ -1019,14 +927,7 @@ define([
         var context = notif.args.context;
         var number = notif.args.context_number;
 
-        console.log(
-          "resource picked " +
-            source.dataset.resource +
-            " context: " +
-            context +
-            " number: " +
-            number
-        );
+        console.log("resource picked " + source.dataset.resource + " context: " + context + " number: " + number);
 
         event.preventDefault();
         if (source.dataset.resource != null) {
@@ -1071,16 +972,14 @@ define([
         player_color: notif.args.player_color,
         id: skiff_id,
       });
-      var skiff_slot = dojo.query(
-        `.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`
-      )[0];
+      var skiff_slot = dojo.query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
       console.log("skiff slot:");
       console.log(skiff_slot);
 
       dojo.place(
         skiff,
         //"skiff_slot" + postfix
-        skiff_slot
+        skiff_slot,
       );
       this.placeOnObject(skiff_id, player_board_id);
       dojo.style(skiff_id, "zIndex", 1);
@@ -1088,7 +987,7 @@ define([
         skiff_id,
         //"skiff_slot" + postfix,
         skiff_slot,
-        1000
+        1000,
       ).play();
       dojo.removeClass(skiff_slot, "unoccupied");
     },
@@ -1099,19 +998,49 @@ define([
         var card = notif.args.cards[i];
         var color = card.type;
         var value = card.type_arg;
-        this.playerHand.addToStockWithId(
-          this.getCardUniqueId(color, value),
-          card.id
-        );
+        this.playerHand.addToStockWithId(this.getCardUniqueId(color, value), card.id);
       }
     },
-    notifyShipMove: function(notif) {
+    notifyShipMove: function (notif) {
       console.log("notified ship move");
-      console.log(notif);
+      console.log(notif.args);
       var shipid = "player_ship_" + notif.args.player_id;
-      var target_id = "seaboardlocation_" + notif.args.new_x + "_" + notif.args.new_y;
-      this.slideToObject(shipid, target_id, 10 ).play();
-    }
+
+      var anims = [];
+      for (var move of notif.args.moveChain) {
+        console.log("processing move");
+        console.log(move);
+        switch (move.type) {
+          case "move": {
+            if (move.teleport_at != null) {
+              var target_id = "seaboardlocation_" + move.teleport_at.x + "_" + move.teleport_at.y;
+              anims.push(this.slideToObject(shipid, target_id, 1000));
+              target_id = "seaboardlocation_" + move.teleport_to.x + "_" + move.teleport_to.y;
+              anims.push(this.slideToObject(shipid, target_id, 0));
+            }
+            var target_id = "seaboardlocation_" + move.new_x + "_" + move.new_y;
+            anims.push(this.slideToObject(shipid, target_id, 1000));
+            break;
+          }
+          case "turn": {
+            switch (move.new_heading) {
+              case "1":
+                //anim = baseFX.animateProperty({node: shipid, properties})
+                domstyle.set(shipid, "rotate", "90deg");
+                break;
+              case "2":
+                dojo.attr(shipid, "transform", "scaleX(-1)");
+                break;
+              case "3":
+                dojo.attr(shipid, "rotate", "-90deg");
+                break;
+            }
+          }
+        }
+      }
+      console.log(anims);
+      fx.chain(anims).play();
+    },
     /*
         Example:
         
