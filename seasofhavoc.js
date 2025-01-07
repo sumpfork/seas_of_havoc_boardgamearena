@@ -66,6 +66,13 @@ define([
       console.log(deg + " degrees");
       return deg;
     },
+    getObjectOnSeaboard: function(object_type, arg) {
+      for (const entry of this.seaboard) {
+        if (entry.type == object_type && entry.arg == arg) {
+          return entry;
+        }
+      }
+    },
     updateResources: function (resources) {
       console.log("updating resources");
       console.log(resources);
@@ -264,6 +271,7 @@ define([
         }
       }
 
+      this.seaboard = gamedatas.seaboard;
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
@@ -326,12 +334,13 @@ define([
         }
         console.log("making decision summary " + decisionSummary);
         tree.forEach((options) => {
-          for (var option of options) {
+          for (let i = 0; i < options.length; i++) {
+            let option = options[i];
             console.log(option);
             var checkbox = dom.byId(option.id);
             console.log("checked: " + checkbox.checked);
             if (checkbox.checked) {
-              decisionSummary.push(option.name);
+              decisionSummary.push(i);
               makeDecisionSummary(option.children, decisionSummary);
             }
           }
@@ -1023,18 +1032,15 @@ define([
             break;
           }
           case "turn": {
-            switch (move.new_heading) {
-              case "1":
-                //anim = baseFX.animateProperty({node: shipid, properties})
-                domstyle.set(shipid, "rotate", "90deg");
-                break;
-              case "2":
-                dojo.attr(shipid, "transform", "scaleX(-1)");
-                break;
-              case "3":
-                dojo.attr(shipid, "rotate", "-90deg");
-                break;
-            }
+            let player_ship = this.getObjectOnSeaboard("player_ship", this.player_id);
+            let current_deg = this.getRotationDegrees(player_ship.heading);
+            let target_deg = this.getRotationDegrees(move.new_heading);
+            let anim = new baseFX.Animation({
+              curve: [current_deg, target_deg],
+              onAnimate: function (v) {domstyle.set(shipid, "rotate", v + "deg");}
+            });
+            console.log(anim);
+            anims.push(anim);
           }
         }
       }

@@ -157,6 +157,7 @@ class SeaBoard
             $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
             $this->placeObject($new_x, $new_y, $object);
             return [
+                "type" => "move",
                 "colliders" => $collided,
                 "new_x" => $new_x,
                 "new_y" => $new_y,
@@ -197,6 +198,10 @@ class SeaBoard
                 }
                 break;
         }
+        $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
+        $object["heading"] = $new_heading;
+        $this->placeObject($object_info["x"], $object_info["y"], $object);
+
         return ["type" => "turn", "new_heading" => $new_heading];
     }
 
@@ -903,6 +908,52 @@ class SeasOfHavoc extends Table
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
 
+    function processSimpleAction(string $action_type)
+    {
+        $player_id = $this->getActivePlayerId();
+        $outcome = [];
+        switch ($action_type) {
+            case "forward":
+                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                break;
+            case "left":
+                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::LEFT);
+                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                break;
+            case "right":
+                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::RIGHT);
+                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                break;
+        }
+        return $outcome;
+    }
+
+    function processCardActions(array $actions, array $decisions) {
+        //TODO: check for collisions everywhere
+        $to_send = [];
+        $this->trace("processing card actions");
+        $this->dump("actions", $actions);
+        foreach ($actions as $action) {
+            switch ($action["action"]) {
+                case "sequence": {
+                    $to_send += $this->processCardActions($action["actions"], $decisions);
+                    break;
+                }
+                case "choice": {
+                    $decision = array_shift($decisions);
+                    $choices = $action["choices"];
+                    $to_send += $this->processCardActions([$choices[array_keys($choices)[$decision]]], $decisions);
+                    break;
+                }
+                default:
+                    $to_send += $this->processSimpleAction($action["action"]);
+            }
+        }
+        return $to_send;
+    }
+
     function actPlayCard(int $card_type, #[JsonParam] $decisions)
     {
         $this->dump("card_type", $card_type);
@@ -914,29 +965,15 @@ class SeasOfHavoc extends Table
 
         $moveChain = [];
 
-        foreach ($card["actions"] as $action) {
-            switch ($action["action"]) {
-                case "forward":
-                    $outcome = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                    if (count($outcome["colliders"]) == 0) {
-                        $moveChain[] = $outcome;
-                    }
-                    break;
-                case "left":
-                    $outcome = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::LEFT);
-                    $moveChain[] = $outcome;
-                    break;
-                case "right":
-                    $outcome = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::RIGHT);
-                    $moveChain[] = $outcome;
-                    break;
-            }
-            $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves forward'), [
-                "player_name" => self::getActivePlayerName(),
-                "player_id" => $player_id,
-                "moveChain" => $moveChain,
-            ]);
-        }
+        $moveChain = $this->processCardActions($card["actions"], $decisions);
+        // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
+        //     $moveChain[] = $outcome;
+        // }
+        $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves forward'), [
+            "player_name" => self::getActivePlayerName(),
+            "player_id" => $player_id,
+            "moveChain" => $moveChain,
+        ]);
         $this->gamestate->nextState();
     }
     /*
