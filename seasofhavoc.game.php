@@ -199,6 +199,7 @@ class SeaBoard
                 break;
         }
         $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
+        $this->bga->trace("changing heading from " . $object["heading"] . " to " . $new_heading . " due to " . $direction . " turn");
         $object["heading"] = $new_heading;
         $this->placeObject($object_info["x"], $object_info["y"], $object);
 

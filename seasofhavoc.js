@@ -1035,8 +1035,15 @@ define([
             let player_ship = this.getObjectOnSeaboard("player_ship", this.player_id);
             let current_deg = this.getRotationDegrees(player_ship.heading);
             let target_deg = this.getRotationDegrees(move.new_heading);
+            let diff = Math.abs(target_deg - current_deg);
+            let curve = [current_deg, target_deg];
+            console.log("target: " + target_deg + " current: " + current_deg + " diff: " + diff);
+            if (diff > 180) {
+              curve = [current_deg, -(360-target_deg)];
+              console.log("adjusted target to: " + -(360-target_deg));
+            }
             let anim = new baseFX.Animation({
-              curve: [current_deg, target_deg],
+              curve: curve,
               onAnimate: function (v) {domstyle.set(shipid, "rotate", v + "deg");}
             });
             console.log(anim);
