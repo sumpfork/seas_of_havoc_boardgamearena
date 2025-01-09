@@ -146,6 +146,9 @@
 
 .seaboardlocation {
     position: relative;
+    background-color: red;
+    width: 1px;
+    height: 1px;
 }
 #card_display_dialog {
     width: 350px;

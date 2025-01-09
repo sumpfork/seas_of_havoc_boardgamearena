@@ -23,8 +23,8 @@ use Bga\GameFramework\Actions\Types\JsonParam;
 
 class SeaBoard
 {
-    const WIDTH = 5;
-    const HEIGHT = 5;
+    const WIDTH = 6;
+    const HEIGHT = 6;
 
     # headings
     const NO_HEADING = 0;
@@ -153,26 +153,31 @@ class SeaBoard
                 break;
         }
         $collided = $this->getObjectsOfTypes($new_x, $new_y, $collision_types);
-        if (count($collided) == 0) {
-            $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
-            $this->placeObject($new_x, $new_y, $object);
-            return [
-                "type" => "move",
-                "colliders" => $collided,
-                "new_x" => $new_x,
-                "new_y" => $new_y,
-                "teleport_at" => $teleport_at,
-                "teleport_to" => $teleport_to,
-            ];
-        }
+        //if (count($collided) == 0) {
+        $old_x = $object_info["x"];
+        $old_y = $object_info["y"];
+
+        $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
+        $this->placeObject($new_x, $new_y, $object);
         return [
             "type" => "move",
             "colliders" => $collided,
-            "new_x" => $object_info["x"],
-            "new_y" => $object_info["y"],
+            "old_x" => $old_x,
+            "old_y" => $old_y,
+            "new_x" => $new_x,
+            "new_y" => $new_y,
             "teleport_at" => $teleport_at,
             "teleport_to" => $teleport_to,
         ];
+        //}
+        // return [
+        //     "type" => "move",
+        //     "colliders" => $collided,
+        //     "new_x" => $object_info["x"],
+        //     "new_y" => $object_info["y"],
+        //     "teleport_at" => $teleport_at,
+        //     "teleport_to" => $teleport_to,
+        // ];
     }
 
     public function turnObject(string $object_type, string $arg, int $direction)
@@ -181,6 +186,7 @@ class SeaBoard
         $object_info = $this->findObject($object_type, $arg);
         $object = $object_info["object"];
         $new_heading = $object["heading"];
+        $old_heading = $object["heading"];
 
         switch ($direction) {
             case self::LEFT:
@@ -199,11 +205,13 @@ class SeaBoard
                 break;
         }
         $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
-        $this->bga->trace("changing heading from " . $object["heading"] . " to " . $new_heading . " due to " . $direction . " turn");
+        $this->bga->trace(
+            "changing heading from " . $object["heading"] . " to " . $new_heading . " due to " . $direction . " turn",
+        );
         $object["heading"] = $new_heading;
         $this->placeObject($object_info["x"], $object_info["y"], $object);
 
-        return ["type" => "turn", "new_heading" => $new_heading];
+        return ["type" => "turn", "old_heading" => $old_heading, "new_heading" => $new_heading];
     }
 
     public function placeObject(int $x, int $y, array $object)
@@ -931,23 +939,22 @@ class SeasOfHavoc extends Table
         return $outcome;
     }
 
-    function processCardActions(array $actions, array $decisions) {
+    function processCardActions(array $actions, array $decisions)
+    {
         //TODO: check for collisions everywhere
         $to_send = [];
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         foreach ($actions as $action) {
             switch ($action["action"]) {
-                case "sequence": {
+                case "sequence":
                     $to_send += $this->processCardActions($action["actions"], $decisions);
                     break;
-                }
-                case "choice": {
+                case "choice":
                     $decision = array_shift($decisions);
                     $choices = $action["choices"];
                     $to_send += $this->processCardActions([$choices[array_keys($choices)[$decision]]], $decisions);
                     break;
-                }
                 default:
                     $to_send += $this->processSimpleAction($action["action"]);
             }
@@ -970,7 +977,7 @@ class SeasOfHavoc extends Table
         // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
         //     $moveChain[] = $outcome;
         // }
-        $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves forward'), [
+        $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves their ship'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "moveChain" => $moveChain,

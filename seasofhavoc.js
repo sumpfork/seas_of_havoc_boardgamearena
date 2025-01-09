@@ -49,10 +49,10 @@ define([
       // Example:
       // this.myGlobalValue = 0;
     },
-    getRotationDegrees: function(direction) {
+    getRotationDegrees: function (direction) {
       //assume west is 0
       let deg = 0;
-      switch (Number(direction)){
+      switch (Number(direction)) {
         case NORTH:
           deg = 90;
           break;
@@ -66,7 +66,7 @@ define([
       console.log(deg + " degrees");
       return deg;
     },
-    getObjectOnSeaboard: function(object_type, arg) {
+    getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {
           return entry;
@@ -177,7 +177,7 @@ define([
         */
 
     setup: function (gamedatas) {
-      console.log("Starting game setup");
+      console.groupCollapsed("Game Setup");
       console.log("dojo version: " + dojo.version);
       console.log(gamedatas);
 
@@ -298,6 +298,7 @@ define([
 
       //this.showDummyDialog();
       console.log("Ending game setup");
+      console.groupEnd();
     },
     showDummyDialog: function () {
       this.myDlg = new ebg.popindialog();
@@ -349,6 +350,7 @@ define([
       };
 
       dojo.query(".play_card_button").connect("onclick", this, (event) => {
+        console.groupCollapsed("card play button clicked");
         console.log("play card button clicked");
         event.preventDefault();
         var decisionSummary = makeDecisionSummary(this.dep_tree);
@@ -362,6 +364,7 @@ define([
         });
         this.dep_tree = null;
         domConstruct.destroy("card_display_dialog");
+        console.groupEnd();
       });
       var dlg_dom = dom.byId("card_display_dialog");
       var existing_card_dom = dom.byId(card_type);
@@ -457,9 +460,10 @@ define([
         console.log(tree);
         return tree;
       };
-      console.log("dep tree:");
+      console.groupCollapsed("make dependency tree");
       this.dep_tree = make_card_dependency_tree(card.actions);
       console.log(this.dep_tree);
+      console.groupEnd();
 
       var render_rows = function (tree, row_number) {
         var rendered_choices = [];
@@ -488,8 +492,10 @@ define([
         });
         return rendered_choices;
       };
+      console.groupCollapsed("render play rows");
       var result = render_rows(this.dep_tree);
       console.log(result);
+      console.groupEnd();
 
       var bga = this;
       var computeTotalPlayCost = function (tree, costAcc) {
@@ -514,7 +520,9 @@ define([
       var showHideControls = function (tree, hide, totalCost) {
         console.log("showing/hiding controls " + hide);
         if (typeof totalCost === "undefined") {
+          console.groupCollapsed("compute total play cose");
           totalCost = computeTotalPlayCost(tree);
+          console.groupEnd();
           console.log("total play cost is:");
           console.log(totalCost);
         }
@@ -594,13 +602,14 @@ define([
 
       var updatePlayCardButton = function () {
         const button_id = "play_card_button";
-        if (checkIsCardReadyToBePlayed(bga.dep_tree)) {
-          console.log("ready to play card");
+        console.groupCollapsed("check whether card is ready to be played");
+        let ready = checkIsCardReadyToBePlayed(bga.dep_tree);
+        console.groupEnd();
+        if (ready) {
           domClass.add(button_id, "bgabutton_green");
           domClass.remove(button_id, "bgabutton_disabled");
           dojo.removeClass(button_id, "disabled");
         } else {
-          console.log("not ready to play card");
           domClass.remove(button_id, "bgabutton_green");
           domClass.add(button_id, "bgabutton_disabled");
           dojo.addClass(button_id, "disabled");
@@ -610,16 +619,20 @@ define([
         var choices_html = result.join("\n");
         dojo.place(choices_html, "card_choices");
         dojo.query(".card_choice_radio").connect("onchange", this, (event) => {
-          console.log(event);
+          console.groupCollapsed("show/hide play controls");
           showHideControls(this.dep_tree);
+          console.groupEnd();
           updatePlayCardButton();
         });
       }
+      console.groupCollapsed("show/hide play controls");
       showHideControls(this.dep_tree);
+      console.groupEnd();
       updatePlayCardButton();
       this.cardPlayDialogShown = true;
     },
     updateCardPurchaseButtons: function (create) {
+      console.groupCollapsed("update card purchase buttons");
       console.log("showing card purchase buttons");
       console.log(this.islandSlots);
       for (const [slot, numbers] of Object.entries(this.islandSlots)) {
@@ -677,8 +690,10 @@ define([
           }
         }
       }
+      console.groupEnd();
     },
     onClickPurchaseButton: function (event) {
+      console.groupCollapsed("card purchase button clicked");
       console.log("onClickPurchaseButton");
       console.log(event);
       dojo.stopEvent(event);
@@ -699,6 +714,7 @@ define([
       this.market.removeFromStockById(slot_card.id);
       this.updateCardPurchaseButtons(false);
       this.cards_purchased.push(slot_card.id);
+      console.groupEnd();
     },
     onCompletePurchasesClicked: function (event) {
       console.log("onCompletePurchasesClicked");
@@ -731,6 +747,7 @@ define([
       }
     },
     onCardSelectedPlayerHand: function (name, item_id) {
+      console.groupCollapsed("player card selected");
       console.log("player hand selection " + name + " " + item_id);
       var items = this.playerHand.getSelectedItems();
       if (items.length == 1) {
@@ -741,6 +758,7 @@ define([
         this.showCardPlayDialog(card, this.playerHand.getItemDivId(item_id));
       }
       console.log(items);
+      console.groupEnd();
     },
     ///////////////////////////////////////////////////
     //// Game & client states
@@ -914,6 +932,7 @@ define([
 
     // TODO: from this point and below, you can write your game notifications handling methods
     notifShowResourceChoiceDialog: function (notif) {
+      console.groupCollapsed("show resource choice dialog");
       this.myDlg = new ebg.popindialog();
       this.myDlg.create("resouceDialog");
       this.myDlg.setTitle(_("Pick a Resource"));
@@ -948,12 +967,14 @@ define([
           this.myDlg.destroy();
         }
       });
+      console.groupEnd();
     },
     notifDummyStart: function (notif) {
       console.log("dummystart");
       this.bgaPerformAction("actExitDummyStart", {});
     },
     notifResourcesChanged: function (notif) {
+      console.groupCollapsed("notify: resources changed");
       console.log("Notification: resourcesChanged");
       console.log(notif.args.resources);
       console.log("current resources:");
@@ -961,9 +982,10 @@ define([
 
       this.resources = notif.args.resources;
       this.updateResources(notif.args.resources);
+      console.groupEnd();
     },
     notifSkiffPlaced: function (notif) {
-      console.log("Skiff placed");
+      console.groupCollapsed("notify: skiff placed");
       console.log(notif);
 
       var slot_name = notif.args.slot_name;
@@ -999,6 +1021,7 @@ define([
         1000,
       ).play();
       dojo.removeClass(skiff_slot, "unoccupied");
+      console.groupEnd();
     },
     notifyNewHand: function (notif) {
       this.playerHand.removeAll();
@@ -1011,7 +1034,7 @@ define([
       }
     },
     notifyShipMove: function (notif) {
-      console.log("notified ship move");
+      console.groupCollapsed("notify: ship move");
       console.log(notif.args);
       var shipid = "player_ship_" + notif.args.player_id;
 
@@ -1022,37 +1045,57 @@ define([
         switch (move.type) {
           case "move": {
             if (move.teleport_at != null) {
-              var target_id = "seaboardlocation_" + move.teleport_at.x + "_" + move.teleport_at.y;
-              anims.push(this.slideToObject(shipid, target_id, 1000));
+              let target_id = "seaboardlocation_" + move.teleport_at.x + "_" + move.teleport_at.y;
+              let forward = this.slideToObject(shipid, target_id, 1000);
+              //let fadeout = baseFX.fadeOut({node: shipid});
+              //anims.push(fx.combine(forward, fadeout));
+              anims.push(forward);
               target_id = "seaboardlocation_" + move.teleport_to.x + "_" + move.teleport_to.y;
               anims.push(this.slideToObject(shipid, target_id, 0));
+              //anims.push(baseFX.fadeIn({node: shipid}));
             }
             var target_id = "seaboardlocation_" + move.new_x + "_" + move.new_y;
             anims.push(this.slideToObject(shipid, target_id, 1000));
             break;
           }
           case "turn": {
-            let player_ship = this.getObjectOnSeaboard("player_ship", this.player_id);
+            let player_ship = this.getObjectOnSeaboard("player_ship", notif.args.player_id);
+            console.log(
+              notif.args.player_id + 
+              " my old heading " + player_ship.heading 
+              + " event old heading " + move.old_heading
+              + " new heading " + move.new_heading,
+            );
             let current_deg = this.getRotationDegrees(player_ship.heading);
             let target_deg = this.getRotationDegrees(move.new_heading);
             let diff = Math.abs(target_deg - current_deg);
             let curve = [current_deg, target_deg];
             console.log("target: " + target_deg + " current: " + current_deg + " diff: " + diff);
             if (diff > 180) {
-              curve = [current_deg, -(360-target_deg)];
-              console.log("adjusted target to: " + -(360-target_deg));
+              if (target_deg > current_deg) {
+                curve = [current_deg, -(360 - target_deg)];
+                console.log("adjusted target to: " + -(360 - target_deg));
+              } else {
+                curve = [-(360 - current_deg), target_deg];
+                console.log("adjusted current to: " + -(360 - current_deg));
+              }
             }
             let anim = new baseFX.Animation({
               curve: curve,
-              onAnimate: function (v) {domstyle.set(shipid, "rotate", v + "deg");}
+              onAnimate: function (v) {
+                domstyle.set(shipid, "rotate", v + "deg");
+              },
             });
             console.log(anim);
             anims.push(anim);
+            player_ship.heading = move.new_heading;
+            console.log(this.seaboard);
           }
         }
       }
       console.log(anims);
       fx.chain(anims).play();
+      console.groupEnd();
     },
     /*
         Example:
