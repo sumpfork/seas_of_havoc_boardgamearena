@@ -49,9 +49,7 @@ define([
       // Example:
       // this.myGlobalValue = 0;
     },
-    getRotationDegrees: function (direction) {
-      //assume west is 0
-      let deg = 0;
+    getHeadingDegrees: function (direction) {
       switch (Number(direction)) {
         case NORTH:
           deg = 90;
@@ -62,6 +60,11 @@ define([
         case SOUTH:
           deg = 270;
           break;
+        case WEST:
+          deg = 0;
+          break;
+        default:
+          console.error("couldn't convert " + direction + " to degrees");
       }
       console.log(deg + " degrees");
       return deg;
@@ -286,7 +289,7 @@ define([
             dojo.place(ship, "seaboard");
             console.log(target_id);
             this.placeOnObject(shipid, target_id);
-            domstyle.set(shipid, "rotate", this.getRotationDegrees(entry.heading) + "deg");
+            domstyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
           //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
@@ -434,26 +437,33 @@ define([
                 tree.set(key, value);
               });
               break;
-            default:
+            default: {
+              let choice_names = [];
+              let choice_name = action.name || action.action;
+              if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
+                choice_names.push(choice_name + " left");
+                choice_names.push(choice_name + " right");
+              } else {
+                choice_names.push(choice_name);
+              }
               if (typeof action.cost !== "undefined") {
-                console.log("cost!");
+                choice_names.push("skip");
+              }
+              if (choice_names.length > 1) {
                 var tree_choices = [];
-                var choice_name = action.name || action.action;
-                tree_choices.push({
-                  name: choice_name,
-                  id: "card_choice_" + choice_count + "_option_0",
-                  cost: action.cost,
-                  children: new Map(),
-                });
-                tree_choices.push({
-                  name: "Skip",
-                  id: "card_choice_" + choice_count + "_option_1",
-                  children: new Map(),
-                });
+                for (let i = 0; i < choice_names.length; i++) {
+                  tree_choices.push({
+                    name: choice_names[i],
+                    id: "card_choice_" + choice_count + "_option_" + i,
+                    cost: choice_names[i] != "skip" ? action.cost : null,
+                    children: new Map(),
+                  });
+                }
                 tree.set("choice_" + choice_count, tree_choices);
                 choice_count++;
                 num_descendant_choices += 1;
               }
+            }
           }
         }
         console.log("returning tree");
@@ -538,7 +548,7 @@ define([
               showHideControls(option.children, true, totalCost);
             } else {
               domstyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
-              if (typeof option.cost !== "undefined") {
+              if (typeof option.cost !== "undefined" && option.cost) {
                 console.log("option cost:");
                 console.log(option.cost);
                 console.log("totalCost:");
@@ -679,7 +689,7 @@ define([
                 dojo.addClass(button_id, "bgabutton_disabled");
                 dojo.addClass(button_id, "disabled");
                 dojo.html.set(button_id, "Cannot Afford");
-                if (typeof this.purchase_handler === "undefined") {
+                if (typeof this.purchase_handler !== "undefined") {
                   this.purchase_handler.remove();
                 }
               } else {
@@ -917,7 +927,7 @@ define([
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
       dojo.subscribe("newHand", this, "notifyNewHand");
-      dojo.subscribe("shipMove", this, "notifyShipMove");
+      dojo.subscribe("cardPlayResults", this, "notifyCardPlayed");
 
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -1033,8 +1043,8 @@ define([
         this.playerHand.addToStockWithId(this.getCardUniqueId(color, value), card.id);
       }
     },
-    notifyShipMove: function (notif) {
-      console.groupCollapsed("notify: ship move");
+    notifyCardPlayed: function (notif) {
+      console.groupCollapsed("notify: card played");
       console.log(notif.args);
       var shipid = "player_ship_" + notif.args.player_id;
 
@@ -1061,13 +1071,16 @@ define([
           case "turn": {
             let player_ship = this.getObjectOnSeaboard("player_ship", notif.args.player_id);
             console.log(
-              notif.args.player_id + 
-              " my old heading " + player_ship.heading 
-              + " event old heading " + move.old_heading
-              + " new heading " + move.new_heading,
+              notif.args.player_id +
+                " my old heading " +
+                player_ship.heading +
+                " event old heading " +
+                move.old_heading +
+                " new heading " +
+                move.new_heading,
             );
-            let current_deg = this.getRotationDegrees(player_ship.heading);
-            let target_deg = this.getRotationDegrees(move.new_heading);
+            let current_deg = this.getHeadingDegrees(player_ship.heading);
+            let target_deg = this.getHeadingDegrees(move.new_heading);
             let diff = Math.abs(target_deg - current_deg);
             let curve = [current_deg, target_deg];
             console.log("target: " + target_deg + " current: " + current_deg + " diff: " + diff);
@@ -1091,10 +1104,41 @@ define([
             player_ship.heading = move.new_heading;
             console.log(this.seaboard);
           }
+          case "fire_hit": {
+            let cannon_fire = this.format_block("jstpl_cannon_fire", {});
+            let rotation = this.getHeadingDegrees(move.fire_heading);
+            console.log("fire rotation " + rotation);
+            dojo.place(cannon_fire, shipid);
+            domstyle.set("cannonfire", "rotate", rotation + "deg");
+            let offset = null;
+            switch (move.fire_heading) {
+              case NORTH:
+                offset = ["top", "20px"];
+                break;
+              case SOUTH:
+                offset = ["top", "-20px"];
+                break;
+
+              case EAST:
+                offset = ["left", "20px"];
+                break;
+              case WEST:
+                offset = ["left", "-20px"];
+                break;
+            }
+            console.log(offset);
+            domstyle.set("cannonfire", "rotate", rotation + "deg");
+            domstyle.set("cannonfire", offset[0], offset[1], rotation + "deg");
+            let explosion = this.format_block("jstpl_explosion", {});
+            let target_id = "seaboardlocation_" + move.hit_x + "_" + move.hit_y;
+            dojo.place(explosion, target_id);
+          }
         }
       }
       console.log(anims);
-      fx.chain(anims).play();
+      if (anims.length) {
+        fx.chain(anims).play();
+      }
       console.groupEnd();
     },
     /*

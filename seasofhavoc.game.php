@@ -21,21 +21,48 @@ require_once APP_GAMEMODULE_PATH . "module/table/table.game.php";
 
 use Bga\GameFramework\Actions\Types\JsonParam;
 
+enum Heading: int
+{
+    case NO_HEADING = 0;
+    case NORTH = 1;
+    case EAST = 2;
+    case SOUTH = 3;
+    case WEST = 4;
+
+    public function toString(): string
+    {
+        return match ($this) {
+            Heading::NO_HEADING => "NO_HEADING",
+            Heading::NORTH => "NORTH",
+            Heading::EAST => "EAST",
+            Heading::SOUTH => "SOUTH",
+            Heading::WEST => "WEST",
+        };
+    }
+}
+
+enum Turn: int
+{
+    case LEFT = 0;
+    case RIGHT = 1;
+    case AROUND = 2;
+    case NOTURN = 4;
+
+    public function toString(): string
+    {
+        return match ($this) {
+            Turn::LEFT => "LEFT",
+            Turn::RIGHT => "RIGHT",
+            Turn::AROUND => "AROUND",
+            Turn::NOTURN => "NOTURN",
+        };
+    }
+}
+
 class SeaBoard
 {
     const WIDTH = 6;
     const HEIGHT = 6;
-
-    # headings
-    const NO_HEADING = 0;
-    const NORTH = 1;
-    const EAST = 2;
-    const SOUTH = 3;
-    const WEST = 4;
-
-    const LEFT = 0;
-    const RIGHT = 1;
-    const AROUND = 2;
 
     private array|null $contents;
     private string $sqlfunc;
@@ -54,6 +81,9 @@ class SeaBoard
         $this->contents = array_fill(0, self::HEIGHT, $row);
     }
 
+    // public static string headingAsString(Heading $heading) {
+
+    // }
     public function getObjects(int $x, int $y)
     {
         assert($x >= 0 && $x < self::WIDTH);
@@ -97,7 +127,6 @@ class SeaBoard
         for ($x = 0; $x < self::WIDTH; $x++) {
             for ($y = 0; $y < self::HEIGHT; $y++) {
                 $objects = $this->getObjectsOfTypes($x, $y, [$type]);
-                #return array_find($objects, fn($o) => $o["arg"] == $arg);
                 foreach ($objects as $o) {
                     if ($o["arg"] == $arg) {
                         return ["x" => $x, "y" => $y, "object" => $o];
@@ -107,19 +136,15 @@ class SeaBoard
         }
     }
 
-    public function moveObjectForward(string $object_type, string $arg, array $collision_types)
+    private function computeForwardMovement(int $x, int $y, Heading $heading)
     {
-        $this->syncFromDB();
-        $object_info = $this->findObject($object_type, $arg);
-        $new_x = $object_info["x"];
-        $new_y = $object_info["y"];
-        $object = $object_info["object"];
-        $this->bga->dump("object being moved forward", $object_info);
-        #$this->bga->trace("heading: " . $object_info["heading"]);
+        $new_x = $x;
+        $new_y = $y;
         $teleport_at = null;
         $teleport_to = null;
-        switch (intval($object["heading"])) {
-            case self::NORTH:
+
+        switch ($heading) {
+            case Heading::NORTH:
                 $new_y--;
                 if ($new_y == -1) {
                     $teleport_at = ["x" => $new_x, "y" => $new_y];
@@ -127,7 +152,7 @@ class SeaBoard
                     $new_y = self::HEIGHT - 1;
                 }
                 break;
-            case self::EAST:
+            case Heading::EAST:
                 $new_x++;
                 if ($new_x == self::WIDTH) {
                     $teleport_at = ["x" => $new_x, "y" => $new_y];
@@ -135,7 +160,7 @@ class SeaBoard
                     $new_x = 0;
                 }
                 break;
-            case self::WEST:
+            case Heading::WEST:
                 $new_x--;
                 if ($new_x == -1) {
                     $teleport_at = ["x" => $new_x, "y" => $new_y];
@@ -143,7 +168,7 @@ class SeaBoard
                     $new_x = self::WIDTH - 1;
                 }
                 break;
-            case self::SOUTH:
+            case Heading::SOUTH:
                 $new_y++;
                 if ($new_y == self::HEIGHT) {
                     $teleport_at = ["x" => $new_x, "y" => $new_y];
@@ -152,22 +177,34 @@ class SeaBoard
                 }
                 break;
         }
-        $collided = $this->getObjectsOfTypes($new_x, $new_y, $collision_types);
+        return ["new_x" => $new_x, "new_y" => $new_y, "teleport_at" => $teleport_at, "teleport_to" => $teleport_to];
+    }
+
+    public function moveObjectForward(string $object_type, string $arg, array $collision_types)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject($object_type, $arg);
+        $object = $object_info["object"];
+        $this->bga->dump("object being moved forward", $object_info);
+        $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $object["heading"]);
+
+        $collided = $this->getObjectsOfTypes($movement_result["new_x"], $movement_result["new_y"], $collision_types);
         //if (count($collided) == 0) {
         $old_x = $object_info["x"];
         $old_y = $object_info["y"];
 
         $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
-        $this->placeObject($new_x, $new_y, $object);
+        $this->placeObject($movement_result["new_x"], $movement_result["new_y"], $object);
+
         return [
             "type" => "move",
             "colliders" => $collided,
             "old_x" => $old_x,
             "old_y" => $old_y,
-            "new_x" => $new_x,
-            "new_y" => $new_y,
-            "teleport_at" => $teleport_at,
-            "teleport_to" => $teleport_to,
+            "new_x" => $movement_result["new_x"],
+            "new_y" => $movement_result["new_y"],
+            "teleport_at" => $movement_result["teleport_at"],
+            "teleport_to" => $movement_result["teleport_to"],
         ];
         //}
         // return [
@@ -180,38 +217,89 @@ class SeaBoard
         // ];
     }
 
-    public function turnObject(string $object_type, string $arg, int $direction)
+    private function turnHeading(Heading $heading, Turn $direction)
+    {
+        switch ($direction) {
+            case Turn::LEFT:
+                $heading = Heading::from($heading->value - 1);
+                if ($heading == Heading::NO_HEADING) {
+                    $heading = Heading::WEST;
+                }
+                break;
+            case Turn::RIGHT:
+            # fallthrough
+            case Turn::AROUND:
+                $heading = Heading::from($heading->value + ($direction == Turn::RIGHT ? 1 : 2));
+                if ($heading > Heading::WEST) {
+                    $heading = Heading::from($heading->value - 4);
+                }
+                break;
+        }
+        return $heading;
+    }
+
+    public function turnObject(string $object_type, string $arg, Turn $direction)
     {
         $this->syncFromDB();
         $object_info = $this->findObject($object_type, $arg);
         $object = $object_info["object"];
-        $new_heading = $object["heading"];
+        $new_heading = $this->turnHeading($object["heading"], $direction);
         $old_heading = $object["heading"];
 
-        switch ($direction) {
-            case self::LEFT:
-                $new_heading -= 1;
-                if ($new_heading == self::NO_HEADING) {
-                    $new_heading = self::WEST;
-                }
-                break;
-            case self::RIGHT:
-            # fallthrough
-            case self::AROUND:
-                $new_heading += $direction == self::RIGHT ? 1 : 2;
-                if ($new_heading > self::WEST) {
-                    $new_heading -= 4;
-                }
-                break;
-        }
         $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
         $this->bga->trace(
-            "changing heading from " . $object["heading"] . " to " . $new_heading . " due to " . $direction . " turn",
+            "changing heading from " .
+                $object["heading"]->toString() .
+                " to " .
+                $new_heading->toString() .
+                " due to " .
+                $direction->toString() .
+                " turn",
         );
         $object["heading"] = $new_heading;
         $this->placeObject($object_info["x"], $object_info["y"], $object);
 
         return ["type" => "turn", "old_heading" => $old_heading, "new_heading" => $new_heading];
+    }
+
+    public function resolveCannonFire(string $player_id, Turn $direction, int $distance, array $collision_types)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject("player_ship", $player_id);
+        $ship_heading = $object_info["object"]["heading"];
+        $fire_heading = $this->turnHeading($ship_heading, $direction);
+        $x = $object_info["x"];
+        $y = $object_info["y"];
+        $this->bga->trace(
+            "resolving cannon fire from " .
+                $x .
+                " " .
+                $y .
+                "ship heading" .
+                $ship_heading->toString() .
+                " fire direction " .
+                $direction->toString() .
+                " fire heading " .
+                $fire_heading->toString(),
+        );
+        for ($d = 1; $d <= $distance; $d++) {
+            $movement_result = $this->computeForwardMovement($x, $y, $fire_heading);
+            $x = $movement_result["new_x"];
+            $y = $movement_result["new_y"];
+            $this->bga->trace("checking " . $x . " " . $y . " while firing");
+            $collided = $this->getObjectsOfTypes($x, $y, $collision_types);
+            $this->bga->dump("collided", $collided);
+            if (count($collided)) {
+                return [
+                    "type" => "fire_hit",
+                    "hit_x" => $x,
+                    "hit_y" => $y,
+                    "hit_objects" => $collided,
+                    "fire_heading" => $fire_heading,
+                ];
+            }
+        }
+        return ["type" => "fire_miss"];
     }
 
     public function placeObject(int $x, int $y, array $object)
@@ -232,23 +320,6 @@ class SeaBoard
         $this->syncToDB();
     }
 
-    private function syncObjectToDB(int $x, int $y, array $object)
-    {
-        $sql =
-            "INSERT INTO sea (x, y, type, arg, heading) VALUES ('" .
-            $x .
-            "','" .
-            $y .
-            "','" .
-            $object["type"] .
-            "','" .
-            $object["arg"] .
-            "','" .
-            $object["heading"] .
-            "')";
-        call_user_func($this->sqlfunc, $sql);
-    }
-
     public function syncToDB()
     {
         call_user_func($this->sqlfunc, "DELETE FROM sea");
@@ -266,7 +337,7 @@ class SeaBoard
                 "','" .
                 $entry["arg"] .
                 "','" .
-                $entry["heading"] .
+                $entry["heading"]->value .
                 "')";
         }
         $sql .= implode(",", $values);
@@ -283,7 +354,7 @@ class SeaBoard
                 $this->placeObject(intval($row["x"]), intval($row["y"]), [
                     "type" => $row["type"],
                     "arg" => $row["arg"],
-                    "heading" => $row["heading"],
+                    "heading" => Heading::from($row["heading"]),
                 ]);
             }
         }
@@ -491,7 +562,7 @@ class SeasOfHavoc extends Table
             $this->seaboard->placeObject(rand(0, SeaBoard::WIDTH - 1), rand(0, SeaBoard::HEIGHT - 1), [
                 "type" => "player_ship",
                 "arg" => $playerid,
-                "heading" => SeaBoard::NORTH,
+                "heading" => Heading::NORTH,
             ]);
             $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
                 return $v["ship_name"] == $player["player_ship"];
@@ -926,13 +997,16 @@ class SeasOfHavoc extends Table
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                 break;
             case "left":
+                //not sure whether it'd be better to have this sequence explicit in the card spec?
+                //would make for a more cumbersome but perhaps more explicit card db, and maybe
+                //easier collision handling?
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::LEFT);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::LEFT);
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                 break;
             case "right":
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, SeaBoard::RIGHT);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                 break;
         }
@@ -946,6 +1020,7 @@ class SeasOfHavoc extends Table
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         foreach ($actions as $action) {
+            $this->trace("handling " . $action["action"]);
             switch ($action["action"]) {
                 case "sequence":
                     $to_send += $this->processCardActions($action["actions"], $decisions);
@@ -955,6 +1030,18 @@ class SeasOfHavoc extends Table
                     $choices = $action["choices"];
                     $to_send += $this->processCardActions([$choices[array_keys($choices)[$decision]]], $decisions);
                     break;
+                case "fire":
+                case "2 x fire":
+                case "3 x fire":
+                    $this->trace("fire");
+                    $decision = array_shift($decisions);
+                    $player_id = $this->getActivePlayerId();
+                    $to_send[] = $this->seaboard->resolveCannonFire(
+                        $player_id,
+                        $decision == 0 ? Turn::LEFT : Turn::RIGHT, #not awesome, assumes they're in a certain order in interface...
+                        $action["range"],
+                        ["rock", "player_ship"],
+                    );
                 default:
                     $to_send += $this->processSimpleAction($action["action"]);
             }
@@ -974,10 +1061,12 @@ class SeasOfHavoc extends Table
         $moveChain = [];
 
         $moveChain = $this->processCardActions($card["actions"], $decisions);
+        $this->dump("final move chain", $moveChain);
+
         // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
         //     $moveChain[] = $outcome;
         // }
-        $this->notifyAllPlayers("shipMove", clienttranslate('${player_name} moves their ship'), [
+        $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} has played a card'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "moveChain" => $moveChain,

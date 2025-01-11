@@ -189,3 +189,12 @@
 a.disabled {
     pointer-events: none;
 }
+#cannonfire {
+    position: relative;
+}
+#explosion {
+    position: relative;
+    left: -32px;
+    top: -32px;
+    z-index: 5;
+}
