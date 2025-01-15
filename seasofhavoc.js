@@ -204,6 +204,7 @@ define([
       this.market.jstpl_stock_item = `<div class="market_card_container"><div id="\${id}" class="stockitem \${extra_classes}" 
       style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
       </div></div>`;
+
       this.playable_cards = gamedatas.playable_cards;
 
       this.cards_purchased = [];
@@ -518,7 +519,9 @@ define([
             console.log(option);
             var checkbox = dom.byId(option.id);
             console.log("checked: " + checkbox.checked);
-            if (checkbox.checked && typeof option.cost != "undefined") {
+            console.log(option.cost);
+            console.log(costAcc);
+            if (checkbox.checked && typeof option.cost !== "undefined") {
               costAcc = bga.addResources(option.cost, costAcc);
             }
             costAcc = computeTotalPlayCost(option.children, costAcc);
@@ -928,6 +931,7 @@ define([
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
       dojo.subscribe("newHand", this, "notifyNewHand");
       dojo.subscribe("cardPlayResults", this, "notifyCardPlayed");
+      dojo.subscribe("score", this, "notifyScore");
 
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -1103,6 +1107,7 @@ define([
             anims.push(anim);
             player_ship.heading = move.new_heading;
             console.log(this.seaboard);
+            break;
           }
           case "fire_hit": {
             let cannon_fire = this.format_block("jstpl_cannon_fire", {});
@@ -1118,7 +1123,6 @@ define([
               case SOUTH:
                 offset = ["top", "-20px"];
                 break;
-
               case EAST:
                 offset = ["left", "20px"];
                 break;
@@ -1132,6 +1136,30 @@ define([
             let explosion = this.format_block("jstpl_explosion", {});
             let target_id = "seaboardlocation_" + move.hit_x + "_" + move.hit_y;
             dojo.place(explosion, target_id);
+            domstyle.set("explosion", "opacity", "0");
+            domstyle.set("cannonfire", "opacity", 0);
+            fx.chain([
+              baseFX.fadeIn({ node: "cannonfire", duration: 100 }),
+              baseFX.fadeOut({
+                node: "cannonfire",
+                duration: 100,
+                delay: 1000,
+                onEnd: function () {
+                  domConstruct.destroy("cannonfire");
+                },
+              }),
+            ]).play();
+            fx.chain([
+              baseFX.fadeIn({ node: "explosion", delay: 100 }),
+              baseFX.fadeOut({
+                node: "explosion",
+                delay: 1000,
+                onEnd: function () {
+                  domConstruct.destroy("explosion");
+                },
+              }),
+            ]).play();
+            break;
           }
         }
       }
@@ -1140,6 +1168,10 @@ define([
         fx.chain(anims).play();
       }
       console.groupEnd();
+    },
+    notifyScore: function (notif) {
+      console.log("score for " + notif.args.player_id + " " + notif.args.player_score);
+      this.scoreCtrl[notif.args.player_id].setValue(notif.args.player_score);
     },
     /*
         Example:

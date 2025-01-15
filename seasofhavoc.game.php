@@ -28,6 +28,7 @@ enum Heading: int
     case EAST = 2;
     case SOUTH = 3;
     case WEST = 4;
+    case INVALID = 5;
 
     public function toString(): string
     {
@@ -37,6 +38,7 @@ enum Heading: int
             Heading::EAST => "EAST",
             Heading::SOUTH => "SOUTH",
             Heading::WEST => "WEST",
+            Heading::INVALID => "INVALID",
         };
     }
 }
@@ -217,7 +219,7 @@ class SeaBoard
         // ];
     }
 
-    private function turnHeading(Heading $heading, Turn $direction)
+    public static function turnHeading(Heading $heading, Turn $direction)
     {
         switch ($direction) {
             case Turn::LEFT:
@@ -375,6 +377,7 @@ class SeasOfHavoc extends Table
     private array $starting_cards;
     //private array $all_cards;
     private $cards;
+    private $damage_card;
     private array $market_cards;
     private array $playable_cards;
     private array $resource_types;
@@ -423,7 +426,10 @@ class SeasOfHavoc extends Table
         assert(count($market_cards) == count($this->market_cards));
         $this->market_cards = $market_cards;
 
-        $this->playable_cards = $this->starting_cards + $this->market_cards;
+        $this->playable_cards = $this->starting_cards + $this->market_cards; //array_merge([$this->damage_card], $this->starting_cards,  $this->market_cards);
+        // foreach ($this->playable_cards as $t => $card) {
+        //     $card["card_type"] = $t;
+        // }
     }
 
     protected function getGameName()
@@ -593,6 +599,13 @@ class SeasOfHavoc extends Table
         for ($i = 1; $i < 6; $i++) {
             $this->cards->pickCardForLocation("market_deck", "market", $i);
         }
+
+        // $this->cards->createCards([
+        //     "type" => $this->damage_card["card_type"],
+        //     "type_arg" => 0,
+        //     "nbr" => 10 + count($player_infos) * 5,
+        // ], "damage_deck");
+
         //$this->cards->shuffle("player_deck");
         // foreach ($player_infos as $playerid => $player) {
         //     //$this->notifyPlayer($playerid, 'newHand', '', array ('cards' => $handcards ));
@@ -1036,12 +1049,49 @@ class SeasOfHavoc extends Table
                     $this->trace("fire");
                     $decision = array_shift($decisions);
                     $player_id = $this->getActivePlayerId();
-                    $to_send[] = $this->seaboard->resolveCannonFire(
+                    $outcome = $this->seaboard->resolveCannonFire(
                         $player_id,
                         $decision == 0 ? Turn::LEFT : Turn::RIGHT, #not awesome, assumes they're in a certain order in interface...
                         $action["range"],
                         ["rock", "player_ship"],
                     );
+                    if ($outcome["type"] == "fire_hit") {
+                        foreach ($outcome["hit_objects"] as $collider) {
+                            if ($collider["type"] == "player_ship") {
+                                $score_increment = 2;
+                                if (
+                                    $collider["heading"] == $outcome["fire_heading"] ||
+                                    $collider["heading"] ==
+                                        SeaBoard::turnHeading($outcome["fire_heading"], Turn::AROUND)
+                                ) {
+                                    # raking
+                                    $score_increment = 3;
+                                }
+                                $this->DbQuery(
+                                    "UPDATE player SET player_score=player_score+ " .
+                                        $score_increment .
+                                        " WHERE player_id='" .
+                                        $player_id .
+                                        "'",
+                                );
+                                $new_score = $this->getUniqueValueFromDB(
+                                    "SELECT player_score from player WHERE player_id='" . $player_id . "'",
+                                );
+                                $this->notifyAllPlayers(
+                                    "score",
+                                    clienttranslate('${player_name} scored ${score_increment} infamy'),
+                                    [
+                                        "player_name" => self::getActivePlayerName(),
+                                        "player_id" => $player_id,
+                                        "player_score" => $new_score,
+                                        "score_increment" => $score_increment
+                                    ],
+                                );
+                            }
+                        }
+                    }
+                    $to_send[] = $outcome;
+                    break;
                 default:
                     $to_send += $this->processSimpleAction($action["action"]);
             }
