@@ -33,17 +33,14 @@ $this->card_types = [
 */
 $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 
-$this->starting_cards = [
+$this->playable_cards = [
     [
         "ship_name" => "Xebec",
         "cost" => ["sail" => 1],
-        "actions" => [
-            ["action" => "forward"],
-            ["action" => "forward", "cost" => ["sail" => 1]],
-        ],
+        "actions" => [["action" => "forward"], ["action" => "forward", "cost" => ["sail" => 1]]],
         "image_id" => 0,
-        "card_type" => 0,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Xebec",
@@ -55,28 +52,24 @@ $this->starting_cards = [
             ],
         ],
         "image_id" => 1,
-        "card_type" => 1,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Xebec",
         "cost" => ["cannonball" => 1],
-        "actions" => [
-            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
-        ],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 2,
-        "card_type" => 2,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Ship-of-the-Line",
         "cost" => ["cannonball" => 1],
-        "actions" => [
-            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
-        ],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 3,
-        "card_type" => 3,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Ship-of-the-Line",
@@ -88,16 +81,16 @@ $this->starting_cards = [
             ],
         ],
         "image_id" => 4,
-        "card_type" => 4,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Ship-of-the-Line",
         "cost" => ["sail" => 1],
         "actions" => [["action" => "forward"]],
         "image_id" => 5,
-        "card_type" => 5,
         "count" => 2,
+        "category" => "starting_card",
     ],
     [
         "ship_name" => "Sloop-of-War",
@@ -105,29 +98,20 @@ $this->starting_cards = [
         "actions" => [
             [
                 "action" => "choice",
-                "choices" => [
-                    ["action" => "left"],
-                    ["action" => "forward"],
-                    ["action" => "right"],
-                ],
+                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
             ],
         ],
         "image_id" => 13,
-        "card_type" => 13,
         "count" => 2,
+        "category" => "starting_card",
     ],
-];
-
-$this->market_cards = [
     [
         "cost" => ["cannonball" => 1],
-        "actions" => [
-            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
-        ],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 18,
-        "card_type" => 14,
         "count" => 1,
         "flag" => "green",
+        "category" => "market_card",
     ],
     [
         "cost" => ["cannonball" => 2],
@@ -149,9 +133,9 @@ $this->market_cards = [
             ],
         ],
         "image_id" => 19,
-        "card_type" => 15,
         "count" => 1,
         "flag" => "green",
+        "category" => "market_card",
     ],
     [
         "cost" => ["cannonball" => 3],
@@ -178,26 +162,22 @@ $this->market_cards = [
             ],
         ],
         "image_id" => 20,
-        "card_type" => 16,
         "count" => 1,
         "flag" => "green",
+        "category" => "market_card",
     ],
     [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             [
                 "action" => "choice",
-                "choices" => [
-                    ["action" => "left"],
-                    ["action" => "forward"],
-                    ["action" => "right"],
-                ],
+                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
             ],
         ],
         "image_id" => 21,
-        "card_type" => 17,
         "count" => 1,
         "flag" => "green",
+        "category" => "market_card",
     ],
     [
         "cost" => ["sail" => 2, "doubloon" => 1],
@@ -212,23 +192,19 @@ $this->market_cards = [
                             ["action" => "forward"],
                             [
                                 "action" => "choice",
-                                "choices" => [
-                                    ["action" => "left"],
-                                    ["action" => "forward"],
-                                    ["action" => "right"],
-                                ],
+                                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
                                 "cost" => ["sail" => 1],
                             ],
                         ],
-                        "name" => "forward"
+                        "name" => "forward",
                     ],
                     ["action" => "right"],
                 ],
             ],
         ],
         "image_id" => 22,
-        "card_type" => 18,
         "count" => 1,
         "flag" => "green",
+        "category" => "market_card",
     ],
 ];

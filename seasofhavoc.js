@@ -660,7 +660,7 @@ define([
                 console.log(cardspec);
                 var div = this.market.getItemDivId(cardspec.id);
                 console.log(div);
-                console.log("children");
+                //console.log("children");
                 //console.log(query(div));
                 var slotnum = attr.get(query("#" + div).children(".skiff_slot")[0], "data-number");
                 console.log("slotnum " + slotnum);
@@ -673,6 +673,7 @@ define([
               if (slot_card === null) {
                 continue;
               }
+              console.log(slot_card);
               var card = this.playable_cards[slot_card.type];
               console.log(card);
               if (create) {

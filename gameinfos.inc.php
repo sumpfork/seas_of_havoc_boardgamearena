@@ -100,7 +100,7 @@ $gameinfos = array(
     'diplomacy' => 3,
 
     // Colors attributed to players
-    'player_colors' => array("Xebec" => "C9364B", "Ship-of-the-Line" => "3E8956", "944027", "8E55A1", "F4AA23", "57C2B9"),
+    'player_colors' => array("Xebec" => "3E8956", "Ship-of-the-Line" => "C9364B", "944027", "8E55A1", "F4AA23", "57C2B9"),
 
     // Favorite colors support : if set to "true", support attribution of favorite colors based on player's preferences (see reattributeColorsBasedOnPreferences PHP method)
     // NB: this parameter is used only to flag games supporting this feature; you must use (or not use) reattributeColorsBasedOnPreferences PHP method to actually enable or disable the feature.

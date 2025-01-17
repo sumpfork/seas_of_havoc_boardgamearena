@@ -374,11 +374,11 @@ class SeasOfHavoc extends Table
     //private $resource_types;
 
     private SeaBoard $seaboard;
-    private array $starting_cards;
+    //private array $starting_cards;
     //private array $all_cards;
     private $cards;
     private $damage_card;
-    private array $market_cards;
+    //private array $market_cards;
     private array $playable_cards;
     private array $resource_types;
 
@@ -412,24 +412,24 @@ class SeasOfHavoc extends Table
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", $this);
 
-        $starting_cards = array_combine(
-            array_column($this->starting_cards, "card_type"),
-            array_values($this->starting_cards),
-        );
-        assert(count($starting_cards) == count($this->starting_cards));
-        $this->starting_cards = $starting_cards;
+        // $starting_cards = array_combine(
+        //     array_column($this->starting_cards, "card_type"),
+        //     array_values($this->starting_cards),
+        // );
+        // assert(count($starting_cards) == count($this->starting_cards));
+        // $this->starting_cards = $starting_cards;
 
-        $market_cards = array_combine(
-            array_column($this->market_cards, "card_type"),
-            array_values($this->market_cards),
-        );
-        assert(count($market_cards) == count($this->market_cards));
-        $this->market_cards = $market_cards;
+        // $market_cards = array_combine(
+        //     array_column($this->market_cards, "card_type"),
+        //     array_values($this->market_cards),
+        // );
+        // assert(count($market_cards) == count($this->market_cards));
+        // $this->market_cards = $market_cards;
 
-        $this->playable_cards = $this->starting_cards + $this->market_cards; //array_merge([$this->damage_card], $this->starting_cards,  $this->market_cards);
-        // foreach ($this->playable_cards as $t => $card) {
-        //     $card["card_type"] = $t;
-        // }
+        //$this->playable_cards = array_merge($this->starting_cards, $this->market_cards); //array_merge([$this->damage_card], $this->starting_cards,  $this->market_cards);
+        foreach (array_keys($this->playable_cards) as $t) {
+            $this->playable_cards[$t]["card_type"] = $t;
+        }
     }
 
     protected function getGameName()
@@ -570,9 +570,12 @@ class SeasOfHavoc extends Table
                 "arg" => $playerid,
                 "heading" => Heading::NORTH,
             ]);
-            $player_starting_cards = array_filter($this->starting_cards, function ($v) use ($player) {
-                return $v["ship_name"] == $player["player_ship"];
-            });
+            $player_starting_cards = array_filter(
+                array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
+                function ($v) use ($player) {
+                    return $v["ship_name"] == $player["player_ship"];
+                },
+            );
             $start_deck = [];
             foreach ($player_starting_cards as $starting_card) {
                 $start_deck[] = [
@@ -587,7 +590,7 @@ class SeasOfHavoc extends Table
         }
 
         $market_deck = [];
-        foreach ($this->market_cards as $market_card) {
+        foreach (array_filter($this->playable_cards, fn($x) => $x["category"] == "market_card") as $market_card) {
             $market_deck[] = [
                 "type" => $market_card["card_type"],
                 "type_arg" => 0,
@@ -991,10 +994,10 @@ class SeasOfHavoc extends Table
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
         foreach ($cards_purchased as $card_id) {
-            $this->dump("market cards", $this->market_cards);
+            //$this->dump("market cards", $this->market_cards);
             $card = $this->cards->getCard($card_id);
             $this->dump("card", $card);
-            $market_card = $this->market_cards[$card["type"]];
+            $market_card = $this->playable_cards[$card["type"]];
             $this->pay($player_id, $market_card["cost"]);
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
@@ -1084,7 +1087,7 @@ class SeasOfHavoc extends Table
                                         "player_name" => self::getActivePlayerName(),
                                         "player_id" => $player_id,
                                         "player_score" => $new_score,
-                                        "score_increment" => $score_increment
+                                        "score_increment" => $score_increment,
                                     ],
                                 );
                             }
