@@ -42,10 +42,17 @@
     <div id="market"></div>
 </div>
 
+<div id="mycards">
 <div id="myhand_wrap" class="whiteblock">
     <h3>My Hand</h3>
     <div id="myhand">
     </div>
+</div>
+<div id="mydiscard_wrap" class="whiteblock">
+    <h3>My Discard</h3>
+    <div id="mydiscard">
+    </div>
+</div>
 </div>
 
 <div id="damage_deck">

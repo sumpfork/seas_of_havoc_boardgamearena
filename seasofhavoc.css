@@ -198,3 +198,7 @@ a.disabled {
     top: -32px;
     z-index: 5;
 }
+#mycards {
+    display: grid;
+    grid-template-columns: auto 200px;
+}

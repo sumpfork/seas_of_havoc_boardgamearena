@@ -194,6 +194,13 @@ define([
       //resize background to 1/2 of actual size, card size accordingly
       this.playerHand.resizeItems(144, 198, 864, 2378);
 
+      this.playerDiscard = new ebg.stock();
+      this.playerDiscard.create(this, $("mydiscard"), 144, 198);
+      this.playerDiscard.image_items_per_row = 6; // 13 images per row
+      this.playerDiscard.horizontal_overlap = 1000;
+      this.playerDiscard.setSelectionMode(0);
+      this.playerDiscard.resizeItems(144, 198, 864, 2378);
+
       this.market = new ebg.stock();
       this.market.create(this, $("market"), 144, 198);
       this.market.image_items_per_row = 6;
@@ -212,14 +219,20 @@ define([
       dojo.connect(this.playerHand, "onChangeSelection", this, "onCardSelectedPlayerHand");
       for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
-        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market stock");
+        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market/discard stock");
         this.playerHand.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
         this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
+        this.playerDiscard.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
       }
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player hand");
         this.playerHand.addToStockWithId(card.type, card.id);
+      }
+      for (var i in gamedatas.discard) {
+        var card = this.gamedatas.discard[i];
+        console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
+        this.playerDiscard.addToStockWithId(card.type, card.id);
       }
       var slotno = 1;
       for (var card_id in gamedatas.market) {
@@ -328,7 +341,8 @@ define([
         this.myDlg.destroy();
       });
     },
-    showCardPlayDialog: function (card, card_type) {
+    showCardPlayDialog: function (card, card_id) {
+      card_div_id = this.playerHand.getItemDivId(card_id);
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       dojo.place(dlg, "myhand_wrap", "first");
@@ -364,14 +378,18 @@ define([
         console.log(card);
         this.bgaPerformAction("actPlayCard", {
           card_type: card.card_type,
+          card_id: card_id,
           decisions: JSON.stringify(decisionSummary),
         });
         this.dep_tree = null;
         domConstruct.destroy("card_display_dialog");
+        console.log("moving card with type: " + card.card_type + " id :" + card_id);
+        this.playerDiscard.addToStockWithId(card.card_type, 0, card_div_id);
+        this.playerHand.removeFromStockById(card_id);
         console.groupEnd();
       });
       var dlg_dom = dom.byId("card_display_dialog");
-      var existing_card_dom = dom.byId(card_type);
+      var existing_card_dom = dom.byId(card_div_id);
       //var card_pos = dojo.position(existing_card_dom);
       dojo.style(dlg_dom, "left", `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`);
       var new_card_dom = dojo.clone(existing_card_dom);
@@ -453,12 +471,15 @@ define([
               if (choice_names.length > 1) {
                 var tree_choices = [];
                 for (let i = 0; i < choice_names.length; i++) {
-                  tree_choices.push({
+                  to_push = {
                     name: choice_names[i],
                     id: "card_choice_" + choice_count + "_option_" + i,
-                    cost: choice_names[i] != "skip" ? action.cost : null,
                     children: new Map(),
-                  });
+                  }
+                  if (choice_names[i] != "skip") {
+                    to_push["cost"] = action.cost;
+                  }
+                  tree_choices.push(to_push);
                 }
                 tree.set("choice_" + choice_count, tree_choices);
                 choice_count++;
@@ -521,7 +542,7 @@ define([
             console.log("checked: " + checkbox.checked);
             console.log(option.cost);
             console.log(costAcc);
-            if (checkbox.checked && typeof option.cost !== "undefined") {
+            if (checkbox.checked && (typeof option.cost !== "undefined")) {
               costAcc = bga.addResources(option.cost, costAcc);
             }
             costAcc = computeTotalPlayCost(option.children, costAcc);
@@ -769,7 +790,7 @@ define([
         console.log("type: " + card_type);
         var card = this.playable_cards[card_type];
         console.log(card);
-        this.showCardPlayDialog(card, this.playerHand.getItemDivId(item_id));
+        this.showCardPlayDialog(card, items[0].id);
       }
       console.log(items);
       console.groupEnd();
@@ -930,9 +951,9 @@ define([
       dojo.subscribe("showResourceChoiceDialog", this, "notifShowResourceChoiceDialog");
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
-      dojo.subscribe("newHand", this, "notifyNewHand");
       dojo.subscribe("cardPlayResults", this, "notifyCardPlayed");
       dojo.subscribe("score", this, "notifyScore");
+      dojo.subscribe("damage_received", this, "notifyDamageReceived");
 
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -1037,16 +1058,6 @@ define([
       ).play();
       dojo.removeClass(skiff_slot, "unoccupied");
       console.groupEnd();
-    },
-    notifyNewHand: function (notif) {
-      this.playerHand.removeAll();
-
-      for (var i in notif.args.cards) {
-        var card = notif.args.cards[i];
-        var color = card.type;
-        var value = card.type_arg;
-        this.playerHand.addToStockWithId(this.getCardUniqueId(color, value), card.id);
-      }
     },
     notifyCardPlayed: function (notif) {
       console.groupCollapsed("notify: card played");
@@ -1174,6 +1185,10 @@ define([
       console.log("score for " + notif.args.player_id + " " + notif.args.player_score);
       this.scoreCtrl[notif.args.player_id].setValue(notif.args.player_score);
     },
+    notifyDamageReceived: function(notif) {
+      console.log("notify damage receuved");
+      console.log(notif);
+    }
     /*
         Example:
         

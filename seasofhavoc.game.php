@@ -29,6 +29,7 @@ enum Heading: int
     case SOUTH = 3;
     case WEST = 4;
     case INVALID = 5;
+    case INVALID2 = 6;
 
     public function toString(): string
     {
@@ -374,11 +375,7 @@ class SeasOfHavoc extends Table
     //private $resource_types;
 
     private SeaBoard $seaboard;
-    //private array $starting_cards;
-    //private array $all_cards;
     private $cards;
-    private $damage_card;
-    //private array $market_cards;
     private array $playable_cards;
     private array $resource_types;
 
@@ -412,21 +409,6 @@ class SeasOfHavoc extends Table
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", $this);
 
-        // $starting_cards = array_combine(
-        //     array_column($this->starting_cards, "card_type"),
-        //     array_values($this->starting_cards),
-        // );
-        // assert(count($starting_cards) == count($this->starting_cards));
-        // $this->starting_cards = $starting_cards;
-
-        // $market_cards = array_combine(
-        //     array_column($this->market_cards, "card_type"),
-        //     array_values($this->market_cards),
-        // );
-        // assert(count($market_cards) == count($this->market_cards));
-        // $this->market_cards = $market_cards;
-
-        //$this->playable_cards = array_merge($this->starting_cards, $this->market_cards); //array_merge([$this->damage_card], $this->starting_cards,  $this->market_cards);
         foreach (array_keys($this->playable_cards) as $t) {
             $this->playable_cards[$t]["card_type"] = $t;
         }
@@ -603,16 +585,17 @@ class SeasOfHavoc extends Table
             $this->cards->pickCardForLocation("market_deck", "market", $i);
         }
 
-        // $this->cards->createCards([
-        //     "type" => $this->damage_card["card_type"],
-        //     "type_arg" => 0,
-        //     "nbr" => 10 + count($player_infos) * 5,
-        // ], "damage_deck");
-
-        //$this->cards->shuffle("player_deck");
-        // foreach ($player_infos as $playerid => $player) {
-        //     //$this->notifyPlayer($playerid, 'newHand', '', array ('cards' => $handcards ));
-        // }
+        $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
+        $this->cards->createCards(
+            [
+                [
+                    "type" => $damage_card["card_type"],
+                    "type_arg" => 0,
+                    "nbr" => 10 + count($player_infos) * 5,
+                ],
+            ],
+            "damage_deck",
+        );
 
         // Activate first player (which is in general a good idea :) )
         // $this->activeNextPlayer();
@@ -628,9 +611,6 @@ class SeasOfHavoc extends Table
         $resources = $this->getGameResourcesHierarchical();
         $this->dump("fetched resources:", $resources);
 
-        #$total_resources = array_column($resources, "resource_count", "resource_key");
-        #$this->dump("total resources:", $total_resources);
-
         $total_skiffs = array_sum(array_column(array_values($resources), "skiff"));
         $this->mytrace("total skiffs left: $total_skiffs");
 
@@ -642,12 +622,6 @@ class SeasOfHavoc extends Table
 
         // Go to next player
         $active_player = $this->activeNextPlayer();
-        #$resources_by_player = $this->subindexArray($resources, "player_id");
-        #$this->dump("resources_by_player: ", $resources_by_player);
-        // while ($resources_by_player[$active_player]["skiff"] == 0) {
-        //     $active_player = $this->activeNextPlayer();
-        //     $resources_by_player = $this->subindexArray($resources, "player_id");
-        // }
 
         $this->giveExtraTime($active_player);
         $this->gamestate->nextState("nextPlayer");
@@ -689,12 +663,10 @@ class SeasOfHavoc extends Table
 
         $result["resources"] = $this->getGameResources();
         $result["islandslots"] = $this->getIslandSlots();
-        //$result['starting_cards'] = $this->starting_cards;
-        //$result['market_cards'] = $this->market_cards;
         $result["playable_cards"] = $this->playable_cards;
         $result["market"] = $this->cards->getCardsInLocation("market");
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
-        //$result['allcards'] = $this->cards->countCardsInLocations();
+        $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         return $result;
@@ -1090,6 +1062,16 @@ class SeasOfHavoc extends Table
                                         "score_increment" => $score_increment,
                                     ],
                                 );
+                                $hit_player_id = $collider["arg"];
+                                $this->cards->pickCard("damage_deck", $hit_player_id);
+                                $this->notifyAllPlayers(
+                                    "damage_received",
+                                    clienttranslate('${player_name} receives a damage card'),
+                                    [
+                                        "player_name" => self::getPlayerNameById($hit_player_id),
+                                        "player_id" => $hit_player_id,
+                                    ],
+                                );
                             }
                         }
                     }
@@ -1102,13 +1084,12 @@ class SeasOfHavoc extends Table
         return $to_send;
     }
 
-    function actPlayCard(int $card_type, #[JsonParam] $decisions)
+    function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
     {
         $this->dump("card_type", $card_type);
         $this->dump("decisions", $decisions);
         $card = $this->playable_cards[$card_type];
         $this->dump("card played", $card);
-        $choice_count = 0;
         $player_id = $this->getActivePlayerId();
 
         $moveChain = [];
@@ -1119,6 +1100,8 @@ class SeasOfHavoc extends Table
         // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
         //     $moveChain[] = $outcome;
         // }
+        $this->cards->moveCard($card_id, "player_discard", $player_id);
+
         $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} has played a card'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
