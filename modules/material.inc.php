@@ -37,7 +37,7 @@ $this->playable_cards = [
     [
         "cost" => [],
         "actions" => [["action"=>"scrap"]],
-        "image_id" => 72,
+        "image_id" => 70,
         "category" => "damage",
     ],
     [

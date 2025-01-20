@@ -197,7 +197,9 @@ define([
       this.playerDiscard = new ebg.stock();
       this.playerDiscard.create(this, $("mydiscard"), 144, 198);
       this.playerDiscard.image_items_per_row = 6; // 13 images per row
-      this.playerDiscard.horizontal_overlap = 1000;
+      this.playerDiscard.horizontal_overlap = 1;
+      this.playerDiscard.vertical_overlap = 0;
+      this.playerDiscard.item_margin = 0;
       this.playerDiscard.setSelectionMode(0);
       this.playerDiscard.resizeItems(144, 198, 864, 2378);
 
@@ -219,7 +221,9 @@ define([
       dojo.connect(this.playerHand, "onChangeSelection", this, "onCardSelectedPlayerHand");
       for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
-        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market/discard stock");
+        console.log(
+          "adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market/discard stock",
+        );
         this.playerHand.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
         this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
         this.playerDiscard.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
@@ -384,7 +388,7 @@ define([
         this.dep_tree = null;
         domConstruct.destroy("card_display_dialog");
         console.log("moving card with type: " + card.card_type + " id :" + card_id);
-        this.playerDiscard.addToStockWithId(card.card_type, 0, card_div_id);
+        this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
         this.playerHand.removeFromStockById(card_id);
         console.groupEnd();
       });
@@ -475,7 +479,7 @@ define([
                     name: choice_names[i],
                     id: "card_choice_" + choice_count + "_option_" + i,
                     children: new Map(),
-                  }
+                  };
                   if (choice_names[i] != "skip") {
                     to_push["cost"] = action.cost;
                   }
@@ -542,7 +546,7 @@ define([
             console.log("checked: " + checkbox.checked);
             console.log(option.cost);
             console.log(costAcc);
-            if (checkbox.checked && (typeof option.cost !== "undefined")) {
+            if (checkbox.checked && typeof option.cost !== "undefined") {
               costAcc = bga.addResources(option.cost, costAcc);
             }
             costAcc = computeTotalPlayCost(option.children, costAcc);
@@ -1185,10 +1189,15 @@ define([
       console.log("score for " + notif.args.player_id + " " + notif.args.player_score);
       this.scoreCtrl[notif.args.player_id].setValue(notif.args.player_score);
     },
-    notifyDamageReceived: function(notif) {
+    notifyDamageReceived: function (notif) {
       console.log("notify damage receuved");
-      console.log(notif);
-    }
+      let damage_card = notif.args.damage_card;
+      let player_id = notif.args.player_id;
+      var shipid = "player_ship_" + notif.args.player_id;
+      if (player_id == this.player_id) {
+        this.playerDiscard.addToStockWithId(damage_card.type, damage_card.id, shipid);
+      }
+    },
     /*
         Example:
         

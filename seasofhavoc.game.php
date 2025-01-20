@@ -1063,13 +1063,15 @@ class SeasOfHavoc extends Table
                                     ],
                                 );
                                 $hit_player_id = $collider["arg"];
-                                $this->cards->pickCard("damage_deck", $hit_player_id);
+                                $damage_card = $this->cards->pickCardForLocation("damage_deck", "player_discard", $hit_player_id);
+                                
                                 $this->notifyAllPlayers(
                                     "damage_received",
                                     clienttranslate('${player_name} receives a damage card'),
                                     [
                                         "player_name" => self::getPlayerNameById($hit_player_id),
                                         "player_id" => $hit_player_id,
+                                        "damage_card" => $damage_card
                                     ],
                                 );
                             }
