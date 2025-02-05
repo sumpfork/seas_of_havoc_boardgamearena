@@ -21,6 +21,7 @@ require_once APP_GAMEMODULE_PATH . "module/table/table.game.php";
 
 use Bga\GameFramework\Actions\Types\JsonParam;
 
+
 enum Heading: int
 {
     case NO_HEADING = 0;
@@ -28,8 +29,6 @@ enum Heading: int
     case EAST = 2;
     case SOUTH = 3;
     case WEST = 4;
-    case INVALID = 5;
-    case INVALID2 = 6;
 
     public function toString(): string
     {
@@ -39,7 +38,6 @@ enum Heading: int
             Heading::EAST => "EAST",
             Heading::SOUTH => "SOUTH",
             Heading::WEST => "WEST",
-            Heading::INVALID => "INVALID",
         };
     }
 }
@@ -232,7 +230,11 @@ class SeaBoard
             case Turn::RIGHT:
             # fallthrough
             case Turn::AROUND:
-                $heading = Heading::from($heading->value + ($direction == Turn::RIGHT ? 1 : 2));
+                $new_value = $heading->value + ($direction == Turn::RIGHT ? 1 : 2);
+                if ($new_value > Heading::WEST->value) {
+                    $new_value -= 4;
+                }
+                $heading = Heading::from($new_value);
                 if ($heading > Heading::WEST) {
                     $heading = Heading::from($heading->value - 4);
                 }
@@ -485,6 +487,10 @@ class SeasOfHavoc extends Table
         return "player_deck_" . $player_id;
     }
 
+    function calculateNumDamageCards($num_players)
+    {
+        return 10 + $num_players * 5;
+    }
     function stMyGameSetup()
     {
         //throw new BgaSystemException("mysetup start");
@@ -591,7 +597,7 @@ class SeasOfHavoc extends Table
                 [
                     "type" => $damage_card["card_type"],
                     "type_arg" => 0,
-                    "nbr" => 10 + count($player_infos) * 5,
+                    "nbr" => $this->calculateNumDamageCards(count($player_infos)),
                 ],
             ],
             "damage_deck",
@@ -684,9 +690,10 @@ class SeasOfHavoc extends Table
     */
     function getGameProgression()
     {
-        // TODO: compute and return the game progression
+        $totalDamageCards = $this->calculateNumDamageCards($this->getPlayersNumber());
+        $remainingDamageCards = $this->cards->countCardInLocation("damage_deck");
 
-        return 0;
+        return (int) 100 * (1 - $remainingDamageCards / $totalDamageCards);
     }
 
     /*
@@ -1009,6 +1016,7 @@ class SeasOfHavoc extends Table
         $this->dump("actions", $actions);
         foreach ($actions as $action) {
             $this->trace("handling " . $action["action"]);
+            $this->dump("to_send", $to_send);
             switch ($action["action"]) {
                 case "sequence":
                     $to_send += $this->processCardActions($action["actions"], $decisions);
@@ -1063,15 +1071,19 @@ class SeasOfHavoc extends Table
                                     ],
                                 );
                                 $hit_player_id = $collider["arg"];
-                                $damage_card = $this->cards->pickCardForLocation("damage_deck", "player_discard", $hit_player_id);
-                                
+                                $damage_card = $this->cards->pickCardForLocation(
+                                    "damage_deck",
+                                    "player_discard",
+                                    $hit_player_id,
+                                );
+
                                 $this->notifyAllPlayers(
                                     "damage_received",
                                     clienttranslate('${player_name} receives a damage card'),
                                     [
                                         "player_name" => self::getPlayerNameById($hit_player_id),
                                         "player_id" => $hit_player_id,
-                                        "damage_card" => $damage_card
+                                        "damage_card" => $damage_card,
                                     ],
                                 );
                             }
@@ -1093,8 +1105,6 @@ class SeasOfHavoc extends Table
         $card = $this->playable_cards[$card_type];
         $this->dump("card played", $card);
         $player_id = $this->getActivePlayerId();
-
-        $moveChain = [];
 
         $moveChain = $this->processCardActions($card["actions"], $decisions);
         $this->dump("final move chain", $moveChain);
