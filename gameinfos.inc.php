@@ -15,15 +15,6 @@ $gameinfos = array(
     // Name of the game in English (will serve as the basis for translation) 
     'game_name' => "Seas of Havoc",
 
-    // Game designer (or game designers, separated by commas)
-    'designer' => 'Sébastien Bernier-Wong, Peter Gorniak',
-
-    // Game artist (or game artists, separated by commas)
-    'artist' => 'Jane Doe',
-
-    // Year of FIRST publication of this game. Can be negative.
-    'year' => 2023,
-
     // Game publisher (use empty string if there is no publisher)
     'publisher' => 'Rock Manor Games',
 
@@ -87,18 +78,6 @@ $gameinfos = array(
     // NB: the default will be the first language in this list spoken by the player, so you should list them by popularity/preference.
     'language_dependency' => false,
 
-    // Complexity of the game, from 0 (extremely simple) to 5 (extremely complex)
-    'complexity' => 3,
-
-    // Luck of the game, from 0 (absolutely no luck in this game) to 5 (totally luck driven)
-    'luck' => 3,
-
-    // Strategy of the game, from 0 (no strategy can be setup) to 5 (totally based on strategy)
-    'strategy' => 3,
-
-    // Diplomacy of the game, from 0 (no interaction in this game) to 5 (totally based on interaction and discussion between players)
-    'diplomacy' => 3,
-
     // Colors attributed to players
     'player_colors' => array("Xebec" => "3E8956", "Ship-of-the-Line" => "C9364B", "944027", "8E55A1", "F4AA23", "57C2B9"),
 
@@ -126,25 +105,6 @@ $gameinfos = array(
         //  minimum possible value: 740
         'max' => null
     ),
-
-    // Game presentation
-    // Short game presentation text that will appear on the game description page, structured as an array of paragraphs.
-    // Each paragraph must be wrapped with totranslate() for translation and should not contain html (plain text without formatting).
-    // A good length for this text is between 100 and 150 words (about 6 to 9 lines on a standard display)
-    'presentation' => array(
-        totranslate("In Seas of Havoc, players take on the role of a unique captain of a ship in a naval combat game where players are competing for the most renown. 
-                     Players can gain renown for discovering shipwreck and battling it out on the high seas."),
-        totranslate("The game is split between a combat phase on the high seas and an island phase where players send out their skiffs to worker placements to gain resources, improve their decks, repair and upgrade their ship. During the combat phase, Players will play out a hand of cards to maneuver their ship; navigating obstacles, searching shipwrecks and firing cannons at their opponents. 
-                    Multi-use cards offer options as the battle unfolds and card bonuses reward smart play."),
-    ),
-
-    //////// BGA SANDBOX ONLY PARAMETERS (DO NOT MODIFY)
-
-    // simple : A plays, B plays, C plays, A plays, B plays, ...
-    // circuit : A plays and choose the next player C, C plays and choose the next player D, ...
-    // complex : A+B+C plays and says that the next player is A+B
-    'is_sandbox' => false,
-    'turnControl' => 'simple'
 
     ////////
 );

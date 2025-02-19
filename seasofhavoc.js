@@ -363,7 +363,7 @@ define([
             var checkbox = dom.byId(option.id);
             console.log("checked: " + checkbox.checked);
             if (checkbox.checked) {
-              decisionSummary.push(i);
+              decisionSummary.push(option.name);
               makeDecisionSummary(option.children, decisionSummary);
             }
           }

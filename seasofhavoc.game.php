@@ -21,7 +21,6 @@ require_once APP_GAMEMODULE_PATH . "module/table/table.game.php";
 
 use Bga\GameFramework\Actions\Types\JsonParam;
 
-
 enum Heading: int
 {
     case NO_HEADING = 0;
@@ -1005,6 +1004,7 @@ class SeasOfHavoc extends Table
                 $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                 break;
         }
+        $this->dump("processSimpleAction outcome", $outcome);
         return $outcome;
     }
 
@@ -1012,19 +1012,36 @@ class SeasOfHavoc extends Table
     {
         //TODO: check for collisions everywhere
         $to_send = [];
+        $total_cost = [];
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         foreach ($actions as $action) {
             $this->trace("handling " . $action["action"]);
             $this->dump("to_send", $to_send);
+            if (array_key_exists("cost", $action)) {
+                # an action with a cost is always optional, so check the next decision where 0 is taking the action
+                # and 1 is 'Skip'
+                $decision = array_shift($decisions);
+                if ($decision == "skip") {
+                    $this->trace("skipping action with cost due to decision == 'skip': " . $action["action"]);
+                    continue;
+                }
+                $total_cost = $this->sum_array_by_key($total_cost, $action["cost"]);
+            }
             switch ($action["action"]) {
                 case "sequence":
-                    $to_send += $this->processCardActions($action["actions"], $decisions);
+                    $result = $this->processCardActions($action["actions"], $decisions);
+                    $to_send = array_merge($to_send, $result["action_chain"]);
+                    $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
                     break;
                 case "choice":
                     $decision = array_shift($decisions);
                     $choices = $action["choices"];
-                    $to_send += $this->processCardActions([$choices[array_keys($choices)[$decision]]], $decisions);
+                    $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
+                    $decision_index = array_search($decision, $choice_names);
+                    $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
+                    $to_send = array_merge($to_send, $result["action_chain"]);
+                    $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
                     break;
                 case "fire":
                 case "2 x fire":
@@ -1034,7 +1051,7 @@ class SeasOfHavoc extends Table
                     $player_id = $this->getActivePlayerId();
                     $outcome = $this->seaboard->resolveCannonFire(
                         $player_id,
-                        $decision == 0 ? Turn::LEFT : Turn::RIGHT, #not awesome, assumes they're in a certain order in interface...
+                        $decision == "fire left" ? Turn::LEFT : Turn::RIGHT,
                         $action["range"],
                         ["rock", "player_ship"],
                     );
@@ -1092,10 +1109,10 @@ class SeasOfHavoc extends Table
                     $to_send[] = $outcome;
                     break;
                 default:
-                    $to_send += $this->processSimpleAction($action["action"]);
+                    $to_send = array_merge($to_send, $this->processSimpleAction($action["action"]));
             }
         }
-        return $to_send;
+        return ["cost" => $total_cost, "action_chain" => $to_send];
     }
 
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
@@ -1106,8 +1123,8 @@ class SeasOfHavoc extends Table
         $this->dump("card played", $card);
         $player_id = $this->getActivePlayerId();
 
-        $moveChain = $this->processCardActions($card["actions"], $decisions);
-        $this->dump("final move chain", $moveChain);
+        $outcome = $this->processCardActions($card["actions"], $decisions);
+        $this->dump("final card play outcome", $outcome);
 
         // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
         //     $moveChain[] = $outcome;
@@ -1117,35 +1134,11 @@ class SeasOfHavoc extends Table
         $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} has played a card'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
-            "moveChain" => $moveChain,
+            "moveChain" => $outcome["action_chain"],
+            "cost" => $outcome["cost"],
         ]);
         $this->gamestate->nextState();
     }
-    /*
-    
-    Example:
-
-    function playCard( $card_id )
-    {
-        // Check that this is the player's turn and that it is a "possible action" at this game state (see states.inc.php)
-        self::checkAction( 'playCard' ); 
-        
-        $player_id = self::getActivePlayerId();
-        
-        // Add your game logic to play a card there 
-        ...
-        
-        // Notify all players about the card played
-        self::notifyAllPlayers( "cardPlayed", clienttranslate( '${player_name} plays ${card_name}' ), array(
-            'player_id' => $player_id,
-            'player_name' => self::getActivePlayerName(),
-            'card_name' => $card_name,
-            'card_id' => $card_id
-        ) );
-          
-    }
-    
-    */
 
     //////////////////////////////////////////////////////////////////////////////
     //////////// Game state arguments
