@@ -535,19 +535,7 @@ class SeasOfHavoc extends Table
         $sql .= implode(",", $values);
         self::DbQuery($sql);
 
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)");
-        self::DbQuery(
-            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)",
-        );
-        self::DbQuery(
-            "INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('blacksmith', 'n1', null)",
-        );
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n1', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n2', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
-        self::DbQuery("INSERT INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
+        $this->clearIslandSlots();
 
         $player_infos = $this->getPlayerInfo();
 
@@ -621,6 +609,7 @@ class SeasOfHavoc extends Table
 
         if (array_sum(array_column(array_values($resources), "skiff")) == 0) {
             $this->mytrace("next state, transition: islandPhaseDone");
+            $this->clearIslandSlots();
             $this->gamestate->nextState("islandPhaseDone");
             return;
         }
@@ -639,7 +628,24 @@ class SeasOfHavoc extends Table
 
     function stNextPlayerSeaPhase()
     {
+        $current_player = $this->getActivePlayerId();
         $active_player = $this->activeNextPlayer();
+        $num_cards = $this->cards->countCardInLocation("hand", $active_player);
+        $this->trace("$active_player num cards in hand: $num_cards");
+        while ($num_cards == 0) {
+            $active_player = $this->activeNextPlayer();
+            $num_cards = $this->cards->countCardInLocation("hand", $active_player);
+            $this->trace("$active_player num cards in hand: $num_cards");
+            if ($active_player == $current_player) {
+                $this->trace("$active_player is current player");
+                break;
+            }
+        }
+        $this->trace("final num cards: $num_cards");
+        if ($num_cards == 0) {
+            $this->gamestate->nextState("seaPhaseDone");
+            return;
+        }
         $this->giveExtraTime($active_player);
         $this->gamestate->nextState("nextPlayer");
     }
@@ -700,7 +706,7 @@ class SeasOfHavoc extends Table
         
         Gather all relevant resources about current game situation (visible by the current player).
     */
-    function getGameResources(int $player_id = null)
+    function getGameResources(?int $player_id = null)
     {
         $sql = "
                 SELECT
@@ -714,7 +720,7 @@ class SeasOfHavoc extends Table
         return $game_resources;
     }
 
-    function getGameResourcesHierarchical(int $player_id = null)
+    function getGameResourcesHierarchical(?int $player_id = null)
     {
         $resources = $this->getGameResources($player_id);
         $hierarchical_resources = [];
@@ -727,7 +733,7 @@ class SeasOfHavoc extends Table
         return $hierarchical_resources;
     }
 
-    function getPlayerInfo(int $player_id = null)
+    function getPlayerInfo(?int $player_id = null)
     {
         static $player_info = null;
         if ($player_info === null) {
@@ -778,6 +784,23 @@ class SeasOfHavoc extends Table
             "slot_name" => $slot_name,
             "slot_number" => $number,
         ]);
+    }
+
+    function clearIslandSlots() {
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)");
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)");
+        self::DbQuery(
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)",
+        );
+        self::DbQuery(
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('blacksmith', 'n1', null)",
+        );
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n1', null)");
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n2', null)");
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
+        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
+
     }
 
     function mytrace(string $msg)

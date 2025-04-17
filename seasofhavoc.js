@@ -1068,6 +1068,8 @@ define([
       console.log(notif.args);
       var shipid = "player_ship_" + notif.args.player_id;
 
+      this.playerSpendResources(notif.args.cost);
+
       var anims = [];
       for (var move of notif.args.moveChain) {
         console.log("processing move");
