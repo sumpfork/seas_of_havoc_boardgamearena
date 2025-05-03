@@ -189,7 +189,14 @@ class SeaBoard
         $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $object["heading"]);
 
         $collided = $this->getObjectsOfTypes($movement_result["new_x"], $movement_result["new_y"], $collision_types);
-        //if (count($collided) == 0) {
+        if (count($collided) > 0) {
+            return [
+                "type" => "collision",
+                "colliders" => $collided,
+                "collision_x" => $movement_result["new_x"],
+                "collision_y" => $movement_result["new_y"],
+            ];
+        }
         $old_x = $object_info["x"];
         $old_y = $object_info["y"];
 
@@ -206,15 +213,6 @@ class SeaBoard
             "teleport_at" => $movement_result["teleport_at"],
             "teleport_to" => $movement_result["teleport_to"],
         ];
-        //}
-        // return [
-        //     "type" => "move",
-        //     "colliders" => $collided,
-        //     "new_x" => $object_info["x"],
-        //     "new_y" => $object_info["y"],
-        //     "teleport_at" => $teleport_at,
-        //     "teleport_to" => $teleport_to,
-        // ];
     }
 
     public static function turnHeading(Heading $heading, Turn $direction)
@@ -370,6 +368,17 @@ class SeaBoard
     }
 }
 
+enum PrimitiveCardPlayAction: string
+{
+    case FORWARD = "forward";
+    case LEFT = "left";
+    case RIGHT = "right";
+    case FIRE = "fire";
+    case FIRE2 = "2 x fire";
+    case FIRE3 = "3 x fire3";
+    case SEEQUENCE = "sequence";
+    case CHOICE = "choice";
+}
 class SeasOfHavoc extends Table
 {
     // for IDE (form material.inc.php)
@@ -786,8 +795,11 @@ class SeasOfHavoc extends Table
         ]);
     }
 
-    function clearIslandSlots() {
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)");
+    function clearIslandSlots()
+    {
+        self::DbQuery(
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)",
+        );
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)");
         self::DbQuery(
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)",
@@ -800,7 +812,6 @@ class SeasOfHavoc extends Table
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
-
     }
 
     function mytrace(string $msg)
@@ -1005,30 +1016,52 @@ class SeasOfHavoc extends Table
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
 
-    function processSimpleAction(string $action_type)
+    function processSimpleAction(PrimitiveCardPlayAction $action_type)
     {
         $player_id = $this->getActivePlayerId();
         $outcome = [];
+        $collision_occurred = false;
         switch ($action_type) {
-            case "forward":
-                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+            case PrimitiveCardPlayAction::FORWARD:
+                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $result;
+                if ($result["type"] == "collision") {
+                    $collision_occurred = true;
+                }
                 break;
-            case "left":
+            case PrimitiveCardPlayAction::LEFT:
                 //not sure whether it'd be better to have this sequence explicit in the card spec?
                 //would make for a more cumbersome but perhaps more explicit card db, and maybe
                 //easier collision handling?
-                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $result;
+                if ($result["type"] == "collision") {
+                    $collision_occurred = true;
+                    break;
+                }
+
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::LEFT);
-                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $result;
+                $collision_occurred = $collision_occurred || $result["type"] == "collision";
                 break;
-            case "right":
-                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+            case PrimitiveCardPlayAction::RIGHT:
+                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $result;
+                if ($result["type"] == "collision") {
+                    $collision_occurred = true;
+                    break;
+                }
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
-                $outcome[] = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $outcome[] = $result;
+                $collision_occurred = $collision_occurred || $result["type"] == "collision";
                 break;
+            default:
+                throw new BgaUserException($this->_("Unknown action type: $action_type->value"));
         }
         $this->dump("processSimpleAction outcome", $outcome);
-        return $outcome;
+        return ["steps" => $outcome, "collision_occurred" => $collision_occurred];
     }
 
     function processCardActions(array $actions, array $decisions)
@@ -1038,6 +1071,7 @@ class SeasOfHavoc extends Table
         $total_cost = [];
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
+        $collision_occurred = false;
         foreach ($actions as $action) {
             $this->trace("handling " . $action["action"]);
             $this->dump("to_send", $to_send);
@@ -1051,13 +1085,14 @@ class SeasOfHavoc extends Table
                 }
                 $total_cost = $this->sum_array_by_key($total_cost, $action["cost"]);
             }
-            switch ($action["action"]) {
-                case "sequence":
+            $typed_action = PrimitiveCardPlayAction::from($action["action"]);
+            switch ($typed_action) {
+                case PrimitiveCardPlayAction::SEEQUENCE:
                     $result = $this->processCardActions($action["actions"], $decisions);
                     $to_send = array_merge($to_send, $result["action_chain"]);
                     $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
                     break;
-                case "choice":
+                case PrimitiveCardPlayAction::CHOICE:
                     $decision = array_shift($decisions);
                     $choices = $action["choices"];
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
@@ -1066,9 +1101,9 @@ class SeasOfHavoc extends Table
                     $to_send = array_merge($to_send, $result["action_chain"]);
                     $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
                     break;
-                case "fire":
-                case "2 x fire":
-                case "3 x fire":
+                case PrimitiveCardPlayAction::FIRE:
+                case PrimitiveCardPlayAction::FIRE2:
+                case PrimitiveCardPlayAction::FIRE3:
                     $this->trace("fire");
                     $decision = array_shift($decisions);
                     $player_id = $this->getActivePlayerId();
@@ -1132,10 +1167,15 @@ class SeasOfHavoc extends Table
                     $to_send[] = $outcome;
                     break;
                 default:
-                    $to_send = array_merge($to_send, $this->processSimpleAction($action["action"]));
+                    $result = $this->processSimpleAction($typed_action);
+                    $to_send = array_merge($to_send, $result["steps"]);
+                    $collision_occurred = $collision_occurred || $result["collision_occurred"];
+            }
+            if ($collision_occurred) {
+                break;
             }
         }
-        return ["cost" => $total_cost, "action_chain" => $to_send];
+        return ["cost" => $total_cost, "action_chain" => $to_send, "collision_occurred" => $collision_occurred];
     }
 
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
@@ -1152,6 +1192,11 @@ class SeasOfHavoc extends Table
         // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
         //     $moveChain[] = $outcome;
         // }
+
+        $this->DbQuery(
+            "REPLACE INTO last_card_played (player_id, card_type, card_type_arg) VALUES ($player_id, '$card_type', 0)",
+        );
+
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
         $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} has played a card'), [
@@ -1160,7 +1205,15 @@ class SeasOfHavoc extends Table
             "moveChain" => $outcome["action_chain"],
             "cost" => $outcome["cost"],
         ]);
-        $this->gamestate->nextState();
+
+        $this->gamestate->nextState($outcome["collision_occurred"] ? "collisionOccurred" : "seaTurnDone");
+    }
+
+    function actResolveCollision(string $card_id, string $action_type)
+    {
+        $this->mytrace("actResolveCollision");
+        $this->dump("card_id", $card_id);
+        $this->gamestate->nextState("seaTurnDone");
     }
 
     //////////////////////////////////////////////////////////////////////////////

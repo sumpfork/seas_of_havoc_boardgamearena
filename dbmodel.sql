@@ -58,3 +58,10 @@ CREATE TABLE IF NOT EXISTS `sea` (
   `arg` varchar(32),
   `heading` int(1) unsigned NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE IF NOT EXISTS `last_card_played` (
+  `player_id` int(10) unsigned NOT NULL,
+  `card_type` varchar(16) NOT NULL,
+  `card_type_arg` int(11) NOT NULL,
+  PRIMARY KEY (`player_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

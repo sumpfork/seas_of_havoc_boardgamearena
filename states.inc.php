@@ -49,15 +49,28 @@
 */
 
 //    !! It is not a good idea to modify this file when a game is running !!
+// define contants for state ids
+if (!defined("STATE_END_GAME")) {
+    // ensure this block is only invoked once, since it is included multiple times
+    define("STATE_GAME_SETUP", 1);
+    define("STATE_MY_SETUP", 2);
+    define("STATE_ISLAND_TURN", 3);
+    define("STATE_NEXT_PLAYER_ISLAND_PHASE", 4);
+    define("STATE_CARD_PURCHASES", 5);
+    define("STATE_SEA_TURN", 6);
+    define("STATE_NEXT_PLAYER_SEA_PHASE", 7);
+    define("STATE_RESOLVE_COLLISION", 8);
+    define("STATE_END_GAME", 99);
+}
 
 $machinestates = [
     // The initial state. Please do not modify.
-    1 => [
+    STATE_GAME_SETUP => [
         "name" => "gameSetup",
         "description" => "",
         "type" => "manager",
         "action" => "stGameSetup",
-        "transitions" => ["" => 3],
+        "transitions" => ["" => STATE_MY_SETUP],
     ],
     // exists only for debugging initial php setup that doesn't produce log messages
     // unless some player states have been active
@@ -68,58 +81,67 @@ $machinestates = [
     //      "possibleactions" => array("actExitDummyStart"),
     //      "transitions" => array("" => 3)
     // ),
-    3 => [
+    STATE_MY_SETUP => [
         "name" => "mySetup",
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => ["" => 4],
+        "transitions" => ["" => STATE_ISLAND_TURN],
     ],
-    4 => [
+    STATE_ISLAND_TURN => [
         "name" => "islandTurn",
         "description" => clienttranslate('${actplayer} must place a skiff'),
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
         "possibleactions" => ["actPlaceSkiff", "actResourcePickedInDialog"],
-        "transitions" => ["islandTurnDone" => 5],
+        "transitions" => ["islandTurnDone" => STATE_NEXT_PLAYER_ISLAND_PHASE],
     ],
 
-    5 => [
+    STATE_NEXT_PLAYER_ISLAND_PHASE => [
         "name" => "nextPlayerIslandPhase",
         "description" => "",
         "type" => "game",
         "action" => "stNextPlayerIslandPhase",
-        "transitions" => ["islandPhaseDone" => 6, "nextPlayer" => 4],
+        "transitions" => ["islandPhaseDone" => STATE_CARD_PURCHASES, "nextPlayer" => STATE_ISLAND_TURN],
     ],
 
-    6 => [
+    STATE_CARD_PURCHASES => [
         "name" => "cardPurchases",
         "description" => clienttranslate("Players may purchase cards"),
         "descriptionmyturn" => clienttranslate("You may purchase cards"),
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
         "possibleactions" => ["actCompletePurchases"],
-        "transitions" => ["cardPurchasesDone" => 7],
+        "transitions" => ["cardPurchasesDone" => STATE_SEA_TURN],
     ],
-    7 => [
+    STATE_SEA_TURN => [
         "name" => "seaTurn",
         "description" => clienttranslate('${actplayer} must play a card'),
         "descriptionmyturn" => clienttranslate('${you} must play a card'),
         "type" => "activeplayer",
         "possibleactions" => ["actPlayCard"],
-        "transitions" => ["seaTurnDone" => 8],
+        "transitions" => ["seaTurnDone" => STATE_NEXT_PLAYER_SEA_PHASE, "collisionOccurred" => STATE_RESOLVE_COLLISION],
     ],
 
-    8 => [
+    STATE_NEXT_PLAYER_SEA_PHASE => [
         "name" => "nextPlayerSeaPhase",
         "description" => "",
         "type" => "game",
         "action" => "stNextPlayerSeaPhase",
-        "transitions" => ["seaPhaseDone" => 4, "nextPlayer" => 7],
+        "transitions" => ["seaPhaseDone" => STATE_ISLAND_TURN, "nextPlayer" => STATE_SEA_TURN],
+    ],
+
+    STATE_RESOLVE_COLLISION => [
+        "name" => "resolveCollision",
+        "description" => clienttranslate('${actplayer} must resolve a collision'),
+        "descriptionmyturn" => clienttranslate('${you} must resolve a collision'),
+        "type" => "activeplayer",
+        "possibleactions" => ["actResolveCollision"],
+        "transitions" => ["collisionResolved" => STATE_NEXT_PLAYER_SEA_PHASE],
     ],
     // Final state.
     // Please do not modify (and do not overload action/args methods).
-    99 => [
+    STATE_END_GAME => [
         "name" => "gameEnd",
         "description" => clienttranslate("End of game"),
         "type" => "manager",
