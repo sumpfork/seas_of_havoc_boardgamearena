@@ -109,16 +109,25 @@
     display: inline-block;
 }
 .cannonball {
-    background-position: 0% 0%;
+    background-position: 0px 0px;
 }
 .sail {
-    background-position: 100% 0%;
+    background-position: -30px 0px;
 }
 .doubloon {
-    background-position: 0% 100%;
+    background-position: 0px -30px;
 }
 .infamy {
-    background-position: 100% 100%;
+    background-position: -30px -30px;
+}
+.pivot_left {
+    background-position: -60px 0px;
+}
+.pivot_right {
+    background-position: -90px 0px;
+}
+.nope {
+    background-position: -60px -30px;
 }
 .resource_count {
     position: relative;

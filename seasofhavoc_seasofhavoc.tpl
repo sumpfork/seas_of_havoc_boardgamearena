@@ -65,6 +65,11 @@
                         <div id="cannonball_button" class="cannonball resource resource_button" data-resource="cannonball"></div>
                         <div id="doubloon_button" class="doubloon resource resource_button" data-resource="doubloon"></div>
                         </div>`;
+    var jstpl_pivot_dialog=`<div class="pivot_choice_dialog" id="pivot_choice_dialog">
+                        <div id="pivot_left_button" class="pivot_left resource pivot_button" data-pivot="pivot left"></div>
+                        <div id="no_pivot_button" class="nope resource pivot_button" data-pivot="no pivot"></div>
+                        <div id="pivot_right_button" class="pivot_right resource pivot_button" data-pivot="pivot right"></div>
+                        </div>`
     var jstpl_dummy_dialog=`<div class="dummy_dialog" id="dummy_dialog">
                         <div id="dummy_button" class="dummy_button">Yep, this is dumb</div>
                         </div>`;

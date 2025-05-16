@@ -136,7 +136,9 @@ $machinestates = [
         "description" => clienttranslate('${actplayer} must resolve a collision'),
         "descriptionmyturn" => clienttranslate('${you} must resolve a collision'),
         "type" => "activeplayer",
-        "possibleactions" => ["actResolveCollision"],
+        "action" => "stResolveCollision",
+        "args" => "argResolveCollision",
+        "possibleactions" => ["actResolveCollision", "actPivotPickedInDialog"],
         "transitions" => ["collisionResolved" => STATE_NEXT_PLAYER_SEA_PHASE],
     ],
     // Final state.

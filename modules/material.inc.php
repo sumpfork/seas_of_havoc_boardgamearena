@@ -36,7 +36,7 @@ $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 $this->playable_cards = [
     [
         "cost" => [],
-        "actions" => [["action"=>"scrap"]],
+        "actions" => [["action"=>"scrap_self"]],
         "image_id" => 70,
         "category" => "damage",
     ],

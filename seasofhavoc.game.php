@@ -371,19 +371,18 @@ class SeaBoard
 enum PrimitiveCardPlayAction: string
 {
     case FORWARD = "forward";
+    case PIVOT_LEFT = "pivot left";
+    case PIVOT_RIGHT = "pivot right";
     case LEFT = "left";
     case RIGHT = "right";
     case FIRE = "fire";
     case FIRE2 = "2 x fire";
     case FIRE3 = "3 x fire3";
-    case SEEQUENCE = "sequence";
+    case SEQUENCE = "sequence";
     case CHOICE = "choice";
 }
 class SeasOfHavoc extends Table
 {
-    // for IDE (form material.inc.php)
-    //private $resource_types;
-
     private SeaBoard $seaboard;
     private $cards;
     private array $playable_cards;
@@ -1029,68 +1028,56 @@ class SeasOfHavoc extends Table
                     $collision_occurred = true;
                 }
                 break;
-            case PrimitiveCardPlayAction::LEFT:
-                //not sure whether it'd be better to have this sequence explicit in the card spec?
-                //would make for a more cumbersome but perhaps more explicit card db, and maybe
-                //easier collision handling?
-                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $result;
-                if ($result["type"] == "collision") {
-                    $collision_occurred = true;
-                    break;
-                }
-
+            case PrimitiveCardPlayAction::PIVOT_LEFT:
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::LEFT);
-                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $result;
-                $collision_occurred = $collision_occurred || $result["type"] == "collision";
                 break;
-            case PrimitiveCardPlayAction::RIGHT:
-                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $result;
-                if ($result["type"] == "collision") {
-                    $collision_occurred = true;
-                    break;
-                }
+            case PrimitiveCardPlayAction::PIVOT_RIGHT:
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
-                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
-                $outcome[] = $result;
-                $collision_occurred = $collision_occurred || $result["type"] == "collision";
                 break;
             default:
                 throw new BgaUserException($this->_("Unknown action type: $action_type->value"));
         }
         $this->dump("processSimpleAction outcome", $outcome);
-        return ["steps" => $outcome, "collision_occurred" => $collision_occurred];
+        return ["action_chain" => $outcome, "collision_occurred" => $collision_occurred];
+    }
+
+    function merge_results(array $result, array &$to_send, array &$total_cost, bool &$collision_occurred)
+    {
+        if (array_key_exists("cost", $result)) {
+            $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
+        }
+        $collision_occurred = $collision_occurred || $result["collision_occurred"];
+        $to_send = array_merge($to_send, $result["action_chain"]);
     }
 
     function processCardActions(array $actions, array $decisions)
     {
-        //TODO: check for collisions everywhere
         $to_send = [];
         $total_cost = [];
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         $collision_occurred = false;
         foreach ($actions as $action) {
-            $this->trace("handling " . $action["action"]);
+            $typed_action = gettype($action["action"]) == "string" ? PrimitiveCardPlayAction::from($action["action"]) : $action["action"];
+            $this->trace("handling " . $typed_action->value);
             $this->dump("to_send", $to_send);
             if (array_key_exists("cost", $action)) {
                 # an action with a cost is always optional, so check the next decision where 0 is taking the action
                 # and 1 is 'Skip'
                 $decision = array_shift($decisions);
                 if ($decision == "skip") {
-                    $this->trace("skipping action with cost due to decision == 'skip': " . $action["action"]);
+                    $this->trace("skipping action with cost due to decision == 'skip': " . typed_action->value);
                     continue;
                 }
-                $total_cost = $this->sum_array_by_key($total_cost, $action["cost"]);
             }
-            $typed_action = PrimitiveCardPlayAction::from($action["action"]);
             switch ($typed_action) {
-                case PrimitiveCardPlayAction::SEEQUENCE:
-                    $result = $this->processCardActions($action["actions"], $decisions);
-                    $to_send = array_merge($to_send, $result["action_chain"]);
-                    $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
+                case PrimitiveCardPlayAction::SEQUENCE:
+                    $this->merge_results(
+                        $this->processCardActions($action["actions"], $decisions),
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                    );
                     break;
                 case PrimitiveCardPlayAction::CHOICE:
                     $decision = array_shift($decisions);
@@ -1098,8 +1085,21 @@ class SeasOfHavoc extends Table
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
                     $decision_index = array_search($decision, $choice_names);
                     $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
-                    $to_send = array_merge($to_send, $result["action_chain"]);
-                    $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
+                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    break;
+                case PrimitiveCardPlayAction::LEFT:
+                    $result = $this->processCardActions(
+                        [["action" => PrimitiveCardPlayAction::FORWARD], ["action" => PrimitiveCardPlayAction::PIVOT_LEFT], ["action" => PrimitiveCardPlayAction::FORWARD]],
+                        $decisions,
+                    );
+                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    break;
+                case PrimitiveCardPlayAction::RIGHT:
+                    $result = $this->processCardActions(
+                        [["action" => PrimitiveCardPlayAction::FORWARD], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT], ["action" => PrimitiveCardPlayAction::FORWARD]],
+                        $decisions,
+                    );
+                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::FIRE:
                 case PrimitiveCardPlayAction::FIRE2:
@@ -1168,8 +1168,8 @@ class SeasOfHavoc extends Table
                     break;
                 default:
                     $result = $this->processSimpleAction($typed_action);
-                    $to_send = array_merge($to_send, $result["steps"]);
-                    $collision_occurred = $collision_occurred || $result["collision_occurred"];
+                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    break;
             }
             if ($collision_occurred) {
                 break;
@@ -1209,11 +1209,47 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState($outcome["collision_occurred"] ? "collisionOccurred" : "seaTurnDone");
     }
 
+    function stResolveCollision()
+    {
+        $this->mytrace("stResolveCollision");
+        #$this->gamestate->nextState("seaTurnDone");
+    }
+
     function actResolveCollision(string $card_id, string $action_type)
     {
         $this->mytrace("actResolveCollision");
         $this->dump("card_id", $card_id);
-        $this->gamestate->nextState("seaTurnDone");
+        #$this->gamestate->nextState("seaTurnDone");
+    }
+
+    function argResolveCollision()
+    {
+        $this->mytrace("argResolveCollision");
+        $player_id = $this->getActivePlayerId();
+        $last_card_played = $this->getUniqueValueFromDB(
+            "SELECT card_type FROM last_card_played WHERE player_id = $player_id",
+        );
+        $this->dump("last card played", $last_card_played);
+        return [
+            "card_id" => $last_card_played,
+            "action_type" => PrimitiveCardPlayAction::from($last_card_played),
+        ];
+    }  
+    function actPivotPickedInDialog(string $direction)
+    {
+        $this->mytrace("actPivotPickedInDialog");
+        if ($direction != "no pivot") {
+            $typed_action = PrimitiveCardPlayAction::from($direction);
+            $outcome = $this->processCardActions([["action" => $typed_action]], []);
+            $this->dump("final pivot outcome", $outcome);
+
+            $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} pivots'), [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $this->getActivePlayerId(),
+                "moveChain" => $outcome["action_chain"],
+                "cost" => $outcome["cost"],
+            ]);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////
