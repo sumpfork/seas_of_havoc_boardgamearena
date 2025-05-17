@@ -48,6 +48,7 @@ define([
       // Here, you can init the global variables of your user interface
       // Example:
       // this.myGlobalValue = 0;
+      this.clientStateVars = {};
     },
     getHeadingDegrees: function (direction) {
       switch (Number(direction)) {
@@ -732,6 +733,7 @@ define([
       console.groupEnd();
     },
     resolveCollision: function () {
+      return;
       this.myDlg = new ebg.popindialog();
       this.myDlg.create("pickPivotDialog");
       this.myDlg.setTitle(_("Select Pivot"));
@@ -893,28 +895,80 @@ define([
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
-          /*               
-                 Example:
- 
-                 case 'myGameState':
-                    
-                    // Add 3 action buttons in the action status bar:
-                    
-                    this.addActionButton( 'button_1_id', _('Button 1 label'), 'onMyMethodToCall1' ); 
-                    this.addActionButton( 'button_2_id', _('Button 2 label'), 'onMyMethodToCall2' ); 
-                    this.addActionButton( 'button_3_id', _('Button 3 label'), 'onMyMethodToCall3' ); 
-                    break;
-*/
           case "cardPurchases":
-            this.addActionButton(
-              "complete_purchase_phase_button",
-              _("Complete Purchases"),
-              "onCompletePurchasesClicked",
+            this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
+            break;
+          case "client_resourceDialog":
+            this.statusBar.addActionButton(
+              _("<div class='resource sail' data-resource='sail'></div>"),
+              this.onResourceButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
             );
+            this.statusBar.addActionButton(
+              _("<div class='resource cannonball' data-resource='cannonball'></div>"),
+              this.onResourceButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
+            );
+            this.statusBar.addActionButton(
+              _("<div class='resource doubloon' data-resource='doubloon'></div>"),
+              this.onResourceButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
+            );
+            break;
+          case "resolveCollision":
+            this.statusBar.addActionButton(
+              "<div class='resource pivot_left' data-pivot='pivot left'></div>",
+              this.onPivotButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
+            );
+            this.statusBar.addActionButton(
+              "<div class='resource nope' data-pivot='no pivot'></div>",
+              this.onPivotButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
+            );
+            this.statusBar.addActionButton(
+              "<div class='resource pivot_right' data-pivot='pivot right'></div>",
+              this.onPivotButtonClicked.bind(this),
+              { classes: "bgabutton_resource" },
+            );
+
+            break;
         }
       }
     },
+    onResourceButtonClicked: function (event) {
+      console.log("resource button clicked");
+      const source = event.target || event.srcElement;
+      console.log(
+        "resource picked " +
+          source.dataset.resource +
+          " context: " +
+          this.clientStateVars.slot_context +
+          " number: " +
+          this.clientStateVars.slot_number,
+      );
 
+      event.preventDefault();
+      if (source.dataset.resource != null) {
+        this.bgaPerformAction("actResourcePickedInDialog", {
+          resource: source.dataset.resource,
+          context: this.clientStateVars.slot_context,
+          number: this.clientStateVars.slot_number,
+        });
+        this.statusBar.removeActionButtons();
+      }
+    },
+    onPivotButtonClicked: function (event) {
+      const source = event.target || event.srcElement;
+      console.log("pivot button clicked");
+      console.log(source);
+      console.log("pivot picked " + source.dataset.pivot);
+      this.bgaPerformAction("actPivotPickedInDialog", {
+        direction: source.dataset.pivot,
+      });
+      this.statusBar.removeActionButtons();
+      event.preventDefault();
+    },
     ///////////////////////////////////////////////////
     //// Utility methods
 
@@ -1010,40 +1064,45 @@ define([
     // TODO: from this point and below, you can write your game notifications handling methods
     notifShowResourceChoiceDialog: function (notif) {
       console.groupCollapsed("show resource choice dialog");
-      this.myDlg = new ebg.popindialog();
-      this.myDlg.create("resouceDialog");
-      this.myDlg.setTitle(_("Pick a Resource"));
-      this.myDlg.setMaxWidth(500); // Optional
+      // this.myDlg = new ebg.popindialog();
+      // this.myDlg.create("resouceDialog");
+      // this.myDlg.setTitle(_("Pick a Resource"));
+      // this.myDlg.setMaxWidth(500); // Optional
 
-      var html = this.format_block("jstpl_resource_dialog");
+      // var html = this.format_block("jstpl_resource_dialog");
 
-      this.myDlg.setContent(html);
-      this.myDlg.hideCloseIcon();
-      this.myDlg.show();
+      // this.myDlg.setContent(html);
+      // this.myDlg.hideCloseIcon();
+      // this.myDlg.show();
+
+      this.clientStateVars.slot_context = notif.args.context;
+      this.clientStateVars.slot_number = notif.args.context_number;
+      console.log("context: " + this.clientStateVars.slot_context);
+      console.log("number: " + this.clientStateVars.slot_number);
 
       this.setClientState("client_resourceDialog", {
         descriptionmyturn: _("${you} must select a resource"),
       });
 
-      dojo.query(".resource_button").connect("onclick", this, (event) => {
-        console.log("resource button clicked");
-        const source = event.target || event.srcElement;
+      // dojo.query(".resource_button").connect("onclick", this, (event) => {
+      //   console.log("resource button clicked");
+      //   const source = event.target || event.srcElement;
 
-        var context = notif.args.context;
-        var number = notif.args.context_number;
+      //   var context = notif.args.context;
+      //   var number = notif.args.context_number;
 
-        console.log("resource picked " + source.dataset.resource + " context: " + context + " number: " + number);
+      //   console.log("resource picked " + source.dataset.resource + " context: " + context + " number: " + number);
 
-        event.preventDefault();
-        if (source.dataset.resource != null) {
-          this.bgaPerformAction("actResourcePickedInDialog", {
-            resource: source.dataset.resource,
-            context: context,
-            number: number,
-          });
-          this.myDlg.destroy();
-        }
-      });
+      //   event.preventDefault();
+      //   if (source.dataset.resource != null) {
+      //     this.bgaPerformAction("actResourcePickedInDialog", {
+      //       resource: source.dataset.resource,
+      //       context: context,
+      //       number: number,
+      //     });
+      //     this.myDlg.destroy();
+      //   }
+      // });
       console.groupEnd();
     },
     notifDummyStart: function (notif) {

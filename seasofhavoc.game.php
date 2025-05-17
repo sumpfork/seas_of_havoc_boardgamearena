@@ -605,6 +605,17 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState();
     }
 
+    function stIslandPhaseSetup()
+    {
+        $this->mytrace("stIslandPhaseSetup");
+        $player_infos = $this->getPlayerInfo();
+
+        foreach ($player_infos as $playerid => $player) {
+            $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
+        }
+        $this->gamestate->nextState();
+    }
+
     function stNextPlayerIslandPhase()
     {
         $this->mytrace("stNextPlayerIslandPhase");
@@ -811,6 +822,12 @@ class SeasOfHavoc extends Table
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
         self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
+
+        $player_infos = $this->getPlayerInfo();
+
+        foreach ($player_infos as $playerid => $player) {
+            $this->playerSetResourceCount($playerid, "skiff", 3);
+        }
     }
 
     function mytrace(string $msg)
@@ -901,6 +918,18 @@ class SeasOfHavoc extends Table
         ]);
     }
 
+    function playerSetResourceCount($player_id, $resource_type, $count)
+    {
+        $this->mytrace("playerSetResourceCount $player_id $resource_type $count");
+        self::DbQuery(
+            "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ('$player_id','$resource_type','$count')",
+        );
+        $this->notifyAllPlayers("resourcesChanged", clienttranslate("resources changed"), [
+            "resources" => $this->getGameResources(),
+        ]);
+
+    }
+
     function showResourceChoiceDialog(string $context, string $context_number)
     {
         $this->notifyPlayer(self::getActivePlayerId(), "showResourceChoiceDialog", "", [
@@ -931,6 +960,10 @@ class SeasOfHavoc extends Table
             throw new BgaUserException($this->_("There is already a skiff on $slotname"));
             return;
         }
+        // $this->DbQuery(
+        //     "REPLACE INTO current_skiff_slot (player_id, slot_name, slot_number) VALUES ($player_id, '$slotname', '$number')",
+        // );
+
         switch ($slotname) {
             case "capitol":
                 //TODO: take first player marker
@@ -1057,8 +1090,11 @@ class SeasOfHavoc extends Table
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         $collision_occurred = false;
-        foreach ($actions as $action) {
-            $typed_action = gettype($action["action"]) == "string" ? PrimitiveCardPlayAction::from($action["action"]) : $action["action"];
+        foreach ($actions as $i => $action) {
+            $typed_action =
+                gettype($action["action"]) == "string"
+                    ? PrimitiveCardPlayAction::from($action["action"])
+                    : $action["action"];
             $this->trace("handling " . $typed_action->value);
             $this->dump("to_send", $to_send);
             if (array_key_exists("cost", $action)) {
@@ -1066,7 +1102,7 @@ class SeasOfHavoc extends Table
                 # and 1 is 'Skip'
                 $decision = array_shift($decisions);
                 if ($decision == "skip") {
-                    $this->trace("skipping action with cost due to decision == 'skip': " . typed_action->value);
+                    $this->trace("skipping action with cost due to decision == 'skip': " . $typed_action->value);
                     continue;
                 }
             }
@@ -1089,14 +1125,22 @@ class SeasOfHavoc extends Table
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                     $result = $this->processCardActions(
-                        [["action" => PrimitiveCardPlayAction::FORWARD], ["action" => PrimitiveCardPlayAction::PIVOT_LEFT], ["action" => PrimitiveCardPlayAction::FORWARD]],
+                        [
+                            ["action" => PrimitiveCardPlayAction::FORWARD],
+                            ["action" => PrimitiveCardPlayAction::PIVOT_LEFT],
+                            ["action" => PrimitiveCardPlayAction::FORWARD],
+                        ],
                         $decisions,
                     );
                     $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::RIGHT:
                     $result = $this->processCardActions(
-                        [["action" => PrimitiveCardPlayAction::FORWARD], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT], ["action" => PrimitiveCardPlayAction::FORWARD]],
+                        [
+                            ["action" => PrimitiveCardPlayAction::FORWARD],
+                            ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT],
+                            ["action" => PrimitiveCardPlayAction::FORWARD],
+                        ],
                         $decisions,
                     );
                     $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
@@ -1172,6 +1216,15 @@ class SeasOfHavoc extends Table
                     break;
             }
             if ($collision_occurred) {
+                $player_id = $this->getActivePlayerId();
+                if ($i + 1 < count($actions)) {
+                    $next_action = $actions[$i + 1]["action"];
+                    $this->DbQuery(
+                        "REPLACE INTO next_action_on_card (player_id, next_action) VALUES ($player_id, '$next_action', 0)",
+                    );
+                } else {
+                    $this->DBQuery("DELETE FROM next_action_on_card WHERE player_id = $player_id");
+                }
                 break;
             }
         }
@@ -1188,14 +1241,6 @@ class SeasOfHavoc extends Table
 
         $outcome = $this->processCardActions($card["actions"], $decisions);
         $this->dump("final card play outcome", $outcome);
-
-        // if (!array_key_exists("colliders", $outcome) || count($outcome["colliders"]) == 0) {
-        //     $moveChain[] = $outcome;
-        // }
-
-        $this->DbQuery(
-            "REPLACE INTO last_card_played (player_id, card_type, card_type_arg) VALUES ($player_id, '$card_type', 0)",
-        );
 
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
@@ -1225,16 +1270,8 @@ class SeasOfHavoc extends Table
     function argResolveCollision()
     {
         $this->mytrace("argResolveCollision");
-        $player_id = $this->getActivePlayerId();
-        $last_card_played = $this->getUniqueValueFromDB(
-            "SELECT card_type FROM last_card_played WHERE player_id = $player_id",
-        );
-        $this->dump("last card played", $last_card_played);
-        return [
-            "card_id" => $last_card_played,
-            "action_type" => PrimitiveCardPlayAction::from($last_card_played),
-        ];
-    }  
+    }
+
     function actPivotPickedInDialog(string $direction)
     {
         $this->mytrace("actPivotPickedInDialog");

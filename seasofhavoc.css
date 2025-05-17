@@ -129,6 +129,9 @@
 .nope {
     background-position: -60px -30px;
 }
+.bgabutton_resource {
+    background-color: #ecdfc3;
+}
 .resource_count {
     position: relative;
     top: -10px;

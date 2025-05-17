@@ -60,6 +60,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_SEA_TURN", 6);
     define("STATE_NEXT_PLAYER_SEA_PHASE", 7);
     define("STATE_RESOLVE_COLLISION", 8);
+    define("STATE_ISLAND_PHASE_SETUP", 9);
     define("STATE_END_GAME", 99);
 }
 
@@ -86,6 +87,13 @@ $machinestates = [
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
+        "transitions" => ["" => STATE_ISLAND_TURN],
+    ],
+    STATE_ISLAND_PHASE_SETUP => [
+        "name" => "islandPhaseSetup",
+        "description" => clienttranslate('Starting Island Phase'),
+        "type" => "game",
+        "action" => "stIslandPhaseSetup",
         "transitions" => ["" => STATE_ISLAND_TURN],
     ],
     STATE_ISLAND_TURN => [
