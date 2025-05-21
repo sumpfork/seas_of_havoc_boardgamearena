@@ -30,6 +30,10 @@
     <div id="skiff_slot_bank_n1" class="skiff_slot unoccupied" data-slotname="bank" data-number="n1"></div>
     <div id="skiff_slot_shipyard_n1" class="skiff_slot unoccupied" data-slotname="shipyard" data-number="n1"></div>   
     <div id="skiff_slot_blacksmith_n1" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n1"></div>
+    <div id="skiff_slot_green_flag_n1" class="skiff_slot unoccupied" data-slotname="green_flag" data-number="n1"></div>
+    <div id="skiff_slot_tan_flag_n1" class="skiff_slot unoccupied" data-slotname="tan_flag" data-number="n1"></div>
+    <div id="skiff_slot_blue_flag_n1" class="skiff_slot unoccupied" data-slotname="blue_flag" data-number="n1"></div>
+    <div id="skiff_slot_red_flag_n1" class="skiff_slot unoccupied" data-slotname="red_flag" data-number="n1"></div>
     <div id="seaboard"></div>
     <div id="skiff_slot_market_n1" class="skiff_slot unoccupied" data-slotname="market" data-number="n1"></div>
     <div id="skiff_slot_market_n2" class="skiff_slot unoccupied" data-slotname="market" data-number="n2"></div>
@@ -73,6 +77,13 @@
                         <div id="cannonball_p\${player_id}" class="cannonball resource"></div><span id="cannonballcount_p\${player_id}" class="resource_count">0</span>
                         <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
                         \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
+                    </div>
+                    <div class="cp_board">
+                        <div id="green_flag_p\${player_id}" class="green_flag flagish no_own_flag"></div>
+                        <div id="tan_flag_p\${player_id}" class="tan_flag flagish no_own_flag"></div>
+                        <div id="blue_flag_p\${player_id}" class="blue_flag flagish no_own_flag"></div>
+                        <div id="red_flag_p\${player_id}" class="red_flag flagish no_own_flag"></div>
+                        <div id="first_player_token_p\${player_id}" class="first_player_token flagish no_own_flag"></div>
                     </div>`;
     var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;

@@ -80,6 +80,23 @@
     top: 431px;
     left: 845px;
 }
+.skiff_slot[data-slotname="green_flag"][data-number="n1"] {
+    top: 69px;
+    left: 53px;
+}
+.skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
+    top: 69px;
+    left: 145px;
+}
+.skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
+    top: 69px;
+    left: 823px;
+}
+.skiff_slot[data-slotname="red_flag"][data-number="n1"] {
+    top: 69px;
+    left: 917px;
+}
+
 .skiff_slot[data-slotname="market"] {
     position: absolute;
     bottom: 3px;
@@ -131,6 +148,31 @@
 }
 .bgabutton_resource {
     background-color: #ecdfc3;
+}
+.flagish {
+    background-image: url('img/flags_1stplayer.png');
+    width: 50px;
+    height: 50px;
+    background-repeat: none;
+    display: inline-block;
+}
+.red_flag {
+    background-position: 0px 0px;
+}
+.tan_flag {
+    background-position: 0px -50px;
+}
+.green_flag {
+    background-position: 0px -100px;
+}
+.blue_flag {
+    background-position: 0px -150px;
+}
+.first_player_token {
+    background-position: 0px -200px
+}
+.no_own_flag {
+    opacity: 0.25;
 }
 .resource_count {
     position: relative;

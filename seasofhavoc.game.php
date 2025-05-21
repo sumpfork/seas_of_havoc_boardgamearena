@@ -796,7 +796,7 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_name', '$number', '$player_id')",
         );
-        $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff'), [
+        $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "player_color" => $this->getPlayerColor($player_id),
@@ -807,22 +807,25 @@ class SeasOfHavoc extends Table
 
     function clearIslandSlots()
     {
-        self::DbQuery(
-            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('capitol', 'n1', null)",
-        );
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('bank', 'n1', null)");
-        self::DbQuery(
-            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('shipyard', 'n1', null)",
-        );
-        self::DbQuery(
-            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('blacksmith', 'n1', null)",
-        );
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n1', null)");
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n2', null)");
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n3', null)");
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n4', null)");
-        self::DbQuery("REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('market', 'n5', null)");
-
+        foreach ([
+            ["capitol", "n1"],
+            ["bank", "n1"],
+            ["shipyard", "n1"],
+            ["blacksmith", "n1"],
+            ["green_flag", "n1"],
+            ["red_flag", "n1"],
+            ["blue_flag", "n1"],
+            ["yellow_flag", "n1"],
+            ["market", "n1"],
+            ["market", "n2"],
+            ["market", "n3"],
+            ["market", "n4"],
+            ["market", "n5"],
+        ] as [$slot_key, $number]) {
+            self::DbQuery(
+                "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_key', '$number', null)",
+            );
+        }
         $player_infos = $this->getPlayerInfo();
 
         foreach ($player_infos as $playerid => $player) {
@@ -913,7 +916,8 @@ class SeasOfHavoc extends Table
         $this->mytrace("gain resources sql: $sql");
 
         self::DbQuery($sql);
-        $this->notifyAllPlayers("resourcesChanged", clienttranslate("resources changed"), [
+        $this->notifyAllPlayers("resourcesChanged", clienttranslate('resources changed for ${player_name}'), [
+            "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
         ]);
     }
@@ -924,10 +928,10 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ('$player_id','$resource_type','$count')",
         );
-        $this->notifyAllPlayers("resourcesChanged", clienttranslate("resources changed"), [
+        $this->notifyAllPlayers("resourcesChanged", clienttranslate('resources changed for ${player_name}'), [
+            "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
         ]);
-
     }
 
     function showResourceChoiceDialog(string $context, string $context_number)
@@ -994,6 +998,9 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
+            case "green_flag":
+                $this->showResourceChoiceDialog($slotname, $number);
+                break;
             default:
                 throw new BgaSystemException("bad skiff slot: $slotname");
                 break;
@@ -1023,6 +1030,14 @@ class SeasOfHavoc extends Table
                 $this->playerGainResources($player_id, [$resource => 1]);
                 $this->playerGainResources($player_id, [
                     "doubloon" => 1,
+                    "skiff" => -1,
+                ]);
+                $this->occupyIslandSlot($player_id, $context, $number);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            case "green_flag":
+                $this->playerGainResources($player_id, [
+                    $resource => 1,
                     "skiff" => -1,
                 ]);
                 $this->occupyIslandSlot($player_id, $context, $number);

@@ -732,39 +732,6 @@ define([
       }
       console.groupEnd();
     },
-    resolveCollision: function () {
-      return;
-      this.myDlg = new ebg.popindialog();
-      this.myDlg.create("pickPivotDialog");
-      this.myDlg.setTitle(_("Select Pivot"));
-      this.myDlg.setMaxWidth(500); // Optional
-
-      var html = this.format_block("jstpl_pivot_dialog");
-
-      this.myDlg.setContent(html);
-      this.myDlg.hideCloseIcon();
-      this.myDlg.show();
-
-      this.setClientState("client_pivotDialog", {
-        descriptionmyturn: _("${you} must select whether to pivot"),
-      });
-
-      dojo.query(".pivot_button").connect("onclick", this, (event) => {
-        const source = event.target || event.srcElement;
-        console.log("pivot button clicked");
-        console.log(source);
-        console.log("pivot picked " + source.dataset.pivot);
-
-        event.preventDefault();
-        if (source.dataset.pivot != null) {
-          this.bgaPerformAction("actPivotPickedInDialog", {
-            direction: source.dataset.pivot,
-          });
-          this.myDlg.destroy();
-        }
-      });
-      console.groupEnd();
-    },
     onClickPurchaseButton: function (event) {
       console.groupCollapsed("card purchase button clicked");
       console.log("onClickPurchaseButton");
@@ -854,10 +821,6 @@ define([
         case "seaTurn": {
           query(".skiff").forEach(domConstruct.destroy);
           query(".purchase_card_button").forEach(domConstruct.destroy);
-          break;
-        }
-        case "resolveCollision": {
-          this.resolveCollision();
           break;
         }
         case "dummmy":
