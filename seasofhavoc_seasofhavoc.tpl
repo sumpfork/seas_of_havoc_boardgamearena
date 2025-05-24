@@ -72,18 +72,18 @@
                         <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card</div>
                         </div>`;
     var jstpl_resources_playerboard=`
-                    <div class="cp_board">
+                    <div class="cp_board" id="player_resource_board_p\${player_id}">
                         <div id="sail_p\${player_id}" class="sail resource"></div><span id="sailcount_p\${player_id}" class="resource_count">0</span>
                         <div id="cannonball_p\${player_id}" class="cannonball resource"></div><span id="cannonballcount_p\${player_id}" class="resource_count">0</span>
                         <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
                         \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
                     </div>
-                    <div class="cp_board">
-                        <div id="green_flag_p\${player_id}" class="green_flag flagish no_own_flag"></div>
-                        <div id="tan_flag_p\${player_id}" class="tan_flag flagish no_own_flag"></div>
-                        <div id="blue_flag_p\${player_id}" class="blue_flag flagish no_own_flag"></div>
-                        <div id="red_flag_p\${player_id}" class="red_flag flagish no_own_flag"></div>
-                        <div id="first_player_token_p\${player_id}" class="first_player_token flagish no_own_flag"></div>
+                    <div class="cp_board" id="player_token_board_p\${player_id}">
+                        <div id="green_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="green_flag"></div>
+                        <div id="tan_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="tan_flag"></div>
+                        <div id="blue_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="blue_flag"></div>
+                        <div id="red_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="red_flag"></div>
+                        <div id="first_player_token_p\${player_id}" class="flagish no_own_flag" data-tokenkey="first_player_token"></div>
                     </div>`;
     var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
@@ -115,6 +115,7 @@
     </svg>
     </div>`;
     var jstpl_seaboard_location=`<div class="seaboardlocation" id="\${id}"></div>`;
+    var jstpl_unique_token=`<div class="flagish" data-tokenkey="\${token_key}"></div>`;
     var jstpl_player_ship=`<div class="player_ship" id="\${id}" 
         data-shipname="\${shipname}"></div>`;
 

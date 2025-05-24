@@ -387,6 +387,7 @@ class SeasOfHavoc extends Table
     private $cards;
     private array $playable_cards;
     private array $resource_types;
+    private array $token_names;
 
     function __construct()
     {
@@ -411,7 +412,7 @@ class SeasOfHavoc extends Table
 
         $this->cards = $this->getNew("module.common.deck");
         $this->cards->init("card");
-        //$this->cards->autoreshuffle = true;
+        $this->cards->autoreshuffle = true;
         $this->cards->autoreshuffle_custom = [
             "player_deck" => "player_discard",
         ];
@@ -542,6 +543,10 @@ class SeasOfHavoc extends Table
         }
         $sql .= implode(",", $values);
         self::DbQuery($sql);
+
+        foreach (["first_player_token", "green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
+            self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES (NULL, '$token')");
+        }
 
         $this->clearIslandSlots();
 
@@ -693,6 +698,7 @@ class SeasOfHavoc extends Table
 
         $result["resources"] = $this->getGameResources();
         $result["islandslots"] = $this->getIslandSlots();
+        $result["unique_tokens"] = $this->getUniqueTokens();
         $result["playable_cards"] = $this->playable_cards;
         $result["market"] = $this->cards->getCardsInLocation("market");
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
@@ -776,6 +782,21 @@ class SeasOfHavoc extends Table
         }
     }
 
+    function getUniqueTokens()
+    {
+        $sql = "
+    		SELECT
+    		    player_id, token_key
+    		FROM unique_tokens
+    	";
+        $tokens = $this->getObjectListFromDB($sql);
+        $indexed_tokens = [];
+        foreach ($tokens as $token) {
+            $indexed_tokens[$token["token_key"]] = $token["player_id"];
+        }
+        return $indexed_tokens;
+    }
+
     function getIslandSlots()
     {
         $sql = "
@@ -805,6 +826,20 @@ class SeasOfHavoc extends Table
         ]);
     }
 
+    function acquireToken(string $player_id, string $token_key)
+    {
+        self::DbQuery(
+            "REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')",
+        );
+        $token_name = $this->token_names[$token_key];
+        $this->notifyAllPlayers("tokenAcquired", clienttranslate('${player_name} acquired the ${token_name}'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "token_name" => $token_name,
+            "player_id" => $player_id,
+            "token_key" => $token_key,
+        ]);
+    }
+
     function clearIslandSlots()
     {
         foreach ([
@@ -813,9 +848,9 @@ class SeasOfHavoc extends Table
             ["shipyard", "n1"],
             ["blacksmith", "n1"],
             ["green_flag", "n1"],
+            ["tan_flag", "n1"],
             ["red_flag", "n1"],
             ["blue_flag", "n1"],
-            ["yellow_flag", "n1"],
             ["market", "n1"],
             ["market", "n2"],
             ["market", "n3"],
@@ -942,6 +977,14 @@ class SeasOfHavoc extends Table
         ]);
     }
 
+    function drawCard(string $player_id){
+        $this->mytrace("drawCard");
+        $card = $this->cards->pickCard($this->playerDeckName($player_id), $player_id);
+        $this->notifyPlayer($player_id, "cardDrawn", clienttranslate('You drew a card'), [
+            "player_id" => $player_id,
+            "card" => $card,
+        ]);
+    }
     //////////////////////////////////////////////////////////////////////////////
     //////////// Player actions
     ////////////
@@ -971,6 +1014,7 @@ class SeasOfHavoc extends Table
         switch ($slotname) {
             case "capitol":
                 //TODO: take first player marker
+                $this->acquireToken($player_id, "first_player_token");
                 $this->showResourceChoiceDialog($slotname, $number);
                 break;
             case "bank":
@@ -1000,6 +1044,16 @@ class SeasOfHavoc extends Table
                 break;
             case "green_flag":
                 $this->showResourceChoiceDialog($slotname, $number);
+                break;
+            case "tan_flag":
+                $this->acquireToken($player_id, $slotname);
+                $this->drawCard($player_id);
+                break;
+            case "red_flag":
+                $this->acquireToken($player_id, $slotname);
+                break;
+            case "blue_flag":
+                $this->acquireToken($player_id, $slotname);
                 break;
             default:
                 throw new BgaSystemException("bad skiff slot: $slotname");
@@ -1040,6 +1094,7 @@ class SeasOfHavoc extends Table
                     $resource => 1,
                     "skiff" => -1,
                 ]);
+                $this->acquireToken($player_id, $context);
                 $this->occupyIslandSlot($player_id, $context, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;

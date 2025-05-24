@@ -64,3 +64,13 @@ CREATE TABLE IF NOT EXISTS `next_action_on_card` (
   `next_action` varchar(32) NOT NULL,
   PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--ALTER TABLE next_action_on_card ADD CONSTRAINT fk_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+CREATE TABLE IF NOT EXISTS `unique_tokens` (
+  `player_id` int(10) unsigned,
+  `token_key` varchar(32) NOT NULL,
+  PRIMARY KEY (`token_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--ALTER TABLE unique_tokens ADD CONSTRAINT fk_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);

@@ -33,10 +33,19 @@ $this->card_types = [
 */
 $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 
+$this->token_names = [
+    "first_player_token" => _("First Player Token"),
+    "green_flag" => _("Green Purser's Flag"),
+    "tan_flag" => _("Green Flag"),
+    "red_flag" => _("Red Flag"),
+    "blue_flag" => _("Blue Flag"),
+    "yellow_flag" => _("Yellow Flag"),
+];
+
 $this->playable_cards = [
     [
         "cost" => [],
-        "actions" => [["action"=>"scrap_self"]],
+        "actions" => [["action" => "scrap_self"]],
         "image_id" => 70,
         "category" => "damage",
     ],

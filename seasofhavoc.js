@@ -77,6 +77,20 @@ define([
         }
       }
     },
+    updateUniqueTokens: function (unique_tokens) {
+      console.log("updating unique tokens");
+      console.log(unique_tokens);
+      for (const [token_key, player_id] of Object.entries(unique_tokens)) {
+        console.log("token id: " + token_key + " player id: " + player_id);
+        if (player_id === null) {
+          continue;
+        }
+        var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
+        var token_element = dojo.place(token_html,  `player_token_board_p${player_id}`);
+        this.placeOnObject(token_element, `${token_key}_p${player_id}`)
+        dojo.style(token_element, "zIndex", 1);
+      }
+    },
     updateResources: function (resources) {
       console.log("updating resources");
       console.log(resources);
@@ -275,9 +289,11 @@ define([
       this.islandSlots = gamedatas.islandslots;
       this.players = gamedatas.players;
       this.resources = gamedatas.resources;
+      this.unique_tokens = gamedatas.unique_tokens;
 
       this.updateResources(gamedatas.resources);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
+      this.updateUniqueTokens(gamedatas.unique_tokens);
 
       for (var x = -1; x <= 6; x++) {
         for (var y = -1; y <= 6; y++) {
@@ -1009,9 +1025,11 @@ define([
       dojo.subscribe("showResourceChoiceDialog", this, "notifShowResourceChoiceDialog");
       dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
       dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
+      dojo.subscribe("tokenAcquired", this, "notifTokenAcquired");
       dojo.subscribe("cardPlayResults", this, "notifyCardPlayed");
       dojo.subscribe("score", this, "notifyScore");
       dojo.subscribe("damage_received", this, "notifyDamageReceived");
+      dojo.subscribe("cardDrawn", this, "notifyCardDrawn");
 
       // Example 1: standard notification handling
       // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
@@ -1120,6 +1138,36 @@ define([
         1000,
       ).play();
       dojo.removeClass(skiff_slot, "unoccupied");
+      console.groupEnd();
+    },
+    notifTokenAcquired: function (notif) {
+      console.groupCollapsed("notify: token acquired");
+      console.log(notif);
+
+      var token_key = notif.args.token_key;
+      var player_id = notif.args.player_id;
+
+      var tokens = query("#" + token_key);
+      var token_element = null;
+      if (token_element != null) {
+        var token_element = tokens[0];
+      } else {
+        console.log("creating token");        
+        var token_html = this.format_block("jstpl_unique_token", { token_key: notif.args.token_key });
+        if (token_key == "first_player_token") {
+          var token_element = dojo.place(token_html, `skiff_slot_capitol_n1`);
+        } else {
+          var token_element = dojo.place(token_html, `skiff_slot_${token_key}_n1`);
+        }
+      }
+
+      this.unique_tokens[token_key] = notif.args.player_id;
+
+      if (player_id != null) {
+        var target = `${token_key}_p${player_id}`;
+        dojo.style(token_element, "zIndex", 1);
+        this.slideToObject(token_element, target, 1000).play();
+      }
       console.groupEnd();
     },
     notifyCardPlayed: function (notif) {
@@ -1251,12 +1299,22 @@ define([
       this.scoreCtrl[notif.args.player_id].setValue(notif.args.player_score);
     },
     notifyDamageReceived: function (notif) {
-      console.log("notify damage receuved");
+      console.log("notify damage received");
       let damage_card = notif.args.damage_card;
       let player_id = notif.args.player_id;
       var shipid = "player_ship_" + notif.args.player_id;
       if (player_id == this.player_id) {
         this.playerDiscard.addToStockWithId(damage_card.type, damage_card.id, shipid);
+      }
+    },
+    notifyCardDrawn: function (notif) {
+      console.log("notify card drawn");
+      let card = notif.args.card;
+      let player_id = notif.args.player_id;
+      console.log(card);
+      console.log(player_id);
+      if (player_id == this.player_id) {
+        this.playerHand.addToStockWithId(card.type, card.id, "player_hand");
       }
     },
     /*

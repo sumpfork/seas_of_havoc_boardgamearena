@@ -155,20 +155,21 @@
     height: 50px;
     background-repeat: none;
     display: inline-block;
+    position: relative;
 }
-.red_flag {
+.flagish[data-tokenkey="red_flag"] {
     background-position: 0px 0px;
 }
-.tan_flag {
+.flagish[data-tokenkey="tan_flag"] {
     background-position: 0px -50px;
 }
-.green_flag {
+.flagish[data-tokenkey="green_flag"] {
     background-position: 0px -100px;
 }
-.blue_flag {
+.flagish[data-tokenkey="blue_flag"] {
     background-position: 0px -150px;
 }
-.first_player_token {
+.flagish[data-tokenkey="first_player_token"] {
     background-position: 0px -200px
 }
 .no_own_flag {
