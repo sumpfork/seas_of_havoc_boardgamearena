@@ -35,12 +35,13 @@ define([
   "dojo/query",
   "dojo/_base/fx",
   "dojo/fx",
+  "dojo/aspect",
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, on, dom, domClass, domConstruct, domstyle, attr, lang, query, baseFX, fx) {
+], function (dojo, declare, on, dom, domClass, domConstruct, domStyle, attr, lang, query, baseFX, fx, aspect) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -86,9 +87,9 @@ define([
           continue;
         }
         var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
-        var token_element = dojo.place(token_html,  `player_token_board_p${player_id}`);
+        var token_element = domConstruct.place(token_html, `player_token_board_p${player_id}`);
         this.placeOnObject(token_element, `${token_key}_p${player_id}`)
-        dojo.style(token_element, "zIndex", 1);
+        domStyle.set(token_element, "zIndex", 1);
       }
     },
     updateResources: function (resources) {
@@ -117,7 +118,7 @@ define([
               player_color: players[occupant].color,
               id: skiff_id,
             });
-            dojo.place(skiff, "skiff_slot_" + slot + "_" + number);
+            domConstruct.place(skiff, "skiff_slot_" + slot + "_" + number);
           }
         }
       }
@@ -233,7 +234,7 @@ define([
 
       this.cards_purchased = [];
 
-      dojo.connect(this.playerHand, "onChangeSelection", this, "onCardSelectedPlayerHand");
+      aspect.after(this.playerHand, "onChangeSelection", lang.hitch(this, "onCardSelectedPlayerHand"));
       for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
         console.log(
@@ -263,8 +264,8 @@ define([
         attr.set(card_div, "data-cardid", card.id);
 
         // stick a buy skiff slot on it
-        var skiff_slot = dojo.query(`.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`)[0];
-        dojo.place(skiff_slot, card_div);
+        var skiff_slot = query(`.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`)[0];
+        domConstruct.place(skiff_slot, card_div);
         slotno++;
       }
       // Setting up player boards
@@ -301,7 +302,7 @@ define([
           var location = this.format_block("jstpl_seaboard_location", {
             id: id,
           });
-          dojo.place(location, "seaboard");
+          domConstruct.place(location, "seaboard");
           var seaboard = $("seaboard");
           var target_x = -seaboard.offsetWidth / 2 + 32 + 64 * x;
           var target_y = -seaboard.offsetWidth / 2 + 32 + 64 * y;
@@ -321,17 +322,17 @@ define([
               shipname: gamedatas.playerinfo[entry.arg].player_ship,
             };
             var ship = this.format_block("jstpl_player_ship", subs);
-            dojo.place(ship, "seaboard");
+            domConstruct.place(ship, "seaboard");
             console.log(target_id);
             this.placeOnObject(shipid, target_id);
-            domstyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
+            domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
           //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
-      var skiffslot_class = dojo.query(".skiff_slot");
+      var skiffslot_class = query(".skiff_slot");
       var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
 
       //this.showDummyDialog();
@@ -354,19 +355,19 @@ define([
         descriptionmyturn: _("${you} must abide by BGA's dumb logging"),
       });
 
-      dojo.query(".dummy_button").connect("onclick", this, (event) => {
+      on(query(".dummy_button"), "click", lang.hitch(this, (event) => {
         console.log("dummy button clicked");
 
         event.preventDefault();
         this.bgaPerformAction("actExitDummyStart", {});
         this.myDlg.destroy();
-      });
+      }));
     },
     showCardPlayDialog: function (card, card_id) {
       card_div_id = this.playerHand.getItemDivId(card_id);
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
-      dojo.place(dlg, "myhand_wrap", "first");
+      domConstruct.place(dlg, "myhand_wrap", "first");
       var bga = this;
       var makeDecisionSummary = function (tree, decisionSummary) {
         if (typeof decisionSummary === "undefined") {
@@ -388,7 +389,7 @@ define([
         return decisionSummary;
       };
 
-      dojo.query(".play_card_button").connect("onclick", this, (event) => {
+      on(query(".play_card_button"), "click", lang.hitch(this, (event) => {
         console.groupCollapsed("card play button clicked");
         console.log("play card button clicked");
         event.preventDefault();
@@ -408,16 +409,16 @@ define([
         this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
         this.playerHand.removeFromStockById(card_id);
         console.groupEnd();
-      });
+      }));
       var dlg_dom = dom.byId("card_display_dialog");
       var existing_card_dom = dom.byId(card_div_id);
       //var card_pos = dojo.position(existing_card_dom);
-      dojo.style(dlg_dom, "left", `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`);
-      var new_card_dom = dojo.clone(existing_card_dom);
+      domStyle.set(dlg_dom, "left", `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`);
+      var new_card_dom = lang.clone(existing_card_dom);
       attr.set(new_card_dom, "id", "tmp_display_card");
 
-      dojo.place(new_card_dom, "card_display");
-      dojo.style(new_card_dom, { top: "5px", left: "5px" });
+      domConstruct.place(new_card_dom, "card_display");
+      domStyle.set(new_card_dom, { top: "5px", left: "5px" });
 
       console.log(card);
       var bga = this;
@@ -589,10 +590,10 @@ define([
             console.log(checkbox.checked);
             if (hide) {
               checkbox.checked = false;
-              domstyle.set(checkbox.parentNode.parentNode, "display", "none");
+              domStyle.set(checkbox.parentNode.parentNode, "display", "none");
               showHideControls(option.children, true, totalCost);
             } else {
-              domstyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
+              domStyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
               if (typeof option.cost !== "undefined" && option.cost) {
                 console.log("option cost:");
                 console.log(option.cost);
@@ -628,8 +629,8 @@ define([
             var checkbox = dom.byId(option.id);
             console.log("starting to check option:");
             console.log(option);
-            console.log("parent display: " + domstyle.get(checkbox.parentNode.parentNode, "display"));
-            if (domstyle.get(checkbox.parentNode.parentNode, "display") != "none") {
+            console.log("parent display: " + domStyle.get(checkbox.parentNode.parentNode, "display"));
+            if (domStyle.get(checkbox.parentNode.parentNode, "display") != "none") {
               console.log("checking children:");
               console.log(option.children);
               if (!checkIsCardReadyToBePlayed(option.children)) {
@@ -662,18 +663,16 @@ define([
         console.groupEnd();
         if (ready) {
           domClass.add(button_id, "bgabutton_green");
-          domClass.remove(button_id, "bgabutton_disabled");
-          dojo.removeClass(button_id, "disabled");
+          domClass.remove(button_id, "disabled");
         } else {
           domClass.remove(button_id, "bgabutton_green");
-          domClass.add(button_id, "bgabutton_disabled");
-          dojo.addClass(button_id, "disabled");
+          domClass.add(button_id, "disabled");
         }
       };
       if (result.length > 0) {
         var choices_html = result.join("\n");
-        dojo.place(choices_html, "card_choices");
-        dojo.query(".card_choice_radio").connect("onchange", this, (event) => {
+        domConstruct.place(choices_html, "card_choices");
+        query(".card_choice_radio").connect("onchange", this, (event) => {
           console.groupCollapsed("show/hide play controls");
           showHideControls(this.dep_tree);
           console.groupEnd();
@@ -727,20 +726,19 @@ define([
                 //dojo.place(purchase_button, "skiff_slot_" + slot + "_" + number);
                 console.log(card_div);
                 console.log("placing on " + card_div + " card purchase button: " + purchase_button);
-                dojo.place(purchase_button, card_div);
+                domConstruct.place(purchase_button, card_div);
               }
               if (!this.canPlayerAfford(card.cost)) {
                 console.log("disabling");
-                dojo.removeClass(button_id, "bgabutton_green");
-                dojo.addClass(button_id, "bgabutton_disabled");
-                dojo.addClass(button_id, "disabled");
-                dojo.html.set(button_id, "Cannot Afford");
+                domClass.remove(button_id, "bgabutton_green");
+                domClass.add(button_id, "disabled");
+                dom.html.set(button_id, "Cannot Afford");
                 if (typeof this.purchase_handler !== "undefined") {
                   this.purchase_handler.remove();
                 }
               } else {
-                console.log("connecting purchase handler to " + dojo.query(button_id));
-                this.purchase_handler = on(dom.byId(button_id), "click", lang.hitch(this, "onClickPurchaseButton"));
+                console.log("connecting purchase handler to " + query("." + button_id));
+                this.purchase_handler = query("." + button_id).on("click", lang.hitch(this, "onClickPurchaseButton"));
               }
             }
           }
@@ -752,7 +750,7 @@ define([
       console.groupCollapsed("card purchase button clicked");
       console.log("onClickPurchaseButton");
       console.log(event);
-      dojo.stopEvent(event);
+      event.preventDefault();
       const source = event.target || event.srcElement;
       const slotnumber = source.dataset.slotnumber;
       console.log("slotnumber: " + slotnumber);
@@ -783,7 +781,7 @@ define([
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
       console.log(event);
-      dojo.stopEvent(event);
+      event.preventDefault();
       const source = event.target || event.srcElement;
       if (!this.checkAction("actPlaceSkiff")) {
         console.log("nope");
@@ -797,6 +795,7 @@ define([
       console.log(source.dataset.slotname, source.dataset.number);
 
       if (this.isCurrentPlayerActive()) {
+        console.log("calling actPlaceSkiff");
         this.bgaPerformAction("actPlaceSkiff", {
           slotname: source.dataset.slotname,
           number: source.dataset.number,
@@ -835,7 +834,7 @@ define([
           break;
         }
         case "seaTurn": {
-          query(".skiff").forEach(domConstruct.destroy);
+          query(".skiff_placed").forEach(domConstruct.destroy);
           query(".purchase_card_button").forEach(domConstruct.destroy);
           break;
         }
@@ -1020,30 +1019,29 @@ define([
         */
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
-
+      this.bgaSetupPromiseNotifications();
       // TODO: here, associate your game notifications with local methods
-      dojo.subscribe("showResourceChoiceDialog", this, "notifShowResourceChoiceDialog");
-      dojo.subscribe("resourcesChanged", this, "notifResourcesChanged");
-      dojo.subscribe("skiffPlaced", this, "notifSkiffPlaced");
-      dojo.subscribe("tokenAcquired", this, "notifTokenAcquired");
-      dojo.subscribe("cardPlayResults", this, "notifyCardPlayed");
-      dojo.subscribe("score", this, "notifyScore");
-      dojo.subscribe("damage_received", this, "notifyDamageReceived");
-      dojo.subscribe("cardDrawn", this, "notifyCardDrawn");
+      // aspect.after(this, "showResourceChoiceDialog", lang.hitch(this, "notif_showResourceChoiceDialog"));
+      // aspect.after(this, "resourcesChanged", lang.hitch(this, "notifResourcesChanged"));
+      // aspect.after(this, "skiffPlaced", lang.hitch(this, "notifSkiffPlaced"));
+      // aspect.after(this, "tokenAcquired", lang.hitch(this, "notifTokenAcquired"));
+      // aspect.after(this, "cardPlayResults", lang.hitch(this, "notifyCardPlayed"));
+      // aspect.after(this, "score", lang.hitch(this, "notifyScore"));
+      // aspect.after(this, "damage_received", lang.hitch(this, "notifyDamageReceived"));
+      // aspect.after(this, "cardDrawn", lang.hitch(this, "notifyCardDrawn"));
 
       // Example 1: standard notification handling
-      // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
+      // topic.subscribe('cardPlayed', lang.hitch(this, "notif_cardPlayed"));
 
       // Example 2: standard notification handling + tell the user interface to wait
       //            during 3 seconds after calling the method in order to let the players
       //            see what is happening in the game.
-      // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-      // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-      //
+      // topic.subscribe('cardPlayed', lang.hitch(this, "notif_cardPlayed"));
+      // this.notifqueue.setSynchronous('cardPlayed', 3000);
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
-    notifShowResourceChoiceDialog: function (notif) {
+    notif_showResourceChoiceDialog: function (args) {
       console.groupCollapsed("show resource choice dialog");
       // this.myDlg = new ebg.popindialog();
       // this.myDlg.create("resouceDialog");
@@ -1056,8 +1054,8 @@ define([
       // this.myDlg.hideCloseIcon();
       // this.myDlg.show();
 
-      this.clientStateVars.slot_context = notif.args.context;
-      this.clientStateVars.slot_number = notif.args.context_number;
+      this.clientStateVars.slot_context = args.context;
+      this.clientStateVars.slot_number = args.context_number;
       console.log("context: " + this.clientStateVars.slot_context);
       console.log("number: " + this.clientStateVars.slot_number);
 
@@ -1065,87 +1063,69 @@ define([
         descriptionmyturn: _("${you} must select a resource"),
       });
 
-      // dojo.query(".resource_button").connect("onclick", this, (event) => {
-      //   console.log("resource button clicked");
-      //   const source = event.target || event.srcElement;
-
-      //   var context = notif.args.context;
-      //   var number = notif.args.context_number;
-
-      //   console.log("resource picked " + source.dataset.resource + " context: " + context + " number: " + number);
-
-      //   event.preventDefault();
-      //   if (source.dataset.resource != null) {
-      //     this.bgaPerformAction("actResourcePickedInDialog", {
-      //       resource: source.dataset.resource,
-      //       context: context,
-      //       number: number,
-      //     });
-      //     this.myDlg.destroy();
-      //   }
-      // });
       console.groupEnd();
     },
-    notifDummyStart: function (notif) {
+    notif_dummyStart: function (args) {
       console.log("dummystart");
       this.bgaPerformAction("actExitDummyStart", {});
     },
-    notifResourcesChanged: function (notif) {
+    notif_resourcesChanged: function (args) {
       console.groupCollapsed("notify: resources changed");
       console.log("Notification: resourcesChanged");
-      console.log(notif.args.resources);
+      console.log(args.resources);
       console.log("current resources:");
       console.log(this.resources);
 
-      this.resources = notif.args.resources;
-      this.updateResources(notif.args.resources);
+      this.resources = args.resources;
+      this.updateResources(args.resources);
       console.groupEnd();
     },
-    notifSkiffPlaced: function (notif) {
+    notif_skiffPlaced: function (args) {
       console.groupCollapsed("notify: skiff placed");
-      console.log(notif);
+      console.log(args);
 
-      var slot_name = notif.args.slot_name;
-      var slot_number = notif.args.slot_number;
+      var slot_name = args.slot_name;
+      var slot_number = args.slot_number;
       var postfix = "_" + slot_name + "_" + slot_number;
-      var skiff_id = "skiff_p" + notif.args.player_id + postfix;
+      var skiff_id = "skiff_p" + args.player_id + postfix;
 
-      this.islandSlots[slot_name][slot_number] = notif.args.player_id;
+      this.islandSlots[slot_name][slot_number] = args.player_id;
 
       console.log("skiff_id: " + skiff_id);
-      var player_board_id = "overall_player_board_" + notif.args.player_id;
+      var player_board_id = "overall_player_board_" + args.player_id;
       console.log("player board id: " + player_board_id);
 
       var skiff = this.format_block("jstpl_skiff", {
-        player_color: notif.args.player_color,
+        player_color: args.player_color,
         id: skiff_id,
       });
-      var skiff_slot = dojo.query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
+      var skiff_slot = query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
       console.log("skiff slot:");
       console.log(skiff_slot);
 
-      dojo.place(
+      domConstruct.place(
         skiff,
         //"skiff_slot" + postfix
         skiff_slot,
       );
       this.placeOnObject(skiff_id, player_board_id);
-      dojo.style(skiff_id, "zIndex", 1);
+      domStyle.set(skiff_id, "zIndex", 1);
       this.slideToObject(
         skiff_id,
         //"skiff_slot" + postfix,
         skiff_slot,
         1000,
       ).play();
-      dojo.removeClass(skiff_slot, "unoccupied");
+      domClass.remove(skiff_slot, "unoccupied");
+      domClass.add(skiff_id, "skiff_placed")
       console.groupEnd();
     },
-    notifTokenAcquired: function (notif) {
+    notif_tokenAcquired: function (args) {
       console.groupCollapsed("notify: token acquired");
-      console.log(notif);
+      console.log(args);
 
-      var token_key = notif.args.token_key;
-      var player_id = notif.args.player_id;
+      var token_key = args.token_key;
+      var player_id = args.player_id;
 
       var tokens = query("#" + token_key);
       var token_element = null;
@@ -1153,32 +1133,32 @@ define([
         var token_element = tokens[0];
       } else {
         console.log("creating token");        
-        var token_html = this.format_block("jstpl_unique_token", { token_key: notif.args.token_key });
+        var token_html = this.format_block("jstpl_unique_token", { token_key: args.token_key });
         if (token_key == "first_player_token") {
-          var token_element = dojo.place(token_html, `skiff_slot_capitol_n1`);
+          var token_element = domConstruct.place(token_html, `skiff_slot_capitol_n1`);
         } else {
-          var token_element = dojo.place(token_html, `skiff_slot_${token_key}_n1`);
+          var token_element = domConstruct.place(token_html, `skiff_slot_${token_key}_n1`);
         }
       }
 
-      this.unique_tokens[token_key] = notif.args.player_id;
+      this.unique_tokens[token_key] = args.player_id;
 
       if (player_id != null) {
         var target = `${token_key}_p${player_id}`;
-        dojo.style(token_element, "zIndex", 1);
+        domStyle.set(token_element, "zIndex", 1);
         this.slideToObject(token_element, target, 1000).play();
       }
       console.groupEnd();
     },
-    notifyCardPlayed: function (notif) {
+    notif_cardPlayed: function (args) {
       console.groupCollapsed("notify: card played");
-      console.log(notif.args);
-      var shipid = "player_ship_" + notif.args.player_id;
+      console.log(args);
+      var shipid = "player_ship_" + args.player_id;
 
-      this.playerSpendResources(notif.args.cost);
+      this.playerSpendResources(args.cost);
 
       var anims = [];
-      for (var move of notif.args.moveChain) {
+      for (var move of args.moveChain) {
         console.log("processing move");
         console.log(move);
         switch (move.type) {
@@ -1198,9 +1178,9 @@ define([
             break;
           }
           case "turn": {
-            let player_ship = this.getObjectOnSeaboard("player_ship", notif.args.player_id);
+            let player_ship = this.getObjectOnSeaboard("player_ship", args.player_id);
             console.log(
-              notif.args.player_id +
+              args.player_id +
                 " my old heading " +
                 player_ship.heading +
                 " event old heading " +
@@ -1225,7 +1205,7 @@ define([
             let anim = new baseFX.Animation({
               curve: curve,
               onAnimate: function (v) {
-                domstyle.set(shipid, "rotate", v + "deg");
+                domStyle.set(shipid, "rotate", v + "deg");
               },
             });
             console.log(anim);
@@ -1238,8 +1218,8 @@ define([
             let cannon_fire = this.format_block("jstpl_cannon_fire", {});
             let rotation = this.getHeadingDegrees(move.fire_heading);
             console.log("fire rotation " + rotation);
-            dojo.place(cannon_fire, shipid);
-            domstyle.set("cannonfire", "rotate", rotation + "deg");
+            domConstruct.place(cannon_fire, shipid);
+            domStyle.set("cannonfire", "rotate", rotation + "deg");
             let offset = null;
             switch (move.fire_heading) {
               case NORTH:
@@ -1256,13 +1236,13 @@ define([
                 break;
             }
             console.log(offset);
-            domstyle.set("cannonfire", "rotate", rotation + "deg");
-            domstyle.set("cannonfire", offset[0], offset[1], rotation + "deg");
+            domStyle.set("cannonfire", "rotate", rotation + "deg");
+            domStyle.set("cannonfire", offset[0], offset[1], rotation + "deg");
             let explosion = this.format_block("jstpl_explosion", {});
             let target_id = "seaboardlocation_" + move.hit_x + "_" + move.hit_y;
-            dojo.place(explosion, target_id);
-            domstyle.set("explosion", "opacity", "0");
-            domstyle.set("cannonfire", "opacity", 0);
+            domConstruct.place(explosion, target_id);
+            domStyle.set("explosion", "opacity", "0");
+            domStyle.set("cannonfire", "opacity", 0);
             fx.chain([
               baseFX.fadeIn({ node: "cannonfire", duration: 100 }),
               baseFX.fadeOut({
@@ -1294,23 +1274,23 @@ define([
       }
       console.groupEnd();
     },
-    notifyScore: function (notif) {
-      console.log("score for " + notif.args.player_id + " " + notif.args.player_score);
-      this.scoreCtrl[notif.args.player_id].setValue(notif.args.player_score);
+    notif_score: function (args) {
+      console.log("score for " + args.player_id + " " + args.player_score);
+      this.scoreCtrl[args.player_id].setValue(args.player_score);
     },
-    notifyDamageReceived: function (notif) {
+    notif_damageReceived: function (args) {
       console.log("notify damage received");
-      let damage_card = notif.args.damage_card;
-      let player_id = notif.args.player_id;
-      var shipid = "player_ship_" + notif.args.player_id;
+      let damage_card = args.damage_card;
+      let player_id = args.player_id;
+      var shipid = "player_ship_" + args.player_id;
       if (player_id == this.player_id) {
         this.playerDiscard.addToStockWithId(damage_card.type, damage_card.id, shipid);
       }
     },
-    notifyCardDrawn: function (notif) {
+    notif_cardDrawn: function (args) {
       console.log("notify card drawn");
-      let card = notif.args.card;
-      let player_id = notif.args.player_id;
+      let card = args.card;
+      let player_id = args.player_id;
       console.log(card);
       console.log(player_id);
       if (player_id == this.player_id) {

@@ -1267,7 +1267,7 @@ class SeasOfHavoc extends Table
                                 );
 
                                 $this->notifyAllPlayers(
-                                    "damage_received",
+                                    "damageReceived",
                                     clienttranslate('${player_name} receives a damage card'),
                                     [
                                         "player_name" => self::getPlayerNameById($hit_player_id),
@@ -1314,7 +1314,7 @@ class SeasOfHavoc extends Table
 
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
-        $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} has played a card'), [
+        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} has played a card'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "moveChain" => $outcome["action_chain"],
@@ -1350,7 +1350,7 @@ class SeasOfHavoc extends Table
             $outcome = $this->processCardActions([["action" => $typed_action]], []);
             $this->dump("final pivot outcome", $outcome);
 
-            $this->notifyAllPlayers("cardPlayResults", clienttranslate('${player_name} pivots'), [
+            $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} pivots'), [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $this->getActivePlayerId(),
                 "moveChain" => $outcome["action_chain"],
