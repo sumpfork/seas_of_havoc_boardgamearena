@@ -493,6 +493,8 @@ define([
               }
               if (choice_names.length > 1) {
                 var tree_choices = [];
+                let parent_cost = action.cost;
+                delete action.cost;
                 for (let i = 0; i < choice_names.length; i++) {
                   to_push = {
                     name: choice_names[i],
@@ -500,7 +502,7 @@ define([
                     children: new Map(),
                   };
                   if (choice_names[i] != "skip") {
-                    to_push["cost"] = action.cost;
+                    to_push["cost"] = parent_cost;
                   }
                   tree_choices.push(to_push);
                 }
@@ -729,17 +731,49 @@ define([
                 console.log("placing on " + card_div + " card purchase button: " + purchase_button);
                 domConstruct.place(purchase_button, card_div);
               }
+              // Always ensure event handler is connected
+              console.log("=== PURCHASE BUTTON EVENT HANDLER DEBUG ===");
+              console.log("Looking for button with ID: " + button_id);
+              var buttonNodes = query("#" + button_id);
+              console.log("Found button nodes:", buttonNodes);
+              console.log("Number of nodes found:", buttonNodes.length);
+              
+              // Remove any existing handler first to avoid duplicates
+              buttonNodes.forEach(function(node, index) {
+                console.log("Processing node " + index + ":", node);
+                if (node._purchaseHandler) {
+                  console.log("Removing existing handler from node " + index);
+                  node._purchaseHandler.remove();
+                } else {
+                  console.log("No existing handler found on node " + index);
+                }
+              });
+              
+              // Connect the event handler and store reference on the DOM node
+              console.log("Attempting to connect click handler...");
+              var handler = buttonNodes.on("click", lang.hitch(this, "onClickPurchaseButton"));
+              console.log("Handler created:", handler);
+              
+              buttonNodes.forEach(function(node, index) {
+                console.log("Storing handler reference on node " + index);
+                node._purchaseHandler = handler;
+              });
+              console.log("=== END PURCHASE BUTTON EVENT HANDLER DEBUG ===");
+              
               if (!this.canPlayerAfford(card.cost)) {
                 console.log("disabling");
-                domClass.remove(button_id, "bgabutton_green");
-                domClass.add(button_id, "disabled");
-                html.set(button_id, "Cannot Afford");
-                if (typeof this.purchase_handler !== "undefined") {
-                  this.purchase_handler.remove();
-                }
+                buttonNodes.forEach(function(node) {
+                  domClass.remove(node, "bgabutton_green");
+                  domClass.add(node, "disabled");
+                  html.set(node, "Cannot Afford");
+                });
               } else {
-                console.log("connecting purchase handler to " + query("." + button_id));
-                this.purchase_handler = query("." + button_id).on("click", lang.hitch(this, "onClickPurchaseButton"));
+                console.log("enabling purchase button");
+                buttonNodes.forEach(function(node) {
+                  domClass.add(node, "bgabutton_green");
+                  domClass.remove(node, "disabled");
+                  html.set(node, "Purchase");
+                });
               }
             }
           }
@@ -749,8 +783,12 @@ define([
     },
     onClickPurchaseButton: function (event) {
       console.groupCollapsed("card purchase button clicked");
-      console.log("onClickPurchaseButton");
-      console.log(event);
+      console.log("=== PURCHASE BUTTON CLICKED ===");
+      console.log("onClickPurchaseButton function called!");
+      console.log("Event object:", event);
+      console.log("Event type:", event.type);
+      console.log("Event target:", event.target);
+      console.log("Event currentTarget:", event.currentTarget);
       event.preventDefault();
       const source = event.target || event.srcElement;
       const slotnumber = source.dataset.slotnumber;
