@@ -29,6 +29,7 @@ define([
   "dojo/dom",
   "dojo/dom-class",
   "dojo/dom-construct",
+  "dojo/html",
   "dojo/dom-style",
   "dojo/dom-attr",
   "dojo/_base/lang",
@@ -41,7 +42,7 @@ define([
   "ebg/core/gamegui",
   "ebg/counter",
   "ebg/stock",
-], function (dojo, declare, on, dom, domClass, domConstruct, domStyle, attr, lang, query, baseFX, fx, aspect) {
+], function (dojo, declare, on, dom, domClass, domConstruct, html, domStyle, attr, lang, query, baseFX, fx, aspect) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -732,7 +733,7 @@ define([
                 console.log("disabling");
                 domClass.remove(button_id, "bgabutton_green");
                 domClass.add(button_id, "disabled");
-                dom.html.set(button_id, "Cannot Afford");
+                html.set(button_id, "Cannot Afford");
                 if (typeof this.purchase_handler !== "undefined") {
                   this.purchase_handler.remove();
                 }
@@ -1020,24 +1021,8 @@ define([
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
-      // TODO: here, associate your game notifications with local methods
-      // aspect.after(this, "showResourceChoiceDialog", lang.hitch(this, "notif_showResourceChoiceDialog"));
-      // aspect.after(this, "resourcesChanged", lang.hitch(this, "notifResourcesChanged"));
-      // aspect.after(this, "skiffPlaced", lang.hitch(this, "notifSkiffPlaced"));
-      // aspect.after(this, "tokenAcquired", lang.hitch(this, "notifTokenAcquired"));
-      // aspect.after(this, "cardPlayResults", lang.hitch(this, "notifyCardPlayed"));
-      // aspect.after(this, "score", lang.hitch(this, "notifyScore"));
-      // aspect.after(this, "damage_received", lang.hitch(this, "notifyDamageReceived"));
-      // aspect.after(this, "cardDrawn", lang.hitch(this, "notifyCardDrawn"));
 
-      // Example 1: standard notification handling
-      // topic.subscribe('cardPlayed', lang.hitch(this, "notif_cardPlayed"));
 
-      // Example 2: standard notification handling + tell the user interface to wait
-      //            during 3 seconds after calling the method in order to let the players
-      //            see what is happening in the game.
-      // topic.subscribe('cardPlayed', lang.hitch(this, "notif_cardPlayed"));
-      // this.notifqueue.setSynchronous('cardPlayed', 3000);
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods

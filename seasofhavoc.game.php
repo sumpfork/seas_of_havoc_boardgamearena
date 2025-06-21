@@ -633,7 +633,6 @@ class SeasOfHavoc extends Table
 
         if (array_sum(array_column(array_values($resources), "skiff")) == 0) {
             $this->mytrace("next state, transition: islandPhaseDone");
-            $this->clearIslandSlots();
             $this->gamestate->nextState("islandPhaseDone");
             return;
         }
@@ -1116,6 +1115,9 @@ class SeasOfHavoc extends Table
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
+        if (count($this->gamestate->getActivePlayerList()) == 0) {
+            $this->clearIslandSlots();
+        }
     }
 
     function processSimpleAction(PrimitiveCardPlayAction $action_type)
@@ -1144,12 +1146,12 @@ class SeasOfHavoc extends Table
         return ["action_chain" => $outcome, "collision_occurred" => $collision_occurred];
     }
 
-    function merge_results(array $result, array &$to_send, array &$total_cost, bool &$collision_occurred)
+    function merge_results(array $result, $cost, array &$to_send, array &$total_cost, bool &$collision_occurred)
     {
-        if (array_key_exists("cost", $result)) {
-            $total_cost = $this->sum_array_by_key($total_cost, $result["cost"]);
+        $total_cost = $this->sum_array_by_key($total_cost, $cost);
+        if (array_key_exists("collision_occurred", $result)) {
+            $collision_occurred = $collision_occurred || $result["collision_occurred"];
         }
-        $collision_occurred = $collision_occurred || $result["collision_occurred"];
         $to_send = array_merge($to_send, $result["action_chain"]);
     }
 
@@ -1176,10 +1178,12 @@ class SeasOfHavoc extends Table
                     continue;
                 }
             }
+            $cost = $action["cost"] ?? [];
             switch ($typed_action) {
                 case PrimitiveCardPlayAction::SEQUENCE:
                     $this->merge_results(
                         $this->processCardActions($action["actions"], $decisions),
+                        $cost,
                         $to_send,
                         $total_cost,
                         $collision_occurred,
@@ -1191,7 +1195,7 @@ class SeasOfHavoc extends Table
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
                     $decision_index = array_search($decision, $choice_names);
                     $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
-                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                     $result = $this->processCardActions(
@@ -1202,7 +1206,7 @@ class SeasOfHavoc extends Table
                         ],
                         $decisions,
                     );
-                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::RIGHT:
                     $result = $this->processCardActions(
@@ -1213,7 +1217,7 @@ class SeasOfHavoc extends Table
                         ],
                         $decisions,
                     );
-                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::FIRE:
                 case PrimitiveCardPlayAction::FIRE2:
@@ -1278,19 +1282,22 @@ class SeasOfHavoc extends Table
                             }
                         }
                     }
-                    $to_send[] = $outcome;
+                    $this->merge_results(["action_chain" => [$outcome]], $cost, $to_send, $total_cost, $collision_occurred);
                     break;
                 default:
                     $result = $this->processSimpleAction($typed_action);
-                    $this->merge_results($result, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
                     break;
             }
             if ($collision_occurred) {
                 $player_id = $this->getActivePlayerId();
                 if ($i + 1 < count($actions)) {
                     $next_action = $actions[$i + 1]["action"];
+                    if ($next_action instanceof \PrimitiveCardPlayAction) {
+                        $next_action = $next_action->value;
+                    }
                     $this->DbQuery(
-                        "REPLACE INTO next_action_on_card (player_id, next_action) VALUES ($player_id, '$next_action', 0)",
+                        "REPLACE INTO next_action_on_card (player_id, next_action) VALUES ($player_id, '$next_action')",
                     );
                 } else {
                     $this->DBQuery("DELETE FROM next_action_on_card WHERE player_id = $player_id");
@@ -1356,7 +1363,9 @@ class SeasOfHavoc extends Table
                 "moveChain" => $outcome["action_chain"],
                 "cost" => $outcome["cost"],
             ]);
+            //TODO: check if player can fire due to interrupted maneuver ending in firing action
         }
+        $this->gamestate->nextState("collisionResolved");
     }
 
     //////////////////////////////////////////////////////////////////////////////
