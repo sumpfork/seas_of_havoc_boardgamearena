@@ -21,16 +21,28 @@ def main():
         default=1.5,
         help="Resolution of the extracted cards in DPI, 72dpi per",
     )
+    parser.add_argument(
+        "--card-index-to-extract", nargs="+", type=int, help="Card indices to extract"
+    )
+    parser.add_argument(
+        "--max-histogram-distance",
+        type=int,
+        default=120,
+        help="Maximum histogram distance to consider a card the same",
+    )
     seen = []
+    seen_images = []
     args = parser.parse_args()
     full_image = None
     pdf = pdfium.PdfDocument(args.pdf_file)  # load a PDF document
     n_pages = len(pdf)  # get the number of pages in the document
-    print(n_pages)
+    print(f"Found {n_pages} pages in {args.pdf_file}")
     images = []
     row = 0
     col = 0
     for p in range(n_pages):
+        if args.card_index_to_extract and p not in args.card_index_to_extract:
+            continue
         page = pdf[p]  # load a page
         bitmap = page.render(
             scale=args.card_resolution,
@@ -38,8 +50,10 @@ def main():
         )
         pil_image = bitmap.to_pil()
         h = np.array(pil_image.histogram())
-        for s in seen:
-            if np.linalg.norm(h - s) < 120:
+        for i, s in enumerate(seen):
+            if np.linalg.norm(h - s) < args.max_histogram_distance:
+                print(f"abs image dist: {np.linalg.norm(h - s)} between {p+1} and {i+1}")
+                seen_images.append(pil_image)
                 break
         else:
             col += 1
