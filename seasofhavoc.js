@@ -124,6 +124,11 @@ define([
         }
       }
     },
+    updateDeckCount: function () {
+      console.log("updating deck count");
+      console.log("deck size: " + this.deckSize);
+      document.getElementById("deck_count").innerText = this.deckSize;
+    },
     getPlayerResources: function () {
       var playerResources = {};
       console.log("adtive player id: " + this.getActivePlayerId());
@@ -220,6 +225,16 @@ define([
       this.playerDiscard.setSelectionMode(0);
       this.playerDiscard.resizeItems(144, 198, 864, 2378);
 
+      this.playerDeck = new ebg.stock();
+      this.playerDeck.create(this, $("mydeck"), 144, 198);
+      this.playerDeck.image_items_per_row = 6;
+      this.playerDeck.horizontal_overlap = 1;
+      this.playerDeck.vertical_overlap = 0;
+      this.playerDeck.item_margin = 0;
+      this.playerDeck.setSelectionMode(0); // deck is not selectable
+      this.playerDeck.resizeItems(144, 198, 864, 2378);
+      
+
       this.market = new ebg.stock();
       this.market.create(this, $("market"), 144, 198);
       this.market.image_items_per_row = 6;
@@ -255,6 +270,17 @@ define([
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
         this.playerDiscard.addToStockWithId(card.type, card.id);
       }
+      
+      // Add card back type for deck (assuming image_id 0 represents card back)
+      let card_back_type = Object.keys(this.playable_cards).length;
+      this.playerDeck.addItemType(card_back_type, 0, g_gamethemeurl + "img/playable_cards.jpg", gamedatas.card_back_image_id);
+      
+      // Add a single card back to show in the deck (the count will show the actual number)
+      this.playerDeck.addToStockWithId(card_back_type, 0);
+      
+      // Initialize deck count from game data or default
+      this.deckSize = gamedatas.deck_size || 0;
+      this.updateDeckCount();
       var slotno = 1;
       for (var card_id in gamedatas.market) {
         var card = this.gamedatas.market[card_id];
@@ -276,7 +302,7 @@ define([
 
         var skiff = this.format_block("jstpl_skiff", {
           player_color: player.color,
-          id: "skiff_p" + player.id,
+          id: "skiff_p" + player_id,
         });
 
         document.getElementById("player_board_" + player_id).insertAdjacentHTML(
@@ -1060,7 +1086,23 @@ define([
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
 
+    },
 
+    // TODO: from this point and below, you can write your game notifications handling methods
+    notif_deckSizeChanged: function (args) {
+      console.log("notify: deck size changed");
+      console.log(args);
+      if (args.player_id == this.player_id) {
+        this.deckSize = args.deck_size;
+        this.updateDeckCount();
+        
+        // Show/hide deck based on whether there are cards
+        if (this.deckSize === 0) {
+          domStyle.set('mydeck_wrap', 'display', 'none');
+        } else {
+          domStyle.set('mydeck_wrap', 'display', 'block');
+        }
+      }
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
@@ -1317,7 +1359,9 @@ define([
       console.log(card);
       console.log(player_id);
       if (player_id == this.player_id) {
-        this.playerHand.addToStockWithId(card.type, card.id, "player_hand");
+        this.deckSize = args.deck_size;
+        this.updateDeckCount();
+        this.playerHand.addToStockWithId(card.type, card.id);
       }
     },
     /*

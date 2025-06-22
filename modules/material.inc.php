@@ -36,11 +36,13 @@ $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 $this->token_names = [
     "first_player_token" => _("First Player Token"),
     "green_flag" => _("Green Purser's Flag"),
-    "tan_flag" => _("Green Flag"),
+    "tan_flag" => _("Tan Flag"),
     "red_flag" => _("Red Flag"),
     "blue_flag" => _("Blue Flag"),
     "yellow_flag" => _("Yellow Flag"),
 ];
+
+$this->card_back_image_id = 71;
 
 $this->playable_cards = [
     [

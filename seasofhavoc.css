@@ -255,5 +255,5 @@ a.disabled {
 }
 #mycards {
     display: grid;
-    grid-template-columns: auto 200px;
+    grid-template-columns: 200px 1fr 200px;
 }

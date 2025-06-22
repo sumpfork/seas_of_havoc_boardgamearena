@@ -388,6 +388,7 @@ class SeasOfHavoc extends Table
     private array $playable_cards;
     private array $resource_types;
     private array $token_names;
+    private int $card_back_image_id;
 
     function __construct()
     {
@@ -575,6 +576,9 @@ class SeasOfHavoc extends Table
             $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
             $this->cards->shuffle($this->playerDeckName($playerid));
             $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
+            
+            // Notify initial deck size
+            $this->notifyDeckSizeChanged($playerid);
         }
 
         $market_deck = [];
@@ -617,6 +621,7 @@ class SeasOfHavoc extends Table
 
         foreach ($player_infos as $playerid => $player) {
             $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
+            $this->notifyDeckSizeChanged($playerid);
         }
         $this->gamestate->nextState();
     }
@@ -704,6 +709,9 @@ class SeasOfHavoc extends Table
         $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
+        $result["card_back_image_id"] = $this->card_back_image_id;
+        $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
+
         return $result;
     }
 
@@ -976,13 +984,29 @@ class SeasOfHavoc extends Table
         ]);
     }
 
+    function notifyDeckSizeChanged(string $player_id, string $message = ""){
+        $deck_size = $this->cards->countCardInLocation($this->playerDeckName($player_id));
+        $this->notifyPlayer($player_id, "deckSizeChanged", $message, [
+            "player_id" => $player_id,
+            "deck_size" => $deck_size,
+        ]);
+    }
+
     function drawCard(string $player_id){
         $this->mytrace("drawCard");
-        $card = $this->cards->pickCard($this->playerDeckName($player_id), $player_id);
-        $this->notifyPlayer($player_id, "cardDrawn", clienttranslate('You drew a card'), [
-            "player_id" => $player_id,
-            "card" => $card,
-        ]);
+        $deck_name = $this->playerDeckName($player_id);
+        
+        $card = $this->cards->pickCard($deck_name, $player_id);
+        
+        if ($card != null) {
+            $this->notifyPlayer($player_id, "cardDrawn", clienttranslate('You drew a card'), [
+                "player_id" => $player_id,
+                "card" => $card,
+                "deck_size" => $this->cards->countCardInLocation($deck_name),
+            ]);
+        } else {
+            $this->trace("no card to draw for player $player_id");
+        }
     }
     //////////////////////////////////////////////////////////////////////////////
     //////////// Player actions
@@ -1047,12 +1071,17 @@ class SeasOfHavoc extends Table
             case "tan_flag":
                 $this->acquireToken($player_id, $slotname);
                 $this->drawCard($player_id);
+                $this->occupyIslandSlot($player_id, $slotname, $number);
                 break;
             case "red_flag":
+                //TODO: card scrapping dialog
                 $this->acquireToken($player_id, $slotname);
+                $this->occupyIslandSlot($player_id, $slotname, $number);
                 break;
             case "blue_flag":
+                //TODO: mark player as getting another turn
                 $this->acquireToken($player_id, $slotname);
+                $this->occupyIslandSlot($player_id, $slotname, $number);
                 break;
             default:
                 throw new BgaSystemException("bad skiff slot: $slotname");
@@ -1115,7 +1144,9 @@ class SeasOfHavoc extends Table
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
+        $this->trace("active player list: " . implode(", ", $this->gamestate->getActivePlayerList()));
         if (count($this->gamestate->getActivePlayerList()) == 0) {
+            $this->trace("no active players, clearing island slots");
             $this->clearIslandSlots();
         }
     }
