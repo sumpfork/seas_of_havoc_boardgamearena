@@ -591,9 +591,9 @@ class SeasOfHavoc extends Table
         }
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");
-        for ($i = 1; $i < 6; $i++) {
-            $this->cards->pickCardForLocation("market_deck", "market", $i);
-        }
+        #for ($i = 1; $i < 6; $i++) {
+        $this->cards->pickCardsForLocation(6, "market_deck", "market");
+        #}
 
         $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
         $this->cards->createCards(
@@ -1069,19 +1069,25 @@ class SeasOfHavoc extends Table
                 $this->showResourceChoiceDialog($slotname, $number);
                 break;
             case "tan_flag":
+                $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
                 $this->drawCard($player_id);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
+                $this->gamestate->nextState("islandTurnDone");
                 break;
             case "red_flag":
                 //TODO: card scrapping dialog
+                $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
+                $this->gamestate->nextState("islandTurnDone");
                 break;
             case "blue_flag":
                 //TODO: mark player as getting another turn
+                $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
+                $this->gamestate->nextState("islandTurnDone");
                 break;
             default:
                 throw new BgaSystemException("bad skiff slot: $slotname");
@@ -1143,12 +1149,19 @@ class SeasOfHavoc extends Table
             $this->pay($player_id, $market_card["cost"]);
             $this->cards->moveCard($card_id, "hand", $player_id);
         }
-        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
         $this->trace("active player list: " . implode(", ", $this->gamestate->getActivePlayerList()));
-        if (count($this->gamestate->getActivePlayerList()) == 0) {
-            $this->trace("no active players, clearing island slots");
+        if (count($this->gamestate->getActivePlayerList()) == 1) {
+            $this->trace("only one active player, clearing island slots");
             $this->clearIslandSlots();
+            $num_market_cards = $this->cards->countCardInLocation("market");
+            $this->trace("num market cards: $num_market_cards");
+            if ($num_market_cards < 6) {
+                $this->trace("picking " . (6 - $num_market_cards) . " market cards");
+                $this->cards->pickCardsForLocation(6 - $num_market_cards, "market_deck", "market");
+            }
         }
+
+        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
 
     function processSimpleAction(PrimitiveCardPlayAction $action_type)

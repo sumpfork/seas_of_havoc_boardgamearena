@@ -1372,7 +1372,7 @@ define([
       if (player_id == this.player_id) {
         this.deckSize = args.deck_size;
         this.updateDeckCount();
-        this.playerHand.addToStockWithId(card.type, card.id);
+        this.playerHand.addToStockWithId(card.type, card.id, "mydeck");
       }
     },
     /*
