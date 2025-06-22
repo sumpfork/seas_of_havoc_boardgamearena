@@ -388,7 +388,7 @@ class SeasOfHavoc extends Table
     private array $playable_cards;
     private array $resource_types;
     private array $token_names;
-    private int $card_back_image_id;
+    private array $non_playable_cards;
 
     function __construct()
     {
@@ -709,7 +709,7 @@ class SeasOfHavoc extends Table
         $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
-        $result["card_back_image_id"] = $this->card_back_image_id;
+        $result["non_playable_cards"] = $this->non_playable_cards;
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
 
         return $result;

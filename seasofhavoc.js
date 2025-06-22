@@ -89,7 +89,7 @@ define([
         }
         var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
         var token_element = domConstruct.place(token_html, `player_token_board_p${player_id}`);
-        this.placeOnObject(token_element, `${token_key}_p${player_id}`)
+        this.placeOnObject(token_element, `${token_key}_p${player_id}`);
         domStyle.set(token_element, "zIndex", 1);
       }
     },
@@ -127,7 +127,7 @@ define([
     updateDeckCount: function () {
       console.log("updating deck count");
       console.log("deck size: " + this.deckSize);
-      document.getElementById("deck_count").innerText = this.deckSize;
+      document.getElementById("deck_count").innerText = "(" +this.deckSize + " Cards)";
     },
     getPlayerResources: function () {
       var playerResources = {};
@@ -214,7 +214,7 @@ define([
       this.playerHand.setSelectionMode(1); // one item selected
 
       //resize background to 1/2 of actual size, card size accordingly
-      this.playerHand.resizeItems(144, 198, 864, 2378);
+      this.playerHand.resizeItems(144, 198, 864, 2378); // 12 rows of cards in images
 
       this.playerDiscard = new ebg.stock();
       this.playerDiscard.create(this, $("mydiscard"), 144, 198);
@@ -232,15 +232,14 @@ define([
       this.playerDeck.vertical_overlap = 0;
       this.playerDeck.item_margin = 0;
       this.playerDeck.setSelectionMode(0); // deck is not selectable
-      this.playerDeck.resizeItems(144, 198, 864, 2378);
-      
+      this.playerDeck.resizeItems(144, 198, 864, 1189); // 6 rows of cards in image
 
       this.market = new ebg.stock();
       this.market.create(this, $("market"), 144, 198);
       this.market.image_items_per_row = 6;
       this.market.horizontal_overlap = 0;
       this.market.setSelectionMode(0);
-      this.market.resizeItems(144, 198, 864, 2378);
+      this.market.resizeItems(144, 198, 864, 2378); // 12 rows of cards in images
       this.market.centerItems = true;
       this.market.jstpl_stock_item = `<div class="market_card_container"><div id="\${id}" class="stockitem \${extra_classes}" 
       style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
@@ -270,14 +269,19 @@ define([
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
         this.playerDiscard.addToStockWithId(card.type, card.id);
       }
-      
+
       // Add card back type for deck (assuming image_id 0 represents card back)
       let card_back_type = Object.keys(this.playable_cards).length;
-      this.playerDeck.addItemType(card_back_type, 0, g_gamethemeurl + "img/playable_cards.jpg", gamedatas.card_back_image_id);
-      
+      this.playerDeck.addItemType(
+        card_back_type,
+        0,
+        g_gamethemeurl + "img/non_playable_cards.png",
+        gamedatas.non_playable_cards.card_back.image_id,
+      );
+
       // Add a single card back to show in the deck (the count will show the actual number)
       this.playerDeck.addToStockWithId(card_back_type, 0);
-      
+
       // Initialize deck count from game data or default
       this.deckSize = gamedatas.deck_size || 0;
       this.updateDeckCount();
@@ -382,13 +386,17 @@ define([
         descriptionmyturn: _("${you} must abide by BGA's dumb logging"),
       });
 
-      on(query(".dummy_button"), "click", lang.hitch(this, (event) => {
-        console.log("dummy button clicked");
+      on(
+        query(".dummy_button"),
+        "click",
+        lang.hitch(this, (event) => {
+          console.log("dummy button clicked");
 
-        event.preventDefault();
-        this.bgaPerformAction("actExitDummyStart", {});
-        this.myDlg.destroy();
-      }));
+          event.preventDefault();
+          this.bgaPerformAction("actExitDummyStart", {});
+          this.myDlg.destroy();
+        }),
+      );
     },
     showCardPlayDialog: function (card, card_id) {
       card_div_id = this.playerHand.getItemDivId(card_id);
@@ -416,27 +424,31 @@ define([
         return decisionSummary;
       };
 
-      on(query(".play_card_button"), "click", lang.hitch(this, (event) => {
-        console.groupCollapsed("card play button clicked");
-        console.log("play card button clicked");
-        event.preventDefault();
-        var decisionSummary = makeDecisionSummary(this.dep_tree);
-        console.log("decisions");
-        console.log(decisionSummary);
-        console.log("card ");
-        console.log(card);
-        this.bgaPerformAction("actPlayCard", {
-          card_type: card.card_type,
-          card_id: card_id,
-          decisions: JSON.stringify(decisionSummary),
-        });
-        this.dep_tree = null;
-        domConstruct.destroy("card_display_dialog");
-        console.log("moving card with type: " + card.card_type + " id :" + card_id);
-        this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
-        this.playerHand.removeFromStockById(card_id);
-        console.groupEnd();
-      }));
+      on(
+        query(".play_card_button"),
+        "click",
+        lang.hitch(this, (event) => {
+          console.groupCollapsed("card play button clicked");
+          console.log("play card button clicked");
+          event.preventDefault();
+          var decisionSummary = makeDecisionSummary(this.dep_tree);
+          console.log("decisions");
+          console.log(decisionSummary);
+          console.log("card ");
+          console.log(card);
+          this.bgaPerformAction("actPlayCard", {
+            card_type: card.card_type,
+            card_id: card_id,
+            decisions: JSON.stringify(decisionSummary),
+          });
+          this.dep_tree = null;
+          domConstruct.destroy("card_display_dialog");
+          console.log("moving card with type: " + card.card_type + " id :" + card_id);
+          this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
+          this.playerHand.removeFromStockById(card_id);
+          console.groupEnd();
+        }),
+      );
       var dlg_dom = dom.byId("card_display_dialog");
       var existing_card_dom = dom.byId(card_div_id);
       //var card_pos = dojo.position(existing_card_dom);
@@ -763,9 +775,9 @@ define([
               var buttonNodes = query("#" + button_id);
               console.log("Found button nodes:", buttonNodes);
               console.log("Number of nodes found:", buttonNodes.length);
-              
+
               // Remove any existing handler first to avoid duplicates
-              buttonNodes.forEach(function(node, index) {
+              buttonNodes.forEach(function (node, index) {
                 console.log("Processing node " + index + ":", node);
                 if (node._purchaseHandler) {
                   console.log("Removing existing handler from node " + index);
@@ -774,28 +786,28 @@ define([
                   console.log("No existing handler found on node " + index);
                 }
               });
-              
+
               // Connect the event handler and store reference on the DOM node
               console.log("Attempting to connect click handler...");
               var handler = buttonNodes.on("click", lang.hitch(this, "onClickPurchaseButton"));
               console.log("Handler created:", handler);
-              
-              buttonNodes.forEach(function(node, index) {
+
+              buttonNodes.forEach(function (node, index) {
                 console.log("Storing handler reference on node " + index);
                 node._purchaseHandler = handler;
               });
               console.log("=== END PURCHASE BUTTON EVENT HANDLER DEBUG ===");
-              
+
               if (!this.canPlayerAfford(card.cost)) {
                 console.log("disabling");
-                buttonNodes.forEach(function(node) {
+                buttonNodes.forEach(function (node) {
                   domClass.remove(node, "bgabutton_green");
                   domClass.add(node, "disabled");
                   html.set(node, "Cannot Afford");
                 });
               } else {
                 console.log("enabling purchase button");
-                buttonNodes.forEach(function(node) {
+                buttonNodes.forEach(function (node) {
                   domClass.add(node, "bgabutton_green");
                   domClass.remove(node, "disabled");
                   html.set(node, "Purchase");
@@ -1085,7 +1097,6 @@ define([
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
-
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
@@ -1095,12 +1106,12 @@ define([
       if (args.player_id == this.player_id) {
         this.deckSize = args.deck_size;
         this.updateDeckCount();
-        
+
         // Show/hide deck based on whether there are cards
         if (this.deckSize === 0) {
-          domStyle.set('mydeck_wrap', 'display', 'none');
+          domStyle.set("mydeck_wrap", "display", "none");
         } else {
-          domStyle.set('mydeck_wrap', 'display', 'block');
+          domStyle.set("mydeck_wrap", "display", "block");
         }
       }
     },
@@ -1182,7 +1193,7 @@ define([
         1000,
       ).play();
       domClass.remove(skiff_slot, "unoccupied");
-      domClass.add(skiff_id, "skiff_placed")
+      domClass.add(skiff_id, "skiff_placed");
       console.groupEnd();
     },
     notif_tokenAcquired: function (args) {
@@ -1197,7 +1208,7 @@ define([
       if (token_element != null) {
         var token_element = tokens[0];
       } else {
-        console.log("creating token");        
+        console.log("creating token");
         var token_html = this.format_block("jstpl_unique_token", { token_key: args.token_key });
         if (token_key == "first_player_token") {
           var token_element = domConstruct.place(token_html, `skiff_slot_capitol_n1`);

@@ -42,7 +42,11 @@ $this->token_names = [
     "yellow_flag" => _("Yellow Flag"),
 ];
 
-$this->card_back_image_id = 71;
+$this->non_playable_cards = [
+    "card_back" =>[
+        "image_id" => 0
+    ],
+];
 
 $this->playable_cards = [
     [
