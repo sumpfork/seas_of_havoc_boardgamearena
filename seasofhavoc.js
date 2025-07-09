@@ -37,12 +37,13 @@ define([
   "dojo/_base/fx",
   "dojo/fx",
   "dojo/aspect",
+  g_gamethemeurl + "modules/bga-cards.js",
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
-  "ebg/stock",
-], function (dojo, declare, on, dom, domClass, domConstruct, html, domStyle, attr, lang, query, baseFX, fx, aspect) {
+  "ebg/stock"
+], function (dojo, declare, on, dom, domClass, domConstruct, html, domStyle, attr, lang, query, baseFX, fx, aspect, bgaCards) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
