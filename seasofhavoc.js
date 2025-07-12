@@ -42,8 +42,24 @@ define([
   "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
-  "ebg/stock"
-], function (dojo, declare, on, dom, domClass, domConstruct, html, domStyle, attr, lang, query, baseFX, fx, aspect, bgaCards) {
+  "ebg/stock",
+], function (
+  dojo,
+  declare,
+  on,
+  dom,
+  domClass,
+  domConstruct,
+  html,
+  domStyle,
+  attr,
+  lang,
+  query,
+  baseFX,
+  fx,
+  aspect,
+  bgaCards,
+) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
@@ -125,10 +141,10 @@ define([
         }
       }
     },
-    updateDeckCount: function () {
+    updateDeckCount: function (deckSize) {
       console.log("updating deck count");
-      console.log("deck size: " + this.deckSize);
-      document.getElementById("deck_count").innerText = "(" +this.deckSize + " Cards)";
+      console.log("deck size: " + deckSize);
+      this.playerDeck.setCardNumber(deckSize);
     },
     getPlayerResources: function () {
       var playerResources = {};
@@ -207,15 +223,60 @@ define([
       console.log("dojo version: " + dojo.version);
       console.log(gamedatas);
 
-      this.playerHand = new ebg.stock(); // new stock object for hand
-      //this.playerHand.create(this, $("myhand"), 287, 396);
-      this.playerHand.create(this, $("myhand"), 144, 198);
-      this.playerHand.image_items_per_row = 6; // 13 images per row
-      this.playerHand.horizontal_overlap = 0;
-      this.playerHand.setSelectionMode(1); // one item selected
+      this.playable_cards = gamedatas.playable_cards;
 
-      //resize background to 1/2 of actual size, card size accordingly
-      this.playerHand.resizeItems(144, 198, 864, 2378); // 12 rows of cards in images
+      (this.setupHelper = (card, div) => {
+        let image_id = null;
+        if (card.type) {
+          div.classList.add("playable-card-front");
+          const cardData = this.playable_cards[card.type];
+          image_id = cardData.image_id;
+        } else {
+          image_id = gamedatas.non_playable_cards.card_back.image_id;
+          div.classList.add("playable-card-back");
+        }
+        console.log("setup helper for card: " + card.id + " with type " + card.type + " and image id " + image_id);
+
+        const spriteX = (image_id % 6) * 144;
+        const spriteY = Math.floor(image_id / 6) * 198;
+        domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
+      }),
+        // Create CardManager for BGA Cards library
+        (this.cardsManager = new bgaCards.CardManager(this, {
+          getId: (card) => `card-${card.id}`,
+          cardWidth: 144,
+          cardHeight: 198,
+
+          setupDiv: (card, div) => {},
+          setupFrontDiv: (card, div) => {
+            console.log("setupFrontDiv this:");
+            console.log(this);
+            this.setupHelper(card, div);
+          },
+          setupBackDiv: (card, div) => {
+            this.setupHelper(card, div);
+          },
+          isCardVisible: (card) => {
+            return card.location == "hand" || card.location == "discard";
+          },
+        }));
+      // Create HandStock for player hand
+      this.playerHand = new bgaCards.HandStock(this.cardsManager, $("myhand"), {
+        cardOverlap: "30px",
+        cardShift: "8px",
+        inclination: 8,
+      });
+
+      this.playerDeck = new Deck(this.cardsManager, $("mydeck"), {
+        cardNumber: gamedatas.deck_size,
+        counter: {
+          position: "center",
+          extraClasses: "text-shadow",
+        },
+      });
+
+      // Set selection mode to single
+      this.playerHand.setSelectionMode("single");
 
       this.playerDiscard = new ebg.stock();
       this.playerDiscard.create(this, $("mydiscard"), 144, 198);
@@ -225,15 +286,6 @@ define([
       this.playerDiscard.item_margin = 0;
       this.playerDiscard.setSelectionMode(0);
       this.playerDiscard.resizeItems(144, 198, 864, 2378);
-
-      this.playerDeck = new ebg.stock();
-      this.playerDeck.create(this, $("mydeck"), 144, 198);
-      this.playerDeck.image_items_per_row = 6;
-      this.playerDeck.horizontal_overlap = 1;
-      this.playerDeck.vertical_overlap = 0;
-      this.playerDeck.item_margin = 0;
-      this.playerDeck.setSelectionMode(0); // deck is not selectable
-      this.playerDeck.resizeItems(144, 198, 864, 1189); // 6 rows of cards in image
 
       this.market = new ebg.stock();
       this.market.create(this, $("market"), 144, 198);
@@ -246,24 +298,26 @@ define([
       style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
       </div></div>`;
 
-      this.playable_cards = gamedatas.playable_cards;
-
       this.cards_purchased = [];
 
-      aspect.after(this.playerHand, "onChangeSelection", lang.hitch(this, "onCardSelectedPlayerHand"));
+      // Set up selection change callback for HandStock
+      this.playerHand.onSelectionChange = (selection, lastChange) => {
+        this.onCardSelectedPlayerHand();
+      };
       for (const card of Object.values(this.playable_cards)) {
         //console.log(card);
-        console.log(
-          "adding card type: " + card.card_type + " img id: " + card.image_id + " to hand/market/discard stock",
-        );
-        this.playerHand.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
+        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to market/discard stock");
         this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
         this.playerDiscard.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
       }
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player hand");
-        this.playerHand.addToStockWithId(card.type, card.id);
+        this.playerHand.addCard({
+          id: card.id,
+          type: card.type,
+          location: card.location || "hand",
+        });
       }
       for (var i in gamedatas.discard) {
         var card = this.gamedatas.discard[i];
@@ -271,21 +325,6 @@ define([
         this.playerDiscard.addToStockWithId(card.type, card.id);
       }
 
-      // Add card back type for deck (assuming image_id 0 represents card back)
-      let card_back_type = Object.keys(this.playable_cards).length;
-      this.playerDeck.addItemType(
-        card_back_type,
-        0,
-        g_gamethemeurl + "img/non_playable_cards.png",
-        gamedatas.non_playable_cards.card_back.image_id,
-      );
-
-      // Add a single card back to show in the deck (the count will show the actual number)
-      this.playerDeck.addToStockWithId(card_back_type, 0);
-
-      // Initialize deck count from game data or default
-      this.deckSize = gamedatas.deck_size || 0;
-      this.updateDeckCount();
       var slotno = 1;
       for (var card_id in gamedatas.market) {
         var card = this.gamedatas.market[card_id];
@@ -400,7 +439,7 @@ define([
       );
     },
     showCardPlayDialog: function (card, card_id) {
-      card_div_id = this.playerHand.getItemDivId(card_id);
+      card_div_id = this.cardsManager.getId({ id: card_id });
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       domConstruct.place(dlg, "myhand_wrap", "first");
@@ -446,7 +485,7 @@ define([
           domConstruct.destroy("card_display_dialog");
           console.log("moving card with type: " + card.card_type + " id :" + card_id);
           this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
-          this.playerHand.removeFromStockById(card_id);
+          this.playerHand.removeCard({ id: card_id, type: card.card_type });
           console.groupEnd();
         }),
       );
@@ -843,7 +882,11 @@ define([
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
-      this.playerHand.addToStockWithId(slot_card.type, slot_card.id, this.market.getItemDivId(slot_card.id));
+      this.playerHand.addCard({
+        id: slot_card.id,
+        type: slot_card.type,
+        location: "hand",
+      });
       this.market.removeFromStockById(slot_card.id);
       this.updateCardPurchaseButtons(false);
       this.cards_purchased.push(slot_card.id);
@@ -880,18 +923,19 @@ define([
         });
       }
     },
-    onCardSelectedPlayerHand: function (name, item_id) {
+    onCardSelectedPlayerHand: function () {
       console.groupCollapsed("player card selected");
-      console.log("player hand selection " + name + " " + item_id);
-      var items = this.playerHand.getSelectedItems();
-      if (items.length == 1) {
-        var card_type = items[0].type;
+      var selection = this.playerHand.getSelection();
+      console.log("player hand selection:", selection);
+      if (selection.length == 1) {
+        var selectedCard = selection[0];
+        var card_type = selectedCard.type;
         console.log("type: " + card_type);
         var card = this.playable_cards[card_type];
         console.log(card);
-        this.showCardPlayDialog(card, items[0].id);
+        this.showCardPlayDialog(card, selectedCard.id);
       }
-      console.log(items);
+      console.log(selection);
       console.groupEnd();
     },
     ///////////////////////////////////////////////////
@@ -1101,23 +1145,15 @@ define([
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
+
+    // TODO: from this point and below, you can write your game notifications handling methods
     notif_deckSizeChanged: function (args) {
       console.log("notify: deck size changed");
       console.log(args);
       if (args.player_id == this.player_id) {
-        this.deckSize = args.deck_size;
-        this.updateDeckCount();
-
-        // Show/hide deck based on whether there are cards
-        if (this.deckSize === 0) {
-          domStyle.set("mydeck_wrap", "display", "none");
-        } else {
-          domStyle.set("mydeck_wrap", "display", "block");
-        }
+        this.updateDeckCount(args.deck_size);
       }
     },
-
-    // TODO: from this point and below, you can write your game notifications handling methods
     notif_showResourceChoiceDialog: function (args) {
       console.groupCollapsed("show resource choice dialog");
       // this.myDlg = new ebg.popindialog();
@@ -1371,9 +1407,20 @@ define([
       console.log(card);
       console.log(player_id);
       if (player_id == this.player_id) {
-        this.deckSize = args.deck_size;
-        this.updateDeckCount();
-        this.playerHand.addToStockWithId(card.type, card.id, "mydeck");
+        this.updateDeckCount(args.deck_size);
+        let fromElement = dom.byId("mydeck");
+        console.log("fromElement: " + fromElement);
+        this.playerHand.addCard(
+          {
+            id: card.id,
+            type: card.type,
+            location: "hand",
+          },
+          {
+            fromElement: fromElement,
+            originalSide: "back",
+          },
+        );
       }
     },
     /*

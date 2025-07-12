@@ -48,7 +48,7 @@
 
 <div id="mycards">
 <div id="mydeck_wrap" class="whiteblock">
-    <h3>My Deck <span id="deck_count" class="deck_counter">0</span></h3>
+    <h3>My Deck</h3>
     <div id="mydeck">
     </div>
 </div>
