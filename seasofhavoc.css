@@ -210,21 +210,28 @@
 #card_display_dialog {
     width: 350px;
     background-color: white;
-    height: 210px;
+    height: 250px;
     margin-top: -200px;
     z-index: 20;
     position: absolute;
+    display: grid;
+    grid-template-columns: 150px 200px;
+    grid-template-rows: 200px 50px;
 }
 #card_choices {
     font-size: 18px;
     padding-top: 10px;
     padding-bottom: 10px;
-    right: -50%;
-    width: 50%;
-    height: 65%;
-    position: relative;
+    /* right: -50%; */
+    /* width: 50%; */
+    /* height: 65%; */
+    /* position: relative; */
     display: flex;
     flex-direction: column;
+}
+.card-sides {
+    width: 144px;
+    height: 198px;
 }
 .card_choice_radio_container {
     display: inline;
@@ -236,7 +243,10 @@
 #play_card_button {
     left: 60%;
     top: 5px;
-    position: relative;   
+    position: relative;  
+    width: fit-content;
+    height: fit-content;
+    justify-self: center; 
 }
 .purchase_card_button {
     left: 13px;
@@ -268,10 +278,14 @@ a.disabled {
     background-size: 864px 2378px;
     background-repeat: no-repeat;
     border-radius: 5px;
+    width: 144px;
+    height: 198px;
 }
 .playable-card-back {
     background-image: url('img/non_playable_cards.png');
     background-size: 864px 1189px;
     background-repeat: no-repeat;
     border-radius: 5px;
+    width: 144px;
+    height: 198px;
 }

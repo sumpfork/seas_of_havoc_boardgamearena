@@ -227,7 +227,7 @@ define([
 
       (this.setupHelper = (card, div) => {
         let image_id = null;
-        if (card.type) {
+        if (typeof card.type !== "undefined") {
           div.classList.add("playable-card-front");
           const cardData = this.playable_cards[card.type];
           image_id = cardData.image_id;
@@ -235,7 +235,16 @@ define([
           image_id = gamedatas.non_playable_cards.card_back.image_id;
           div.classList.add("playable-card-back");
         }
-        console.log("setup helper for card: " + card.id + " with type " + card.type + " and image id " + image_id);
+        console.log(
+          "setup helper for card: " +
+            card.id +
+            " with type " +
+            card.type +
+            " and image id " +
+            image_id +
+            " and location " +
+            card.location,
+        );
 
         const spriteX = (image_id % 6) * 144;
         const spriteY = Math.floor(image_id / 6) * 198;
@@ -249,15 +258,13 @@ define([
 
           setupDiv: (card, div) => {},
           setupFrontDiv: (card, div) => {
-            console.log("setupFrontDiv this:");
-            console.log(this);
             this.setupHelper(card, div);
           },
           setupBackDiv: (card, div) => {
             this.setupHelper(card, div);
           },
           isCardVisible: (card) => {
-            return card.location == "hand" || card.location == "discard";
+            return typeof card.type !== "undefined";
           },
         }));
       // Create HandStock for player hand
@@ -439,7 +446,6 @@ define([
       );
     },
     showCardPlayDialog: function (card, card_id) {
-      card_div_id = this.cardsManager.getId({ id: card_id });
       domConstruct.destroy("card_display_dialog");
       var dlg = this.format_block("jstpl_card_play_dialog");
       domConstruct.place(dlg, "myhand_wrap", "first");
@@ -489,15 +495,11 @@ define([
           console.groupEnd();
         }),
       );
-      var dlg_dom = dom.byId("card_display_dialog");
-      var existing_card_dom = dom.byId(card_div_id);
-      //var card_pos = dojo.position(existing_card_dom);
-      domStyle.set(dlg_dom, "left", `${existing_card_dom.offsetLeft - existing_card_dom.offsetWidth / 2}px`);
-      var new_card_dom = lang.clone(existing_card_dom);
-      attr.set(new_card_dom, "id", "tmp_display_card");
-
-      domConstruct.place(new_card_dom, "card_display");
-      domStyle.set(new_card_dom, { top: "5px", left: "5px" });
+      var display_dom = query("#card_display");
+      console.log("display dom:");
+      console.log(display_dom);
+      var tmpStock = new LineStock(this.cardsManager, display_dom[0], { center: false });
+      tmpStock.addCard({ id: card_id, type: card.card_type });
 
       console.log(card);
       var bga = this;
