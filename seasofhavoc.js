@@ -42,7 +42,6 @@ define([
   "dojo/NodeList-data",
   "ebg/core/gamegui",
   "ebg/counter",
-  "ebg/stock",
 ], function (
   dojo,
   declare,
@@ -256,7 +255,9 @@ define([
           cardWidth: 144,
           cardHeight: 198,
 
-          setupDiv: (card, div) => {},
+          setupDiv: (card, div) => {
+            div.classList.add('seasofhavoc-card');
+          },
           setupFrontDiv: (card, div) => {
             this.setupHelper(card, div);
           },
@@ -295,16 +296,10 @@ define([
         },
       });
 
-      this.market = new ebg.stock();
-      this.market.create(this, $("market"), 144, 198);
-      this.market.image_items_per_row = 6;
-      this.market.horizontal_overlap = 0;
-      this.market.setSelectionMode(0);
-      this.market.resizeItems(144, 198, 864, 2378); // 12 rows of cards in images
-      this.market.centerItems = true;
-      this.market.jstpl_stock_item = `<div class="market_card_container"><div id="\${id}" class="stockitem \${extra_classes}" 
-      style="top:\${top}px;left:\${left}px;width:\${width}px;height:\${height}px;\${position};background-image:url(\'\${image}\');\${additional_style}">
-      </div></div>`;
+      this.market = new LineStock(this.cardsManager, $("market"), {
+        direction: 'horizontal',
+        center: true
+      });
 
       this.cards_purchased = [];
 
@@ -312,11 +307,7 @@ define([
       this.playerHand.onSelectionChange = (selection, lastChange) => {
         this.onCardSelectedPlayerHand();
       };
-      for (const card of Object.values(this.playable_cards)) {
-        //console.log(card);
-        console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to market/discard stock");
-        this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
-      }
+      // LineStock uses the CardManager to handle card types automatically
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player hand");
@@ -336,8 +327,13 @@ define([
       for (var card_id in gamedatas.market) {
         var card = this.gamedatas.market[card_id];
         console.log("adding card type: " + card.type + " id: " + card.id + " to market");
-        this.market.addToStockWithId(card.type, card.id);
-        var card_div = this.market.getItemDivId(card.id);
+        var cardObj = {
+          id: card.id,
+          type: card.type,
+          location: "market"
+        };
+        this.market.addCard(cardObj);
+        var card_div = this.cardsManager.getCardElement(cardObj);
         attr.set(card_div, "data-slotnumber", "n" + slotno);
         attr.set(card_div, "data-cardid", card.id);
 
@@ -780,13 +776,13 @@ define([
               var button_id = "purchase_button_" + number;
               console.log("number " + number + " is ours");
               var slot_card = null;
-              for (const cardspec of this.market.getAllItems()) {
+              for (const cardspec of this.market.getCards()) {
                 console.log(cardspec);
-                var div = this.market.getItemDivId(cardspec.id);
+                var div = this.cardsManager.getCardElement(cardspec);
                 console.log(div);
                 //console.log("children");
                 //console.log(query(div));
-                var slotnum = attr.get(query("#" + div).children(".skiff_slot")[0], "data-number");
+                var slotnum = attr.get(query(div).children(".skiff_slot")[0], "data-number");
                 console.log("slotnum " + slotnum);
                 if (slotnum == number) {
                   slot_card = cardspec;
@@ -805,7 +801,7 @@ define([
                   id: button_id,
                   slotnumber: slotnum,
                 });
-                var card_div = this.market.getItemDivId(slot_card.id);
+                var card_div = this.cardsManager.getCardElement(slot_card);
                 //dojo.place(purchase_button, "skiff_slot_" + slot + "_" + number);
                 console.log(card_div);
                 console.log("placing on " + card_div + " card purchase button: " + purchase_button);
@@ -874,11 +870,11 @@ define([
       const slotnumber = source.dataset.slotnumber;
       console.log("slotnumber: " + slotnumber);
 
-      var card_dom = query(`.stockitem[data-slotnumber=${slotnumber}`)[0];
+      var card_dom = query(`[data-slotnumber=${slotnumber}`)[0];
       console.log(card_dom);
       var card_id = attr.get(card_dom, "data-cardid");
       console.log("card id " + card_id);
-      var slot_card = this.market.getItemById(parseInt(card_id));
+      var slot_card = this.market.getCards().find(card => card.id == card_id);
       console.log(slot_card);
       var card = this.playable_cards[slot_card.type];
       this.playerSpendResources(card.cost);
@@ -889,7 +885,7 @@ define([
         type: slot_card.type,
         location: "hand",
       });
-      this.market.removeFromStockById(slot_card.id);
+      this.market.removeCard(slot_card);
       this.updateCardPurchaseButtons(false);
       this.cards_purchased.push(slot_card.id);
       console.groupEnd();

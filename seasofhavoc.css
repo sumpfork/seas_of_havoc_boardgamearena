@@ -265,23 +265,24 @@ a.disabled {
     display: grid;
     grid-template-columns: 200px 1fr 200px;
 }
-.card {
+.seasofhavoc-card {
     width: 144px;
     height: 198px;
+    position: relative;
 }
 .playable-card-front {
     background-image: url('img/playable_cards.jpg');
     background-size: 864px 2378px;
     background-repeat: no-repeat;
     border-radius: 5px;
-    width: 144px;
-    height: 198px;
+    /* width: 144px; */
+    /* height: 198px; */
 }
 .playable-card-back {
     background-image: url('img/non_playable_cards.png');
     background-size: 864px 1189px;
     background-repeat: no-repeat;
     border-radius: 5px;
-    width: 144px;
-    height: 198px;
+    /* width: 144px; */ 
+    /* height: 198px; */
 }
