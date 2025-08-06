@@ -285,14 +285,15 @@ define([
       // Set selection mode to single
       this.playerHand.setSelectionMode("single");
 
-      this.playerDiscard = new ebg.stock();
-      this.playerDiscard.create(this, $("mydiscard"), 144, 198);
-      this.playerDiscard.image_items_per_row = 6; // 13 images per row
-      this.playerDiscard.horizontal_overlap = 1;
-      this.playerDiscard.vertical_overlap = 0;
-      this.playerDiscard.item_margin = 0;
-      this.playerDiscard.setSelectionMode(0);
-      this.playerDiscard.resizeItems(144, 198, 864, 2378);
+      this.playerDiscard = new AllVisibleDeck(this.cardsManager, $('mydiscard'), {
+        shift: '8px',
+        //verticalShift: '0px',
+        //horizontalShift: '10px',
+        //direction: 'horizontal',
+        counter: {
+            hideWhenEmpty: true,
+        },
+      });
 
       this.market = new ebg.stock();
       this.market.create(this, $("market"), 144, 198);
@@ -315,7 +316,6 @@ define([
         //console.log(card);
         console.log("adding card type: " + card.card_type + " img id: " + card.image_id + " to market/discard stock");
         this.market.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
-        this.playerDiscard.addItemType(card.card_type, 0, g_gamethemeurl + "img/playable_cards.jpg", card.image_id);
       }
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
@@ -329,7 +329,7 @@ define([
       for (var i in gamedatas.discard) {
         var card = this.gamedatas.discard[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
-        this.playerDiscard.addToStockWithId(card.type, card.id);
+        this.playerDiscard.addCard({id: card.id, type: card.type, location: card.location || "discard"});
       }
 
       var slotno = 1;
@@ -490,7 +490,7 @@ define([
           this.dep_tree = null;
           domConstruct.destroy("card_display_dialog");
           console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addToStockWithId(card.card_type, card_id, card_div_id);
+          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
           this.playerHand.removeCard({ id: card_id, type: card.card_type });
           console.groupEnd();
         }),
@@ -499,7 +499,7 @@ define([
       console.log("display dom:");
       console.log(display_dom);
       var tmpStock = new LineStock(this.cardsManager, display_dom[0], { center: false });
-      tmpStock.addCard({ id: card_id, type: card.card_type });
+      tmpStock.addCard({ id: 10000, type: card.card_type });
 
       console.log(card);
       var bga = this;
@@ -1399,7 +1399,7 @@ define([
       let player_id = args.player_id;
       var shipid = "player_ship_" + args.player_id;
       if (player_id == this.player_id) {
-        this.playerDiscard.addToStockWithId(damage_card.type, damage_card.id, shipid);
+        this.playerDiscard.addCard(damage_card.type, damage_card.id);
       }
     },
     notif_cardDrawn: function (args) {
