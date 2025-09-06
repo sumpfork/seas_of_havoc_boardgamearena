@@ -545,7 +545,21 @@ class SeasOfHavoc extends Table
         $sql .= implode(",", $values);
         self::DbQuery($sql);
 
-        foreach (["first_player_token", "green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
+        // Assign first player token to a random player
+        $player_ids = array_keys($player_infos);
+        $random_first_player = $player_ids[array_rand($player_ids)];
+        self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')");
+        
+        // Notify players who got the first player token
+        $this->notifyAllPlayers("tokenAcquired", clienttranslate('${player_name} starts the game with the ${token_name}'), [
+            "player_name" => $this->getPlayerNameById($random_first_player),
+            "token_name" => $this->token_names["first_player_token"],
+            "player_id" => $random_first_player,
+            "token_key" => "first_player_token",
+        ]);
+        
+        // Create other tokens without owners
+        foreach (["green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
             self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES (NULL, '$token')");
         }
 
@@ -607,10 +621,6 @@ class SeasOfHavoc extends Table
             "damage_deck",
         );
 
-        // Activate first player (which is in general a good idea :) )
-        // $this->activeNextPlayer();
-        //throw new BgaSystemException("mysetup end");
-
         $this->gamestate->nextState();
     }
 
@@ -623,6 +633,16 @@ class SeasOfHavoc extends Table
             $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
             $this->notifyDeckSizeChanged($playerid);
         }
+        
+        // Set the first player token holder as the active player for the island phase
+        $first_player_token_owner = $this->getFirstPlayerTokenOwner();
+        if ($first_player_token_owner === null) {
+            throw new BgaSystemException("No player has the first player token - this should never happen");
+        }
+        
+        $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for island phase");
+        $this->gamestate->changeActivePlayer($first_player_token_owner);
+        
         $this->gamestate->nextState();
     }
 
@@ -660,12 +680,12 @@ class SeasOfHavoc extends Table
         
         // Set the first player token holder as the active player for the sea phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
-        if ($first_player_token_owner !== null) {
-            $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
-            $this->gamestate->changeActivePlayer($first_player_token_owner);
-        } else {
-            $this->mytrace("No first player token owner found, keeping current active player");
+        if ($first_player_token_owner === null) {
+            throw new BgaSystemException("No player has the first player token - this should never happen");
         }
+        
+        $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
+        $this->gamestate->changeActivePlayer($first_player_token_owner);
         
         $this->gamestate->nextState();
     }
@@ -827,6 +847,13 @@ class SeasOfHavoc extends Table
         return $result ? $result["player_id"] : null;
     }
 
+    function getTokenOwner(string $token_key)
+    {
+        $sql = "SELECT player_id FROM unique_tokens WHERE token_key = '$token_key'";
+        $result = $this->getObjectFromDB($sql);
+        return $result ? $result["player_id"] : null;
+    }
+
     function getIslandSlots()
     {
         $sql = "
@@ -858,6 +885,14 @@ class SeasOfHavoc extends Table
 
     function acquireToken(string $player_id, string $token_key)
     {
+        // Check if the player already owns this token
+        $current_owner = $this->getTokenOwner($token_key);
+        if ($current_owner === $player_id) {
+            // Player already owns this token, no need to notify
+            $this->mytrace("Player $player_id already owns token $token_key, skipping notification");
+            return;
+        }
+        
         self::DbQuery(
             "REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')",
         );
