@@ -880,6 +880,18 @@ define([
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
+      
+      // Remove purchase button and skiff slot from card div before moving to hand
+      var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`, card_dom)[0];
+      if (purchase_button) {
+        domConstruct.destroy(purchase_button);
+      }
+      
+      var skiff_slot = query(`.skiff_slot`, card_dom)[0];
+      if (skiff_slot) {
+        domConstruct.destroy(skiff_slot);
+      }
+      
       this.playerHand.addCard({
         id: slot_card.id,
         type: slot_card.type,
