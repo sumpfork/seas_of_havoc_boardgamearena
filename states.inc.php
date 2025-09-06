@@ -57,10 +57,11 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_ISLAND_TURN", 3);
     define("STATE_NEXT_PLAYER_ISLAND_PHASE", 4);
     define("STATE_CARD_PURCHASES", 5);
-    define("STATE_SEA_TURN", 6);
-    define("STATE_NEXT_PLAYER_SEA_PHASE", 7);
-    define("STATE_RESOLVE_COLLISION", 8);
-    define("STATE_ISLAND_PHASE_SETUP", 9);
+    define("STATE_SEA_PHASE_SETUP", 6);
+    define("STATE_SEA_TURN", 7);
+    define("STATE_NEXT_PLAYER_SEA_PHASE", 8);
+    define("STATE_RESOLVE_COLLISION", 9);
+    define("STATE_ISLAND_PHASE_SETUP", 10);
     define("STATE_END_GAME", 99);
 }
 
@@ -120,7 +121,14 @@ $machinestates = [
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
         "possibleactions" => ["actCompletePurchases"],
-        "transitions" => ["cardPurchasesDone" => STATE_SEA_TURN],
+        "transitions" => ["cardPurchasesDone" => STATE_SEA_PHASE_SETUP],
+    ],
+    STATE_SEA_PHASE_SETUP => [
+        "name" => "seaPhaseSetup",
+        "description" => clienttranslate('Starting Sea Phase'),
+        "type" => "game",
+        "action" => "stSeaPhaseSetup",
+        "transitions" => ["" => STATE_SEA_TURN],
     ],
     STATE_SEA_TURN => [
         "name" => "seaTurn",

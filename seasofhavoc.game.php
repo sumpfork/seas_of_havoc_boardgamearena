@@ -654,6 +654,22 @@ class SeasOfHavoc extends Table
         $this->gamestate->setAllPlayersMultiactive();
     }
 
+    function stSeaPhaseSetup()
+    {
+        $this->mytrace("stSeaPhaseSetup");
+        
+        // Set the first player token holder as the active player for the sea phase
+        $first_player_token_owner = $this->getFirstPlayerTokenOwner();
+        if ($first_player_token_owner !== null) {
+            $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
+            $this->gamestate->changeActivePlayer($first_player_token_owner);
+        } else {
+            $this->mytrace("No first player token owner found, keeping current active player");
+        }
+        
+        $this->gamestate->nextState();
+    }
+
     function stNextPlayerSeaPhase()
     {
         $current_player = $this->getActivePlayerId();
@@ -802,6 +818,13 @@ class SeasOfHavoc extends Table
             $indexed_tokens[$token["token_key"]] = $token["player_id"];
         }
         return $indexed_tokens;
+    }
+
+    function getFirstPlayerTokenOwner()
+    {
+        $sql = "SELECT player_id FROM unique_tokens WHERE token_key = 'first_player_token'";
+        $result = $this->getObjectFromDB($sql);
+        return $result ? $result["player_id"] : null;
     }
 
     function getIslandSlots()
