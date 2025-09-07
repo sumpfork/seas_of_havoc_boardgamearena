@@ -1,5 +1,18 @@
-.vscode
+# PHPUnit
+/vendor/
+.phpunit.result.cache
+.phpunit.cache/
+
+# Composer
+composer.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
 .DS_Store
+Thumbs.db
 node_modules
 package.json
 package-lock.json
