@@ -88,7 +88,7 @@ $machinestates = [
         "description" => "f",
         "type" => "game",
         "action" => "stMyGameSetup",
-        "transitions" => ["" => STATE_ISLAND_TURN],
+        "transitions" => ["" => STATE_ISLAND_PHASE_SETUP],
     ],
     STATE_ISLAND_PHASE_SETUP => [
         "name" => "islandPhaseSetup",
@@ -144,7 +144,7 @@ $machinestates = [
         "description" => "",
         "type" => "game",
         "action" => "stNextPlayerSeaPhase",
-        "transitions" => ["seaPhaseDone" => STATE_ISLAND_TURN, "nextPlayer" => STATE_SEA_TURN],
+        "transitions" => ["seaPhaseDone" => STATE_ISLAND_PHASE_SETUP, "nextPlayer" => STATE_SEA_TURN],
     ],
 
     STATE_RESOLVE_COLLISION => [

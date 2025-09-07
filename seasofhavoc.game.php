@@ -990,11 +990,15 @@ class SeasOfHavoc extends Table
         $cost = $this->makeCostNegative($cost);
         $result = $this->sum_array_by_key($resources, $cost);
         #php 8.4: return array_any($result, fn($value): bool => $value < 0);
-        return array_reduce($result, fn($carry, $value): bool => !$carry ? false : $value > 0, true);
+        // Check that no resource goes negative (all values >= 0)
+        return array_reduce($result, fn($carry, $value): bool => $carry && $value >= 0, true);
     }
     function pay($player_id, $cost)
     {
-        assert($this->canPayFor($cost, $this->getGameResources($player_id)));
+        $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        if (!$this->canPayFor($cost, $player_resources)) {
+            throw new BgaUserException($this->_("You cannot afford this action"));
+        }
         $cost = $this->makeCostNegative($cost);
         $this->playerGainResources($player_id, $cost);
     }
@@ -1421,6 +1425,11 @@ class SeasOfHavoc extends Table
         $outcome = $this->processCardActions($card["actions"], $decisions);
         $this->dump("final card play outcome", $outcome);
 
+        // Pay the total cost from all actions (pay() includes validation)
+        if (!empty($outcome["cost"])) {
+            $this->pay($player_id, $outcome["cost"]);
+        }
+
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
         $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} has played a card'), [
@@ -1459,9 +1468,16 @@ class SeasOfHavoc extends Table
             $outcome = $this->processCardActions([["action" => $typed_action]], []);
             $this->dump("final pivot outcome", $outcome);
 
+            $player_id = $this->getActivePlayerId();
+            
+            // Pay the cost for pivot actions (pay() includes validation)
+            if (!empty($outcome["cost"])) {
+                $this->pay($player_id, $outcome["cost"]);
+            }
+
             $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} pivots'), [
                 "player_name" => self::getActivePlayerName(),
-                "player_id" => $this->getActivePlayerId(),
+                "player_id" => $player_id,
                 "moveChain" => $outcome["action_chain"],
                 "cost" => $outcome["cost"],
             ]);

@@ -1278,8 +1278,6 @@ define([
       console.log(args);
       var shipid = "player_ship_" + args.player_id;
 
-      this.playerSpendResources(args.cost);
-
       var anims = [];
       for (var move of args.moveChain) {
         console.log("processing move");
