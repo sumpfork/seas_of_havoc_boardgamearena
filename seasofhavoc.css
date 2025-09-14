@@ -116,9 +116,11 @@
     background-color: rgba(0, 34, 255, 0.306);
 }
 .skiff_slot.unoccupied:hover {
-	outline-color: rgba(113, 74, 35, 0.7);
+	outline-color: rgba(41, 145, 198, 0.7);
+    background-color: rgba(25, 52, 226, 0.7);
 	outline-style: solid;
 	outline-width: 2px;
+    cursor: pointer;
 }
 .resource {
     width: 30px;

@@ -634,6 +634,9 @@ class SeasOfHavoc extends Table
             $this->notifyDeckSizeChanged($playerid);
         }
         
+        // Clear any leftover extra turns from previous phases
+        $this->clearExtraTurns("island");
+        
         // Set the first player token holder as the active player for the island phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
@@ -653,18 +656,44 @@ class SeasOfHavoc extends Table
         $resources = $this->getGameResourcesHierarchical();
         $this->dump("fetched resources:", $resources);
 
-        $total_skiffs = array_sum(array_column(array_values($resources), "skiff"));
-        $this->mytrace("total skiffs left: $total_skiffs");
-
-        if (array_sum(array_column(array_values($resources), "skiff")) == 0) {
-            $this->mytrace("next state, transition: islandPhaseDone");
-            $this->gamestate->nextState("islandPhaseDone");
-            return;
+        $current_player = $this->getActivePlayerId();
+        
+        // Check if current player has an extra turn
+        if ($this->hasExtraTurn($current_player, "island")) {
+            $this->mytrace("Current player $current_player has an extra turn");
+            $this->consumeExtraTurn($current_player, "island");
+            
+            // Check if current player still has skiffs
+            $current_player_skiffs = $resources[$current_player]["skiff"] ?? 0;
+            if ($current_player_skiffs > 0) {
+                $this->mytrace("Current player has skiffs, giving extra turn");
+                $this->giveExtraTime($current_player);
+                $this->gamestate->nextState("nextPlayer");
+                return;
+            } else {
+                $this->mytrace("Current player has no skiffs, skipping extra turn");
+            }
         }
 
-        // Go to next player
+        // Find next player with skiffs
+        $starting_player = $current_player;
         $active_player = $this->activeNextPlayer();
+        
+        while (($resources[$active_player]["skiff"] ?? 0) == 0) {
+            // Prevent infinite loop if we've gone through all players
+            if ($active_player == $starting_player) {
+                $this->mytrace("All players checked, no one has skiffs");
+                $this->clearExtraTurns("island");
+                $this->gamestate->nextState("islandPhaseDone");
+                return;
+            }
+            
+            $this->mytrace("Player $active_player has no skiffs, skipping");
+            $active_player = $this->activeNextPlayer();
+            
+        }
 
+        $this->mytrace("Next player with skiffs: $active_player");
         $this->giveExtraTime($active_player);
         $this->gamestate->nextState("nextPlayer");
     }
@@ -903,6 +932,30 @@ class SeasOfHavoc extends Table
             "player_id" => $player_id,
             "token_key" => $token_key,
         ]);
+    }
+
+    function grantExtraTurn(string $player_id, string $phase)
+    {
+        self::DbQuery("REPLACE INTO extra_turns (player_id, phase) VALUES ('$player_id', '$phase')");
+        $this->mytrace("Granted extra turn to player $player_id for phase $phase");
+    }
+
+    function hasExtraTurn(string $player_id, string $phase)
+    {
+        $result = self::getUniqueValueFromDB("SELECT COUNT(*) FROM extra_turns WHERE player_id = '$player_id' AND phase = '$phase'");
+        return $result > 0;
+    }
+
+    function consumeExtraTurn(string $player_id, string $phase)
+    {
+        self::DbQuery("DELETE FROM extra_turns WHERE player_id = '$player_id' AND phase = '$phase'");
+        $this->mytrace("Consumed extra turn for player $player_id in phase $phase");
+    }
+
+    function clearExtraTurns(string $phase)
+    {
+        self::DbQuery("DELETE FROM extra_turns WHERE phase = '$phase'");
+        $this->mytrace("Cleared all extra turns for phase $phase");
     }
 
     function clearIslandSlots()
@@ -1145,9 +1198,9 @@ class SeasOfHavoc extends Table
                 $this->gamestate->nextState("islandTurnDone");
                 break;
             case "blue_flag":
-                //TODO: mark player as getting another turn
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
+                $this->grantExtraTurn($player_id, "island");
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;

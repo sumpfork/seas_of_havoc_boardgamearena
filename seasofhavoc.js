@@ -135,7 +135,9 @@ define([
               player_color: players[occupant].color,
               id: skiff_id,
             });
-            domConstruct.place(skiff, "skiff_slot_" + slot + "_" + number);
+            const skiff_slot = `skiff_slot_${slot}_${number}`;
+            domConstruct.place(skiff, skiff_slot);
+            domClass.remove(skiff_slot, "unoccupied");
           }
         }
       }

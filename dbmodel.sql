@@ -74,3 +74,11 @@ CREATE TABLE IF NOT EXISTS `unique_tokens` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --ALTER TABLE unique_tokens ADD CONSTRAINT fk_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+CREATE TABLE IF NOT EXISTS `extra_turns` (
+  `player_id` int(10) unsigned NOT NULL,
+  `phase` varchar(32) NOT NULL,
+  PRIMARY KEY (`player_id`, `phase`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE extra_turns ADD CONSTRAINT fk_extra_turns_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
