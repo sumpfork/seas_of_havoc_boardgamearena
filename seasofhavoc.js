@@ -298,6 +298,13 @@ define([
         },
       });
 
+      this.scrapPile = new AllVisibleDeck(this.cardsManager, $('scrap'), {
+        shift: '8px',
+        counter: {
+            hideWhenEmpty: true,
+        },
+      });
+
       this.market = new LineStock(this.cardsManager, $("market"), {
         direction: 'horizontal',
         center: true
@@ -323,6 +330,12 @@ define([
         var card = this.gamedatas.discard[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
         this.playerDiscard.addCard({id: card.id, type: card.type, location: card.location || "discard"});
+      }
+      
+      for (var i in gamedatas.scrap) {
+        var card = this.gamedatas.scrap[i];
+        console.log("adding card type: " + card.type + " id: " + card.id + " to scrap pile");
+        this.scrapPile.addCard({id: card.id, type: card.type, location: card.location || "scrap"});
       }
 
       var slotno = 1;
@@ -972,6 +985,10 @@ define([
           query(".purchase_card_button").forEach(domConstruct.destroy);
           break;
         }
+        case "scrapCard": {
+          this.setupScrapCardSelection(args.args);
+          break;
+        }
         case "dummmy":
           break;
       }
@@ -993,6 +1010,9 @@ define([
                 
                 break;
            */
+        case "scrapCard":
+          this.cleanupScrapCardSelection();
+          break;
 
         case "dummmy":
           break;
@@ -1091,6 +1111,96 @@ define([
         
         */
 
+    setupScrapCardSelection: function(args) {
+      console.log("Setting up scrap card selection");
+      console.log(args);
+      
+      // Create a dialog using the template
+      var scrapDialog = this.format_block('jstpl_scrap_card_dialog', {});
+      document.body.insertAdjacentHTML('beforeend', scrapDialog);
+      
+      // Create scrollable stock for card selection
+      this.scrapCardSelection = new bgaCards.ScrollableStock(
+        this.cardsManager, 
+        $("scrap_card_selection_wrapper"), 
+        {
+          gap: '8px',
+          center: true,
+          scrollStep: 150,
+          leftButton: { html: '◀' },
+          rightButton: { html: '▶' }
+        }
+      );
+      
+      // Set selection mode to single
+      this.scrapCardSelection.setSelectionMode("single");
+      
+      // Add available cards to the selection
+      if (args.available_cards) {
+        for (var i in args.available_cards) {
+          var card = args.available_cards[i];
+          this.scrapCardSelection.addCard({
+            id: card.id,
+            type: card.type,
+            location: card.location
+          });
+        }
+      }
+      
+      // Set up selection callback
+      this.scrapCardSelection.onSelectionChange = (selection, lastChange) => {
+        if (selection.length > 0) {
+          var selectedCard = selection[0];
+          console.log("Card selected for scrapping:", selectedCard);
+          
+          // Add confirm button when a card is selected
+          if (!$("confirm_scrap_button")) {
+            domConstruct.create("button", {
+              id: "confirm_scrap_button",
+              class: "bgabutton bgabutton_red",
+              innerHTML: "Scrap Card"
+            }, $("cancel_scrap_button"), "before");
+            
+            on($("confirm_scrap_button"), "click", () => {
+              this.confirmScrapCard(selectedCard.id);
+            });
+          }
+        } else {
+          // Remove confirm button if no card selected
+          if ($("confirm_scrap_button")) {
+            domConstruct.destroy("confirm_scrap_button");
+          }
+        }
+      };
+      
+      // Set up cancel button
+      on($("cancel_scrap_button"), "click", () => {
+        this.cleanupScrapCardSelection();
+      });
+    },
+
+    cleanupScrapCardSelection: function() {
+      console.log("Cleaning up scrap card selection");
+      
+      if (this.scrapCardSelection) {
+        this.scrapCardSelection = null;
+      }
+      
+      if ($("scrap_card_dialog")) {
+        domConstruct.destroy("scrap_card_dialog");
+      }
+    },
+
+    confirmScrapCard: function(cardId) {
+      console.log("Confirming scrap of card:", cardId);
+      
+      if (this.checkAction("actScrapCard")) {
+        this.bgaPerformAction("actScrapCard", {
+          card_id: cardId
+        });
+      }
+    },
+
     ///////////////////////////////////////////////////
     //// Player's action
 
@@ -1154,6 +1264,15 @@ define([
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
+      
+      // Subscribe to card scrapped notification
+      dojo.subscribe('cardScrapped', this, 'notif_cardScrapped');
+      
+      // Subscribe to card discard notifications
+      dojo.subscribe('cardsDiscarded', this, 'notif_cardsDiscarded');
+      
+      // Subscribe to deck reshuffle notification
+      dojo.subscribe('deckReshuffled', this, 'notif_deckReshuffled');
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
@@ -1412,25 +1531,103 @@ define([
     },
     notif_cardDrawn: function (args) {
       console.log("notify card drawn");
-      let card = args.card;
+      let cards = args.cards;
       let player_id = args.player_id;
-      console.log(card);
-      console.log(player_id);
+      console.log("Cards drawn:", cards);
+      console.log("Player ID:", player_id);
       if (player_id == this.player_id) {
         this.updateDeckCount(args.deck_size);
         let fromElement = dom.byId("mydeck");
         console.log("fromElement: " + fromElement);
-        this.playerHand.addCard(
-          {
+        
+        // Add each card to the player's hand
+        cards.forEach(card => {
+          this.playerHand.addCard(
+            {
+              id: card.id,
+              type: card.type,
+              location: "hand",
+            },
+            {
+              fromElement: fromElement,
+              originalSide: "back",
+            },
+          );
+        });
+      }
+    },
+    notif_cardScrapped: function (args) {
+      console.log("notify card scrapped");
+      
+      let card = args.card;
+      let player_id = args.player_id;
+      let original_location = args.original_location;
+      
+      // Defensive check for card object
+      if (!card || !card.id) {
+        console.error("Invalid card data in cardScrapped notification:", card);
+        return;
+      }
+      
+      // Move the card to scrap pile visually
+      if (original_location === "hand" && player_id == this.player_id) {
+        // Remove from hand
+        this.playerHand.removeCard({id: card.id});
+      } else if (original_location === "player_discard" && player_id == this.player_id) {
+        // Remove from discard
+        this.playerDiscard.removeCard({id: card.id});
+      }
+      
+      // Add to scrap pile
+      this.scrapPile.addCard({
+        id: card.id,
+        type: card.type,
+        location: "scrap"
+      });
+      
+      // Close the scrap selection dialog
+      this.cleanupScrapCardSelection();
+    },
+    notif_cardsDiscarded: function (args) {
+      console.log("notify cards discarded");
+      let cards = args.cards;
+      let player_id = args.player_id;
+      console.log("Cards discarded:", cards);
+      console.log("Player ID:", player_id);
+      
+      if (player_id == this.player_id) {
+        // For the current player: remove from hand and add to discard
+        cards.forEach(card => {
+          this.playerHand.removeCard({id: card.id});
+          this.playerDiscard.addCard({
             id: card.id,
             type: card.type,
-            location: "hand",
-          },
-          {
-            fromElement: fromElement,
-            originalSide: "back",
-          },
-        );
+            location: "discard"
+          });
+        });
+      } else {
+        // For other players: just add the cards to the discard pile (they're public)
+        cards.forEach(card => {
+          this.playerDiscard.addCard({
+            id: card.id,
+            type: card.type,
+            location: "discard"
+          });
+        });
+      }
+    },
+    notif_deckReshuffled: function (args) {
+      console.log("notify deck reshuffled");
+      let player_id = args.player_id;
+      let deck_size = args.deck_size;
+      console.log(`Player ${player_id} deck reshuffled, new deck size: ${deck_size}`);
+      
+      if (player_id == this.player_id) {
+        // Clear the discard pile visually (cards moved back to deck)
+        this.playerDiscard.removeAll();
+        
+        // Update deck count
+        this.updateDeckCount(deck_size);
       }
     },
     /*

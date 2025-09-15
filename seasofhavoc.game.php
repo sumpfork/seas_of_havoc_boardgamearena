@@ -589,10 +589,6 @@ class SeasOfHavoc extends Table
             }
             $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
             $this->cards->shuffle($this->playerDeckName($playerid));
-            $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
-            
-            // Notify initial deck size
-            $this->notifyDeckSizeChanged($playerid);
         }
 
         $market_deck = [];
@@ -629,9 +625,9 @@ class SeasOfHavoc extends Table
         $this->mytrace("stIslandPhaseSetup");
         $player_infos = $this->getPlayerInfo();
 
-        foreach ($player_infos as $playerid => $player) {
-            $this->cards->pickCards(4, $this->playerDeckName($playerid), $playerid);
-            $this->notifyDeckSizeChanged($playerid);
+        foreach ($player_infos as $playerid => $player) {            
+            // Draw 4 new cards
+            $this->drawCards($playerid, 4);
         }
         
         // Clear any leftover extra turns from previous phases
@@ -772,6 +768,7 @@ class SeasOfHavoc extends Table
         $result["market"] = $this->cards->getCardsInLocation("market");
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
         $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
+        $result["scrap"] = $this->cards->getCardsInLocation("scrap");
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         $result["non_playable_cards"] = $this->non_playable_cards;
@@ -1107,20 +1104,86 @@ class SeasOfHavoc extends Table
         ]);
     }
 
-    function drawCard(string $player_id){
-        $this->mytrace("drawCard");
+    function drawCards(string $player_id, int $num_cards = 1){
+        $this->mytrace("drawCard - drawing $num_cards cards");
         $deck_name = $this->playerDeckName($player_id);
         
-        $card = $this->cards->pickCard($deck_name, $player_id);
-        
-        if ($card != null) {
-            $this->notifyPlayer($player_id, "cardDrawn", clienttranslate('You drew a card'), [
+        $cards_drawn = $this->cards->pickCards($num_cards, $deck_name, $player_id);
+        $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards");
+        if (count($cards_drawn) > 0) {
+            $message = count($cards_drawn) == 1 
+                ? clienttranslate('You drew a card') 
+                : clienttranslate('You drew ${num_cards} cards');
+            
+            $this->notifyPlayer($player_id, "cardDrawn", $message, [
                 "player_id" => $player_id,
-                "card" => $card,
+                "cards" => $cards_drawn,
+                "num_cards" => count($cards_drawn),
                 "deck_size" => $this->cards->countCardInLocation($deck_name),
             ]);
         } else {
-            $this->trace("no card to draw for player $player_id");
+            $this->trace("no cards to draw for player $player_id");
+        }
+
+        if (count($cards_drawn) < $num_cards) {
+            $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards, but need " . $num_cards . " cards");
+            $this->cards->moveAllCardsInLocation("player_discard", $deck_name, $player_id);
+            $this->cards->shuffle($deck_name);
+            
+            // Notify that deck was reshuffled from discard
+            $this->notifyPlayer($player_id, "deckReshuffled", clienttranslate('Your discard pile was shuffled into your deck'), [
+                "player_id" => $player_id,
+                "deck_size" => $this->cards->countCardInLocation($deck_name),
+            ]);
+            $cards_drawn = $this->cards->pickCards($num_cards - count($cards_drawn), $deck_name, $player_id);
+            $this->mytrace("drawCard - drew another " . count($cards_drawn) . " cards");
+            if (count($cards_drawn) > 0) {
+                $message = count($cards_drawn) == 1 
+                    ? clienttranslate('You drew a card') 
+                    : clienttranslate('You drew ${num_cards} cards');
+                
+                $this->notifyPlayer($player_id, "cardDrawn", $message, [
+                    "player_id" => $player_id,
+                    "cards" => $cards_drawn,
+                    "num_cards" => count($cards_drawn),
+                    "deck_size" => $this->cards->countCardInLocation($deck_name),
+                ]);
+            }
+        }
+
+    }
+
+    function discardCards(string $player_id, array $card_ids){
+        $this->mytrace("discardCards - discarding " . count($card_ids) . " cards");
+        
+        $cards_discarded = [];
+        foreach ($card_ids as $card_id) {
+            // Validate that the card belongs to the player and is in their hand
+            $card = $this->cards->getCard($card_id);
+            if ($card == null) {
+                throw new BgaUserException($this->_("Invalid card"));
+            }
+            
+            if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+                throw new BgaUserException($this->_("You can only discard cards from your hand"));
+            }
+            
+            // Move card to player's discard pile
+            $this->cards->moveCard($card_id, "player_discard", $player_id);
+            $cards_discarded[] = $card;
+        }
+        
+        if (count($cards_discarded) > 0) {
+            $message = count($cards_discarded) == 1 
+                ? clienttranslate('${player_name} discarded a card') 
+                : clienttranslate('${player_name} discarded ${num_cards} cards');
+            
+            $this->notifyAllPlayers("cardsDiscarded", $message, [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+                "cards" => $cards_discarded,
+                "num_cards" => count($cards_discarded),
+            ]);
         }
     }
     //////////////////////////////////////////////////////////////////////////////
@@ -1186,16 +1249,16 @@ class SeasOfHavoc extends Table
             case "tan_flag":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
-                $this->drawCard($player_id);
+                $this->drawCards($player_id);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
             case "red_flag":
-                //TODO: card scrapping dialog
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
-                $this->gamestate->nextState("islandTurnDone");
+                // Transition to scrap card state instead of completing turn
+                $this->gamestate->nextState("scrapCard");
                 break;
             case "blue_flag":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
@@ -1537,6 +1600,64 @@ class SeasOfHavoc extends Table
             //TODO: check if player can fire due to interrupted maneuver ending in firing action
         }
         $this->gamestate->nextState("collisionResolved");
+    }
+
+    function argScrapCard()
+    {
+        $this->mytrace("argScrapCard");
+        $player_id = self::getActivePlayerId();
+        
+        // Get cards from hand and discard pile
+        $hand_cards = $this->cards->getPlayerHand($player_id);
+        $discard_cards = $this->cards->getCardsInLocation("player_discard", $player_id);
+        
+        // Combine and prepare for scrollable stock
+        $available_cards = array_merge($hand_cards, $discard_cards);
+        
+        return [
+            "available_cards" => $available_cards,
+        ];
+    }
+
+    function actScrapCard(int $card_id)
+    {
+        $this->mytrace("actScrapCard: card_id=$card_id");
+        $player_id = self::getActivePlayerId();
+        
+        // Validate that the card belongs to the player and is in hand or discard
+        $card = $this->cards->getCard($card_id);
+        if (!$card) {
+            throw new BgaUserException($this->_("Invalid card"));
+        }
+        
+        $valid_locations = ["hand", "player_discard"];
+        if (!in_array($card["location"], $valid_locations) || $card["location_arg"] != $player_id) {
+            throw new BgaUserException($this->_("You can only scrap cards from your hand or discard pile"));
+        }
+        
+        // Store the original location before moving
+        $original_location = $card["location"];
+        
+        // Move card to scrap pile
+        $this->cards->moveCard($card_id, "scrap");
+        
+        // Ensure card ID is properly formatted
+        $card_for_notification = [
+            "id" => intval($card["id"]),
+            "type" => intval($card["type"]),
+            "location" => $card["location"],
+            "location_arg" => intval($card["location_arg"])
+        ];
+        
+        // Notify players
+        $this->notifyAllPlayers("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
+            "player_name" => self::getActivePlayerName(),
+            "player_id" => intval($player_id),
+            "card" => $card_for_notification,
+            "original_location" => $original_location,
+        ]);
+        
+        $this->gamestate->nextState("cardScrapped");
     }
 
     //////////////////////////////////////////////////////////////////////////////

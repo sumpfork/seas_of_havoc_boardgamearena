@@ -288,3 +288,112 @@ a.disabled {
     /* width: 144px; */ 
     /* height: 198px; */
 }
+
+/* Scrap card selection dialog styles */
+.scrap_card_dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border: 2px solid #333;
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    min-width: 600px;
+    max-width: 80vw;
+}
+
+.scrap_card_dialog h3 {
+    margin-top: 0;
+    text-align: center;
+    color: #333;
+}
+
+#scrap_card_selection_wrapper {
+    margin: 20px 0;
+    min-height: 220px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+.scrap_dialog_buttons {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.scrap_dialog_buttons button {
+    margin: 0 10px;
+}
+
+/* Scrollable stock arrow buttons in scrap dialog */
+#scrap_card_selection_wrapper button {
+    width: 30px;
+    font-size: 16px;
+    padding: 0;
+    min-width: 30px;
+    flex-shrink: 0;
+}
+
+#scrap_card_selection_wrapper .scrollable-stock-inner {
+    flex: 1 !important;
+    max-width: calc(100% - 80px) !important; /* Account for smaller buttons + gaps */
+}
+
+/* Market and Scrap Pile Layout */
+.market-section {
+    min-height: 250px;
+}
+
+.market-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.market-area {
+    flex: 1;
+    min-width: 0; /* Allows flex item to shrink */
+    margin-right: auto; /* Push market to the left */
+}
+
+.scrap-area {
+    margin-left: auto; /* Force to the right */
+}
+
+.scrap-area h3 {
+    text-align: left;
+    margin-bottom: 10px;
+}
+
+.market-area h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#scrap {
+    min-height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background: rgba(128, 128, 128, 0.2);
+    box-sizing: border-box; /* Include padding and border in width calculation */
+    position: relative;
+}
+
+/* Player deck and discard pile styling */
+#mydeck, #mydiscard {
+    min-height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background: rgba(128, 128, 128, 0.2);
+}
+
+#myhand_wrap {
+    text-align: center;
+}

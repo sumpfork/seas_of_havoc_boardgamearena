@@ -62,6 +62,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_NEXT_PLAYER_SEA_PHASE", 8);
     define("STATE_RESOLVE_COLLISION", 9);
     define("STATE_ISLAND_PHASE_SETUP", 10);
+    define("STATE_SCRAP_CARD", 11);
     define("STATE_END_GAME", 99);
 }
 
@@ -92,7 +93,7 @@ $machinestates = [
     ],
     STATE_ISLAND_PHASE_SETUP => [
         "name" => "islandPhaseSetup",
-        "description" => clienttranslate('Starting Island Phase'),
+        "description" => clienttranslate("Starting Island Phase"),
         "type" => "game",
         "action" => "stIslandPhaseSetup",
         "transitions" => ["" => STATE_ISLAND_TURN],
@@ -103,7 +104,7 @@ $machinestates = [
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
         "possibleactions" => ["actPlaceSkiff", "actResourcePickedInDialog"],
-        "transitions" => ["islandTurnDone" => STATE_NEXT_PLAYER_ISLAND_PHASE],
+        "transitions" => ["islandTurnDone" => STATE_NEXT_PLAYER_ISLAND_PHASE, "scrapCard" => STATE_SCRAP_CARD],
     ],
 
     STATE_NEXT_PLAYER_ISLAND_PHASE => [
@@ -125,7 +126,7 @@ $machinestates = [
     ],
     STATE_SEA_PHASE_SETUP => [
         "name" => "seaPhaseSetup",
-        "description" => clienttranslate('Starting Sea Phase'),
+        "description" => clienttranslate("Starting Sea Phase"),
         "type" => "game",
         "action" => "stSeaPhaseSetup",
         "transitions" => ["" => STATE_SEA_TURN],
@@ -156,6 +157,15 @@ $machinestates = [
         "args" => "argResolveCollision",
         "possibleactions" => ["actResolveCollision", "actPivotPickedInDialog"],
         "transitions" => ["collisionResolved" => STATE_NEXT_PLAYER_SEA_PHASE],
+    ],
+    STATE_SCRAP_CARD => [
+        "name" => "scrapCard",
+        "description" => clienttranslate('${actplayer} must scrap a card'),
+        "descriptionmyturn" => clienttranslate('${you} must scrap a card from your hand or discard pile'),
+        "type" => "activeplayer",
+        "args" => "argScrapCard",
+        "possibleactions" => ["actScrapCard"],
+        "transitions" => ["cardScrapped" => STATE_NEXT_PLAYER_ISLAND_PHASE],
     ],
     // Final state.
     // Please do not modify (and do not overload action/args methods).

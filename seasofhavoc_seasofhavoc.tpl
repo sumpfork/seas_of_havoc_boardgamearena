@@ -41,9 +41,17 @@
     <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
     <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
 </div>
-<div class="whiteblock">
-    <h3>Market</h3>
-    <div id="market"></div>
+<div class="whiteblock market-section">
+    <div class="market-container">
+        <div class="market-area">
+            <h3>Market</h3>
+            <div id="market"></div>
+        </div>
+        <div class="scrap-area">
+            <h3>Scrap Pile</h3>
+            <div id="scrap"></div>
+        </div>
+    </div>
 </div>
 
 <div id="mycards">
@@ -91,6 +99,15 @@
                         <div id="first_player_token_p\${player_id}" class="flagish no_own_flag" data-tokenkey="first_player_token"></div>
                     </div>`;
     var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
+    var jstpl_scrap_card_dialog=`<div id="scrap_card_dialog" class="scrap_card_dialog">
+                        <h3>Choose a card to scrap</h3>
+                        <div id="scrap_card_selection_wrapper">
+                            <div id="scrap_card_selection"></div>
+                        </div>
+                        <div class="scrap_dialog_buttons">
+                            <button id="cancel_scrap_button" class="bgabutton bgabutton_gray">Cancel</button>
+                        </div>
+                    </div>`;
     var jstpl_card_choices_row=`<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
     var jstpl_card_choice_radio=`<div class="card_choice_radio_container"><input type="radio" class="card_choice_radio" id="\${id}" name="\${name}" value="\${value}"/><label for="\${id}">\${label}</label></div>`;
     var jstpl_skiff=`<div id="\${id}" class="skiff">
