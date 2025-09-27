@@ -72,6 +72,19 @@
 </div>
 </div>
 
+<div id="myship">
+<div id="captain_wrap" class="whiteblock">
+    <h3>Captain</h3>
+    <div id="captain_stock">
+    </div>
+</div>
+<div id="upgrades_wrap" class="whiteblock">
+    <h3>Ship Upgrades</h3>
+    <div id="upgrades_stock">
+    </div>
+</div>
+</div>
+
 <div id="damage_deck">
 </div>
 

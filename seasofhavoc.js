@@ -206,6 +206,78 @@ define([
       }
       return true;
     },
+    setupNonPlayableCardHelper: function(card, div) {
+      let image_id = null;
+      if (card.cardKey && this.non_playable_cards && this.non_playable_cards[card.cardKey]) {
+        const cardData = this.non_playable_cards[card.cardKey];
+        image_id = cardData.image_id;
+        div.classList.add("non-playable-card-front");
+      } else if (this.non_playable_cards && this.non_playable_cards.card_back) {
+        image_id = this.non_playable_cards.card_back.image_id;
+        div.classList.add("non-playable-card-back");
+      } else {
+        image_id = 0; // fallback
+        div.classList.add("non-playable-card-back");
+      }
+      
+      console.log("setup non-playable card helper for card: " + card.id + " with cardKey " + card.cardKey + " and image id " + image_id);
+      
+      const spriteX = (image_id % 6) * 144;
+      const spriteY = Math.floor(image_id / 6) * 198;
+      domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
+    },
+
+    addPlayerCardsToBoard: function(gamedatas) {
+      console.log("Adding player's captain and ship upgrades to board...");
+      
+      // Add player's captain card
+      if (gamedatas.player_captain) {
+        const captainCard = {
+          id: `captain-${gamedatas.player_captain}`,
+          cardKey: gamedatas.player_captain,
+          category: 'captain'
+        };
+        
+        console.log("Adding captain card:", captainCard);
+        try {
+          this.captainStock.addCard(captainCard);
+          console.log("Captain card added successfully");
+        } catch (error) {
+          console.error("Error adding captain card:", error);
+        }
+      }
+      
+      // Add player's ship upgrade cards
+      if (gamedatas.player_ship_upgrades && gamedatas.player_ship_upgrades.length > 0) {
+        gamedatas.player_ship_upgrades.forEach((upgrade, index) => {
+          const upgradeCard = {
+            id: `upgrade-${upgrade.upgrade_key}`,
+            cardKey: upgrade.upgrade_key,
+            category: 'ship_upgrade',
+            isActivated: upgrade.is_activated == 1
+          };
+          
+          console.log(`Adding upgrade card ${index + 1}:`, upgradeCard);
+          try {
+            this.upgradesStock.addCard(upgradeCard);
+            console.log(`Upgrade card ${index + 1} added successfully`);
+            
+            // Apply visual styling based on activation status
+            this.updateUpgradeCardVisual(upgradeCard);
+          } catch (error) {
+            console.error(`Error adding upgrade card ${index + 1}:`, error);
+          }
+        });
+      }
+    },
+
+    updateUpgradeCardVisual: function(upgradeCard) {
+      if (upgradeCard.isActivated) {
+        // Flip card to back side using BGA Cards library
+        this.nonPlayableCardsManager.flipCard(upgradeCard);
+      }
+    },
+
     /*
             setup:
             
@@ -225,6 +297,7 @@ define([
       console.log(gamedatas);
 
       this.playable_cards = gamedatas.playable_cards;
+      this.non_playable_cards = gamedatas.non_playable_cards;
 
       (this.setupHelper = (card, div) => {
         let image_id = null;
@@ -270,6 +343,26 @@ define([
             return typeof card.type !== "undefined";
           },
         }));
+
+      // Create CardManager for non-playable cards (captain and ship upgrades)
+      this.nonPlayableCardsManager = new bgaCards.CardManager(this, {
+        getId: (card) => `np-card-${card.id}`,
+        cardWidth: 144,
+        cardHeight: 198,
+        setupDiv: (card, div) => {
+          div.classList.add('seasofhavoc-card', 'non-playable-card');
+        },
+        setupFrontDiv: (card, div) => {
+          this.setupNonPlayableCardHelper(card, div);
+        },
+        setupBackDiv: (card, div) => {
+          this.setupNonPlayableCardHelper(card, div);
+        },
+        isCardVisible: (card) => {
+          return true; // Non-playable cards are always visible
+        },
+      });
+
       // Create HandStock for player hand
       this.playerHand = new bgaCards.HandStock(this.cardsManager, $("myhand"), {
         cardOverlap: "30px",
@@ -308,6 +401,40 @@ define([
       this.market = new LineStock(this.cardsManager, $("market"), {
         direction: 'horizontal',
         center: true
+      });
+
+      // Create SlotStock for captain
+      this.captainStock = new bgaCards.SlotStock(this.nonPlayableCardsManager, $("captain_stock"), {
+        slotsIds: ['captain'],
+        mapCardToSlot: (card) => {
+          if (card.category === 'captain') {
+            return 'captain';
+          }
+          return null;
+        }
+      });
+
+      // Create SlotStock for ship upgrades
+      this.upgradesStock = new bgaCards.SlotStock(this.nonPlayableCardsManager, $("upgrades_stock"), {
+        slotsIds: ['upgrade_1', 'upgrade_2'],
+        mapCardToSlot: (card) => {
+          if (card.category === 'ship_upgrade') {
+            // Find first empty upgrade slot
+            const upgrade1Slot = this.upgradesStock.slots['upgrade_1'];
+            const upgrade2Slot = this.upgradesStock.slots['upgrade_2'];
+            
+            if (upgrade1Slot && upgrade1Slot.children.length === 0) {
+              return 'upgrade_1';
+            } else if (upgrade2Slot && upgrade2Slot.children.length === 0) {
+              return 'upgrade_2';
+            }
+            return 'upgrade_1'; // fallback to first slot
+          }
+          return null;
+        },
+        wrap: 'nowrap',
+        direction: 'row',
+        gap: '10px'
       });
 
       this.cards_purchased = [];
@@ -357,6 +484,11 @@ define([
         domConstruct.place(skiff_slot, card_div);
         slotno++;
       }
+
+      // Add player's actual captain and upgrade cards to player board
+      console.log("Adding player cards to board...");
+      this.addPlayerCardsToBoard(gamedatas);
+      console.log("Player board setup complete!");
       // Setting up player boards
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];

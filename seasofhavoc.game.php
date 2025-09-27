@@ -155,6 +155,46 @@ class SeasOfHavoc extends Table
     {
         return 10 + $num_players * 5;
     }
+
+    function assignCaptainToPlayer($player_id, $captain_key)
+    {
+        $sql = "INSERT INTO player_captain (player_id, captain_key) VALUES ('$player_id', '$captain_key')";
+        self::DbQuery($sql);
+    }
+
+    function assignShipUpgradesToPlayer($player_id, $ship_name)
+    {
+        // Get ship upgrade cards matching the player's ship
+        $ship_upgrades = array_filter($this->non_playable_cards, function($card) use ($ship_name) {
+            return isset($card["category"]) && 
+                   $card["category"] == "ship_upgrade" && 
+                   isset($card["ship_name"]) && 
+                   $card["ship_name"] == $ship_name;
+        });
+        
+        // Take first 2 upgrades for this ship (or all if less than 2)
+        $upgrade_keys = array_keys($ship_upgrades);
+        $selected_upgrades = array_slice($upgrade_keys, 0, 2);
+        
+        foreach ($selected_upgrades as $upgrade_key) {
+            $sql = "INSERT INTO player_ship_upgrades (player_id, upgrade_key, is_activated) VALUES ('$player_id', '$upgrade_key', 0)";
+            self::DbQuery($sql);
+        }
+    }
+
+    function getPlayerCaptain($player_id)
+    {
+        $sql = "SELECT captain_key FROM player_captain WHERE player_id = '$player_id'";
+        return self::getUniqueValueFromDb($sql);
+    }
+
+    function getPlayerShipUpgrades($player_id)
+    {
+        $sql = "SELECT upgrade_key, is_activated FROM player_ship_upgrades WHERE player_id = '$player_id'";
+        return self::getObjectListFromDb($sql);
+    }
+
+
     function stMyGameSetup()
     {
         //throw new BgaSystemException("mysetup start");
@@ -222,12 +262,25 @@ class SeasOfHavoc extends Table
 
         $player_infos = $this->getPlayerInfo();
 
+        // Get all captain cards for random assignment
+        $captain_cards = array_filter($this->non_playable_cards, fn($card) => isset($card["category"]) && $card["category"] == "captain");
+        $captain_keys = array_keys($captain_cards);
+        shuffle($captain_keys);
+
         foreach ($player_infos as $playerid => $player) {
             $this->seaboard->placeObject(rand(0, SeaBoard::WIDTH - 1), rand(0, SeaBoard::HEIGHT - 1), [
                 "type" => "player_ship",
                 "arg" => $playerid,
                 "heading" => Heading::NORTH,
             ]);
+            
+            // Assign random captain to player
+            $captain_key = array_pop($captain_keys);
+            $this->assignCaptainToPlayer($playerid, $captain_key);
+            
+            // Assign ship upgrade cards matching player's ship
+            $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
+            
             $player_starting_cards = array_filter(
                 array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
                 function ($v) use ($player) {
@@ -428,6 +481,8 @@ class SeasOfHavoc extends Table
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         $result["non_playable_cards"] = $this->non_playable_cards;
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
+        $result["player_captain"] = $this->getPlayerCaptain($current_player_id);
+        $result["player_ship_upgrades"] = $this->getPlayerShipUpgrades($current_player_id);
 
         return $result;
     }
@@ -1256,6 +1311,7 @@ class SeasOfHavoc extends Table
         }
         $this->gamestate->nextState("collisionResolved");
     }
+
 
     function argScrapCard()
     {

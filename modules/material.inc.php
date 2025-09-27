@@ -43,8 +43,42 @@ $this->token_names = [
 ];
 
 $this->non_playable_cards = [
-    "card_back" =>[
-        "image_id" => 0
+    "card_back" => [
+        "image_id" => 0,
+    ],
+    "pirate_queen" => ["image_id" => 1, "category" => "captain"],
+    "rebel" => ["image_id" => 2, "category" => "captain"],
+    "admiral" => ["image_id" => 3, "category" => "captain"],
+    "merchant" => ["image_id" => 4, "category" => "captain"],
+    "corsair" => ["image_id" => 5, "category" => "captain"],
+    "treasure_seeker" => ["image_id" => 6, "category" => "captain"],
+    "player_aid_front" => ["image_id" => 7, "category" => "player_aid"],
+    "player_aid_back" => ["image_id" => 8, "category" => "player_aid"],
+    "war_junk_rockets" => [
+        "image_id" => 9,
+        "category" => "ship_upgrade",
+        "ship_name" => "War Junk",
+        "cost" => ["cannonball" => 2, "doubloon" => 1],
+    ],
+    "war_junk_bulwark" => [
+        "image_id" => 10,
+        "category" => "ship_upgrade",
+        "ship_name" => "War Junk",
+        "cost" => ["sail" => 1, "doubloon" => 1],
+    ],
+    "xebec_lateen_rigging" => [
+        "image_id" => 13,
+        "category" => "ship_upgrade",
+        "ship_name" => "Xebec",
+        "cost" => ["sail" => 2],
+        "infamy" => 3,
+    ],
+    "xebec_swift_hull" => [
+        "image_id" => 14,
+        "category" => "ship_upgrade",
+        "ship_name" => "Xebec",
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "infamy" => 3,
     ],
 ];
 
@@ -224,6 +258,54 @@ $this->playable_cards = [
             ],
         ],
         "image_id" => 22,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1],
+        "actions" => [["action" => "forward"], ["action" => "forward", "cost" => ["sail" => 1]]],
+        "image_id" => 23,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            [
+                "actions" => [
+                    ["action" => "forward"],
+                    [
+                        "action" => "choice",
+                        "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
+                        "cost" => ["sail" => 1],
+                    ],
+                ],
+                "name" => "forward",
+            ],
+        ],
+        "image_id" => 24,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [["action" => "forward"], ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
+        "image_id" => 25,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]], "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 26,
         "count" => 1,
         "flag" => "green",
         "category" => "market_card",

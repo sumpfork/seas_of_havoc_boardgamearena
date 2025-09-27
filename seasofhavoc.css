@@ -267,6 +267,10 @@ a.disabled {
     display: grid;
     grid-template-columns: 200px 1fr 200px;
 }
+#myship {
+    display: grid;
+    grid-template-columns: 200px 350px 1fr;
+}
 .seasofhavoc-card {
     width: 144px;
     height: 198px;
@@ -397,3 +401,26 @@ a.disabled {
 #myhand_wrap {
     text-align: center;
 }
+
+/* Player deck and discard pile styling */
+#captain_stock, #upgrades_stock {
+    min-height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background: rgba(128, 128, 128, 0.2);
+}
+
+/* SlotStock will handle layout with its own settings */
+
+/* Non-playable card styling */
+.non-playable-card-front, .non-playable-card-back {
+    background-image: url('img/non_playable_cards.png');
+    background-size: 864px 1189px;
+    background-repeat: no-repeat;
+    border-radius: 5px;
+    width: 144px;
+    height: 198px;
+}
+
+/* BGA Cards library will handle card flipping animations */

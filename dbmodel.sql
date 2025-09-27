@@ -42,6 +42,23 @@ CREATE TABLE IF NOT EXISTS `islandslots` (
 
 ALTER TABLE islandslots ADD CONSTRAINT fk_occupying_player_id FOREIGN KEY (occupying_player_id) REFERENCES player(player_id);
 
+CREATE TABLE IF NOT EXISTS `player_captain` (
+  `player_id` int(10) unsigned NOT NULL,
+  `captain_key` varchar(32) NOT NULL,
+  PRIMARY KEY (`player_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE player_captain ADD CONSTRAINT fk_captain_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+CREATE TABLE IF NOT EXISTS `player_ship_upgrades` (
+  `player_id` int(10) unsigned NOT NULL,
+  `upgrade_key` varchar(32) NOT NULL,
+  `is_activated` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`player_id`, `upgrade_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE player_ship_upgrades ADD CONSTRAINT fk_upgrade_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
 CREATE TABLE IF NOT EXISTS `card` (
   `card_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `card_type` varchar(16) NOT NULL,
