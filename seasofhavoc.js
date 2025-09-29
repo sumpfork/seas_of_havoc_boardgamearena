@@ -482,6 +482,8 @@ define([
         // stick a buy skiff slot on it
         var skiff_slot = query(`.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`)[0];
         domConstruct.place(skiff_slot, card_div);
+        // Make sure the skiff slot is visible (in case it was hidden during a previous purchase)
+        domStyle.set(skiff_slot, "display", "");
         slotno++;
       }
 
@@ -1028,7 +1030,7 @@ define([
       console.log(card);
       console.log(slot_card);
       
-      // Remove purchase button and skiff slot from card div before moving to hand
+      // Remove purchase button and hide skiff slot from card div before moving to hand
       var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`, card_dom)[0];
       if (purchase_button) {
         domConstruct.destroy(purchase_button);
@@ -1036,7 +1038,8 @@ define([
       
       var skiff_slot = query(`.skiff_slot`, card_dom)[0];
       if (skiff_slot) {
-        domConstruct.destroy(skiff_slot);
+        // Don't destroy the skiff slot, just hide it so it can be restored on reload
+        domStyle.set(skiff_slot, "display", "none");
       }
       
       this.playerHand.addCard({
@@ -1109,6 +1112,14 @@ define([
         //this.bgaPerformAction("actExitDummyStart", {});
         case "cardPurchases": {
           this.cards_purchased = [];
+          // Restore visibility of skiff slots on market cards that haven't been purchased
+          this.market.getCards().forEach(card => {
+            var card_div = this.cardsManager.getCardElement(card);
+            var skiff_slot = query(`.skiff_slot`, card_div)[0];
+            if (skiff_slot) {
+              domStyle.set(skiff_slot, "display", "");
+            }
+          });
           this.updateCardPurchaseButtons(true);
           break;
         }
