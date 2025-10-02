@@ -37,7 +37,8 @@ define([
   "dojo/_base/fx",
   "dojo/fx",
   "dojo/aspect",
-  g_gamethemeurl + "modules/bga-cards.js",
+  getLibUrl('bga-animations', '1.x'),
+  getLibUrl('bga-cards', '1.x'),
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
   "ebg/core/gamegui",
@@ -57,7 +58,8 @@ define([
   baseFX,
   fx,
   aspect,
-  bgaCards,
+  BgaAnimations,
+  BgaCards,
 ) {
   return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
@@ -324,8 +326,11 @@ define([
         const spriteY = Math.floor(image_id / 6) * 198;
         domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
       }),
+        // Create the animation manager for BGA Cards
+        (this.animationManager = new BgaAnimations.Manager(this)),
         // Create CardManager for BGA Cards library
-        (this.cardsManager = new bgaCards.CardManager(this, {
+        (this.cardsManager = new BgaCards.Manager({
+          animationManager: this.animationManager,
           getId: (card) => `card-${card.id}`,
           cardWidth: 144,
           cardHeight: 198,
@@ -345,7 +350,8 @@ define([
         }));
 
       // Create CardManager for non-playable cards (captain and ship upgrades)
-      this.nonPlayableCardsManager = new bgaCards.CardManager(this, {
+      this.nonPlayableCardsManager = new BgaCards.Manager({
+        animationManager: this.animationManager,
         getId: (card) => `np-card-${card.id}`,
         cardWidth: 144,
         cardHeight: 198,
@@ -364,13 +370,13 @@ define([
       });
 
       // Create HandStock for player hand
-      this.playerHand = new bgaCards.HandStock(this.cardsManager, $("myhand"), {
+      this.playerHand = new BgaCards.HandStock(this.cardsManager, $("myhand"), {
         cardOverlap: "30px",
         cardShift: "8px",
         inclination: 8,
       });
 
-      this.playerDeck = new Deck(this.cardsManager, $("mydeck"), {
+      this.playerDeck = new BgaCards.Deck(this.cardsManager, $("mydeck"), {
         cardNumber: gamedatas.deck_size,
         counter: {
           position: "center",
@@ -381,7 +387,7 @@ define([
       // Set selection mode to single
       this.playerHand.setSelectionMode("single");
 
-      this.playerDiscard = new AllVisibleDeck(this.cardsManager, $('mydiscard'), {
+      this.playerDiscard = new BgaCards.AllVisibleDeck(this.cardsManager, $('mydiscard'), {
         shift: '8px',
         //verticalShift: '0px',
         //horizontalShift: '10px',
@@ -391,20 +397,20 @@ define([
         },
       });
 
-      this.scrapPile = new AllVisibleDeck(this.cardsManager, $('scrap'), {
+      this.scrapPile = new BgaCards.AllVisibleDeck(this.cardsManager, $('scrap'), {
         shift: '8px',
         counter: {
             hideWhenEmpty: true,
         },
       });
 
-      this.market = new LineStock(this.cardsManager, $("market"), {
+      this.market = new BgaCards.LineStock(this.cardsManager, $("market"), {
         direction: 'horizontal',
         center: true
       });
 
       // Create SlotStock for captain
-      this.captainStock = new bgaCards.SlotStock(this.nonPlayableCardsManager, $("captain_stock"), {
+      this.captainStock = new BgaCards.SlotStock(this.nonPlayableCardsManager, $("captain_stock"), {
         slotsIds: ['captain'],
         mapCardToSlot: (card) => {
           if (card.category === 'captain') {
@@ -415,7 +421,7 @@ define([
       });
 
       // Create SlotStock for ship upgrades
-      this.upgradesStock = new bgaCards.SlotStock(this.nonPlayableCardsManager, $("upgrades_stock"), {
+      this.upgradesStock = new BgaCards.SlotStock(this.nonPlayableCardsManager, $("upgrades_stock"), {
         slotsIds: ['upgrade_1', 'upgrade_2'],
         mapCardToSlot: (card) => {
           if (card.category === 'ship_upgrade') {
@@ -479,11 +485,17 @@ define([
         attr.set(card_div, "data-slotnumber", "n" + slotno);
         attr.set(card_div, "data-cardid", card.id);
 
-        // stick a buy skiff slot on it
-        var skiff_slot = query(`.skiff_slot[data-slotname="market"][data-number]="n${slotno}"`)[0];
-        domConstruct.place(skiff_slot, card_div);
-        // Make sure the skiff slot is visible (in case it was hidden during a previous purchase)
-        domStyle.set(skiff_slot, "display", "");
+        // stick a buy skiff slot on it - use the ID directly since it's predefined in the template
+        var skiff_slot_id = "skiff_slot_market_n" + slotno;
+        var skiff_slot = $(skiff_slot_id);
+        if (skiff_slot) {
+          console.log("Found skiff slot " + skiff_slot_id + ", placing on card");
+          domConstruct.place(skiff_slot, card_div);
+          // Make sure the skiff slot is visible (in case it was hidden during a previous purchase)
+          domStyle.set(skiff_slot, "display", "");
+        } else {
+          console.error("Could not find skiff_slot with id: " + skiff_slot_id);
+        }
         slotno++;
       }
 
@@ -643,7 +655,7 @@ define([
       var display_dom = query("#card_display");
       console.log("display dom:");
       console.log(display_dom);
-      var tmpStock = new LineStock(this.cardsManager, display_dom[0], { center: false });
+      var tmpStock = new BgaCards.LineStock(this.cardsManager, display_dom[0], { center: false });
       tmpStock.addCard({ id: 10000, type: card.card_type });
 
       console.log(card);
@@ -931,7 +943,12 @@ define([
                 console.log(div);
                 //console.log("children");
                 //console.log(query(div));
-                var slotnum = attr.get(query(div).children(".skiff_slot")[0], "data-number");
+                var skiff_slot_element = query(div).children(".skiff_slot")[0];
+                if (!skiff_slot_element) {
+                  console.error("ERROR: No skiff slot found for market card", cardspec, "- every market card must have a skiff slot!");
+                  throw new Error("Market card missing skiff slot: card id " + cardspec.id);
+                }
+                var slotnum = attr.get(skiff_slot_element, "data-number");
                 console.log("slotnum " + slotnum);
                 if (slotnum == number) {
                   slot_card = cardspec;
@@ -1263,7 +1280,7 @@ define([
       document.body.insertAdjacentHTML('beforeend', scrapDialog);
       
       // Create scrollable stock for card selection
-      this.scrapCardSelection = new bgaCards.ScrollableStock(
+      this.scrapCardSelection = new BgaCards.ScrollableStock(
         this.cardsManager, 
         $("scrap_card_selection_wrapper"), 
         {
@@ -1430,16 +1447,6 @@ define([
     },
     notif_showResourceChoiceDialog: function (args) {
       console.groupCollapsed("show resource choice dialog");
-      // this.myDlg = new ebg.popindialog();
-      // this.myDlg.create("resouceDialog");
-      // this.myDlg.setTitle(_("Pick a Resource"));
-      // this.myDlg.setMaxWidth(500); // Optional
-
-      // var html = this.format_block("jstpl_resource_dialog");
-
-      // this.myDlg.setContent(html);
-      // this.myDlg.hideCloseIcon();
-      // this.myDlg.show();
 
       this.clientStateVars.slot_context = args.context;
       this.clientStateVars.slot_number = args.context_number;

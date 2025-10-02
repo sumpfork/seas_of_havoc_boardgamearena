@@ -924,7 +924,6 @@ class SeasOfHavoc extends Table
 
         switch ($slotname) {
             case "capitol":
-                //TODO: take first player marker
                 $this->acquireToken($player_id, "first_player_token");
                 $this->showResourceChoiceDialog($slotname, $number);
                 break;
