@@ -310,7 +310,7 @@ class SeasOfHavoc extends Table
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");
         #for ($i = 1; $i < 6; $i++) {
-        $this->cards->pickCardsForLocation(6, "market_deck", "market");
+        $this->cards->pickCardsForLocation(5, "market_deck", "market");
         #}
 
         $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
@@ -480,6 +480,7 @@ class SeasOfHavoc extends Table
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         $result["non_playable_cards"] = $this->non_playable_cards;
+        
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
         $result["player_captain"] = $this->getPlayerCaptain($current_player_id);
         $result["player_ship_upgrades"] = $this->getPlayerShipUpgrades($current_player_id);

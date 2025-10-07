@@ -147,7 +147,9 @@ define([
     updateDeckCount: function (deckSize) {
       console.log("updating deck count");
       console.log("deck size: " + deckSize);
-      this.playerDeck.setCardNumber(deckSize);
+      // Convert to number in case it's a string
+      const deckSizeNum = parseInt(deckSize, 10);
+      this.playerDeck.setCardNumber(deckSizeNum);
     },
     getPlayerResources: function () {
       var playerResources = {};
@@ -376,13 +378,19 @@ define([
         inclination: 8,
       });
 
+      // Convert deck_size to number (BGA returns it as a string)
+      const deckSize = parseInt(gamedatas.deck_size, 10);
+      
+      // Create the deck without initial cardNumber, then set it explicitly
+      // (passing cardNumber in constructor options caused incorrect count)
       this.playerDeck = new BgaCards.Deck(this.cardsManager, $("mydeck"), {
-        cardNumber: gamedatas.deck_size,
         counter: {
           position: "center",
           extraClasses: "text-shadow",
         },
       });
+      
+      this.playerDeck.setCardNumber(deckSize);
 
       // Set selection mode to single
       this.playerHand.setSelectionMode("single");
