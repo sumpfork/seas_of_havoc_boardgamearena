@@ -344,14 +344,27 @@ class SeasOfHavoc extends Table
             // Assign ship upgrade cards matching player's ship
             $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
             
+            // Get ship starting cards
             $player_starting_cards = array_filter(
                 array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
                 function ($v) use ($player) {
                     return $v["ship_name"] == $player["player_ship"];
                 },
             );
+            
+            // Get captain starting cards
+            $captain_starting_cards = array_filter(
+                array_filter($this->playable_cards, fn($x) => $x["category"] == "captain"),
+                function ($v) use ($captain_key) {
+                    return isset($v["captain_key"]) && $v["captain_key"] == $captain_key;
+                },
+            );
+            
+            // Combine ship and captain starting cards
+            $all_starting_cards = array_merge($player_starting_cards, $captain_starting_cards);
+            
             $start_deck = [];
-            foreach ($player_starting_cards as $starting_card) {
+            foreach ($all_starting_cards as $starting_card) {
                 $start_deck[] = [
                     "type" => $starting_card["card_type"],
                     "type_arg" => 0,

@@ -31,7 +31,6 @@ def main():
         help="Maximum histogram distance to consider a card the same",
     )
     seen = []
-    seen_images = []
     args = parser.parse_args()
     full_image = None
     pdf = pdfium.PdfDocument(args.pdf_file)  # load a PDF document
@@ -50,17 +49,16 @@ def main():
         )
         pil_image = bitmap.to_pil()
         h = np.array(pil_image.histogram())
-        for i, s in enumerate(seen):
+        for s, p2 in seen:
             if np.linalg.norm(h - s) < args.max_histogram_distance:
-                print(f"abs image dist: {np.linalg.norm(h - s)} between {p+1} and {i+1}")
-                seen_images.append(pil_image)
+                print(f"abs image dist: {np.linalg.norm(h - s)} between {p+1} and {p2+1}")
                 break
         else:
             col += 1
             if col >= args.num_columns:
                 col = 0
                 row += 1
-            seen.append(h)
+            seen.append((h, p))
             images.append(pil_image)
 
     print(f"cardsize: {pil_image.width}x{pil_image.height}")
