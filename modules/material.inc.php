@@ -80,6 +80,62 @@ $this->non_playable_cards = [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "infamy" => 3,
     ],
+    "sloop_of_war_chain_shot" => [
+        "image_id" => 17,
+        "category" => "ship_upgrade",
+        "ship_name" => "Sloop of War",
+        "cost" => ["cannonball" => 2, "doubloon" => 1],
+        "infamy" => 3,
+    ],
+    "sloop_of_war_nimble_hull" => [
+        "image_id" => 18,
+        "category" => "ship_upgrade",
+        "ship_name" => "Sloop of War",
+        "cost" => ["sail" => 1, "doubloon" => 2],
+        "infamy" => 3,
+    ],
+    "brig_extra_rations" => [
+        "image_id" => 21,
+        "category" => "ship_upgrade",
+        "ship_name" => "Brig",
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "infamy" => 3,
+    ],
+    "brig_carronade" => [
+        "image_id" => 22,
+        "category" => "ship_upgrade",
+        "ship_name" => "Brig",
+        "cost" => ["cannonball" => 1],
+        "infamy" => 3,
+    ],
+    "ship_of_the_line_double_gun_crews" => [
+        "image_id" => 25,
+        "category" => "ship_upgrade",
+        "ship_name" => "Ship-of-the-Line",
+        "cost" => ["cannonball" => 1, "doubloon" => 2],
+        "infamy" => 3,
+    ],
+    "ship_of_the_line_heavy_guns" => [
+        "image_id" => 26,
+        "category" => "ship_upgrade",
+        "ship_name" => "Ship-of-the-Line",
+        "cost" => ["cannonball" => 2, "doubloon" => 1],
+        "infamy" => 3,
+    ],
+    "galleon_bow_and_stern_chasers" => [
+        "image_id" => 29,
+        "category" => "ship_upgrade",
+        "ship_name" => "Galleon",
+        "cost" => ["cannonball" => 1, "doubloon" => 3],
+        "infamy" => 3,
+    ],
+    "galleon_treasure_hold" => [
+        "image_id" => 30,
+        "category" => "ship_upgrade",
+        "ship_name" => "Galleon",
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "infamy" => 3,
+    ]
 ];
 
 $this->playable_cards = [

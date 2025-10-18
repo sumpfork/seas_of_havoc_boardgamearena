@@ -196,12 +196,25 @@
     background-size: 60px;
     position: relative;
 }
-.player_ship[data-shipname="Xebec"] {
-    background-position: 0% -400%;
+.player_ship[data-shipname="Galleon"] {
+    background-position: 0% 0%;
+}
+.player_ship[data-shipname="Sloop of War"] {
+    background-position: 0% -100%;
 }
 .player_ship[data-shipname="Ship-of-the-Line"] {
     background-position: 0% -200%;
 }
+.player_ship[data-shipname="War Junk"] {
+    background-position: 0% -300%;
+}
+.player_ship[data-shipname="Xebec"] {
+    background-position: 0% -400%;
+}
+.player_ship[data-shipname="Brig"] {
+    background-position: 0% -500%;
+}
+
 
 .seaboardlocation {
     position: relative;
@@ -286,7 +299,7 @@ a.disabled {
 }
 .playable-card-back {
     background-image: url('img/non_playable_cards.png');
-    background-size: 864px 1189px;
+    background-size: 864px 1188px;
     background-repeat: no-repeat;
     border-radius: 5px;
     /* width: 144px; */ 

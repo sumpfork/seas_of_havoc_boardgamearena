@@ -120,6 +120,12 @@ class SeaBoard
         }
     }
 
+    public function getForwardPosition(int $x, int $y, Heading $heading)
+    {
+        $result = $this->computeForwardMovement($x, $y, $heading);
+        return ["x" => $result["new_x"], "y" => $result["new_y"]];
+    }
+
     private function computeForwardMovement(int $x, int $y, Heading $heading)
     {
         $new_x = $x;

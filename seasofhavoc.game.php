@@ -182,6 +182,63 @@ class SeasOfHavoc extends Table
         }
     }
 
+    function findEmptyBoardPosition(array $collision_types)
+    {
+        // Try to find a position on the board that doesn't contain any of the collision types
+        // Maximum attempts to avoid infinite loop
+        $max_attempts = 100;
+        $attempts = 0;
+        
+        while ($attempts < $max_attempts) {
+            $x = rand(0, SeaBoard::WIDTH - 1);
+            $y = rand(0, SeaBoard::HEIGHT - 1);
+            
+            // Check if this position has any objects of the collision types
+            $colliding_objects = $this->seaboard->getObjectsOfTypes($x, $y, $collision_types);
+            if (empty($colliding_objects)) {
+                return ["x" => $x, "y" => $y];
+            }
+            
+            $attempts++;
+        }
+        
+        // If we couldn't find a random empty spot, search systematically
+        for ($x = 0; $x < SeaBoard::WIDTH; $x++) {
+            for ($y = 0; $y < SeaBoard::HEIGHT; $y++) {
+                $colliding_objects = $this->seaboard->getObjectsOfTypes($x, $y, $collision_types);
+                if (empty($colliding_objects)) {
+                    return ["x" => $x, "y" => $y];
+                }
+            }
+        }
+        
+        // Should never happen unless the board is completely full
+        throw new BgaSystemException("Could not find an empty position on the board that doesn't collide with: " . implode(", ", $collision_types));
+    }
+
+    function findSafeHeadingAtPosition(int $x, int $y, array $avoid_types)
+    {
+        // Get all possible headings
+        $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
+        shuffle($all_headings);
+        
+        // Try each heading and see if it faces an object to avoid
+        foreach ($all_headings as $heading) {
+            // Check what's in front of this position with this heading
+            $forward_pos = $this->seaboard->getForwardPosition($x, $y, $heading);
+            $objects_ahead = $this->seaboard->getObjectsOfTypes($forward_pos["x"], $forward_pos["y"], $avoid_types);
+            
+            if (empty($objects_ahead)) {
+                // This heading is safe
+                return $heading;
+            }
+        }
+        
+        // If no heading is safe, return a random one anyway
+        // (this might happen on a very crowded board)
+        return $all_headings[0];
+    }
+
     function getPlayerCaptain($player_id)
     {
         $sql = "SELECT captain_key FROM player_captain WHERE player_id = '$player_id'";
@@ -268,10 +325,16 @@ class SeasOfHavoc extends Table
         shuffle($captain_keys);
 
         foreach ($player_infos as $playerid => $player) {
-            $this->seaboard->placeObject(rand(0, SeaBoard::WIDTH - 1), rand(0, SeaBoard::HEIGHT - 1), [
+            // Find an empty position for the ship (avoiding other ships, rocks, shipwrecks, and sea monster parts)
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
+            
+            // Find a safe random heading that doesn't face a rock or other obstacle
+            $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
+            
+            $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "player_ship",
                 "arg" => $playerid,
-                "heading" => Heading::NORTH,
+                "heading" => $heading,
             ]);
             
             // Assign random captain to player

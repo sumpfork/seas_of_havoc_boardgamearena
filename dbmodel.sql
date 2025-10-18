@@ -52,7 +52,7 @@ ALTER TABLE player_captain ADD CONSTRAINT fk_captain_player_id FOREIGN KEY (play
 
 CREATE TABLE IF NOT EXISTS `player_ship_upgrades` (
   `player_id` int(10) unsigned NOT NULL,
-  `upgrade_key` varchar(32) NOT NULL,
+  `upgrade_key` varchar(64) NOT NULL,
   `is_activated` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`player_id`, `upgrade_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

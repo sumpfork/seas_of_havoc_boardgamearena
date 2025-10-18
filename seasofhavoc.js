@@ -229,6 +229,7 @@ define([
       const spriteX = (image_id % 6) * 144;
       const spriteY = Math.floor(image_id / 6) * 198;
       domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
+      console.log("background-position for " + card.id + " set to: " + `-${spriteX}px -${spriteY}px`);
     },
 
     addPlayerCardsToBoard: function(gamedatas) {
