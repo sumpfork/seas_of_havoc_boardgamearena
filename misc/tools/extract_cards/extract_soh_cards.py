@@ -30,6 +30,13 @@ def main():
         default=120,
         help="Maximum histogram distance to consider a card the same",
     )
+    parser.add_argument(
+        "--crop",
+        nargs=4,
+        type=int,
+        default=(30, 38, 30, 33),
+        help="Crop the page to the given coordinates",
+    )
     seen = []
     args = parser.parse_args()
     full_image = None
@@ -45,7 +52,7 @@ def main():
         page = pdf[p]  # load a page
         bitmap = page.render(
             scale=args.card_resolution,
-            crop=(30, 38, 30, 33),  # crop the page
+            crop=args.crop,  # crop the page
         )
         pil_image = bitmap.to_pil()
         h = np.array(pil_image.histogram())
