@@ -573,6 +573,34 @@ define([
           //this.slideToObject(shipid, target_id, 10 ).play();
         }
       }
+      
+      // Disable skiff slots based on player count
+      var playerCount = Object.keys(gamedatas.players).length;
+      console.log("Player count: " + playerCount);
+      
+      // Define which slots should be disabled based on player count
+      var slotsToDisable = [];
+      if (playerCount < 3) {
+        slotsToDisable.push("skiff_slot_sailmaker_n1");
+        slotsToDisable.push("trading_post_n1");
+      }
+      if (playerCount < 4) {
+        slotsToDisable.push("skiff_slot_blacksmith_n2");
+        slotsToDisable.push("workshop_n2");
+      }
+      if (playerCount < 5) {
+        slotsToDisable.push("trading_post_n2");
+      }
+      
+      // Apply disabled class to slots
+      for (var i = 0; i < slotsToDisable.length; i++) {
+        var slotElement = $(slotsToDisable[i]);
+        if (slotElement) {
+          domClass.add(slotElement, "disabled");
+          console.log("Disabled slot: " + slotsToDisable[i]);
+        }
+      }
+      
       // Setup game notifications to handle (see "setupNotifications" method below)
       this.setupNotifications();
 
@@ -1099,6 +1127,13 @@ define([
         console.log("not a skiff slot");
         return;
       }
+      
+      // Check if the slot is disabled (not available for current player count)
+      if (source.classList.contains("disabled")) {
+        console.log("skiff slot is disabled for this player count");
+        return;
+      }
+      
       console.log(source.dataset.slotname, source.dataset.number);
 
       if (this.isCurrentPlayerActive()) {

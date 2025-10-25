@@ -154,6 +154,15 @@
 	outline-width: 2px;
     cursor: pointer;
 }
+.skiff_slot.disabled {
+    background-color: transparent;
+    pointer-events: none;
+}
+.skiff_slot.disabled:hover {
+    outline: none;
+    background-color: transparent;
+    cursor: default;
+}
 .resource {
     width: 30px;
     height: 30px;
