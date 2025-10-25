@@ -127,17 +127,25 @@ define([
       console.log(islandslots);
       console.log(players);
       for (const [slot, numbers] of Object.entries(islandslots)) {
-        for (const [number, occupant] of Object.entries(numbers)) {
-          console.log("occupant: " + occupant);
-          if (occupant != null) {
-            var skiff_id = "skiff_p" + occupant + "_" + slot;
+        for (const [number, slotData] of Object.entries(numbers)) {
+          console.log("slot: " + slot + " number: " + number + " slot data: ", slotData);
+          const skiff_slot = `skiff_slot_${slot}_${number}`;
+          console.log("skiff slot: " + skiff_slot);
+          // Handle disabled slots
+          if (slotData.disabled) {
+            domClass.add(skiff_slot, "disabled");
+            console.log("Disabled slot: " + skiff_slot);
+          }
+          
+          // Handle occupied slots
+          if (slotData.occupying_player_id != null) {
+            var skiff_id = "skiff_p" + slotData.occupying_player_id + "_" + slot;
             console.log("skiff_id: " + skiff_id);
 
             var skiff = this.format_block("jstpl_skiff", {
-              player_color: players[occupant].color,
+              player_color: players[slotData.occupying_player_id].color,
               id: skiff_id,
             });
-            const skiff_slot = `skiff_slot_${slot}_${number}`;
             domConstruct.place(skiff, skiff_slot);
             domClass.remove(skiff_slot, "unoccupied");
           }
@@ -571,33 +579,6 @@ define([
             this.placeOnObject(shipid, target_id);
             domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
           //this.slideToObject(shipid, target_id, 10 ).play();
-        }
-      }
-      
-      // Disable skiff slots based on player count
-      var playerCount = Object.keys(gamedatas.players).length;
-      console.log("Player count: " + playerCount);
-      
-      // Define which slots should be disabled based on player count
-      var slotsToDisable = [];
-      if (playerCount < 3) {
-        slotsToDisable.push("skiff_slot_sailmaker_n1");
-        slotsToDisable.push("trading_post_n1");
-      }
-      if (playerCount < 4) {
-        slotsToDisable.push("skiff_slot_blacksmith_n2");
-        slotsToDisable.push("workshop_n2");
-      }
-      if (playerCount < 5) {
-        slotsToDisable.push("trading_post_n2");
-      }
-      
-      // Apply disabled class to slots
-      for (var i = 0; i < slotsToDisable.length; i++) {
-        var slotElement = $(slotsToDisable[i]);
-        if (slotElement) {
-          domClass.add(slotElement, "disabled");
-          console.log("Disabled slot: " + slotsToDisable[i]);
         }
       }
       

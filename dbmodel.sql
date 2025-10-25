@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `islandslots` (
     `slot_key` varchar(32) NOT NULL,
     `number` varchar(2) NOT NULL,
     `occupying_player_id` int(10) unsigned,
+    `disabled` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`slot_key`, `number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

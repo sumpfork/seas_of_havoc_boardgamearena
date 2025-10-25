@@ -28,16 +28,16 @@
 <div id="board" class="board shadow">
     <div id="skiff_slot_capitol_n1" class="skiff_slot unoccupied" data-slotname="capitol" data-number="n1"></div>
     <div id="skiff_slot_bank_n1" class="skiff_slot unoccupied" data-slotname="bank" data-number="n1"></div>
-    <div id="workshop_n1" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n1"></div>
-    <div id="workshop_n2" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n2"></div>
-    <div id="trading_post_n1" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n1"></div>
-    <div id="trading_post_n2" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n2"></div>
+    <div id="skiff_slot_workshop_n1" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n1"></div>
+    <div id="skiff_slot_workshop_n2" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n2"></div>
+    <div id="skiff_slot_trading_post_n1" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n1"></div>
+    <div id="skiff_slot_trading_post_n2" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n2"></div>
     <div id="skiff_slot_shipyard_n1" class="skiff_slot unoccupied" data-slotname="shipyard" data-number="n1"></div>   
     <div id="skiff_slot_blacksmith_n1" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n1"></div>
     <div id="skiff_slot_blacksmith_n2" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n2"></div>
     <div id="skiff_slot_sailmaker_n1" class="skiff_slot unoccupied" data-slotname="sailmaker" data-number="n1"></div>
-    <div id="deep_cove_n1" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n1"></div>
-    <div id="deep_cove_n2" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n2"></div>
+    <div id="skiff_slot_deep_cove_n1" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n1"></div>
+    <div id="skiff_slot_deep_cove_n2" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n2"></div>
     <div id="skiff_slot_green_flag_n1" class="skiff_slot unoccupied" data-slotname="green_flag" data-number="n1"></div>
     <div id="skiff_slot_tan_flag_n1" class="skiff_slot unoccupied" data-slotname="tan_flag" data-number="n1"></div>
     <div id="skiff_slot_blue_flag_n1" class="skiff_slot unoccupied" data-slotname="blue_flag" data-number="n1"></div>

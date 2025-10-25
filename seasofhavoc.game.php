@@ -385,9 +385,7 @@ class SeasOfHavoc extends Table
         }
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");
-        #for ($i = 1; $i < 6; $i++) {
         $this->cards->pickCardsForLocation(5, "market_deck", "market");
-        #}
 
         $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
         $this->cards->createCards(
@@ -671,21 +669,29 @@ class SeasOfHavoc extends Table
     {
         $sql = "
     		SELECT
-    		    slot_key, number, occupying_player_id
+    		    slot_key, number, occupying_player_id, disabled
     		FROM islandslots
     	";
         $slots = $this->getObjectListFromDB($sql);
         $indexed_slots = [];
         foreach ($slots as $slot) {
-            $indexed_slots[$slot["slot_key"]][$slot["number"]] = $slot["occupying_player_id"];
+            $indexed_slots[$slot["slot_key"]][$slot["number"]] = [
+                "occupying_player_id" => $slot["occupying_player_id"],
+                "disabled" => (bool) $slot["disabled"],
+            ];
         }
         return $indexed_slots;
     }
 
     function occupyIslandSlot(string $player_id, string $slot_name, string $number)
     {
+        // Get current disabled status to preserve it
+        $sql = "SELECT disabled FROM islandslots WHERE slot_key = '$slot_name' AND number = '$number'";
+        $current_slot = $this->getObjectFromDB($sql);
+        $disabled = $current_slot ? $current_slot["disabled"] : 0;
+        
         self::DbQuery(
-            "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_name', '$number', '$player_id')",
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $disabled)",
         );
         $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
             "player_name" => self::getActivePlayerName(),
@@ -744,11 +750,38 @@ class SeasOfHavoc extends Table
 
     function clearIslandSlots()
     {
+        $player_count = $this->getPlayersNumber();
+        
+        // Define which slots should be disabled based on player count
+        $disabled_slots = [];
+        
+        if ($player_count < 3) {
+            $disabled_slots["sailmaker"]["n1"] = true;
+            $disabled_slots["trading_post"]["n1"] = true;
+        }
+        
+        if ($player_count < 4) {
+            $disabled_slots["blacksmith"]["n2"] = true;
+            $disabled_slots["workshop"]["n2"] = true;
+        }
+        
+        if ($player_count < 5) {
+            $disabled_slots["trading_post"]["n2"] = true;
+        }
+        
         foreach ([
             ["capitol", "n1"],
             ["bank", "n1"],
+            ["workshop", "n1"],
+            ["workshop", "n2"],
+            ["trading_post", "n1"],
+            ["trading_post", "n2"],
             ["shipyard", "n1"],
             ["blacksmith", "n1"],
+            ["blacksmith", "n2"],
+            ["sailmaker", "n1"],
+            ["deep_cove", "n1"],
+            ["deep_cove", "n2"],
             ["green_flag", "n1"],
             ["tan_flag", "n1"],
             ["red_flag", "n1"],
@@ -759,8 +792,9 @@ class SeasOfHavoc extends Table
             ["market", "n4"],
             ["market", "n5"],
         ] as [$slot_key, $number]) {
+            $disabled = isset($disabled_slots[$slot_key][$number]) ? 1 : 0;
             self::DbQuery(
-                "REPLACE INTO islandslots (slot_key, number, occupying_player_id) VALUES ('$slot_key', '$number', null)",
+                "REPLACE INTO islandslots (slot_key, number, occupying_player_id, disabled) VALUES ('$slot_key', '$number', null, $disabled)",
             );
         }
         $player_infos = $this->getPlayerInfo();
@@ -991,13 +1025,17 @@ class SeasOfHavoc extends Table
         $this->dump("occupancies", $occupancies);
         $this->dump("slotnames", $occupancies[$slotname]);
 
-        if ($occupancies[$slotname][$number] != null) {
+        // Check if slot is disabled
+        if ($occupancies[$slotname][$number]["disabled"]) {
+            throw new BgaUserException($this->_("This slot is not available for the current number of players"));
+            return;
+        }
+
+        // Check if slot is already occupied
+        if ($occupancies[$slotname][$number]["occupying_player_id"] != null) {
             throw new BgaUserException($this->_("There is already a skiff on $slotname"));
             return;
         }
-        // $this->DbQuery(
-        //     "REPLACE INTO current_skiff_slot (player_id, slot_name, slot_number) VALUES ($player_id, '$slotname', '$number')",
-        // );
 
         switch ($slotname) {
             case "capitol":
