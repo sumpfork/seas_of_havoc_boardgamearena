@@ -1062,6 +1062,14 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
+            case "sailmaker":
+                $this->playerGainResources($player_id, [
+                    "sail" => 3,
+                    "skiff" => -1,
+                ]);
+                $this->occupyIslandSlot($player_id, $slotname, $number);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
             case "market":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
