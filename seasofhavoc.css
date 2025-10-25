@@ -74,6 +74,22 @@
 	top: 309px;
 	left: 138px;
 }
+.skiff_slot[data-slotname="workshop"][data-number="n1"] {
+	top: 420px;
+	left: 52px;
+}
+.skiff_slot[data-slotname="workshop"][data-number="n2"] {
+	top: 471px;
+	left: 47px;
+}
+.skiff_slot[data-slotname="trading_post"][data-number="n1"] {
+	top: 585px;
+	left: 144px;
+}
+.skiff_slot[data-slotname="trading_post"][data-number="n2"] {
+	top: 630px;
+	left: 120px;
+}
 .skiff_slot[data-slotname="shipyard"][data-number="n1"] {
     top: 148px;
     left: 848px;
@@ -81,6 +97,22 @@
 .skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
     top: 431px;
     left: 845px;
+}
+.skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
+    top: 471px;
+    left: 812px;
+}
+.skiff_slot[data-slotname="sailmaker"][data-number="n1"] {
+    top: 348px;
+    left: 935px;
+}
+.skiff_slot[data-slotname="deep_cove"][data-number="n1"] {
+    top: 567px;
+    left: 805px;
+}
+.skiff_slot[data-slotname="deep_cove"][data-number="n2"] {
+    top: 600px;
+    left: 847px;
 }
 .skiff_slot[data-slotname="green_flag"][data-number="n1"] {
     top: 69px;
