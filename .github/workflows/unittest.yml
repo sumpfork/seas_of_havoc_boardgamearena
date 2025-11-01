@@ -13,5 +13,5 @@ jobs:
       with:
           version: 9.6
           bootstrap: modules/autoload.php
-          configuration: modules/test/phpunit.xml
+          configuration: phpunit.xml
           args: --coverage-text
