@@ -118,6 +118,7 @@
                         <div id="blue_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="blue_flag"></div>
                         <div id="red_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="red_flag"></div>
                         <div id="first_player_token_p\${player_id}" class="flagish no_own_flag" data-tokenkey="first_player_token"></div>
+                        <div id="booty_token_p\${player_id}" class="booty-token-slot"></div>
                     </div>`;
     var jstpl_card_purchase_button=`<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}">Purchase Card</a>`;
     var jstpl_scrap_card_dialog=`<div id="scrap_card_dialog" class="scrap_card_dialog">
@@ -161,6 +162,8 @@
     var jstpl_unique_token=`<div class="flagish" data-tokenkey="\${token_key}"></div>`;
     var jstpl_player_ship=`<div class="player_ship" id="\${id}" 
         data-shipname="\${shipname}"></div>`;
+        var jstpl_seafeature=`<div class="seafeature" id="\${id}" 
+        data-seafeature="\${seafeature_type}"></div>`;
 
 </script>
 

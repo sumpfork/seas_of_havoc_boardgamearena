@@ -380,6 +380,15 @@ define([
         },
       });
 
+      this.bootyTokenManager = new BgaCards.Manager({
+        animationManager: this.animationManager,
+        getId: (card) => `booty-token-${card.id}`,
+        cardWidth: 63,
+        cardHeight: 63,
+        setupDiv: (card, div) => {
+          div.classList.add('booty-token');
+        },
+      });
       // Create HandStock for player hand
       this.playerHand = new BgaCards.HandStock(this.cardsManager, $("myhand"), {
         cardOverlap: "30px",
@@ -556,8 +565,8 @@ define([
           });
           domConstruct.place(location, "seaboard");
           var seaboard = $("seaboard");
-          var target_x = -seaboard.offsetWidth / 2 + 32 + 64 * x;
-          var target_y = -seaboard.offsetWidth / 2 + 32 + 64 * y;
+          var target_x = -seaboard.offsetWidth / 2 + 30 + 64 * x;
+          var target_y = -seaboard.offsetWidth / 2 + 30 + 64 * y;
           this.placeOnObjectPos($(id), "seaboard", target_x, target_y);
         }
       }
@@ -578,7 +587,25 @@ define([
             console.log(target_id);
             this.placeOnObject(shipid, target_id);
             domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
-          //this.slideToObject(shipid, target_id, 10 ).play();
+            //this.slideToObject(shipid, target_id, 10 ).play();
+            break;
+          case "rock":
+          case "gust":
+          case "whirlpool":
+          case "shipwreck":
+            var seafeatureid = entry.type + "_" + entry.arg;
+            var subs = {
+              id: seafeatureid,
+              seafeature_type: entry.type,
+            };
+            var seafeature = this.format_block("jstpl_seafeature", subs);
+            domConstruct.place(seafeature, "seaboard");
+            this.placeOnObject(seafeatureid, target_id);
+            // Apply rotation for gusts (they have a heading)
+            if (entry.type === "gust") {
+              domStyle.set(seafeatureid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
+            }
+            break;
         }
       }
       

@@ -220,6 +220,40 @@
 .no_own_flag {
     opacity: 0.25;
 }
+.seafeature {
+    width: 63px;
+    height: 63px;
+    background-image: url('img/booty_seafeatures.jpg');
+    background-repeat: no-repeat;
+    background-size: 189px 252px;
+    position: relative;
+    mask-image:radial-gradient(#333 40%, #00000000 60%)
+}
+.seafeature[data-seafeature="shipwreck"] {
+    border-radius: 50%;
+    background-position: 0px -189px;
+}
+.seafeature[data-seafeature="gust"] {
+    background-position: 0px -126px;
+}
+.seafeature[data-seafeature="rock"] {
+    background-position: 0px -63px;
+}
+.seafeature[data-seafeature="whirlpool"] {
+    background-position: 0px -0px;
+}
+.booty-token-slot {
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: inline-block;
+    position: relative;
+    background-image: url('img/booty_seafeatures.jpg');
+    background-position: 0px 50px;
+    background-size: 150px 200px;
+    opacity: 0.5;
+
+}
 .resource_count {
     position: relative;
     top: -10px;

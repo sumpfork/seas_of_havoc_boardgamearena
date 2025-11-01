@@ -324,11 +324,63 @@ class SeasOfHavoc extends Table
         $captain_keys = array_keys($captain_cards);
         shuffle($captain_keys);
 
+        // Place seafeatures on the board based on player count
+        $num_players = count($player_infos);
+        $num_rocks = ($num_players <= 3) ? 3 : 2;
+        $num_gusts = ($num_players <= 3) ? 2 : 3;
+        $num_whirlpools = 1;
+        $num_shipwrecks = 2;
+        
+        // Pick a random heading for all gusts (they all face the same direction)
+        $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
+        $gust_heading = $all_headings[array_rand($all_headings)];
+        
+        // Place rocks
+        for ($i = 0; $i < $num_rocks; $i++) {
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "rock",
+                "arg" => strval($i),
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+        
+        // Place gusts (all with the same random heading)
+        for ($i = 0; $i < $num_gusts; $i++) {
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "gust",
+                "arg" => strval($i),
+                "heading" => $gust_heading,
+            ]);
+        }
+        
+        // Place whirlpools
+        for ($i = 0; $i < $num_whirlpools; $i++) {
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "whirlpool",
+                "arg" => strval($i),
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+        
+        // Place shipwrecks
+        for ($i = 0; $i < $num_shipwrecks; $i++) {
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "shipwreck",
+                "arg" => strval($i),
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+
         foreach ($player_infos as $playerid => $player) {
-            // Find an empty position for the ship (avoiding other ships, rocks, shipwrecks, and sea monster parts)
+            // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
+            // Ships CAN start on gusts and whirlpools
             $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
             
-            // Find a safe random heading that doesn't face a rock or other obstacle
+            // Find a safe random heading that doesn't face rocks or other obstacles
             $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
             
             $this->seaboard->placeObject($position["x"], $position["y"], [
