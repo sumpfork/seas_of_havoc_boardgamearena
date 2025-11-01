@@ -49,7 +49,7 @@ class SeaBoard
     const HEIGHT = 6;
 
     private array|null $contents;
-    private string $sqlfunc;
+    private $sqlfunc;
     private $bga;
 
     function __construct($dbquery, $bga)
@@ -102,7 +102,7 @@ class SeaBoard
         assert($y >= 0 && $y < self::HEIGHT);
         $this->syncFromDB();
         $contents = $this->contents[$x][$y];
-        return array_filter($contents, fn($k) => in_array($k["type"], $types));
+        return array_values(array_filter($contents, fn($k) => in_array($k["type"], $types)));
     }
 
     public function findObject($type, $arg)
