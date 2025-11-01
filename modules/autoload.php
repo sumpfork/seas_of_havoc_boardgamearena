@@ -1,15 +1,11 @@
 <?php
 
-define("APP_GAMEMODULE_PATH", "/Users/pgorniak/src/p/bga-sharedcode/misc/"); 
+define("APP_GAMEMODULE_PATH", getenv('APP_GAMEMODULE_PATH')); 
 
 spl_autoload_register(function ($class_name) {
-    // Skip namespaced classes (like PHPUnit classes) - they should be handled by composer
-    if (strpos($class_name, '\\') !== false) {
-        return;
-    }
-    
+  
     switch ($class_name) {
-        case "APP_GameClass":
+        case "APP_DbObject":
             include APP_GAMEMODULE_PATH."/module/table/table.game.php";
             break;
         default:
