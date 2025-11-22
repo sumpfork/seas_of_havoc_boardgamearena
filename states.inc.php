@@ -156,7 +156,7 @@ $machinestates = [
         "action" => "stResolveCollision",
         "args" => "argResolveCollision",
         "possibleactions" => ["actResolveCollision", "actPivotPickedInDialog"],
-        "transitions" => ["collisionResolved" => STATE_NEXT_PLAYER_SEA_PHASE],
+        "transitions" => ["collisionResolved" => STATE_NEXT_PLAYER_SEA_PHASE, "collisionOccurred" => STATE_RESOLVE_COLLISION],
     ],
     STATE_SCRAP_CARD => [
         "name" => "scrapCard",

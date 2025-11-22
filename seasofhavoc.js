@@ -603,7 +603,7 @@ define([
             this.placeOnObject(seafeatureid, target_id);
             // Apply rotation for gusts (they have a heading)
             if (entry.type === "gust") {
-              domStyle.set(seafeatureid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
+              domStyle.set(seafeatureid, "rotate", (this.getHeadingDegrees(entry.heading) - 90) + "deg");
             }
             break;
         }
@@ -970,13 +970,62 @@ define([
       updatePlayCardButton();
       this.cardPlayDialogShown = true;
     },
+    waitForCardsAndSetupPurchaseButtons: function() {
+      // Check if market cards are actually rendered in the DOM
+      const checkCardsReady = () => {
+        const marketCards = this.market.getCards();
+        
+        // If there are no cards in the market, we're done
+        if (marketCards.length === 0) {
+          console.log("No cards in market, skipping purchase button setup");
+          return;
+        }
+        
+        // Check if all market cards have their DOM elements ready
+        let allCardsReady = true;
+        for (const card of marketCards) {
+          const card_div = this.cardsManager.getCardElement(card);
+          if (!card_div || !document.body.contains(card_div)) {
+            allCardsReady = false;
+            break;
+          }
+          
+          // Also check if the skiff slot has been placed on the card
+          const skiff_slot = query(`.skiff_slot`, card_div)[0];
+          if (!skiff_slot) {
+            allCardsReady = false;
+            break;
+          }
+        }
+        
+        if (allCardsReady) {
+          console.log("All market cards are ready, setting up purchase buttons");
+          // Restore visibility of skiff slots on market cards that haven't been purchased
+          this.market.getCards().forEach(card => {
+            var card_div = this.cardsManager.getCardElement(card);
+            var skiff_slot = query(`.skiff_slot`, card_div)[0];
+            if (skiff_slot) {
+              domStyle.set(skiff_slot, "display", "");
+            }
+          });
+          this.updateCardPurchaseButtons(true);
+        } else {
+          console.log("Cards not ready yet, waiting for next frame");
+          // Use requestAnimationFrame to wait for the next browser paint
+          requestAnimationFrame(checkCardsReady);
+        }
+      };
+      
+      // Start checking on the next animation frame
+      requestAnimationFrame(checkCardsReady);
+    },
     updateCardPurchaseButtons: function (create) {
       console.groupCollapsed("update card purchase buttons");
-      console.log("showing card purchase buttons");
       console.log(this.islandSlots);
       for (const [slot, numbers] of Object.entries(this.islandSlots)) {
         if (slot == "market") {
-          for (const [number, occupant] of Object.entries(numbers)) {
+          for (const [number, info] of Object.entries(numbers)) {
+            const occupant = info.occupying_player_id;
             console.log("market occupant: " + occupant);
             if (occupant == this.player_id) {
               var button_id = "purchase_button_" + number;
@@ -1181,15 +1230,8 @@ define([
         //this.bgaPerformAction("actExitDummyStart", {});
         case "cardPurchases": {
           this.cards_purchased = [];
-          // Restore visibility of skiff slots on market cards that haven't been purchased
-          this.market.getCards().forEach(card => {
-            var card_div = this.cardsManager.getCardElement(card);
-            var skiff_slot = query(`.skiff_slot`, card_div)[0];
-            if (skiff_slot) {
-              domStyle.set(skiff_slot, "display", "");
-            }
-          });
-          this.updateCardPurchaseButtons(true);
+          // Wait for cards to be fully rendered before manipulating them
+          this.waitForCardsAndSetupPurchaseButtons();
           break;
         }
         case "seaTurn": {

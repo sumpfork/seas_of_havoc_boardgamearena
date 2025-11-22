@@ -35,7 +35,9 @@ enum PrimitiveCardPlayAction: string
     case FIRE3 = "3 x fire3";
     case SEQUENCE = "sequence";
     case CHOICE = "choice";
+    case CAPTAIN_ABILITY = "captain ability";
 }
+
 class SeasOfHavoc extends Table
 {
     private SeaBoard $seaboard;
@@ -582,7 +584,7 @@ class SeasOfHavoc extends Table
         _ when the game starts
         _ when a player refreshes the game page (F5)
     */
-    protected function getAllDatas()
+    public function getAllDatas()
     {
         $result = [];
 
@@ -1252,6 +1254,15 @@ class SeasOfHavoc extends Table
         return ["action_chain" => $outcome, "collision_occurred" => $collision_occurred];
     }
 
+    function processCaptainAbility(string $ability)
+    {
+        $this->trace("processing captain ability: $ability");
+        $player_id = $this->getActivePlayerId();
+        $this->trace("player id: $player_id");
+        # TODO: implement captain abilities
+        return ["action_chain" => [], "collision_occurred" => false];
+    }
+
     function merge_results(array $result, $cost, array &$to_send, array &$total_cost, bool &$collision_occurred)
     {
         $total_cost = $this->sum_array_by_key($total_cost, $cost);
@@ -1330,6 +1341,7 @@ class SeasOfHavoc extends Table
                 case PrimitiveCardPlayAction::FIRE3:
                     $this->trace("fire");
                     $decision = array_shift($decisions);
+                    $this->trace("decision: $decision");
                     $player_id = $this->getActivePlayerId();
                     $outcome = $this->seaboard->resolveCannonFire(
                         $player_id,
@@ -1390,6 +1402,10 @@ class SeasOfHavoc extends Table
                     }
                     $this->merge_results(["action_chain" => [$outcome]], $cost, $to_send, $total_cost, $collision_occurred);
                     break;
+                case PrimitiveCardPlayAction::CAPTAIN_ABILITY:
+                    $result = $this->processCaptainAbility($action["ability"]);
+                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    break;
                 default:
                     $result = $this->processSimpleAction($typed_action);
                     $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
@@ -1414,6 +1430,52 @@ class SeasOfHavoc extends Table
         return ["cost" => $total_cost, "action_chain" => $to_send, "collision_occurred" => $collision_occurred];
     }
 
+    function applyWhirlpoolRotation($player_id)
+    {
+        // Check if the ship is on a whirlpool
+        if ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+            $this->trace("Ship is on whirlpool - rotating 90 degrees clockwise");
+            $turn_result = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
+            return ["result" => $turn_result, "occurred" => true];
+        }
+        return ["result" => null, "occurred" => false];
+    }
+
+    function applyGustPush($player_id)
+    {
+        // Check if the ship is on a gust
+        $gust = $this->seaboard->getGustAtObjectLocation("player_ship", $player_id);
+        if ($gust) {
+            $this->trace("Ship is on gust - pushing in direction " . $gust["heading"]->toString());
+            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $player_id, $gust["heading"], ["rock", "player_ship"]);
+            
+            // Return the result and whether a collision occurred
+            return ["result" => $push_result, "collision" => $push_result["type"] == "collision"];
+        }
+        return ["result" => null, "collision" => false];
+    }
+
+    function applySeafeatureEffects($player_id)
+    {
+        $seafeature_moves = [];
+        $collision = false;
+        
+        // Apply whirlpool rotation first
+        $whirlpool_result = $this->applyWhirlpoolRotation($player_id);
+        if ($whirlpool_result["occurred"]) {
+            $seafeature_moves[] = $whirlpool_result["result"];
+        }
+        
+        // Then apply gust push (which can cause collision)
+        $gust_result = $this->applyGustPush($player_id);
+        if ($gust_result["result"] !== null) {
+            $seafeature_moves[] = $gust_result["result"];
+            $collision = $gust_result["collision"];
+        }
+        
+        return ["moves" => $seafeature_moves, "collision" => $collision];
+    }
+
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
     {
         $this->dump("card_type", $card_type);
@@ -1432,14 +1494,39 @@ class SeasOfHavoc extends Table
 
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
-        $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} has played a card'), [
+        // Apply seafeature effects (whirlpool rotation and gust push) if no collision occurred
+        // If collision occurred, seafeature effects will be applied after collision resolution
+        $seafeature_collision = false;
+        $all_moves = $outcome["action_chain"];
+        $notification_message = clienttranslate('${player_name} has played a card');
+        
+        if (!$outcome["collision_occurred"]) {
+            $seafeature_effects = $this->applySeafeatureEffects($player_id);
+            $seafeature_collision = $seafeature_effects["collision"];
+            
+            // Append seafeature moves to the moveChain for sequential animation
+            if (!empty($seafeature_effects["moves"])) {
+                $all_moves = array_merge($all_moves, $seafeature_effects["moves"]);
+                
+                // Update notification message to mention seafeature effects
+                if (count($seafeature_effects["moves"]) == 2) {
+                    $notification_message = clienttranslate('${player_name} has played a card and is affected by the whirlpool and gust');
+                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                    $notification_message = clienttranslate('${player_name} has played a card and is rotated by the whirlpool');
+                } else {
+                    $notification_message = clienttranslate('${player_name} has played a card and is pushed by the gust');
+                }
+            }
+        }
+
+        $this->notifyAllPlayers("cardPlayed", $notification_message, [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
-            "moveChain" => $outcome["action_chain"],
+            "moveChain" => $all_moves,
             "cost" => $outcome["cost"],
         ]);
 
-        $this->gamestate->nextState($outcome["collision_occurred"] ? "collisionOccurred" : "seaTurnDone");
+        $this->gamestate->nextState(($outcome["collision_occurred"] || $seafeature_collision) ? "collisionOccurred" : "seaTurnDone");
     }
 
     function stResolveCollision()
@@ -1463,27 +1550,69 @@ class SeasOfHavoc extends Table
     function actPivotPickedInDialog(string $direction)
     {
         $this->mytrace("actPivotPickedInDialog");
+        $player_id = $this->getActivePlayerId();
+        
+        // Apply seafeature effects (whirlpool rotation and gust push) after collision resolution
+        $seafeature_effects = $this->applySeafeatureEffects($player_id);
+        $seafeature_collision = $seafeature_effects["collision"];
+        
         if ($direction != "no pivot") {
             $typed_action = PrimitiveCardPlayAction::from($direction);
             $outcome = $this->processCardActions([["action" => $typed_action]], []);
             $this->dump("final pivot outcome", $outcome);
-
-            $player_id = $this->getActivePlayerId();
             
             // Pay the cost for pivot actions (pay() includes validation)
             if (!empty($outcome["cost"])) {
                 $this->pay($player_id, $outcome["cost"]);
             }
 
-            $this->notifyAllPlayers("cardPlayed", clienttranslate('${player_name} pivots'), [
+            // Combine pivot moves with seafeature moves for sequential animation
+            $all_moves = array_merge($outcome["action_chain"], $seafeature_effects["moves"]);
+            $notification_message = clienttranslate('${player_name} pivots');
+            
+            if (!empty($seafeature_effects["moves"])) {
+                if (count($seafeature_effects["moves"]) == 2) {
+                    $notification_message = clienttranslate('${player_name} pivots and is affected by the whirlpool and gust');
+                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                    $notification_message = clienttranslate('${player_name} pivots and is rotated by the whirlpool');
+                } else {
+                    $notification_message = clienttranslate('${player_name} pivots and is pushed by the gust');
+                }
+            }
+
+            $this->notifyAllPlayers("cardPlayed", $notification_message, [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
-                "moveChain" => $outcome["action_chain"],
+                "moveChain" => $all_moves,
                 "cost" => $outcome["cost"],
             ]);
             //TODO: check if player can fire due to interrupted maneuver ending in firing action
+        } elseif (!empty($seafeature_effects["moves"])) {
+            // No pivot, but we still need to notify about seafeature effects
+            $notification_message = clienttranslate('${player_name} resolves collision');
+            
+            if (count($seafeature_effects["moves"]) == 2) {
+                $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
+            } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                $notification_message = clienttranslate('${player_name} is rotated by the whirlpool');
+            } else {
+                $notification_message = clienttranslate('${player_name} is pushed by the gust');
+            }
+            
+            $this->notifyAllPlayers("cardPlayed", $notification_message, [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+                "moveChain" => $seafeature_effects["moves"],
+                "cost" => [],
+            ]);
         }
-        $this->gamestate->nextState("collisionResolved");
+        
+        // If gust push caused another collision, stay in collision resolution state
+        if ($seafeature_collision) {
+            $this->gamestate->nextState("collisionOccurred");
+        } else {
+            $this->gamestate->nextState("collisionResolved");
+        }
     }
 
 

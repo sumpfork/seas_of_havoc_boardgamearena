@@ -485,4 +485,176 @@ final class SeaBoardTest extends TestCase {
         // Verify the mock database contains the expected data
         $this->assertCount(2, $this->mockDbData);
     }
+    
+    public function testIsObjectOnWhirlpool(): void {
+        // Place a ship
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $this->seaBoard->placeObject(2, 2, $ship);
+        
+        // Ship is not on a whirlpool
+        $this->assertFalse($this->seaBoard->isObjectOnWhirlpool('player_ship', 'player1'));
+        
+        // Place a whirlpool at the same location
+        $whirlpool = [
+            'type' => 'whirlpool',
+            'arg' => '0',
+            'heading' => Heading::NO_HEADING
+        ];
+        $this->seaBoard->placeObject(2, 2, $whirlpool);
+        
+        // Ship is now on a whirlpool
+        $this->assertTrue($this->seaBoard->isObjectOnWhirlpool('player_ship', 'player1'));
+    }
+    
+    public function testWhirlpoolRotatesShip(): void {
+        // Place a ship on a whirlpool
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $whirlpool = [
+            'type' => 'whirlpool',
+            'arg' => '0',
+            'heading' => Heading::NO_HEADING
+        ];
+        
+        $this->seaBoard->placeObject(2, 2, $ship);
+        $this->seaBoard->placeObject(2, 2, $whirlpool);
+        
+        // Verify ship is on whirlpool
+        $this->assertTrue($this->seaBoard->isObjectOnWhirlpool('player_ship', 'player1'));
+        
+        // Rotate the ship (simulating whirlpool effect)
+        $result = $this->seaBoard->turnObject('player_ship', 'player1', Turn::RIGHT);
+        
+        // Verify rotation result
+        $this->assertEquals('turn', $result['type']);
+        $this->assertEquals(Heading::NORTH, $result['old_heading']);
+        $this->assertEquals(Heading::EAST, $result['new_heading']);
+        
+        // Verify the ship's heading was updated
+        $updatedShip = $this->seaBoard->findObject('player_ship', 'player1');
+        $this->assertEquals(Heading::EAST, $updatedShip['object']['heading']);
+    }
+    
+    public function testGetGustAtObjectLocation(): void {
+        // Place a ship
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $this->seaBoard->placeObject(2, 2, $ship);
+        
+        // No gust at location
+        $this->assertNull($this->seaBoard->getGustAtObjectLocation('player_ship', 'player1'));
+        
+        // Place a gust at the same location
+        $gust = [
+            'type' => 'gust',
+            'arg' => '0',
+            'heading' => Heading::EAST
+        ];
+        $this->seaBoard->placeObject(2, 2, $gust);
+        
+        // Get the gust
+        $result = $this->seaBoard->getGustAtObjectLocation('player_ship', 'player1');
+        $this->assertNotNull($result);
+        $this->assertEquals('gust', $result['type']);
+        $this->assertEquals(Heading::EAST, $result['heading']);
+    }
+    
+    public function testPushObjectInDirection(): void {
+        // Place a ship
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $this->seaBoard->placeObject(2, 2, $ship);
+        
+        // Push ship east (no collision)
+        $result = $this->seaBoard->pushObjectInDirection('player_ship', 'player1', Heading::EAST, ['rock', 'player_ship']);
+        
+        // Verify push result
+        $this->assertEquals('move', $result['type']);
+        $this->assertEquals(2, $result['old_x']);
+        $this->assertEquals(2, $result['old_y']);
+        $this->assertEquals(3, $result['new_x']);
+        $this->assertEquals(2, $result['new_y']);
+        
+        // Verify the ship moved
+        $updatedShip = $this->seaBoard->findObject('player_ship', 'player1');
+        $this->assertEquals(3, $updatedShip['x']);
+        $this->assertEquals(2, $updatedShip['y']);
+    }
+    
+    public function testPushObjectInDirectionWithCollision(): void {
+        // Place a ship
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $this->seaBoard->placeObject(2, 2, $ship);
+        
+        // Place a rock to the east
+        $rock = [
+            'type' => 'rock',
+            'arg' => '0',
+            'heading' => Heading::NO_HEADING
+        ];
+        $this->seaBoard->placeObject(3, 2, $rock);
+        
+        // Push ship east (should collide with rock)
+        $result = $this->seaBoard->pushObjectInDirection('player_ship', 'player1', Heading::EAST, ['rock', 'player_ship']);
+        
+        // Verify collision result
+        $this->assertEquals('collision', $result['type']);
+        $this->assertEquals(3, $result['collision_x']);
+        $this->assertEquals(2, $result['collision_y']);
+        $this->assertCount(1, $result['colliders']);
+        $this->assertEquals('rock', $result['colliders'][0]['type']);
+        
+        // Verify the ship did not move
+        $updatedShip = $this->seaBoard->findObject('player_ship', 'player1');
+        $this->assertEquals(2, $updatedShip['x']);
+        $this->assertEquals(2, $updatedShip['y']);
+    }
+    
+    public function testGustPushesShip(): void {
+        // Place a ship and a gust at the same location
+        $ship = [
+            'type' => 'player_ship',
+            'arg' => 'player1',
+            'heading' => Heading::NORTH
+        ];
+        $gust = [
+            'type' => 'gust',
+            'arg' => '0',
+            'heading' => Heading::SOUTH
+        ];
+        
+        $this->seaBoard->placeObject(2, 2, $ship);
+        $this->seaBoard->placeObject(2, 2, $gust);
+        
+        // Verify ship is on gust
+        $gustAtLocation = $this->seaBoard->getGustAtObjectLocation('player_ship', 'player1');
+        $this->assertNotNull($gustAtLocation);
+        
+        // Push the ship in the direction of the gust
+        $result = $this->seaBoard->pushObjectInDirection('player_ship', 'player1', $gustAtLocation['heading'], ['rock', 'player_ship']);
+        
+        // Verify push result (should move south)
+        $this->assertEquals('move', $result['type']);
+        $this->assertEquals(2, $result['old_x']);
+        $this->assertEquals(2, $result['old_y']);
+        $this->assertEquals(2, $result['new_x']);
+        $this->assertEquals(3, $result['new_y']); // Moved south (y+1)
+    }
 }

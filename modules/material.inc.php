@@ -262,8 +262,10 @@ $this->playable_cards = [
         "ship_name" => "War Junk",
         "cost" => ["doubloon" => 1],
         "actions" => [
-            "action" => "choice",
-            "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]],
+            [
+                "action" => "choice",
+                "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]],
+            ],
         ],
         "image_id" => 11,
         "count" => 2,
@@ -446,6 +448,7 @@ $this->playable_cards = [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             [
+                "action" => "sequence",
                 "actions" => [
                     ["action" => "forward"],
                     [
@@ -484,7 +487,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "rally_the_flags"]],
+        "actions" => [["action" => "captain ability", "ability" => "rally_the_flags"]],
         "image_id" => 71,
         "count" => 1,
         "captain_key" => "pirate_queen",
@@ -492,7 +495,7 @@ $this->playable_cards = [
     ],
     [   
         "cost" => [],
-        "actions" => [["ability" => "extortion"]],
+        "actions" => [["action" => "captain ability", "ability" => "extortion"]],
         "image_id" => 72,
         "count" => 1,
         "captain_key" => "pirate_queen",
@@ -500,7 +503,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "barter"]],
+        "actions" => [["action" => "captain ability", "ability" => "barter"]],
         "image_id" => 73,
         "count" => 1,
         "captain_key" => "merchant",
@@ -508,7 +511,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "timely_trading"]],
+        "actions" => [["action" => "captain ability", "ability" => "timely_trading"]],
         "image_id" => 74,
         "count" => 1,
         "captain_key" => "merchant",
@@ -516,7 +519,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "boarding_party"]],
+        "actions" => [["action" => "captain ability", "ability" => "boarding_party"]],
         "image_id" => 75,
         "count" => 1,
         "captain_key" => "corsair",
@@ -524,7 +527,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "hunt_the_bounty"]],
+        "actions" => [["action" => "captain ability", "ability" => "hunt_the_bounty"]],
         "image_id" => 76,
         "count" => 1,
         "captain_key" => "corsair",
@@ -532,7 +535,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "retaliation"]],
+        "actions" => [["action" => "captain ability", "ability" => "retaliation"]],
         "image_id" => 77,
         "count" => 1,
         "captain_key" => "rebel",
@@ -540,7 +543,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "improvisation"]],
+        "actions" => [["action" => "captain ability", "ability" => "improvisation"]],
         "image_id" => 78,
         "count" => 1,
         "captain_key" => "rebel",
@@ -548,7 +551,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "government_funding"]],
+        "actions" => [["action" => "captain ability", "ability" => "government_funding"]],
         "image_id" => 79,
         "count" => 1,
         "captain_key" => "admiral",
@@ -556,7 +559,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "inspire"]],
+        "actions" => [["action" => "captain ability", "ability" => "inspire"]],
         "image_id" => 80,
         "count" => 1,
         "captain_key" => "admiral",
@@ -564,7 +567,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "spyglass"]],
+        "actions" => [["action" => "captain ability", "ability" => "spyglass"]],
         "image_id" => 81,
         "count" => 1,
         "captain_key" => "treasure_seeker",
@@ -572,7 +575,7 @@ $this->playable_cards = [
     ],
     [
         "cost" => [],
-        "actions" => [["ability" => "unearth_riches"]],
+        "actions" => [["action" => "captain ability", "ability" => "unearth_riches"]],
         "image_id" => 82,
         "count" => 1,
         "captain_key" => "treasure_seeker",

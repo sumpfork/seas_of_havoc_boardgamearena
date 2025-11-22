@@ -227,6 +227,7 @@
     background-repeat: no-repeat;
     background-size: 189px 252px;
     position: relative;
+    z-index: 1;
     mask-image:radial-gradient(#333 40%, #00000000 60%)
 }
 .seafeature[data-seafeature="shipwreck"] {
@@ -270,6 +271,7 @@
     background-image: url('img/bga_ships.png');
     background-size: 60px;
     position: relative;
+    z-index: 2;
 }
 .player_ship[data-shipname="Galleon"] {
     background-position: 0% 0%;

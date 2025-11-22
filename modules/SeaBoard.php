@@ -51,12 +51,14 @@ class SeaBoard
     private array|null $contents;
     private $sqlfunc;
     private $bga;
+    private bool $db_sync_active = false;
 
     function __construct($dbquery, $bga)
     {
         $this->sqlfunc = $dbquery;
         $this->contents = null;
         $this->bga = $bga;
+        $this->db_sync_active = false;
     }
 
     private function init()
@@ -122,6 +124,7 @@ class SeaBoard
 
     public function getForwardPosition(int $x, int $y, Heading $heading)
     {
+        $this->syncFromDB();
         $result = $this->computeForwardMovement($x, $y, $heading);
         return ["x" => $result["new_x"], "y" => $result["new_y"]];
     }
@@ -294,6 +297,71 @@ class SeaBoard
         return ["type" => "fire_miss"];
     }
 
+    public function isObjectOnWhirlpool(string $object_type, string $arg)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject($object_type, $arg);
+        if (!$object_info) {
+            return false;
+        }
+        $x = $object_info["x"];
+        $y = $object_info["y"];
+        $whirlpools = $this->getObjectsOfTypes($x, $y, ["whirlpool"]);
+        return count($whirlpools) > 0;
+    }
+
+    public function getGustAtObjectLocation(string $object_type, string $arg)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject($object_type, $arg);
+        if (!$object_info) {
+            return null;
+        }
+        $x = $object_info["x"];
+        $y = $object_info["y"];
+        $gusts = $this->getObjectsOfTypes($x, $y, ["gust"]);
+        if (count($gusts) > 0) {
+            return $gusts[0]; // Return the first gust (there should only be one)
+        }
+        return null;
+    }
+
+    public function pushObjectInDirection(string $object_type, string $arg, Heading $direction, array $collision_types)
+    {
+        $this->syncFromDB();
+        $object_info = $this->findObject($object_type, $arg);
+        $object = $object_info["object"];
+        $this->bga->trace("Pushing " . $object_type . " " . $arg . " in direction " . $direction->toString());
+        
+        $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $direction);
+
+        $collided = $this->getObjectsOfTypes($movement_result["new_x"], $movement_result["new_y"], $collision_types);
+        if (count($collided) > 0) {
+            return [
+                "type" => "collision",
+                "colliders" => $collided,
+                "collision_x" => $movement_result["new_x"],
+                "collision_y" => $movement_result["new_y"],
+            ];
+        }
+        $old_x = $object_info["x"];
+        $old_y = $object_info["y"];
+
+        $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
+        $this->placeObject($movement_result["new_x"], $movement_result["new_y"], $object);
+
+        return [
+            "type" => "move",
+            "colliders" => $collided,
+            "old_x" => $old_x,
+            "old_y" => $old_y,
+            "new_x" => $movement_result["new_x"],
+            "new_y" => $movement_result["new_y"],
+            "teleport_at" => $movement_result["teleport_at"],
+            "teleport_to" => $movement_result["teleport_to"],
+        ];
+    }
+
     public function placeObject(int $x, int $y, array $object)
     {
         assert($x >= 0 && $x < self::WIDTH);
@@ -305,6 +373,7 @@ class SeaBoard
 
     public function removeObject(int $x, int $y, string $object_type, string $arg)
     {
+        $this->syncFromDB();
         $this->contents[$x][$y] = array_filter(
             $this->contents[$x][$y],
             fn($o) => $o["type"] != $object_type || $o["arg"] != $arg,
@@ -314,6 +383,10 @@ class SeaBoard
 
     public function syncToDB()
     {
+        if ($this->db_sync_active) {
+            return;
+        }
+        $this->db_sync_active = true;
         call_user_func($this->sqlfunc, "DELETE FROM sea");
 
         $sql = "INSERT INTO sea (x, y, type, arg, heading) VALUES ";
@@ -334,10 +407,15 @@ class SeaBoard
         }
         $sql .= implode(",", $values);
         call_user_func($this->sqlfunc, $sql);
+        $this->db_sync_active = false;
     }
 
     public function syncFromDB()
     {
+        if ($this->db_sync_active) {
+            return;
+        }
+        $this->db_sync_active = true;
         if ($this->contents === null) {
             $sql = "select x, y, type, arg, heading from sea";
             $result = call_user_func($this->sqlfunc, $sql);
@@ -350,6 +428,7 @@ class SeaBoard
                 ]);
             }
         }
+        $this->db_sync_active = false;
     }
 
     function dump()
