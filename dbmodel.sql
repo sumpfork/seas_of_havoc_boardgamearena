@@ -100,3 +100,11 @@ CREATE TABLE IF NOT EXISTS `extra_turns` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE extra_turns ADD CONSTRAINT fk_extra_turns_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+CREATE TABLE IF NOT EXISTS `pending_purchases` (
+  `player_id` int(10) unsigned NOT NULL,
+  `card_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`player_id`, `card_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE pending_purchases ADD CONSTRAINT fk_pending_purchases_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);

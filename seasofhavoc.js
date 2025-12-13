@@ -126,28 +126,224 @@ define([
       console.log("updating island slots");
       console.log(islandslots);
       console.log(players);
+      
+      // First, clear all existing skiffs from island slots
+      query(".skiff_placed").forEach(domConstruct.destroy);
+      
+      // With SlotStock, cards are already in fixed positions matching the skiff slot IDs
+      // No need to re-place skiff slots - they're already in the template as part of the market div
+      
       for (const [slot, numbers] of Object.entries(islandslots)) {
         for (const [number, slotData] of Object.entries(numbers)) {
           console.log("slot: " + slot + " number: " + number + " slot data: ", slotData);
-          const skiff_slot = `skiff_slot_${slot}_${number}`;
-          console.log("skiff slot: " + skiff_slot);
+          const skiff_slot_id = `skiff_slot_${slot}_${number}`;
+          const skiff_slot = $(skiff_slot_id);
+          console.log("skiff slot: " + skiff_slot_id);
+          
+          if (!skiff_slot) {
+            console.warn("Skiff slot not found: " + skiff_slot_id);
+            continue;
+          }
+          
+          // Clear any existing skiffs from this slot
+          query(".skiff", skiff_slot).forEach(domConstruct.destroy);
+          
           // Handle disabled slots
           if (slotData.disabled) {
-            domClass.add(skiff_slot, "disabled");
-            console.log("Disabled slot: " + skiff_slot);
+            domClass.add(skiff_slot_id, "disabled");
+            console.log("Disabled slot: " + skiff_slot_id);
+          } else {
+            domClass.remove(skiff_slot_id, "disabled");
           }
           
           // Handle occupied slots
           if (slotData.occupying_player_id != null) {
-            var skiff_id = "skiff_p" + slotData.occupying_player_id + "_" + slot;
+            // For market slots, check if the card in this slot is in pending purchases
+            // If so, and this is the current player's skiff, don't show it (card is already purchased)
+            if (slot == "market") {
+              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
+              
+              // Get the card ID at this slot position from the market array
+              // Market array is in consistent order, so position = slot number
+              var card_id_for_slot = null;
+              if (this.gamedatas && this.gamedatas.market) {
+                var market_array = Array.isArray(this.gamedatas.market) ? 
+                                   this.gamedatas.market : 
+                                   Object.values(this.gamedatas.market);
+                if (market_array.length > slot_index && market_array[slot_index]) {
+                  card_id_for_slot = market_array[slot_index].id;
+                }
+              }
+              
+              // Check if this card is in pending purchases for the current player
+              if (card_id_for_slot && this.gamedatas && this.gamedatas.pending_purchases) {
+                var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
+                                   this.gamedatas.pending_purchases : 
+                                   Object.values(this.gamedatas.pending_purchases);
+                var is_pending = pending_array.indexOf(card_id_for_slot) !== -1;
+                
+                // If this is the current player's skiff on a pending purchase, skip it
+                if (is_pending && slotData.occupying_player_id == this.player_id) {
+                  console.log("Skipping skiff for slot " + number + " - card " + card_id_for_slot + " is pending purchase");
+                  domClass.add(skiff_slot_id, "unoccupied");
+                  continue;
+                }
+              }
+            }
+            
+            var skiff_id = "skiff_p" + slotData.occupying_player_id + "_" + slot + "_" + number;
             console.log("skiff_id: " + skiff_id);
 
             var skiff = this.format_block("jstpl_skiff", {
               player_color: players[slotData.occupying_player_id].color,
               id: skiff_id,
             });
+            
             domConstruct.place(skiff, skiff_slot);
-            domClass.remove(skiff_slot, "unoccupied");
+            domClass.remove(skiff_slot_id, "unoccupied");
+            domClass.add(skiff_id, "skiff_placed");
+          } else {
+            // Slot is unoccupied - ensure it's marked as such
+            domClass.add(skiff_slot_id, "unoccupied");
+            
+            // For market slots, position and show/hide the skiff slot based on whether there's a card
+            if (slot == "market") {
+              var market_slot_id = "market_slot_n" + number.substring(1);
+              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
+              
+              // Check if there's a card at this slot position in the market
+              var has_card = false;
+              if (this.gamedatas && this.gamedatas.market) {
+                var market_array = Array.isArray(this.gamedatas.market) ? 
+                                   this.gamedatas.market : 
+                                   Object.values(this.gamedatas.market);
+                if (market_array.length > slot_index && market_array[slot_index]) {
+                  var card_id = market_array[slot_index].id;
+                  // Check if this card is in pending purchases (shouldn't show skiff slot)
+                  if (this.gamedatas.pending_purchases) {
+                    var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
+                                       this.gamedatas.pending_purchases : 
+                                       Object.values(this.gamedatas.pending_purchases);
+                    if (pending_array.indexOf(card_id) === -1) {
+                      has_card = true;
+                    }
+                  } else {
+                    has_card = true;
+                  }
+                }
+              }
+              
+              if (!has_card) {
+                domStyle.set(skiff_slot_id, "display", "none");
+              } else {
+                // Position and show the skiff slot
+                var market_slot = $(market_slot_id);
+                if (market_slot) {
+                  this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
+                  domStyle.set(skiff_slot_id, "display", "block");
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    positionMarketSkiffSlot: function (skiff_slot_id, market_slot_id) {
+      // Position a single skiff slot absolutely over its corresponding market slot
+      var market_container = $("market");
+      if (!market_container) {
+        return;
+      }
+      
+      var skiff_slot = $(skiff_slot_id);
+      if (!skiff_slot) {
+        return;
+      }
+      
+      // Get the SlotStock slot container - this is where cards are actually placed
+      var slot_container = null;
+      if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
+        slot_container = this.market.slots[market_slot_id];
+      } else {
+        // Fallback to the original market slot element
+        slot_container = $(market_slot_id);
+      }
+      
+      if (!slot_container) {
+        return;
+      }
+      
+      // Ensure market container is position: relative for absolute positioning
+      domStyle.set(market_container, "position", "relative");
+      
+      // Ensure skiff slot is a child of market container (not slot container)
+      if (skiff_slot.parentNode !== market_container) {
+        market_container.appendChild(skiff_slot);
+      }
+      
+      // Calculate position relative to market container
+      var market_rect = market_container.getBoundingClientRect();
+      var slot_rect = slot_container.getBoundingClientRect();
+      
+      // Calculate offset from market container
+      var left = slot_rect.left - market_rect.left;
+      var top = slot_rect.top - market_rect.top;
+      
+      // Position skiff slot at bottom-right of market slot
+      domStyle.set(skiff_slot, "position", "absolute");
+      domStyle.set(skiff_slot, "left", (left + slot_rect.width - 28) + "px"); // 26px width + 2px margin
+      domStyle.set(skiff_slot, "top", (top + slot_rect.height - 28) + "px"); // 26px height + 2px margin
+      domStyle.set(skiff_slot, "visibility", "visible");
+      domStyle.set(skiff_slot, "z-index", "1");
+    },
+    positionMarketSkiffSlots: function () {
+      // Position all market skiff slots
+      for (var i = 1; i <= 5; i++) {
+        var market_slot_id = "market_slot_n" + i;
+        var skiff_slot_id = "skiff_slot_market_n" + i;
+        var skiff_slot = $(skiff_slot_id);
+        
+        if (!skiff_slot) {
+          continue;
+        }
+        
+        // Check if there's a card in the slot
+        var slot_container = null;
+        if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
+          slot_container = this.market.slots[market_slot_id];
+        } else {
+          slot_container = $(market_slot_id);
+        }
+        
+        if (slot_container) {
+          // Check if there's a card at this slot position in the market data
+          var slot_index = i - 1; // i is 1-based, slot_index is 0-based
+          var has_card = false;
+          if (this.gamedatas && this.gamedatas.market) {
+            var market_array = Array.isArray(this.gamedatas.market) ? 
+                               this.gamedatas.market : 
+                               Object.values(this.gamedatas.market);
+            if (market_array.length > slot_index && market_array[slot_index]) {
+              var card_id = market_array[slot_index].id;
+              // Check if this card is in pending purchases (shouldn't show skiff slot)
+              if (this.gamedatas.pending_purchases) {
+                var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
+                                   this.gamedatas.pending_purchases : 
+                                   Object.values(this.gamedatas.pending_purchases);
+                if (pending_array.indexOf(card_id) === -1) {
+                  has_card = true;
+                }
+              } else {
+                has_card = true;
+              }
+            }
+          }
+          
+          if (has_card) {
+            this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
+            domStyle.set(skiff_slot, "display", "block");
+          } else {
+            domStyle.set(skiff_slot, "display", "none");
           }
         }
       }
@@ -430,9 +626,17 @@ define([
         },
       });
 
-      this.market = new BgaCards.LineStock(this.cardsManager, $("market"), {
-        direction: 'horizontal',
-        center: true
+      // Create SlotStock for market with separate slot elements (not skiff slots)
+      this.market = new BgaCards.SlotStock(this.cardsManager, $("market"), {
+        slotsIds: ['market_slot_n1', 'market_slot_n2', 'market_slot_n3', 'market_slot_n4', 'market_slot_n5'],
+        mapCardToSlot: (card) => {
+          // Map card to slot based on market array order
+          // This will be set up in setup() after we have gamedatas
+          if (this.marketSlotMap && card.id) {
+            return this.marketSlotMap[card.id] || null;
+          }
+          return null;
+        }
       });
 
       // Create SlotStock for captain
@@ -475,7 +679,17 @@ define([
       this.playerHand.onSelectionChange = (selection, lastChange) => {
         this.onCardSelectedPlayerHand();
       };
-      // LineStock uses the CardManager to handle card types automatically
+      
+      // Build a set of pending purchase card IDs
+      var pending_card_ids = new Set();
+      if (gamedatas.pending_purchases) {
+        var pending_array = Array.isArray(gamedatas.pending_purchases) ? gamedatas.pending_purchases : Object.values(gamedatas.pending_purchases);
+        for (var i = 0; i < pending_array.length; i++) {
+          pending_card_ids.add(pending_array[i]);
+        }
+      }
+      
+      // Add cards from actual hand
       for (var i in gamedatas.hand) {
         var card = this.gamedatas.hand[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player hand");
@@ -484,6 +698,22 @@ define([
           type: card.type,
           location: card.location || "hand",
         });
+      }
+      
+      // Also add cards from pending purchases to hand (they're still in market in DB but should appear in hand)
+      if (gamedatas.pending_purchases && gamedatas.market) {
+        var market_array = Array.isArray(gamedatas.market) ? gamedatas.market : Object.values(gamedatas.market);
+        for (var i = 0; i < market_array.length; i++) {
+          var card = market_array[i];
+          if (card && card.id && pending_card_ids.has(card.id)) {
+            console.log("adding pending purchase card type: " + card.type + " id: " + card.id + " to player hand");
+            this.playerHand.addCard({
+              id: card.id,
+              type: card.type,
+              location: "hand",
+            });
+          }
+        }
       }
       for (var i in gamedatas.discard) {
         var card = this.gamedatas.discard[i];
@@ -497,33 +727,54 @@ define([
         this.scrapPile.addCard({id: card.id, type: card.type, location: card.location || "scrap"});
       }
 
-      var slotno = 1;
-      for (var card_id in gamedatas.market) {
-        var card = this.gamedatas.market[card_id];
-        console.log("adding card type: " + card.type + " id: " + card.id + " to market");
+      // Store gamedatas for later use
+      this.gamedatas = gamedatas;
+      
+      // Build map from card ID to slot ID based on market array order
+      // Market array is in consistent order (by location_arg), so position = slot number
+      this.marketSlotMap = {};
+      
+      var market_array = Array.isArray(gamedatas.market) ? gamedatas.market : Object.values(gamedatas.market);
+      
+      // Iterate through market array and place cards in their fixed slots
+      // Skip cards that are in pending purchases (they're already in hand)
+      for (var i = 0; i < market_array.length; i++) {
+        var card = market_array[i];
+        if (!card || !card.id) {
+          continue;
+        }
+        
+        var slot_id = "market_slot_n" + (i + 1);
+        var skiff_slot_id = "skiff_slot_market_n" + (i + 1);
+        
+        // Build slot map for SlotStock (using market_slot_nX, not skiff_slot_market_nX)
+        this.marketSlotMap[card.id] = slot_id;
+        
+        // Skip if this card is in pending purchases (already in hand)
+        if (pending_card_ids.has(card.id)) {
+          console.log("Card " + card.id + " is pending purchase, leaving slot " + slot_id + " empty");
+          continue;
+        }
+        
+        console.log("adding card type: " + card.type + " id: " + card.id + " to market slot " + slot_id);
+        
         var cardObj = {
           id: card.id,
           type: card.type,
           location: "market"
         };
+        
+        // SlotStock will automatically place the card in the correct slot based on mapCardToSlot
         this.market.addCard(cardObj);
+        
+        // Set data attributes on the card div for reference
         var card_div = this.cardsManager.getCardElement(cardObj);
-        attr.set(card_div, "data-slotnumber", "n" + slotno);
-        attr.set(card_div, "data-cardid", card.id);
-
-        // stick a buy skiff slot on it - use the ID directly since it's predefined in the template
-        var skiff_slot_id = "skiff_slot_market_n" + slotno;
-        var skiff_slot = $(skiff_slot_id);
-        if (skiff_slot) {
-          console.log("Found skiff slot " + skiff_slot_id + ", placing on card");
-          domConstruct.place(skiff_slot, card_div);
-          // Make sure the skiff slot is visible (in case it was hidden during a previous purchase)
-          domStyle.set(skiff_slot, "display", "");
-        } else {
-          console.error("Could not find skiff_slot with id: " + skiff_slot_id);
+        if (card_div) {
+          attr.set(card_div, "data-slotnumber", "n" + (i + 1));
+          attr.set(card_div, "data-cardid", card.id);
         }
-        slotno++;
       }
+      this.positionMarketSkiffSlots();
 
       // Add player's actual captain and upgrade cards to player board
       console.log("Adding player cards to board...");
@@ -688,6 +939,28 @@ define([
             card_type: card.card_type,
             card_id: card_id,
             decisions: JSON.stringify(decisionSummary),
+          });
+          this.dep_tree = null;
+          domConstruct.destroy("card_display_dialog");
+          console.log("moving card with type: " + card.card_type + " id :" + card_id);
+          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
+          this.playerHand.removeCard({ id: card_id, type: card.card_type });
+          console.groupEnd();
+        }),
+      );
+      on(
+        query(".pass_card_button"),
+        "click",
+        lang.hitch(this, (event) => {
+          console.groupCollapsed("pass card button clicked");
+          console.log("pass card button clicked");
+          event.preventDefault();
+          console.log("card ");
+          console.log(card);
+          this.bgaPerformAction("actPlayCard", {
+            card_type: card.card_type,
+            card_id: card_id,
+            decisions: JSON.stringify(["pass"]),
           });
           this.dep_tree = null;
           domConstruct.destroy("card_display_dialog");
@@ -970,58 +1243,19 @@ define([
       updatePlayCardButton();
       this.cardPlayDialogShown = true;
     },
-    waitForCardsAndSetupPurchaseButtons: function() {
-      // Check if market cards are actually rendered in the DOM
-      const checkCardsReady = () => {
-        const marketCards = this.market.getCards();
-        
-        // If there are no cards in the market, we're done
-        if (marketCards.length === 0) {
-          console.log("No cards in market, skipping purchase button setup");
-          return;
-        }
-        
-        // Check if all market cards have their DOM elements ready
-        let allCardsReady = true;
-        for (const card of marketCards) {
-          const card_div = this.cardsManager.getCardElement(card);
-          if (!card_div || !document.body.contains(card_div)) {
-            allCardsReady = false;
-            break;
-          }
-          
-          // Also check if the skiff slot has been placed on the card
-          const skiff_slot = query(`.skiff_slot`, card_div)[0];
-          if (!skiff_slot) {
-            allCardsReady = false;
-            break;
-          }
-        }
-        
-        if (allCardsReady) {
-          console.log("All market cards are ready, setting up purchase buttons");
-          // Restore visibility of skiff slots on market cards that haven't been purchased
-          this.market.getCards().forEach(card => {
-            var card_div = this.cardsManager.getCardElement(card);
-            var skiff_slot = query(`.skiff_slot`, card_div)[0];
-            if (skiff_slot) {
-              domStyle.set(skiff_slot, "display", "");
-            }
-          });
-          this.updateCardPurchaseButtons(true);
-        } else {
-          console.log("Cards not ready yet, waiting for next frame");
-          // Use requestAnimationFrame to wait for the next browser paint
-          requestAnimationFrame(checkCardsReady);
-        }
-      };
-      
-      // Start checking on the next animation frame
-      requestAnimationFrame(checkCardsReady);
-    },
     updateCardPurchaseButtons: function (create) {
       console.groupCollapsed("update card purchase buttons");
       console.log(this.islandSlots);
+      
+      // Check if player has completed purchases - if so, don't show any purchase buttons
+      if (this.gamedatas && this.gamedatas.player_has_completed_purchases) {
+        console.log("Player has completed purchases, skipping purchase button creation");
+        return;
+      }
+      
+      // Get list of cards that are in pending purchases (shouldn't show purchase buttons)
+      var pending_card_ids = this.cards_purchased || [];
+      
       for (const [slot, numbers] of Object.entries(this.islandSlots)) {
         if (slot == "market") {
           for (const [number, info] of Object.entries(numbers)) {
@@ -1031,28 +1265,61 @@ define([
               var button_id = "purchase_button_" + number;
               console.log("number " + number + " is ours");
               var slot_card = null;
+              var slotnum = number;
+              
+              // With SlotStock, find the card in the slot by checking which card is in the slot container
+              var slot_id = "market_slot_n" + number.substring(1); // n1 -> market_slot_n1
+              var skiff_slot_id = "skiff_slot_market_" + number;
+              var slot_element = $(slot_id);
+              if (!slot_element) {
+                throw new Error("Market slot element not found: " + slot_id);
+              }
+              
+              if (!this.market.slots || !this.market.slots[slot_id]) {
+                throw new Error("SlotStock slot not found: " + slot_id);
+              }
+              
+              // Get the card spec for this slot position
+              // Market array is in consistent order, so position = slot number
+              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
+              var market_array = Array.isArray(this.gamedatas.market) ? 
+                                 this.gamedatas.market : 
+                                 Object.values(this.gamedatas.market);
+              
+              if (market_array.length <= slot_index || !market_array[slot_index]) {
+                console.log("No card at slot position " + number + " (index " + slot_index + "), skipping purchase button");
+                continue;
+              }
+              
+              var card_data = market_array[slot_index];
+              
+              // Find the card spec in market.getCards()
               for (const cardspec of this.market.getCards()) {
-                console.log(cardspec);
-                var div = this.cardsManager.getCardElement(cardspec);
-                console.log(div);
-                //console.log("children");
-                //console.log(query(div));
-                var skiff_slot_element = query(div).children(".skiff_slot")[0];
-                if (!skiff_slot_element) {
-                  console.error("ERROR: No skiff slot found for market card", cardspec, "- every market card must have a skiff slot!");
-                  throw new Error("Market card missing skiff slot: card id " + cardspec.id);
-                }
-                var slotnum = attr.get(skiff_slot_element, "data-number");
-                console.log("slotnum " + slotnum);
-                if (slotnum == number) {
+                if (String(cardspec.id) == String(card_data.id)) {
                   slot_card = cardspec;
-                  console.log("found it");
+                  console.log("Found card " + slot_card.id + " in slot " + number);
                   break;
                 }
               }
-              if (slot_card === null) {
+              
+              if (!slot_card) {
+                console.log("Card spec not found for card ID " + card_data.id + " in slot " + number + ", skipping purchase button");
                 continue;
               }
+              
+              // Get the card element using getCardElement
+              var card_element = this.cardsManager.getCardElement(slot_card);
+              if (!card_element) {
+                console.log("Card element not found for card " + slot_card.id + " in slot " + number + ", skipping purchase button");
+                continue;
+              }
+              
+              // Skip if this card is already purchased (in pending purchases)
+              if (pending_card_ids.indexOf(slot_card.id) !== -1) {
+                console.log("Card " + slot_card.id + " is already purchased, skipping purchase button");
+                continue;
+              }
+              
               console.log(slot_card);
               var card = this.playable_cards[slot_card.type];
               console.log(card);
@@ -1061,11 +1328,36 @@ define([
                   id: button_id,
                   slotnumber: slotnum,
                 });
-                var card_div = this.cardsManager.getCardElement(slot_card);
-                //dojo.place(purchase_button, "skiff_slot_" + slot + "_" + number);
-                console.log(card_div);
-                console.log("placing on " + card_div + " card purchase button: " + purchase_button);
+                
+                // Use the card_element we found from the DOM query, not getCardElement
+                // With SlotStock, the card element structure might be different
+                var card_div = card_element;
+                
+                // Try getCardElement as fallback, but prefer the DOM element we found
+                if (!card_div) {
+                  card_div = this.cardsManager.getCardElement(slot_card);
+                }
+                
+                console.log("Card element:", card_div);
+                console.log("Placing purchase button:", purchase_button);
+                
+                if (!card_div) {
+                  console.error("Card element not found for card " + slot_card.id);
+                  continue;
+                }
+                
+                // Ensure card element has position: relative for absolute positioning of button
+                domStyle.set(card_div, "position", "relative");
+                
+                console.log("Placing button on card element:", card_div);
                 domConstruct.place(purchase_button, card_div);
+                
+                // Verify button was placed
+                var placed_button = query("#" + button_id);
+                console.log("Button placed? Found in DOM:", placed_button.length > 0);
+                if (placed_button.length === 0) {
+                  console.error("Button was not placed in DOM! Button HTML:", purchase_button);
+                }
               }
               // Always ensure event handler is connected
               console.log("=== PURCHASE BUTTON EVENT HANDLER DEBUG ===");
@@ -1141,24 +1433,39 @@ define([
       console.log(card);
       console.log(slot_card);
       
-      // Remove purchase button and hide skiff slot from card div before moving to hand
-      var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`, card_dom)[0];
+      // Remove purchase button before moving card to hand
+      var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`)[0];
       if (purchase_button) {
         domConstruct.destroy(purchase_button);
       }
       
-      var skiff_slot = query(`.skiff_slot`, card_dom)[0];
+      // Clean up skiff slot and skiff for this market slot
+      var skiff_slot_id = "skiff_slot_market_" + slotnumber;
+      var skiff_slot = $(skiff_slot_id);
       if (skiff_slot) {
-        // Don't destroy the skiff slot, just hide it so it can be restored on reload
+        // Remove any skiff from the slot
+        query(".skiff", skiff_slot).forEach(domConstruct.destroy);
+        // Mark slot as unoccupied
+        domClass.add(skiff_slot, "unoccupied");
+        // Hide the skiff slot since there's no card in this slot anymore
         domStyle.set(skiff_slot, "display", "none");
+        // Clear the occupying player from islandSlots
+        if (this.islandSlots && this.islandSlots.market && this.islandSlots.market[slotnumber]) {
+          this.islandSlots.market[slotnumber].occupying_player_id = null;
+        }
       }
       
+      // Add card to hand first (local preview - backend will confirm)
       this.playerHand.addCard({
         id: slot_card.id,
         type: slot_card.type,
         location: "hand",
       });
+      
+      // Remove card from market SlotStock for this player's view
+      // This is a local preview - backend will handle the actual move when purchases are committed
       this.market.removeCard(slot_card);
+      
       this.updateCardPurchaseButtons(false);
       this.cards_purchased.push(slot_card.id);
       console.groupEnd();
@@ -1166,6 +1473,10 @@ define([
     onCompletePurchasesClicked: function (event) {
       console.log("onCompletePurchasesClicked");
       console.log(this.cards_purchased);
+      
+      // Remove all purchase buttons since player has completed purchases
+      query(".purchase_card_button").forEach(domConstruct.destroy);
+      
       this.bgaPerformAction("actCompletePurchases", {
         cards_purchased: JSON.stringify(this.cards_purchased),
       });
@@ -1230,8 +1541,20 @@ define([
         //this.bgaPerformAction("actExitDummyStart", {});
         case "cardPurchases": {
           this.cards_purchased = [];
-          // Wait for cards to be fully rendered before manipulating them
-          this.waitForCardsAndSetupPurchaseButtons();
+          // Set up purchase buttons directly - no need to wait
+          this.updateCardPurchaseButtons(true);
+          break;
+        }
+        case "seaPhaseSetup": {
+          // Clear all skiffs when entering sea phase
+          query(".skiff_placed").forEach(domConstruct.destroy);
+          query(".purchase_card_button").forEach(domConstruct.destroy);
+          // Also clear skiff slots on market cards and restore them to unoccupied state
+          query(".skiff_slot").forEach(function(slot) {
+            domClass.add(slot, "unoccupied");
+            // Clear any skiffs that might be in the slot
+            query(".skiff", slot).forEach(domConstruct.destroy);
+          });
           break;
         }
         case "seaTurn": {
@@ -1527,6 +1850,10 @@ define([
       
       // Subscribe to deck reshuffle notification
       dojo.subscribe('deckReshuffled', this, 'notif_deckReshuffled');
+      
+      // Subscribe to cards purchased notification
+      dojo.subscribe('cardsPurchased', this, 'notif_cardsPurchased');
+      dojo.subscribe('marketUpdated', this, 'notif_marketUpdated');
     },
 
     // TODO: from this point and below, you can write your game notifications handling methods
@@ -1577,7 +1904,11 @@ define([
       var postfix = "_" + slot_name + "_" + slot_number;
       var skiff_id = "skiff_p" + args.player_id + postfix;
 
-      this.islandSlots[slot_name][slot_number] = args.player_id;
+      // Update islandSlots with the correct structure (object with occupying_player_id)
+      this.islandSlots[slot_name][slot_number] = {
+        occupying_player_id: args.player_id,
+        disabled: this.islandSlots[slot_name][slot_number]?.disabled || false
+      };
 
       console.log("skiff_id: " + skiff_id);
       var player_board_id = "overall_player_board_" + args.player_id;
@@ -1606,6 +1937,128 @@ define([
       ).play();
       domClass.remove(skiff_slot, "unoccupied");
       domClass.add(skiff_id, "skiff_placed");
+      console.groupEnd();
+    },
+    notif_cardsPurchased: function (args) {
+      console.groupCollapsed("notify: cards purchased");
+      console.log(args);
+      
+      // Remove purchased cards from market
+      // Cards were already added to player hands locally when they clicked purchase
+      var purchases = args.purchases || {};
+      
+      for (var player_id in purchases) {
+        var card_ids = purchases[player_id];
+        for (var i = 0; i < card_ids.length; i++) {
+          var card_id = card_ids[i];
+          
+          // Find the card in the market
+          var market_cards = this.market.getCards();
+          var purchased_card = market_cards.find(card => card.id == card_id);
+          
+          if (purchased_card) {
+            // Remove from market - after all players commit, all purchased cards should be removed
+            this.market.removeCard(purchased_card);
+            
+            // Remove the "purchased" class if present
+            var card_div = this.cardsManager.getCardElement(purchased_card);
+            if (card_div) {
+              domClass.remove(card_div, "purchased");
+              // Clear any skiffs from the card's skiff slot
+              var skiff_slot = query(`.skiff_slot`, card_div)[0];
+              if (skiff_slot) {
+                query(".skiff", skiff_slot).forEach(domConstruct.destroy);
+                query(".purchase_card_button", card_div).forEach(domConstruct.destroy);
+                domClass.add(skiff_slot, "unoccupied");
+                domStyle.set(skiff_slot, "display", "none");
+              }
+            }
+          }
+        }
+      }
+      
+      // Clear all skiffs from market slots (island slots should be cleared on backend)
+      // This ensures skiffs don't reappear if updateIslandSlots is called
+      query(".skiff_slot[data-slotname='market']").forEach(function(slot) {
+        query(".skiff", slot).forEach(domConstruct.destroy);
+        query(".purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
+        domClass.add(slot, "unoccupied");
+        // Hide skiff slots for empty market slots (no card in the slot)
+        // Check if there's a card in the corresponding market slot
+        var slot_number = attr.get(slot, "data-number");
+        var market_slot_id = "market_slot_n" + slot_number.substring(1);
+        var market_slot = $(market_slot_id);
+        if (market_slot) {
+          var has_card = query(".card", market_slot).length > 0;
+          if (!has_card) {
+            domStyle.set(slot, "display", "none");
+          }
+        }
+      });
+      
+      // Clear local purchases tracking
+      this.cards_purchased = [];
+      
+      // Market will be updated via marketUpdated notification
+      
+      console.groupEnd();
+    },
+    notif_marketUpdated: function (args) {
+      console.groupCollapsed("notify: market updated");
+      console.log(args);
+      
+      // Clear existing market cards
+      var existing_cards = this.market.getCards();
+      for (var i = 0; i < existing_cards.length; i++) {
+        this.market.removeCard(existing_cards[i]);
+      }
+      
+      // Clear market slot map
+      this.marketSlotMap = {};
+      
+      // Add new market cards
+      var market_array = Array.isArray(args.market) ? args.market : Object.values(args.market);
+      for (var i = 0; i < market_array.length; i++) {
+        var card = market_array[i];
+        if (!card || !card.id) {
+          continue;
+        }
+        
+        var slot_id = "market_slot_n" + (i + 1);
+        
+        // Build slot map for SlotStock
+        this.marketSlotMap[card.id] = slot_id;
+        
+        var cardObj = {
+          id: card.id,
+          type: card.type,
+          location: "market"
+        };
+        
+        // Add card to market SlotStock
+        this.market.addCard(cardObj);
+        
+        // Set data attributes on the card div for reference
+        var card_div = this.cardsManager.getCardElement(cardObj);
+        if (card_div) {
+          attr.set(card_div, "data-slotnumber", "n" + (i + 1));
+          attr.set(card_div, "data-cardid", card.id);
+        }
+      }
+      
+      // Update gamedatas with new market
+      if (this.gamedatas) {
+        this.gamedatas.market = args.market;
+      }
+      
+      // Position skiff slots for new market cards
+      this.positionMarketSkiffSlots();
+      
+      // Update island slots to show skiffs on new market cards
+      if (this.islandSlots && this.players) {
+        this.updateIslandSlots(this.islandSlots, this.players);
+      }
+      
       console.groupEnd();
     },
     notif_tokenAcquired: function (args) {

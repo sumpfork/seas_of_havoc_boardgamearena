@@ -131,13 +131,6 @@
     left: 917px;
 }
 
-.skiff_slot[data-slotname="market"] {
-    position: absolute;
-    bottom: 3px;
-    right: 2px;
-    z-index: 2;
-}
-
 .skiff_slot {
 	position: absolute;
 	width: 26px;
@@ -146,6 +139,25 @@
 	/* padding: 9px 7px 6px 4px; */
     margin: 2px;
     background-color: rgba(0, 34, 255, 0.306);
+}
+
+/* Market slots (SlotStock containers) - positioned by SlotStock */
+.market_slot {
+    position: relative;
+}
+
+/* Skiff slots are separate overlay elements positioned absolutely over market slots */
+.skiff_slot[data-slotname="market"] {
+    position: absolute;
+    bottom: 3px;
+    right: 2px;
+    z-index: 1;
+    pointer-events: all;
+}
+
+/* Skiff indicator inside market skiff slots */
+.skiff_slot[data-slotname="market"] .skiff {
+    position: relative;
 }
 .skiff_slot.unoccupied:hover {
 	outline-color: rgba(41, 145, 198, 0.7);
@@ -336,10 +348,21 @@
     height: fit-content;
     justify-self: center; 
 }
+#pass_card_button {
+    left: 60%;
+    top: 5px;
+    position: relative;  
+    width: fit-content;
+    height: fit-content;
+    justify-self: center;
+    margin-top: 10px;
+}
 .purchase_card_button {
     left: 13px;
     top: 100%;
     position: absolute;
+    z-index: 20;
+    margin-top: 5px;
 }
 a.disabled {
     pointer-events: none;
@@ -452,6 +475,10 @@ a.disabled {
     flex: 1;
     min-width: 0; /* Allows flex item to shrink */
     margin-right: auto; /* Push market to the left */
+}
+
+#market {
+    position: relative;
 }
 
 .scrap-area {

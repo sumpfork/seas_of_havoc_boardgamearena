@@ -43,17 +43,23 @@
     <div id="skiff_slot_blue_flag_n1" class="skiff_slot unoccupied" data-slotname="blue_flag" data-number="n1"></div>
     <div id="skiff_slot_red_flag_n1" class="skiff_slot unoccupied" data-slotname="red_flag" data-number="n1"></div>
     <div id="seaboard"></div>
-    <div id="skiff_slot_market_n1" class="skiff_slot unoccupied" data-slotname="market" data-number="n1"></div>
-    <div id="skiff_slot_market_n2" class="skiff_slot unoccupied" data-slotname="market" data-number="n2"></div>
-    <div id="skiff_slot_market_n3" class="skiff_slot unoccupied" data-slotname="market" data-number="n3"></div>
-    <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
-    <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
 </div>
 <div class="whiteblock market-section">
     <div class="market-container">
         <div class="market-area">
             <h3>Market</h3>
-            <div id="market"></div>
+            <div id="market">
+                <div id="market_slot_n1" class="market_slot"></div>
+                <div id="market_slot_n2" class="market_slot"></div>
+                <div id="market_slot_n3" class="market_slot"></div>
+                <div id="market_slot_n4" class="market_slot"></div>
+                <div id="market_slot_n5" class="market_slot"></div>
+                <div id="skiff_slot_market_n1" class="skiff_slot unoccupied" data-slotname="market" data-number="n1"></div>
+                <div id="skiff_slot_market_n2" class="skiff_slot unoccupied" data-slotname="market" data-number="n2"></div>
+                <div id="skiff_slot_market_n3" class="skiff_slot unoccupied" data-slotname="market" data-number="n3"></div>
+                <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
+                <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
+            </div>
         </div>
         <div class="scrap-area">
             <h3>Scrap Pile</h3>
@@ -104,6 +110,7 @@
                         <div id="card_display"></div>
                         <div id="card_choices"></div>
                         <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card</div>
+                        <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">Pass</div>
                         </div>`;
     var jstpl_resources_playerboard=`
                     <div class="cp_board" id="player_resource_board_p\${player_id}">

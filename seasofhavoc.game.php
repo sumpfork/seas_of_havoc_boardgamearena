@@ -60,6 +60,7 @@ class SeasOfHavoc extends Table
         require "modules/material.inc.php";
 
         self::initGameStateLabels([
+            "seafeature_effects_attempted" => 10,
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
@@ -532,6 +533,8 @@ class SeasOfHavoc extends Table
 
     function stCardPurchases()
     {
+        // Clear any pending purchases from previous round
+        self::DbQuery("DELETE FROM pending_purchases");
         $this->gamestate->setAllPlayersMultiactive();
     }
 
@@ -598,10 +601,31 @@ class SeasOfHavoc extends Table
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
         $result["resources"] = $this->getGameResources();
+        
+        // Get pending purchases for current player ONLY
+        // Pending purchases are private per-player and not visible to other players until all players commit
+        $pending_purchases = self::getObjectListFromDB("SELECT card_id FROM pending_purchases WHERE player_id = '$current_player_id'");
+        $pending_card_ids = array_column($pending_purchases, "card_id");
+        
+        // Check if current player has completed purchases (has any pending purchases)
+        $result["player_has_completed_purchases"] = !empty($pending_card_ids);
+        
+        // Send pending purchases separately - frontend will handle filtering
+        // This is only sent to the current player, not to other players
+        $result["pending_purchases"] = $pending_card_ids;
+        
+        // Send full island slots - frontend will filter based on pending_purchases
         $result["islandslots"] = $this->getIslandSlots();
         $result["unique_tokens"] = $this->getUniqueTokens();
         $result["playable_cards"] = $this->playable_cards;
-        $result["market"] = $this->cards->getCardsInLocation("market");
+        
+        // Send the full, unmodified market to all players
+        // Frontend will filter out pending purchases for the current player
+        // Market cards are returned in a consistent order (by location_arg), so frontend can use array position as slot number
+        $market_cards = $this->cards->getCardsInLocation("market");
+        $result["market"] = $market_cards;
+        
+        // Send player's actual hand - frontend will add pending purchases to hand display
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
         $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
         $result["scrap"] = $this->cards->getCardsInLocation("scrap");
@@ -1205,27 +1229,97 @@ class SeasOfHavoc extends Table
     {
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
+        
+        // Check if player has already completed purchases (is in pending_purchases table)
+        $existing = self::getObjectFromDB("SELECT player_id FROM pending_purchases WHERE player_id = '$player_id' LIMIT 1");
+        if ($existing) {
+            throw new BgaUserException($this->_("You have already completed your purchases"));
+        }
+        
+        // Validate and store purchases in pending_purchases table
         foreach ($cards_purchased as $card_id) {
-            //$this->dump("market cards", $this->market_cards);
             $card = $this->cards->getCard($card_id);
-            $this->dump("card", $card);
-            $market_card = $this->playable_cards[$card["type"]];
-            $this->pay($player_id, $market_card["cost"]);
-            $this->cards->moveCard($card_id, "hand", $player_id);
-        }
-        $this->trace("active player list: " . implode(", ", $this->gamestate->getActivePlayerList()));
-        if (count($this->gamestate->getActivePlayerList()) == 1) {
-            $this->trace("only one active player, clearing island slots");
-            $this->clearIslandSlots();
-            $num_market_cards = $this->cards->countCardInLocation("market");
-            $this->trace("num market cards: $num_market_cards");
-            if ($num_market_cards < 6) {
-                $this->trace("picking " . (6 - $num_market_cards) . " market cards");
-                $this->cards->pickCardsForLocation(6 - $num_market_cards, "market_deck", "market");
+            if (!$card || $card["location"] != "market") {
+                throw new BgaUserException($this->_("Invalid card purchase"));
             }
+            // Store pending purchase
+            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id) VALUES ('$player_id', '$card_id')");
         }
-
+        
+        $this->trace("active player list before: " . implode(", ", $this->gamestate->getActivePlayerList()));
+        
+        // Remove this player from active list
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
+        
+        // Check if all players have completed purchases
+        $remaining_players = $this->gamestate->getActivePlayerList();
+        $this->trace("active player list after: " . implode(", ", $remaining_players));
+        if (count($remaining_players) == 0) {
+            // All players have completed - now commit all purchases
+            $this->commitAllPurchases();
+        }
+    }
+    
+    function commitAllPurchases()
+    {
+        $this->trace("Committing all purchases");
+        
+        // Get all pending purchases
+        $pending = self::getObjectListFromDB("SELECT player_id, card_id FROM pending_purchases");
+        
+        // Group by player for notification
+        $purchases_by_player = [];
+        $purchased_card_ids = [];
+        
+        foreach ($pending as $purchase) {
+            $player_id = $purchase["player_id"];
+            $card_id = $purchase["card_id"];
+            
+            $card = $this->cards->getCard($card_id);
+            if (!$card || $card["location"] != "market") {
+                $this->trace("Warning: Card $card_id is not in market, skipping");
+                continue;
+            }
+            
+            $market_card = $this->playable_cards[$card["type"]];
+            
+            // Pay for the card
+            $this->pay($player_id, $market_card["cost"]);
+            
+            // Move card to player's hand
+            $this->cards->moveCard($card_id, "hand", $player_id);
+            
+            // Track for notification
+            if (!isset($purchases_by_player[$player_id])) {
+                $purchases_by_player[$player_id] = [];
+            }
+            $purchases_by_player[$player_id][] = $card_id;
+            $purchased_card_ids[] = $card_id;
+        }
+        
+        // Notify all players about purchases
+        $this->notifyAllPlayers("cardsPurchased", clienttranslate("Card purchases completed"), [
+            "purchases" => $purchases_by_player,
+            "purchased_card_ids" => $purchased_card_ids,
+        ]);
+        
+        // Clear pending purchases table
+        self::DbQuery("DELETE FROM pending_purchases");
+        
+        // Clear island slots and refill market
+        $this->clearIslandSlots();
+        $num_market_cards = $this->cards->countCardInLocation("market");
+        $this->trace("num market cards: $num_market_cards");
+        if ($num_market_cards < 6) {
+            $this->trace("picking " . (6 - $num_market_cards) . " market cards");
+            $this->cards->pickCardsForLocation(6 - $num_market_cards, "market_deck", "market");
+        }
+        
+        // Notify all players about the updated market
+        $updated_market = $this->cards->getCardsInLocation("market");
+        $this->notifyAllPlayers("marketUpdated", clienttranslate("Market has been refilled"), [
+            "market" => $updated_market,
+        ]);
     }
 
     function processSimpleAction(PrimitiveCardPlayAction $action_type)
@@ -1400,7 +1494,8 @@ class SeasOfHavoc extends Table
                             }
                         }
                     }
-                    $this->merge_results(["action_chain" => [$outcome]], $cost, $to_send, $total_cost, $collision_occurred);
+                    // FIRE actions never cause movement collisions - explicitly set collision_occurred to false
+                    $this->merge_results(["action_chain" => [$outcome], "collision_occurred" => false], $cost, $to_send, $total_cost, $collision_occurred);
                     break;
                 case PrimitiveCardPlayAction::CAPTAIN_ABILITY:
                     $result = $this->processCaptainAbility($action["ability"]);
@@ -1484,40 +1579,59 @@ class SeasOfHavoc extends Table
         $this->dump("card played", $card);
         $player_id = $this->getActivePlayerId();
 
-        $outcome = $this->processCardActions($card["actions"], $decisions);
-        $this->dump("final card play outcome", $outcome);
-
-        // Pay the total cost from all actions (pay() includes validation)
-        if (!empty($outcome["cost"])) {
-            $this->pay($player_id, $outcome["cost"]);
-        }
-
-        $this->cards->moveCard($card_id, "player_discard", $player_id);
-
-        // Apply seafeature effects (whirlpool rotation and gust push) if no collision occurred
-        // If collision occurred, seafeature effects will be applied after collision resolution
-        $seafeature_collision = false;
-        $all_moves = $outcome["action_chain"];
-        $notification_message = clienttranslate('${player_name} has played a card');
+        // Check if this is a "pass" play (playing card without executing actions)
+        $is_pass = !empty($decisions) && $decisions[0] === "pass";
         
-        if (!$outcome["collision_occurred"]) {
-            $seafeature_effects = $this->applySeafeatureEffects($player_id);
-            $seafeature_collision = $seafeature_effects["collision"];
+        if ($is_pass) {
+            // Pass: skip all actions, but still discard the card
+            $outcome = [
+                "action_chain" => [],
+                "cost" => [],
+                "collision_occurred" => false,
+            ];
+            $notification_message = clienttranslate('${player_name} has passed (played a card without actions)');
+            $all_moves = [];
+            $seafeature_collision = false;
+        } else {
+            $outcome = $this->processCardActions($card["actions"], $decisions);
+            $this->dump("final card play outcome", $outcome);
+
+            // Pay the total cost from all actions (pay() includes validation)
+            if (!empty($outcome["cost"])) {
+                $this->pay($player_id, $outcome["cost"]);
+            }
+
+            // Apply seafeature effects (whirlpool rotation and gust push) if no collision occurred
+            // If collision occurred, seafeature effects will be applied after collision resolution
+            $seafeature_collision = false;
+            $all_moves = $outcome["action_chain"];
+            $notification_message = clienttranslate('${player_name} has played a card');
             
-            // Append seafeature moves to the moveChain for sequential animation
-            if (!empty($seafeature_effects["moves"])) {
-                $all_moves = array_merge($all_moves, $seafeature_effects["moves"]);
+            // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
+            $this->setGameStateValue("seafeature_effects_attempted", 0);
+            
+            if (!$outcome["collision_occurred"]) {
+                $seafeature_effects = $this->applySeafeatureEffects($player_id);
+                $seafeature_collision = $seafeature_effects["collision"];
+                $this->setGameStateValue("seafeature_effects_attempted", 1);
                 
-                // Update notification message to mention seafeature effects
-                if (count($seafeature_effects["moves"]) == 2) {
-                    $notification_message = clienttranslate('${player_name} has played a card and is affected by the whirlpool and gust');
-                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
-                    $notification_message = clienttranslate('${player_name} has played a card and is rotated by the whirlpool');
-                } else {
-                    $notification_message = clienttranslate('${player_name} has played a card and is pushed by the gust');
+                // Append seafeature moves to the moveChain for sequential animation
+                if (!empty($seafeature_effects["moves"])) {
+                    $all_moves = array_merge($all_moves, $seafeature_effects["moves"]);
+                    
+                    // Update notification message to mention seafeature effects
+                    if (count($seafeature_effects["moves"]) == 2) {
+                        $notification_message = clienttranslate('${player_name} has played a card and is affected by the whirlpool and gust');
+                    } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                        $notification_message = clienttranslate('${player_name} has played a card and is rotated by the whirlpool');
+                    } else {
+                        $notification_message = clienttranslate('${player_name} has played a card and is pushed by the gust');
+                    }
                 }
             }
         }
+
+        $this->cards->moveCard($card_id, "player_discard", $player_id);
 
         $this->notifyAllPlayers("cardPlayed", $notification_message, [
             "player_name" => self::getActivePlayerName(),
@@ -1532,7 +1646,6 @@ class SeasOfHavoc extends Table
     function stResolveCollision()
     {
         $this->mytrace("stResolveCollision");
-        #$this->gamestate->nextState("seaTurnDone");
     }
 
     function actResolveCollision(string $card_id, string $action_type)
@@ -1553,8 +1666,18 @@ class SeasOfHavoc extends Table
         $player_id = $this->getActivePlayerId();
         
         // Apply seafeature effects (whirlpool rotation and gust push) after collision resolution
-        $seafeature_effects = $this->applySeafeatureEffects($player_id);
-        $seafeature_collision = $seafeature_effects["collision"];
+        // But only if they haven't been attempted yet (seafeature effects are only applied once per card play)
+        $seafeature_effects = ["moves" => [], "collision" => false];
+        $seafeature_collision = false;
+        
+        $seafeature_effects_attempted = $this->getGameStateValue("seafeature_effects_attempted");
+        if ($seafeature_effects_attempted == 0) {
+            $seafeature_effects = $this->applySeafeatureEffects($player_id);
+            $seafeature_collision = $seafeature_effects["collision"];
+            $this->setGameStateValue("seafeature_effects_attempted", 1);
+        } else {
+            $this->mytrace("Seafeature effects already attempted, skipping");
+        }
         
         if ($direction != "no pivot") {
             $typed_action = PrimitiveCardPlayAction::from($direction);
@@ -1608,6 +1731,8 @@ class SeasOfHavoc extends Table
         }
         
         // If gust push caused another collision, stay in collision resolution state
+        // Note: Seafeature effects are only applied once per card play, so this can only happen
+        // when resolving a collision from the initial card play (gust push after collision resolution)
         if ($seafeature_collision) {
             $this->gamestate->nextState("collisionOccurred");
         } else {
