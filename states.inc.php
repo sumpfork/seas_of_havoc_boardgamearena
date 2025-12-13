@@ -57,6 +57,9 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_ISLAND_TURN", 3);
     define("STATE_NEXT_PLAYER_ISLAND_PHASE", 4);
     define("STATE_CARD_PURCHASES", 5);
+    define("STATE_CARD_PURCHASES_PRIVATE", 51);
+    define("STATE_CARD_PURCHASES_COMPLETED_PRIVATE", 52);
+    define("STATE_COMMIT_PURCHASES_PRIVATE", 53);
     define("STATE_SEA_PHASE_SETUP", 6);
     define("STATE_SEA_TURN", 7);
     define("STATE_NEXT_PLAYER_SEA_PHASE", 8);
@@ -121,8 +124,33 @@ $machinestates = [
         "descriptionmyturn" => clienttranslate("You may purchase cards"),
         "type" => "multipleactiveplayer",
         "action" => "stCardPurchases",
+        "initialprivate" => STATE_CARD_PURCHASES_PRIVATE,
         "possibleactions" => ["actCompletePurchases"],
-        "transitions" => ["cardPurchasesDone" => STATE_SEA_PHASE_SETUP],
+        "transitions" => [
+            "cardPurchasesDone" => STATE_COMMIT_PURCHASES_PRIVATE,
+        ],
+    ],
+    STATE_CARD_PURCHASES_PRIVATE => [
+        "name" => "cardPurchasesPrivate",
+        "description" => clienttranslate("Players may purchase cards"),
+        "descriptionmyturn" => clienttranslate("You may purchase cards"),
+        "type" => "private",
+        "possibleactions" => ["actCompletePurchases"],
+        "transitions" => ["completedPurchases" => STATE_CARD_PURCHASES_COMPLETED_PRIVATE],
+    ],
+    STATE_CARD_PURCHASES_COMPLETED_PRIVATE => [
+        "name" => "cardPurchasesCompleted",
+        "description" => clienttranslate("Waiting for other players to complete their purchases"),
+        "descriptionmyturn" => clienttranslate("Waiting for other players to complete their purchases"),
+        "type" => "private",
+        "transitions" => [],
+    ],
+    STATE_COMMIT_PURCHASES_PRIVATE => [
+        "name" => "commitPurchases",
+        "description" => clienttranslate("Processing card purchases"),
+        "type" => "game",
+        "action" => "stCommitPurchases",
+        "transitions" => ["" => STATE_SEA_PHASE_SETUP],
     ],
     STATE_SEA_PHASE_SETUP => [
         "name" => "seaPhaseSetup",

@@ -1422,13 +1422,33 @@ define([
       const slotnumber = source.dataset.slotnumber;
       console.log("slotnumber: " + slotnumber);
 
-      var card_dom = query(`[data-slotnumber=${slotnumber}`)[0];
+      var card_dom = query(`[data-slotnumber="${slotnumber}"]`)[0];
       console.log(card_dom);
+      if (!card_dom) {
+        console.error("Card DOM element not found for slotnumber: " + slotnumber);
+        console.groupEnd();
+        return;
+      }
       var card_id = attr.get(card_dom, "data-cardid");
       console.log("card id " + card_id);
+      if (!card_id) {
+        console.error("Card ID not found in card_dom for slotnumber: " + slotnumber);
+        console.groupEnd();
+        return;
+      }
       var slot_card = this.market.getCards().find(card => card.id == card_id);
       console.log(slot_card);
+      if (!slot_card) {
+        console.error("Card not found in market for card_id: " + card_id);
+        console.groupEnd();
+        return;
+      }
       var card = this.playable_cards[slot_card.type];
+      if (!card) {
+        console.error("Playable card not found for type: " + slot_card.type);
+        console.groupEnd();
+        return;
+      }
       this.playerSpendResources(card.cost);
       console.log(card);
       console.log(slot_card);
@@ -1545,6 +1565,17 @@ define([
           this.updateCardPurchaseButtons(true);
           break;
         }
+        case "cardPurchasesPrivate": {
+          this.cards_purchased = [];
+          // Set up purchase buttons directly - no need to wait
+          this.updateCardPurchaseButtons(true);
+          break;
+        }
+        case "cardPurchasesCompleted": {
+          // Player has completed purchases, hide purchase buttons
+          this.updateCardPurchaseButtons(false);
+          break;
+        }
         case "seaPhaseSetup": {
           // Clear all skiffs when entering sea phase
           query(".skiff_placed").forEach(domConstruct.destroy);
@@ -1601,10 +1632,15 @@ define([
     //
     onUpdateActionButtons: function (stateName, args) {
       console.log("onUpdateActionButtons: " + stateName);
+      console.log("isCurrentPlayerActive(): " + this.isCurrentPlayerActive());
+      console.log("args:", args);
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
           case "cardPurchases":
+          case "cardPurchasesPrivate":
+          case "cardPurchasesMaking":
+            console.log("Adding Complete Purchases button for state: " + stateName);
             this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
             break;
           case "client_resourceDialog":

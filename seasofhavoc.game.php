@@ -536,6 +536,16 @@ class SeasOfHavoc extends Table
         // Clear any pending purchases from previous round
         self::DbQuery("DELETE FROM pending_purchases");
         $this->gamestate->setAllPlayersMultiactive();
+        
+        // Initialize all players to the "making purchases" private state
+        $this->gamestate->initializePrivateStateForAllActivePlayers();
+    }
+
+    function stCommitPurchases()
+    {
+        // All players have completed purchases - commit them now
+        $this->commitAllPurchases();
+        $this->gamestate->nextState();
     }
 
     function stSeaPhaseSetup()
@@ -1248,16 +1258,12 @@ class SeasOfHavoc extends Table
         
         $this->trace("active player list before: " . implode(", ", $this->gamestate->getActivePlayerList()));
         
-        // Remove this player from active list
-        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
+        // Transition this player to the "completed purchases" private state
+        $this->gamestate->nextPrivateState($player_id, "completedPurchases");
         
-        // Check if all players have completed purchases
-        $remaining_players = $this->gamestate->getActivePlayerList();
-        $this->trace("active player list after: " . implode(", ", $remaining_players));
-        if (count($remaining_players) == 0) {
-            // All players have completed - now commit all purchases
-            $this->commitAllPurchases();
-        }
+        // Deactivate this player (they've completed their purchases)
+        // The transition name "cardPurchasesDone" will be used when all players are done
+        $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
     
     function commitAllPurchases()
@@ -1310,15 +1316,16 @@ class SeasOfHavoc extends Table
         $this->clearIslandSlots();
         $num_market_cards = $this->cards->countCardInLocation("market");
         $this->trace("num market cards: $num_market_cards");
-        if ($num_market_cards < 6) {
-            $this->trace("picking " . (6 - $num_market_cards) . " market cards");
-            $this->cards->pickCardsForLocation(6 - $num_market_cards, "market_deck", "market");
+        if ($num_market_cards < 5) {
+            $this->trace("picking " . (5 - $num_market_cards) . " market cards");
+            $this->cards->pickCardsForLocation(5 - $num_market_cards, "market_deck", "market");
         }
         
         // Notify all players about the updated market
         $updated_market = $this->cards->getCardsInLocation("market");
         $this->notifyAllPlayers("marketUpdated", clienttranslate("Market has been refilled"), [
             "market" => $updated_market,
+            "islandslots" => $this->getIslandSlots(),
         ]);
     }
 
@@ -1381,11 +1388,11 @@ class SeasOfHavoc extends Table
             $this->trace("handling " . $typed_action->value);
             $this->dump("to_send", $to_send);
             if (array_key_exists("cost", $action)) {
-                # an action with a cost is always optional, so check the next decision where 0 is taking the action
-                # and 1 is 'Skip'
-                $decision = array_shift($decisions);
+                $decision = $decisions[0];
                 if ($decision == "skip") {
                     $this->trace("skipping action with cost due to decision == 'skip': " . $typed_action->value);
+                    array_shift($decisions);
+                    $this->trace("decisions after skipping: " . implode(", ", $decisions));
                     continue;
                 }
             }
