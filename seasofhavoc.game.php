@@ -1017,8 +1017,22 @@ class SeasOfHavoc extends Table
         $this->mytrace("drawCard - drawing $num_cards cards");
         $deck_name = $this->playerDeckName($player_id);
         
+        // Track discard pile count before drawing to detect autoreshuffle
+        $discard_count_before = $this->cards->countCardInLocation("player_discard", $player_id);
+        
         $cards_drawn = $this->cards->pickCards($num_cards, $deck_name, $player_id);
         $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards");
+        
+        // Check if autoreshuffle happened (discard pile was emptied during pickCards)
+        $discard_count_after = $this->cards->countCardInLocation("player_discard", $player_id);
+        if ($discard_count_before > 0 && $discard_count_after == 0) {
+            $this->mytrace("drawCard - autoreshuffle detected, notifying player");
+            $this->notifyPlayer($player_id, "deckReshuffled", clienttranslate('Your discard pile was shuffled into your deck'), [
+                "player_id" => $player_id,
+                "deck_size" => $this->cards->countCardInLocation($deck_name),
+            ]);
+        }
+        
         if (count($cards_drawn) > 0) {
             $message = count($cards_drawn) == 1 
                 ? clienttranslate('You drew a card') 

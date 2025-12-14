@@ -898,8 +898,23 @@ define([
         }),
       );
     },
-    showCardPlayDialog: function (card, card_id) {
+    cleanupCardPlayDialog: function () {
+      // Clean up the card display stock before destroying the dialog
+      if (this.cardDisplayStock) {
+        try {
+          this.cardDisplayStock.removeAll();
+        } catch (e) {
+          console.log("Error removing cards from cardDisplayStock:", e);
+        }
+        this.cardDisplayStock = null;
+      }
+      this.dep_tree = null;
       domConstruct.destroy("card_display_dialog");
+    },
+    showCardPlayDialog: function (card, card_id) {
+      // Clean up previous dialog properly
+      this.cleanupCardPlayDialog();
+      
       var dlg = this.format_block("jstpl_card_play_dialog");
       domConstruct.place(dlg, "myhand_wrap", "first");
       var bga = this;
@@ -940,8 +955,7 @@ define([
             card_id: card_id,
             decisions: JSON.stringify(decisionSummary),
           });
-          this.dep_tree = null;
-          domConstruct.destroy("card_display_dialog");
+          this.cleanupCardPlayDialog();
           console.log("moving card with type: " + card.card_type + " id :" + card_id);
           this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
           this.playerHand.removeCard({ id: card_id, type: card.card_type });
@@ -962,8 +976,7 @@ define([
             card_id: card_id,
             decisions: JSON.stringify(["pass"]),
           });
-          this.dep_tree = null;
-          domConstruct.destroy("card_display_dialog");
+          this.cleanupCardPlayDialog();
           console.log("moving card with type: " + card.card_type + " id :" + card_id);
           this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
           this.playerHand.removeCard({ id: card_id, type: card.card_type });
@@ -973,8 +986,8 @@ define([
       var display_dom = query("#card_display");
       console.log("display dom:");
       console.log(display_dom);
-      var tmpStock = new BgaCards.LineStock(this.cardsManager, display_dom[0], { center: false });
-      tmpStock.addCard({ id: 10000, type: card.card_type });
+      this.cardDisplayStock = new BgaCards.LineStock(this.cardsManager, display_dom[0], { center: false });
+      this.cardDisplayStock.addCard({ id: 10000, type: card.card_type });
 
       console.log(card);
       var bga = this;
@@ -1543,6 +1556,9 @@ define([
         var card = this.playable_cards[card_type];
         console.log(card);
         this.showCardPlayDialog(card, selectedCard.id);
+      } else {
+        // No card selected - clean up dialog
+        this.cleanupCardPlayDialog();
       }
       console.log(selection);
       console.groupEnd();
