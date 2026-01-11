@@ -358,11 +358,14 @@
     margin-top: 10px;
 }
 .purchase_card_button {
-    left: 13px;
-    top: 100%;
+    display: block;
     position: absolute;
-    z-index: 20;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
     margin-top: 5px;
+    white-space: nowrap;
+    z-index: 50;
 }
 a.disabled {
     pointer-events: none;

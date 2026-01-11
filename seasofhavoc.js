@@ -15,13 +15,6 @@
  *
  */
 
-//could maybe share these via bga mechanisms
-//but it's awkward, these have to match the php versions though
-const NORTH = 1;
-const EAST = 2;
-const SOUTH = 3;
-const WEST = 4;
-
 define([
   "dojo",
   "dojo/_base/declare",
@@ -39,6 +32,16 @@ define([
   "dojo/aspect",
   getLibUrl('bga-animations', '1.x'),
   getLibUrl('bga-cards', '1.x'),
+  // Custom modules - use g_gamethemeurl to load from game folder
+  g_gamethemeurl + "modules/js/constants.js",
+  g_gamethemeurl + "modules/js/utils.js",
+  g_gamethemeurl + "modules/js/islandSlots.js",
+  g_gamethemeurl + "modules/js/cardManager.js",
+  g_gamethemeurl + "modules/js/dialogs.js",
+  g_gamethemeurl + "modules/js/purchases.js",
+  g_gamethemeurl + "modules/js/stateHandlers.js",
+  g_gamethemeurl + "modules/js/notifications.js",
+  // Dojo extras
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
   "ebg/core/gamegui",
@@ -60,431 +63,32 @@ define([
   aspect,
   BgaAnimations,
   BgaCards,
+  // Custom modules
+  Constants,
+  Utils,
+  IslandSlots,
+  CardManager,
+  Dialogs,
+  Purchases,
+  StateHandlers,
+  Notifications
 ) {
-  return declare("bgagame.seasofhavoc", ebg.core.gamegui, {
+  // Direction constants - available globally for this module
+  const NORTH = Constants.NORTH;
+  const EAST = Constants.EAST;
+  const SOUTH = Constants.SOUTH;
+  const WEST = Constants.WEST;
+  
+  // Build the game class with all module methods mixed in
+  var gameClass = declare("bgagame.seasofhavoc", ebg.core.gamegui, {
     constructor: function () {
       console.log("seasofhavoc constructor");
-
-      // Here, you can init the global variables of your user interface
-      // Example:
-      // this.myGlobalValue = 0;
       this.clientStateVars = {};
     },
+
+    // Direction helper - delegate to constants module
     getHeadingDegrees: function (direction) {
-      switch (Number(direction)) {
-        case NORTH:
-          deg = 90;
-          break;
-        case EAST:
-          deg = 180;
-          break;
-        case SOUTH:
-          deg = 270;
-          break;
-        case WEST:
-          deg = 0;
-          break;
-        default:
-          console.error("couldn't convert " + direction + " to degrees");
-      }
-      console.log(deg + " degrees");
-      return deg;
-    },
-    getObjectOnSeaboard: function (object_type, arg) {
-      for (const entry of this.seaboard) {
-        if (entry.type == object_type && entry.arg == arg) {
-          return entry;
-        }
-      }
-    },
-    updateUniqueTokens: function (unique_tokens) {
-      console.log("updating unique tokens");
-      console.log(unique_tokens);
-      for (const [token_key, player_id] of Object.entries(unique_tokens)) {
-        console.log("token id: " + token_key + " player id: " + player_id);
-        if (player_id === null) {
-          continue;
-        }
-        var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
-        var token_element = domConstruct.place(token_html, `player_token_board_p${player_id}`);
-        this.placeOnObject(token_element, `${token_key}_p${player_id}`);
-        domStyle.set(token_element, "zIndex", 1);
-      }
-    },
-    updateResources: function (resources) {
-      console.log("updating resources");
-      console.log(resources);
-      for (const resource of resources) {
-        console.log(resource);
-        console.log(`${resource.resource_key}count_p${resource.player_id}`);
-        document.getElementById(`${resource["resource_key"]}count_p${resource["player_id"]}`).innerText =
-          resource.resource_count;
-      }
-    },
-
-    updateIslandSlots: function (islandslots, players) {
-      console.log("updating island slots");
-      console.log(islandslots);
-      console.log(players);
-      
-      // First, clear all existing skiffs from island slots
-      query(".skiff_placed").forEach(domConstruct.destroy);
-      
-      // With SlotStock, cards are already in fixed positions matching the skiff slot IDs
-      // No need to re-place skiff slots - they're already in the template as part of the market div
-      
-      for (const [slot, numbers] of Object.entries(islandslots)) {
-        for (const [number, slotData] of Object.entries(numbers)) {
-          console.log("slot: " + slot + " number: " + number + " slot data: ", slotData);
-          const skiff_slot_id = `skiff_slot_${slot}_${number}`;
-          const skiff_slot = $(skiff_slot_id);
-          console.log("skiff slot: " + skiff_slot_id);
-          
-          if (!skiff_slot) {
-            console.warn("Skiff slot not found: " + skiff_slot_id);
-            continue;
-          }
-          
-          // Clear any existing skiffs from this slot
-          query(".skiff", skiff_slot).forEach(domConstruct.destroy);
-          
-          // Handle disabled slots
-          if (slotData.disabled) {
-            domClass.add(skiff_slot_id, "disabled");
-            console.log("Disabled slot: " + skiff_slot_id);
-          } else {
-            domClass.remove(skiff_slot_id, "disabled");
-          }
-          
-          // Handle occupied slots
-          if (slotData.occupying_player_id != null) {
-            // For market slots, check if the card in this slot is in pending purchases
-            // If so, and this is the current player's skiff, don't show it (card is already purchased)
-            if (slot == "market") {
-              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
-              
-              // Get the card ID at this slot position from the market array
-              // Market array is in consistent order, so position = slot number
-              var card_id_for_slot = null;
-              if (this.gamedatas && this.gamedatas.market) {
-                var market_array = Array.isArray(this.gamedatas.market) ? 
-                                   this.gamedatas.market : 
-                                   Object.values(this.gamedatas.market);
-                if (market_array.length > slot_index && market_array[slot_index]) {
-                  card_id_for_slot = market_array[slot_index].id;
-                }
-              }
-              
-              // Check if this card is in pending purchases for the current player
-              if (card_id_for_slot && this.gamedatas && this.gamedatas.pending_purchases) {
-                var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
-                                   this.gamedatas.pending_purchases : 
-                                   Object.values(this.gamedatas.pending_purchases);
-                var is_pending = pending_array.indexOf(card_id_for_slot) !== -1;
-                
-                // If this is the current player's skiff on a pending purchase, skip it
-                if (is_pending && slotData.occupying_player_id == this.player_id) {
-                  console.log("Skipping skiff for slot " + number + " - card " + card_id_for_slot + " is pending purchase");
-                  domClass.add(skiff_slot_id, "unoccupied");
-                  continue;
-                }
-              }
-            }
-            
-            var skiff_id = "skiff_p" + slotData.occupying_player_id + "_" + slot + "_" + number;
-            console.log("skiff_id: " + skiff_id);
-
-            var skiff = this.format_block("jstpl_skiff", {
-              player_color: players[slotData.occupying_player_id].color,
-              id: skiff_id,
-            });
-            
-            domConstruct.place(skiff, skiff_slot);
-            domClass.remove(skiff_slot_id, "unoccupied");
-            domClass.add(skiff_id, "skiff_placed");
-          } else {
-            // Slot is unoccupied - ensure it's marked as such
-            domClass.add(skiff_slot_id, "unoccupied");
-            
-            // For market slots, position and show/hide the skiff slot based on whether there's a card
-            if (slot == "market") {
-              var market_slot_id = "market_slot_n" + number.substring(1);
-              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
-              
-              // Check if there's a card at this slot position in the market
-              var has_card = false;
-              if (this.gamedatas && this.gamedatas.market) {
-                var market_array = Array.isArray(this.gamedatas.market) ? 
-                                   this.gamedatas.market : 
-                                   Object.values(this.gamedatas.market);
-                if (market_array.length > slot_index && market_array[slot_index]) {
-                  var card_id = market_array[slot_index].id;
-                  // Check if this card is in pending purchases (shouldn't show skiff slot)
-                  if (this.gamedatas.pending_purchases) {
-                    var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
-                                       this.gamedatas.pending_purchases : 
-                                       Object.values(this.gamedatas.pending_purchases);
-                    if (pending_array.indexOf(card_id) === -1) {
-                      has_card = true;
-                    }
-                  } else {
-                    has_card = true;
-                  }
-                }
-              }
-              
-              if (!has_card) {
-                domStyle.set(skiff_slot_id, "display", "none");
-              } else {
-                // Position and show the skiff slot
-                var market_slot = $(market_slot_id);
-                if (market_slot) {
-                  this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
-                  domStyle.set(skiff_slot_id, "display", "block");
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    positionMarketSkiffSlot: function (skiff_slot_id, market_slot_id) {
-      // Position a single skiff slot absolutely over its corresponding market slot
-      var market_container = $("market");
-      if (!market_container) {
-        return;
-      }
-      
-      var skiff_slot = $(skiff_slot_id);
-      if (!skiff_slot) {
-        return;
-      }
-      
-      // Get the SlotStock slot container - this is where cards are actually placed
-      var slot_container = null;
-      if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
-        slot_container = this.market.slots[market_slot_id];
-      } else {
-        // Fallback to the original market slot element
-        slot_container = $(market_slot_id);
-      }
-      
-      if (!slot_container) {
-        return;
-      }
-      
-      // Ensure market container is position: relative for absolute positioning
-      domStyle.set(market_container, "position", "relative");
-      
-      // Ensure skiff slot is a child of market container (not slot container)
-      if (skiff_slot.parentNode !== market_container) {
-        market_container.appendChild(skiff_slot);
-      }
-      
-      // Calculate position relative to market container
-      var market_rect = market_container.getBoundingClientRect();
-      var slot_rect = slot_container.getBoundingClientRect();
-      
-      // Calculate offset from market container
-      var left = slot_rect.left - market_rect.left;
-      var top = slot_rect.top - market_rect.top;
-      
-      // Position skiff slot at bottom-right of market slot
-      domStyle.set(skiff_slot, "position", "absolute");
-      domStyle.set(skiff_slot, "left", (left + slot_rect.width - 28) + "px"); // 26px width + 2px margin
-      domStyle.set(skiff_slot, "top", (top + slot_rect.height - 28) + "px"); // 26px height + 2px margin
-      domStyle.set(skiff_slot, "visibility", "visible");
-      domStyle.set(skiff_slot, "z-index", "1");
-    },
-    positionMarketSkiffSlots: function () {
-      // Position all market skiff slots
-      for (var i = 1; i <= 5; i++) {
-        var market_slot_id = "market_slot_n" + i;
-        var skiff_slot_id = "skiff_slot_market_n" + i;
-        var skiff_slot = $(skiff_slot_id);
-        
-        if (!skiff_slot) {
-          continue;
-        }
-        
-        // Check if there's a card in the slot
-        var slot_container = null;
-        if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
-          slot_container = this.market.slots[market_slot_id];
-        } else {
-          slot_container = $(market_slot_id);
-        }
-        
-        if (slot_container) {
-          // Check if there's a card at this slot position in the market data
-          var slot_index = i - 1; // i is 1-based, slot_index is 0-based
-          var has_card = false;
-          if (this.gamedatas && this.gamedatas.market) {
-            var market_array = Array.isArray(this.gamedatas.market) ? 
-                               this.gamedatas.market : 
-                               Object.values(this.gamedatas.market);
-            if (market_array.length > slot_index && market_array[slot_index]) {
-              var card_id = market_array[slot_index].id;
-              // Check if this card is in pending purchases (shouldn't show skiff slot)
-              if (this.gamedatas.pending_purchases) {
-                var pending_array = Array.isArray(this.gamedatas.pending_purchases) ? 
-                                   this.gamedatas.pending_purchases : 
-                                   Object.values(this.gamedatas.pending_purchases);
-                if (pending_array.indexOf(card_id) === -1) {
-                  has_card = true;
-                }
-              } else {
-                has_card = true;
-              }
-            }
-          }
-          
-          if (has_card) {
-            this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
-            domStyle.set(skiff_slot, "display", "block");
-          } else {
-            domStyle.set(skiff_slot, "display", "none");
-          }
-        }
-      }
-    },
-    updateDeckCount: function (deckSize) {
-      console.log("updating deck count");
-      console.log("deck size: " + deckSize);
-      // Convert to number in case it's a string
-      const deckSizeNum = parseInt(deckSize, 10);
-      this.playerDeck.setCardNumber(deckSizeNum);
-    },
-    getPlayerResources: function () {
-      var playerResources = {};
-      console.log("adtive player id: " + this.getActivePlayerId());
-      console.log("this.player_id: " + this.player_id);
-      for (const resource of this.resources) {
-        if (resource.player_id == this.player_id) {
-          playerResources[resource.resource_key] = resource.resource_count;
-        }
-      }
-      return playerResources;
-    },
-    addResources: function (r1, r2) {
-      var sum = {};
-      for (const [resource_key, num] of Object.entries(r1)) {
-        sum[resource_key] = num;
-      }
-      for (const [resource_key, num] of Object.entries(r2)) {
-        if (Object.hasOwn(resource_key)) sum[resource_key] += num;
-        else sum[resource_key] = num;
-      }
-      return sum;
-    },
-    playerSpendResources: function (resource_cost) {
-      console.log("player " + this.player_id + " spending resources:");
-      console.log(resource_cost);
-      for (var resource of this.resources) {
-        if (resource.player_id == this.player_id) {
-          if (!Object.hasOwn(resource_cost, resource.resource_key)) {
-            continue;
-          }
-          var diff = resource.resource_count - resource_cost[resource.resource_key];
-          console.log("diff for " + resource.resource_key + ": " + diff);
-          if (diff < 0) {
-            this.showMessage(_("Player tried to spend more than they have"), "error");
-          }
-          resource.resource_count = diff;
-        }
-      }
-      this.updateResources(this.resources);
-    },
-    canPlayerAfford: function (resource_cost) {
-      var playerResources = this.getPlayerResources();
-      console.log("checking cost, player resources are");
-      console.log(playerResources);
-      console.log("cost is");
-      console.log(resource_cost);
-      if (typeof resource_cost === "undefined") {
-        //can always afford something without cost
-        return true;
-      }
-      for (const [resource_key, num] of Object.entries(resource_cost)) {
-        var player_has = playerResources[resource_key] || 0;
-        if (player_has - num < 0) {
-          console.log("not enough " + resource_key + " (" + player_has + " vs " + num + ")");
-          return false;
-        }
-      }
-      return true;
-    },
-    setupNonPlayableCardHelper: function(card, div) {
-      let image_id = null;
-      if (card.cardKey && this.non_playable_cards && this.non_playable_cards[card.cardKey]) {
-        const cardData = this.non_playable_cards[card.cardKey];
-        image_id = cardData.image_id;
-        div.classList.add("non-playable-card-front");
-      } else if (this.non_playable_cards && this.non_playable_cards.card_back) {
-        image_id = this.non_playable_cards.card_back.image_id;
-        div.classList.add("non-playable-card-back");
-      } else {
-        image_id = 0; // fallback
-        div.classList.add("non-playable-card-back");
-      }
-      
-      console.log("setup non-playable card helper for card: " + card.id + " with cardKey " + card.cardKey + " and image id " + image_id);
-      
-      const spriteX = (image_id % 6) * 144;
-      const spriteY = Math.floor(image_id / 6) * 198;
-      domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
-      console.log("background-position for " + card.id + " set to: " + `-${spriteX}px -${spriteY}px`);
-    },
-
-    addPlayerCardsToBoard: function(gamedatas) {
-      console.log("Adding player's captain and ship upgrades to board...");
-      
-      // Add player's captain card
-      if (gamedatas.player_captain) {
-        const captainCard = {
-          id: `captain-${gamedatas.player_captain}`,
-          cardKey: gamedatas.player_captain,
-          category: 'captain'
-        };
-        
-        console.log("Adding captain card:", captainCard);
-        try {
-          this.captainStock.addCard(captainCard);
-          console.log("Captain card added successfully");
-        } catch (error) {
-          console.error("Error adding captain card:", error);
-        }
-      }
-      
-      // Add player's ship upgrade cards
-      if (gamedatas.player_ship_upgrades && gamedatas.player_ship_upgrades.length > 0) {
-        gamedatas.player_ship_upgrades.forEach((upgrade, index) => {
-          const upgradeCard = {
-            id: `upgrade-${upgrade.upgrade_key}`,
-            cardKey: upgrade.upgrade_key,
-            category: 'ship_upgrade',
-            isActivated: upgrade.is_activated == 1
-          };
-          
-          console.log(`Adding upgrade card ${index + 1}:`, upgradeCard);
-          try {
-            this.upgradesStock.addCard(upgradeCard);
-            console.log(`Upgrade card ${index + 1} added successfully`);
-            
-            // Apply visual styling based on activation status
-            this.updateUpgradeCardVisual(upgradeCard);
-          } catch (error) {
-            console.error(`Error adding upgrade card ${index + 1}:`, error);
-          }
-        });
-      }
-    },
-
-    updateUpgradeCardVisual: function(upgradeCard) {
-      if (upgradeCard.isActivated) {
-        // Flip card to back side using BGA Cards library
-        this.nonPlayableCardsManager.flipCard(upgradeCard);
-      }
+      return Constants.getHeadingDegrees(direction);
     },
 
     /*
@@ -508,7 +112,8 @@ define([
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;
 
-      (this.setupHelper = (card, div) => {
+      // Card setup helper for playable cards
+      this.setupHelper = (card, div) => {
         let image_id = null;
         if (typeof card.type !== "undefined") {
           div.classList.add("playable-card-front");
@@ -532,11 +137,13 @@ define([
         const spriteX = (image_id % 6) * 144;
         const spriteY = Math.floor(image_id / 6) * 198;
         domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
-      }),
+      };
+
         // Create the animation manager for BGA Cards
-        (this.animationManager = new BgaAnimations.Manager(this)),
+      this.animationManager = new BgaAnimations.Manager(this);
+      
         // Create CardManager for BGA Cards library
-        (this.cardsManager = new BgaCards.Manager({
+      this.cardsManager = new BgaCards.Manager({
           animationManager: this.animationManager,
           getId: (card) => `card-${card.id}`,
           cardWidth: 144,
@@ -554,7 +161,7 @@ define([
           isCardVisible: (card) => {
             return typeof card.type !== "undefined";
           },
-        }));
+      });
 
       // Create CardManager for non-playable cards (captain and ship upgrades)
       this.nonPlayableCardsManager = new BgaCards.Manager({
@@ -572,7 +179,7 @@ define([
           this.setupNonPlayableCardHelper(card, div);
         },
         isCardVisible: (card) => {
-          return true; // Non-playable cards are always visible
+          return true;
         },
       });
 
@@ -585,6 +192,7 @@ define([
           div.classList.add('booty-token');
         },
       });
+      
       // Create HandStock for player hand
       this.playerHand = new BgaCards.HandStock(this.cardsManager, $("myhand"), {
         cardOverlap: "30px",
@@ -592,11 +200,10 @@ define([
         inclination: 8,
       });
 
-      // Convert deck_size to number (BGA returns it as a string)
+      // Convert deck_size to number
       const deckSize = parseInt(gamedatas.deck_size, 10);
       
-      // Create the deck without initial cardNumber, then set it explicitly
-      // (passing cardNumber in constructor options caused incorrect count)
+      // Create the deck
       this.playerDeck = new BgaCards.Deck(this.cardsManager, $("mydeck"), {
         counter: {
           position: "center",
@@ -611,9 +218,6 @@ define([
 
       this.playerDiscard = new BgaCards.AllVisibleDeck(this.cardsManager, $('mydiscard'), {
         shift: '8px',
-        //verticalShift: '0px',
-        //horizontalShift: '10px',
-        //direction: 'horizontal',
         counter: {
             hideWhenEmpty: true,
         },
@@ -626,12 +230,10 @@ define([
         },
       });
 
-      // Create SlotStock for market with separate slot elements (not skiff slots)
+      // Create SlotStock for market
       this.market = new BgaCards.SlotStock(this.cardsManager, $("market"), {
         slotsIds: ['market_slot_n1', 'market_slot_n2', 'market_slot_n3', 'market_slot_n4', 'market_slot_n5'],
         mapCardToSlot: (card) => {
-          // Map card to slot based on market array order
-          // This will be set up in setup() after we have gamedatas
           if (this.marketSlotMap && card.id) {
             return this.marketSlotMap[card.id] || null;
           }
@@ -655,7 +257,6 @@ define([
         slotsIds: ['upgrade_1', 'upgrade_2'],
         mapCardToSlot: (card) => {
           if (card.category === 'ship_upgrade') {
-            // Find first empty upgrade slot
             const upgrade1Slot = this.upgradesStock.slots['upgrade_1'];
             const upgrade2Slot = this.upgradesStock.slots['upgrade_2'];
             
@@ -664,7 +265,7 @@ define([
             } else if (upgrade2Slot && upgrade2Slot.children.length === 0) {
               return 'upgrade_2';
             }
-            return 'upgrade_1'; // fallback to first slot
+            return 'upgrade_1';
           }
           return null;
         },
@@ -700,7 +301,7 @@ define([
         });
       }
       
-      // Also add cards from pending purchases to hand (they're still in market in DB but should appear in hand)
+      // Add cards from pending purchases to hand
       if (gamedatas.pending_purchases && gamedatas.market) {
         var market_array = Array.isArray(gamedatas.market) ? gamedatas.market : Object.values(gamedatas.market);
         for (var i = 0; i < market_array.length; i++) {
@@ -715,6 +316,7 @@ define([
           }
         }
       }
+      
       for (var i in gamedatas.discard) {
         var card = this.gamedatas.discard[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
@@ -730,14 +332,11 @@ define([
       // Store gamedatas for later use
       this.gamedatas = gamedatas;
       
-      // Build map from card ID to slot ID based on market array order
-      // Market array is in consistent order (by location_arg), so position = slot number
+      // Build map from card ID to slot ID
       this.marketSlotMap = {};
       
       var market_array = Array.isArray(gamedatas.market) ? gamedatas.market : Object.values(gamedatas.market);
       
-      // Iterate through market array and place cards in their fixed slots
-      // Skip cards that are in pending purchases (they're already in hand)
       for (var i = 0; i < market_array.length; i++) {
         var card = market_array[i];
         if (!card || !card.id) {
@@ -747,10 +346,8 @@ define([
         var slot_id = "market_slot_n" + (i + 1);
         var skiff_slot_id = "skiff_slot_market_n" + (i + 1);
         
-        // Build slot map for SlotStock (using market_slot_nX, not skiff_slot_market_nX)
         this.marketSlotMap[card.id] = slot_id;
         
-        // Skip if this card is in pending purchases (already in hand)
         if (pending_card_ids.has(card.id)) {
           console.log("Card " + card.id + " is pending purchase, leaving slot " + slot_id + " empty");
           continue;
@@ -764,10 +361,8 @@ define([
           location: "market"
         };
         
-        // SlotStock will automatically place the card in the correct slot based on mapCardToSlot
         this.market.addCard(cardObj);
         
-        // Set data attributes on the card div for reference
         var card_div = this.cardsManager.getCardElement(cardObj);
         if (card_div) {
           attr.set(card_div, "data-slotnumber", "n" + (i + 1));
@@ -776,10 +371,11 @@ define([
       }
       this.positionMarketSkiffSlots();
 
-      // Add player's actual captain and upgrade cards to player board
+      // Add player's captain and upgrade cards
       console.log("Adding player cards to board...");
       this.addPlayerCardsToBoard(gamedatas);
       console.log("Player board setup complete!");
+      
       // Setting up player boards
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];
@@ -808,6 +404,7 @@ define([
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
       this.updateUniqueTokens(gamedatas.unique_tokens);
 
+      // Set up seaboard grid
       for (var x = -1; x <= 6; x++) {
         for (var y = -1; y <= 6; y++) {
           var id = "seaboardlocation_" + x + "_" + y;
@@ -830,7 +427,6 @@ define([
             var shipid = "player_ship_" + entry.arg;
             var subs = {
               id: shipid,
-              //player id is in 'arg'
               shipname: gamedatas.playerinfo[entry.arg].player_ship,
             };
             var ship = this.format_block("jstpl_player_ship", subs);
@@ -838,7 +434,6 @@ define([
             console.log(target_id);
             this.placeOnObject(shipid, target_id);
             domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
-            //this.slideToObject(shipid, target_id, 10 ).play();
             break;
           case "rock":
           case "gust":
@@ -852,7 +447,6 @@ define([
             var seafeature = this.format_block("jstpl_seafeature", subs);
             domConstruct.place(seafeature, "seaboard");
             this.placeOnObject(seafeatureid, target_id);
-            // Apply rotation for gusts (they have a heading)
             if (entry.type === "gust") {
               domStyle.set(seafeatureid, "rotate", (this.getHeadingDegrees(entry.heading) - 90) + "deg");
             }
@@ -860,660 +454,19 @@ define([
         }
       }
       
-      // Setup game notifications to handle (see "setupNotifications" method below)
+      // Setup game notifications
       this.setupNotifications();
 
       var skiffslot_class = query(".skiff_slot");
       var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
 
-      //this.showDummyDialog();
       console.log("Ending game setup");
       console.groupEnd();
     },
-    showDummyDialog: function () {
-      this.myDlg = new ebg.popindialog();
-      this.myDlg.create("dummyDialog");
-      this.myDlg.setTitle(_("Yep, this is dumb"));
-      this.myDlg.setMaxWidth(500); // Optional
 
-      var html = this.format_block("jstpl_dummy_dialog");
-
-      this.myDlg.setContent(html);
-      this.myDlg.hideCloseIcon();
-      this.myDlg.show();
-
-      this.setClientState("client_dummyDialog", {
-        descriptionmyturn: _("${you} must abide by BGA's dumb logging"),
-      });
-
-      on(
-        query(".dummy_button"),
-        "click",
-        lang.hitch(this, (event) => {
-          console.log("dummy button clicked");
-
-          event.preventDefault();
-          this.bgaPerformAction("actExitDummyStart", {});
-          this.myDlg.destroy();
-        }),
-      );
-    },
-    cleanupCardPlayDialog: function () {
-      // Clean up the card display stock before destroying the dialog
-      if (this.cardDisplayStock) {
-        try {
-          this.cardDisplayStock.removeAll();
-        } catch (e) {
-          console.log("Error removing cards from cardDisplayStock:", e);
-        }
-        this.cardDisplayStock = null;
-      }
-      this.dep_tree = null;
-      domConstruct.destroy("card_display_dialog");
-    },
-    showCardPlayDialog: function (card, card_id) {
-      // Clean up previous dialog properly
-      this.cleanupCardPlayDialog();
-      
-      var dlg = this.format_block("jstpl_card_play_dialog");
-      domConstruct.place(dlg, "myhand_wrap", "first");
-      var bga = this;
-      var makeDecisionSummary = function (tree, decisionSummary) {
-        if (typeof decisionSummary === "undefined") {
-          decisionSummary = [];
-        }
-        console.log("making decision summary " + decisionSummary);
-        tree.forEach((options) => {
-          for (let i = 0; i < options.length; i++) {
-            let option = options[i];
-            console.log(option);
-            var checkbox = dom.byId(option.id);
-            console.log("checked: " + checkbox.checked);
-            if (checkbox.checked) {
-              decisionSummary.push(option.name);
-              makeDecisionSummary(option.children, decisionSummary);
-            }
-          }
-        });
-        return decisionSummary;
-      };
-
-      on(
-        query(".play_card_button"),
-        "click",
-        lang.hitch(this, (event) => {
-          console.groupCollapsed("card play button clicked");
-          console.log("play card button clicked");
-          event.preventDefault();
-          var decisionSummary = makeDecisionSummary(this.dep_tree);
-          console.log("decisions");
-          console.log(decisionSummary);
-          console.log("card ");
-          console.log(card);
-          this.bgaPerformAction("actPlayCard", {
-            card_type: card.card_type,
-            card_id: card_id,
-            decisions: JSON.stringify(decisionSummary),
-          });
-          this.cleanupCardPlayDialog();
-          console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
-          this.playerHand.removeCard({ id: card_id, type: card.card_type });
-          console.groupEnd();
-        }),
-      );
-      on(
-        query(".pass_card_button"),
-        "click",
-        lang.hitch(this, (event) => {
-          console.groupCollapsed("pass card button clicked");
-          console.log("pass card button clicked");
-          event.preventDefault();
-          console.log("card ");
-          console.log(card);
-          this.bgaPerformAction("actPlayCard", {
-            card_type: card.card_type,
-            card_id: card_id,
-            decisions: JSON.stringify(["pass"]),
-          });
-          this.cleanupCardPlayDialog();
-          console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
-          this.playerHand.removeCard({ id: card_id, type: card.card_type });
-          console.groupEnd();
-        }),
-      );
-      var display_dom = query("#card_display");
-      console.log("display dom:");
-      console.log(display_dom);
-      this.cardDisplayStock = new BgaCards.LineStock(this.cardsManager, display_dom[0], { center: false });
-      this.cardDisplayStock.addCard({ id: 10000, type: card.card_type });
-
-      console.log(card);
-      var bga = this;
-      var make_card_dependency_tree = function (actions, choice_count) {
-        var tree = new Map();
-        if (typeof choice_count === "undefined") {
-          choice_count = 0;
-        }
-        for (const action of actions) {
-          console.log("tree considering action:");
-          console.log(action);
-          var option_count = 0;
-          var num_descendant_choices = 0;
-          switch (action.action) {
-            case "choice":
-              var tree_choices = [];
-              for (const option of action.choices) {
-                var choice_name = option.name || option.action;
-                var id = "card_choice_" + choice_count + "_option_" + option_count;
-                children = make_card_dependency_tree([option], choice_count + num_descendant_choices + 1);
-                entry = {
-                  name: choice_name,
-                  id: id,
-                  children: children,
-                };
-                if (typeof option.cost !== "undefined") {
-                  entry.cost = option.cost;
-                }
-                if (typeof action.cost !== "undefined") {
-                  //propagate parent cost down
-                  if (typeof entry.cost !== "undefined") {
-                    console.warn("overwriting cost for " + choice_name);
-                  }
-                  entry.cost = action.cost;
-                }
-
-                tree_choices.push(entry);
-                console.log("choice added: " + choice_name + " " + id);
-                num_descendant_choices += children.size;
-                option_count++;
-              }
-              if (typeof action.cost !== "undefined") {
-                tree_choices.push({
-                  name: "skip",
-                  id: "card_choice_" + choice_count + "_option_" + option_count,
-                  children: new Map(),
-                });
-                option_count++;
-              }
-              tree.set("choice_" + choice_count, tree_choices);
-              choice_count++;
-              choice_count += num_descendant_choices;
-              break;
-            case "sequence":
-              children = make_card_dependency_tree(action.actions, choice_count);
-              children.forEach((value, key) => {
-                tree.set(key, value);
-              });
-              break;
-            default: {
-              let choice_names = [];
-              let choice_name = action.name || action.action;
-              if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
-                choice_names.push(choice_name + " left");
-                choice_names.push(choice_name + " right");
-              } else {
-                choice_names.push(choice_name);
-              }
-              if (typeof action.cost !== "undefined") {
-                choice_names.push("skip");
-              }
-              if (choice_names.length > 1) {
-                var tree_choices = [];
-                let parent_cost = action.cost;
-                delete action.cost;
-                for (let i = 0; i < choice_names.length; i++) {
-                  to_push = {
-                    name: choice_names[i],
-                    id: "card_choice_" + choice_count + "_option_" + i,
-                    children: new Map(),
-                  };
-                  if (choice_names[i] != "skip") {
-                    to_push["cost"] = parent_cost;
-                  }
-                  tree_choices.push(to_push);
-                }
-                tree.set("choice_" + choice_count, tree_choices);
-                choice_count++;
-                num_descendant_choices += 1;
-              }
-            }
-          }
-        }
-        console.log("returning tree");
-        console.log(tree);
-        return tree;
-      };
-      console.groupCollapsed("make dependency tree");
-      this.dep_tree = make_card_dependency_tree(card.actions);
-      console.log(this.dep_tree);
-      console.groupEnd();
-
-      var render_rows = function (tree, row_number) {
-        var rendered_choices = [];
-        var row_number = row_number || 1;
-        tree.forEach((options, choice_id) => {
-          var rendered_options = [];
-          console.log(options);
-          for (var option of options) {
-            console.log("rendering option " + option.name);
-            rendered_options.push(
-              bga.format_block("jstpl_card_choice_radio", {
-                id: option.id,
-                name: choice_id,
-                value: option.name,
-                label: option.name,
-              }),
-            );
-            rendered_choices = rendered_choices.concat(render_rows(option.children, row_number + 1));
-          }
-          var choice_html = bga.format_block("jstpl_card_choices_row", {
-            row_number: row_number + ".",
-            card_choices: rendered_options.join("\n"),
-          });
-          rendered_choices.unshift(choice_html);
-          row_number++;
-        });
-        return rendered_choices;
-      };
-      console.groupCollapsed("render play rows");
-      var result = render_rows(this.dep_tree);
-      console.log(result);
-      console.groupEnd();
-
-      var bga = this;
-      var computeTotalPlayCost = function (tree, costAcc) {
-        if (typeof costAcc === "undefined") {
-          costAcc = {};
-        }
-        console.log("computing total play cost " + costAcc);
-        tree.forEach((options) => {
-          for (var option of options) {
-            console.log(option);
-            var checkbox = dom.byId(option.id);
-            console.log("checked: " + checkbox.checked);
-            console.log(option.cost);
-            console.log(costAcc);
-            if (checkbox.checked && typeof option.cost !== "undefined") {
-              costAcc = bga.addResources(option.cost, costAcc);
-            }
-            costAcc = computeTotalPlayCost(option.children, costAcc);
-          }
-        });
-        return costAcc;
-      };
-
-      var showHideControls = function (tree, hide, totalCost) {
-        console.log("showing/hiding controls " + hide);
-        if (typeof totalCost === "undefined") {
-          console.groupCollapsed("compute total play cose");
-          totalCost = computeTotalPlayCost(tree);
-          console.groupEnd();
-          console.log("total play cost is:");
-          console.log(totalCost);
-        }
-        tree.forEach((options) => {
-          for (var option of options) {
-            var checkbox = dom.byId(option.id);
-            console.log(option);
-            console.log(checkbox);
-            console.log(checkbox.checked);
-            if (hide) {
-              checkbox.checked = false;
-              domStyle.set(checkbox.parentNode.parentNode, "display", "none");
-              showHideControls(option.children, true, totalCost);
-            } else {
-              domStyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
-              if (typeof option.cost !== "undefined" && option.cost) {
-                console.log("option cost:");
-                console.log(option.cost);
-                console.log("totalCost:");
-                console.log(totalCost);
-                var adjustedCost = bga.addResources(option.cost, totalCost);
-                console.log("adjusted cost:");
-                console.log(adjustedCost);
-                if (bga.canPlayerAfford(adjustedCost)) {
-                  attr.remove(checkbox, "disabled");
-                } else {
-                  attr.set(checkbox, "disabled", "true");
-                }
-              }
-              showHideControls(option.children, !checkbox.checked, totalCost);
-            }
-          }
-        });
-      };
-
-      var checkIsCardReadyToBePlayed = function (tree) {
-        var isReady = true;
-        if (tree.length == 0) {
-          return;
-        }
-        console.log("starting ready to play check");
-        tree.forEach((options) => {
-          if (!isReady) {
-            return;
-          }
-          var anythingChecked = false;
-          for (var option of options) {
-            var checkbox = dom.byId(option.id);
-            console.log("starting to check option:");
-            console.log(option);
-            console.log("parent display: " + domStyle.get(checkbox.parentNode.parentNode, "display"));
-            if (domStyle.get(checkbox.parentNode.parentNode, "display") != "none") {
-              console.log("checking children:");
-              console.log(option.children);
-              if (!checkIsCardReadyToBePlayed(option.children)) {
-                console.log("nothing checked in children");
-                isReady = false;
-                return;
-              }
-              anythingChecked |= checkbox.checked;
-              console.log("checkbox is checked: " + checkbox.checked);
-              console.log("anything checked now: " + anythingChecked);
-            } else {
-              console.log("skipping because option is hidden:");
-              console.log(option);
-              return;
-            }
-            console.log("anything checked at end of loop " + anythingChecked);
-          }
-          console.log("after options anything checked: " + anythingChecked);
-          isReady &= anythingChecked;
-          console.log("updated isReady to " + isReady);
-        });
-        console.log("final ready to play: " + isReady);
-        return isReady;
-      };
-
-      var updatePlayCardButton = function () {
-        const button_id = "play_card_button";
-        console.groupCollapsed("check whether card is ready to be played");
-        let ready = checkIsCardReadyToBePlayed(bga.dep_tree);
-        console.groupEnd();
-        if (ready) {
-          domClass.add(button_id, "bgabutton_green");
-          domClass.remove(button_id, "disabled");
-        } else {
-          domClass.remove(button_id, "bgabutton_green");
-          domClass.add(button_id, "disabled");
-        }
-      };
-      if (result.length > 0) {
-        var choices_html = result.join("\n");
-        domConstruct.place(choices_html, "card_choices");
-        query(".card_choice_radio").connect("onchange", this, (event) => {
-          console.groupCollapsed("show/hide play controls");
-          showHideControls(this.dep_tree);
-          console.groupEnd();
-          updatePlayCardButton();
-        });
-      }
-      console.groupCollapsed("show/hide play controls");
-      showHideControls(this.dep_tree);
-      console.groupEnd();
-      updatePlayCardButton();
-      this.cardPlayDialogShown = true;
-    },
-    updateCardPurchaseButtons: function (create) {
-      console.groupCollapsed("update card purchase buttons");
-      console.log(this.islandSlots);
-      
-      // Check if player has completed purchases - if so, don't show any purchase buttons
-      if (this.gamedatas && this.gamedatas.player_has_completed_purchases) {
-        console.log("Player has completed purchases, skipping purchase button creation");
-        return;
-      }
-      
-      // Get list of cards that are in pending purchases (shouldn't show purchase buttons)
-      var pending_card_ids = this.cards_purchased || [];
-      
-      for (const [slot, numbers] of Object.entries(this.islandSlots)) {
-        if (slot == "market") {
-          for (const [number, info] of Object.entries(numbers)) {
-            const occupant = info.occupying_player_id;
-            console.log("market occupant: " + occupant);
-            if (occupant == this.player_id) {
-              var button_id = "purchase_button_" + number;
-              console.log("number " + number + " is ours");
-              var slot_card = null;
-              var slotnum = number;
-              
-              // With SlotStock, find the card in the slot by checking which card is in the slot container
-              var slot_id = "market_slot_n" + number.substring(1); // n1 -> market_slot_n1
-              var skiff_slot_id = "skiff_slot_market_" + number;
-              var slot_element = $(slot_id);
-              if (!slot_element) {
-                throw new Error("Market slot element not found: " + slot_id);
-              }
-              
-              if (!this.market.slots || !this.market.slots[slot_id]) {
-                throw new Error("SlotStock slot not found: " + slot_id);
-              }
-              
-              // Get the card spec for this slot position
-              // Market array is in consistent order, so position = slot number
-              var slot_index = parseInt(number.substring(1)) - 1; // n1 -> 0, n2 -> 1, etc.
-              var market_array = Array.isArray(this.gamedatas.market) ? 
-                                 this.gamedatas.market : 
-                                 Object.values(this.gamedatas.market);
-              
-              if (market_array.length <= slot_index || !market_array[slot_index]) {
-                console.log("No card at slot position " + number + " (index " + slot_index + "), skipping purchase button");
-                continue;
-              }
-              
-              var card_data = market_array[slot_index];
-              
-              // Find the card spec in market.getCards()
-              for (const cardspec of this.market.getCards()) {
-                if (String(cardspec.id) == String(card_data.id)) {
-                  slot_card = cardspec;
-                  console.log("Found card " + slot_card.id + " in slot " + number);
-                  break;
-                }
-              }
-              
-              if (!slot_card) {
-                console.log("Card spec not found for card ID " + card_data.id + " in slot " + number + ", skipping purchase button");
-                continue;
-              }
-              
-              // Get the card element using getCardElement
-              var card_element = this.cardsManager.getCardElement(slot_card);
-              if (!card_element) {
-                console.log("Card element not found for card " + slot_card.id + " in slot " + number + ", skipping purchase button");
-                continue;
-              }
-              
-              // Skip if this card is already purchased (in pending purchases)
-              if (pending_card_ids.indexOf(slot_card.id) !== -1) {
-                console.log("Card " + slot_card.id + " is already purchased, skipping purchase button");
-                continue;
-              }
-              
-              console.log(slot_card);
-              var card = this.playable_cards[slot_card.type];
-              console.log(card);
-              if (create) {
-                var purchase_button = this.format_block("jstpl_card_purchase_button", {
-                  id: button_id,
-                  slotnumber: slotnum,
-                });
-                
-                // Use the card_element we found from the DOM query, not getCardElement
-                // With SlotStock, the card element structure might be different
-                var card_div = card_element;
-                
-                // Try getCardElement as fallback, but prefer the DOM element we found
-                if (!card_div) {
-                  card_div = this.cardsManager.getCardElement(slot_card);
-                }
-                
-                console.log("Card element:", card_div);
-                console.log("Placing purchase button:", purchase_button);
-                
-                if (!card_div) {
-                  console.error("Card element not found for card " + slot_card.id);
-                  continue;
-                }
-                
-                // Ensure card element has position: relative for absolute positioning of button
-                domStyle.set(card_div, "position", "relative");
-                
-                console.log("Placing button on card element:", card_div);
-                domConstruct.place(purchase_button, card_div);
-                
-                // Verify button was placed
-                var placed_button = query("#" + button_id);
-                console.log("Button placed? Found in DOM:", placed_button.length > 0);
-                if (placed_button.length === 0) {
-                  console.error("Button was not placed in DOM! Button HTML:", purchase_button);
-                }
-              }
-              // Always ensure event handler is connected
-              console.log("=== PURCHASE BUTTON EVENT HANDLER DEBUG ===");
-              console.log("Looking for button with ID: " + button_id);
-              var buttonNodes = query("#" + button_id);
-              console.log("Found button nodes:", buttonNodes);
-              console.log("Number of nodes found:", buttonNodes.length);
-
-              // Remove any existing handler first to avoid duplicates
-              buttonNodes.forEach(function (node, index) {
-                console.log("Processing node " + index + ":", node);
-                if (node._purchaseHandler) {
-                  console.log("Removing existing handler from node " + index);
-                  node._purchaseHandler.remove();
-                } else {
-                  console.log("No existing handler found on node " + index);
-                }
-              });
-
-              // Connect the event handler and store reference on the DOM node
-              console.log("Attempting to connect click handler...");
-              var handler = buttonNodes.on("click", lang.hitch(this, "onClickPurchaseButton"));
-              console.log("Handler created:", handler);
-
-              buttonNodes.forEach(function (node, index) {
-                console.log("Storing handler reference on node " + index);
-                node._purchaseHandler = handler;
-              });
-              console.log("=== END PURCHASE BUTTON EVENT HANDLER DEBUG ===");
-
-              if (!this.canPlayerAfford(card.cost)) {
-                console.log("disabling");
-                buttonNodes.forEach(function (node) {
-                  domClass.remove(node, "bgabutton_green");
-                  domClass.add(node, "disabled");
-                  html.set(node, "Cannot Afford");
-                });
-              } else {
-                console.log("enabling purchase button");
-                buttonNodes.forEach(function (node) {
-                  domClass.add(node, "bgabutton_green");
-                  domClass.remove(node, "disabled");
-                  html.set(node, "Purchase");
-                });
-              }
-            }
-          }
-        }
-      }
-      console.groupEnd();
-    },
-    onClickPurchaseButton: function (event) {
-      console.groupCollapsed("card purchase button clicked");
-      console.log("=== PURCHASE BUTTON CLICKED ===");
-      console.log("onClickPurchaseButton function called!");
-      console.log("Event object:", event);
-      console.log("Event type:", event.type);
-      console.log("Event target:", event.target);
-      console.log("Event currentTarget:", event.currentTarget);
-      event.preventDefault();
-      const source = event.target || event.srcElement;
-      const slotnumber = source.dataset.slotnumber;
-      console.log("slotnumber: " + slotnumber);
-
-      var card_dom = query(`[data-slotnumber="${slotnumber}"]`)[0];
-      console.log(card_dom);
-      if (!card_dom) {
-        console.error("Card DOM element not found for slotnumber: " + slotnumber);
-        console.groupEnd();
-        return;
-      }
-      var card_id = attr.get(card_dom, "data-cardid");
-      console.log("card id " + card_id);
-      if (!card_id) {
-        console.error("Card ID not found in card_dom for slotnumber: " + slotnumber);
-        console.groupEnd();
-        return;
-      }
-      var slot_card = this.market.getCards().find(card => card.id == card_id);
-      console.log(slot_card);
-      if (!slot_card) {
-        console.error("Card not found in market for card_id: " + card_id);
-        console.groupEnd();
-        return;
-      }
-      var card = this.playable_cards[slot_card.type];
-      if (!card) {
-        console.error("Playable card not found for type: " + slot_card.type);
-        console.groupEnd();
-        return;
-      }
-      this.playerSpendResources(card.cost);
-      console.log(card);
-      console.log(slot_card);
-      
-      // Remove purchase button before moving card to hand
-      var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`)[0];
-      if (purchase_button) {
-        domConstruct.destroy(purchase_button);
-      }
-      
-      // Clean up skiff slot and skiff for this market slot
-      var skiff_slot_id = "skiff_slot_market_" + slotnumber;
-      var skiff_slot = $(skiff_slot_id);
-      if (skiff_slot) {
-        // Remove any skiff from the slot
-        query(".skiff", skiff_slot).forEach(domConstruct.destroy);
-        // Mark slot as unoccupied
-        domClass.add(skiff_slot, "unoccupied");
-        // Hide the skiff slot since there's no card in this slot anymore
-        domStyle.set(skiff_slot, "display", "none");
-        // Clear the occupying player from islandSlots
-        if (this.islandSlots && this.islandSlots.market && this.islandSlots.market[slotnumber]) {
-          this.islandSlots.market[slotnumber].occupying_player_id = null;
-        }
-      }
-      
-      // Add card to hand first (local preview - backend will confirm)
-      this.playerHand.addCard({
-        id: slot_card.id,
-        type: slot_card.type,
-        location: "hand",
-      });
-      
-      // Remove card from market SlotStock for this player's view
-      // This is a local preview - backend will handle the actual move when purchases are committed
-      this.market.removeCard(slot_card);
-      
-      this.updateCardPurchaseButtons(false);
-      this.cards_purchased.push(slot_card.id);
-      console.groupEnd();
-    },
-    onCompletePurchasesClicked: function (event) {
-      console.log("onCompletePurchasesClicked");
-      console.log(this.cards_purchased);
-      
-      // Remove all purchase buttons since player has completed purchases
-      query(".purchase_card_button").forEach(domConstruct.destroy);
-      
-      this.bgaPerformAction("actCompletePurchases", {
-        cards_purchased: JSON.stringify(this.cards_purchased),
-      });
-    },
+    ///////////////////////////////////////////////////
+    //// Event Handlers
+    
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");
       console.log(event);
@@ -1529,7 +482,6 @@ define([
         return;
       }
       
-      // Check if the slot is disabled (not available for current player count)
       if (source.classList.contains("disabled")) {
         console.log("skiff slot is disabled for this player count");
         return;
@@ -1545,6 +497,7 @@ define([
         });
       }
     },
+
     onCardSelectedPlayerHand: function () {
       console.groupCollapsed("player card selected");
       var selection = this.playerHand.getSelection();
@@ -1557,841 +510,24 @@ define([
         console.log(card);
         this.showCardPlayDialog(card, selectedCard.id);
       } else {
-        // No card selected - clean up dialog
         this.cleanupCardPlayDialog();
       }
       console.log(selection);
       console.groupEnd();
     },
-    ///////////////////////////////////////////////////
-    //// Game & client states
-
-    // onEnteringState: this method is called each time we are entering into a new game state.
-    //                  You can use this method to perform some user interface changes at this moment.
-    //
-    onEnteringState: function (stateName, args) {
-      console.log("Entering state: " + stateName);
-
-      switch (stateName) {
-        case "dummyStart":
-        //this.bgaPerformAction("actExitDummyStart", {});
-        case "cardPurchases": {
-          this.cards_purchased = [];
-          // Set up purchase buttons directly - no need to wait
-          this.updateCardPurchaseButtons(true);
-          break;
-        }
-        case "cardPurchasesPrivate": {
-          this.cards_purchased = [];
-          // Set up purchase buttons directly - no need to wait
-          this.updateCardPurchaseButtons(true);
-          break;
-        }
-        case "cardPurchasesCompleted": {
-          // Player has completed purchases, hide purchase buttons
-          this.updateCardPurchaseButtons(false);
-          break;
-        }
-        case "seaPhaseSetup": {
-          // Clear all skiffs when entering sea phase
-          query(".skiff_placed").forEach(domConstruct.destroy);
-          query(".purchase_card_button").forEach(domConstruct.destroy);
-          // Also clear skiff slots on market cards and restore them to unoccupied state
-          query(".skiff_slot").forEach(function(slot) {
-            domClass.add(slot, "unoccupied");
-            // Clear any skiffs that might be in the slot
-            query(".skiff", slot).forEach(domConstruct.destroy);
-          });
-          break;
-        }
-        case "seaTurn": {
-          query(".skiff_placed").forEach(domConstruct.destroy);
-          query(".purchase_card_button").forEach(domConstruct.destroy);
-          break;
-        }
-        case "scrapCard": {
-          this.setupScrapCardSelection(args.args);
-          break;
-        }
-        case "dummmy":
-          break;
-      }
-    },
-
-    // onLeavingState: this method is called each time we are leaving a game state.
-    //                 You can use this method to perform some user interface changes at this moment.
-    //
-    onLeavingState: function (stateName) {
-      console.log("Leaving state: " + stateName);
-
-      switch (stateName) {
-        /* Example:
-            
-            case 'myGameState':
-            
-                // Hide the HTML block we are displaying only during this game state
-                dojo.style( 'my_html_block_id', 'display', 'none' );
-                
-                break;
-           */
-        case "scrapCard":
-          this.cleanupScrapCardSelection();
-          break;
-
-        case "dummmy":
-          break;
-      }
-    },
-
-    // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
-    //                        action status bar (ie: the HTML links in the status bar).
-    //
-    onUpdateActionButtons: function (stateName, args) {
-      console.log("onUpdateActionButtons: " + stateName);
-      console.log("isCurrentPlayerActive(): " + this.isCurrentPlayerActive());
-      console.log("args:", args);
-
-      if (this.isCurrentPlayerActive()) {
-        switch (stateName) {
-          case "cardPurchases":
-          case "cardPurchasesPrivate":
-          case "cardPurchasesMaking":
-            console.log("Adding Complete Purchases button for state: " + stateName);
-            this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
-            break;
-          case "client_resourceDialog":
-            this.statusBar.addActionButton(
-              _("<div class='resource sail' data-resource='sail'></div>"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              _("<div class='resource cannonball' data-resource='cannonball'></div>"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              _("<div class='resource doubloon' data-resource='doubloon'></div>"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            break;
-          case "resolveCollision":
-            this.statusBar.addActionButton(
-              "<div class='resource pivot_left' data-pivot='pivot left'></div>",
-              this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              "<div class='resource nope' data-pivot='no pivot'></div>",
-              this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              "<div class='resource pivot_right' data-pivot='pivot right'></div>",
-              this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-
-            break;
-        }
-      }
-    },
-    onResourceButtonClicked: function (event) {
-      console.log("resource button clicked");
-      const source = event.target || event.srcElement;
-      console.log(
-        "resource picked " +
-          source.dataset.resource +
-          " context: " +
-          this.clientStateVars.slot_context +
-          " number: " +
-          this.clientStateVars.slot_number,
-      );
-
-      event.preventDefault();
-      if (source.dataset.resource != null) {
-        this.bgaPerformAction("actResourcePickedInDialog", {
-          resource: source.dataset.resource,
-          context: this.clientStateVars.slot_context,
-          number: this.clientStateVars.slot_number,
-        });
-        this.statusBar.removeActionButtons();
-      }
-    },
-    onPivotButtonClicked: function (event) {
-      const source = event.target || event.srcElement;
-      console.log("pivot button clicked");
-      console.log(source);
-      console.log("pivot picked " + source.dataset.pivot);
-      this.bgaPerformAction("actPivotPickedInDialog", {
-        direction: source.dataset.pivot,
-      });
-      this.statusBar.removeActionButtons();
-      event.preventDefault();
-    },
-    ///////////////////////////////////////////////////
-    //// Utility methods
-
-    /*
-        
-            Here, you can defines some utility methods that you can use everywhere in your javascript
-            script.
-        
-        */
-
-    setupScrapCardSelection: function(args) {
-      console.log("Setting up scrap card selection");
-      console.log(args);
-      
-      // Create a dialog using the template
-      var scrapDialog = this.format_block('jstpl_scrap_card_dialog', {});
-      document.body.insertAdjacentHTML('beforeend', scrapDialog);
-      
-      // Create scrollable stock for card selection
-      this.scrapCardSelection = new BgaCards.ScrollableStock(
-        this.cardsManager, 
-        $("scrap_card_selection_wrapper"), 
-        {
-          gap: '8px',
-          center: true,
-          scrollStep: 150,
-          leftButton: { html: '◀' },
-          rightButton: { html: '▶' }
-        }
-      );
-      
-      // Set selection mode to single
-      this.scrapCardSelection.setSelectionMode("single");
-      
-      // Add available cards to the selection
-      if (args.available_cards) {
-        for (var i in args.available_cards) {
-          var card = args.available_cards[i];
-          this.scrapCardSelection.addCard({
-            id: card.id,
-            type: card.type,
-            location: card.location
-          });
-        }
-      }
-      
-      // Set up selection callback
-      this.scrapCardSelection.onSelectionChange = (selection, lastChange) => {
-        if (selection.length > 0) {
-          var selectedCard = selection[0];
-          console.log("Card selected for scrapping:", selectedCard);
-          
-          // Add confirm button when a card is selected
-          if (!$("confirm_scrap_button")) {
-            domConstruct.create("button", {
-              id: "confirm_scrap_button",
-              class: "bgabutton bgabutton_red",
-              innerHTML: "Scrap Card"
-            }, $("cancel_scrap_button"), "before");
-            
-            on($("confirm_scrap_button"), "click", () => {
-              this.confirmScrapCard(selectedCard.id);
-            });
-          }
-        } else {
-          // Remove confirm button if no card selected
-          if ($("confirm_scrap_button")) {
-            domConstruct.destroy("confirm_scrap_button");
-          }
-        }
-      };
-      
-      // Set up cancel button
-      on($("cancel_scrap_button"), "click", () => {
-        this.cleanupScrapCardSelection();
-      });
-    },
-
-    cleanupScrapCardSelection: function() {
-      console.log("Cleaning up scrap card selection");
-      
-      if (this.scrapCardSelection) {
-        this.scrapCardSelection = null;
-      }
-      
-      if ($("scrap_card_dialog")) {
-        domConstruct.destroy("scrap_card_dialog");
-      }
-    },
-
-    confirmScrapCard: function(cardId) {
-      console.log("Confirming scrap of card:", cardId);
-      
-      if (this.checkAction("actScrapCard")) {
-        this.bgaPerformAction("actScrapCard", {
-          card_id: cardId
-        });
-      }
-    },
-
-    ///////////////////////////////////////////////////
-    //// Player's action
-
-    /*
-        
-            Here, you are defining methods to handle player's action (ex: results of mouse click on 
-            game objects).
-            
-            Most of the time, these methods:
-            _ check the action is possible at this game state.
-            _ make a call to the game server
-        
-        */
-
-    /* Example:
-        
-        onMyMethodToCall1: function( evt )
-        {
-            console.log( 'onMyMethodToCall1' );
-            
-            // Preventing default browser reaction
-            dojo.stopEvent( evt );
-
-            // Check that this action is possible (see "possibleactions" in states.inc.php)
-            if( ! this.checkAction( 'myAction' ) )
-            {   return; }
-
-            this.ajaxcall( "/seasofhavoc/seasofhavoc/myAction.html", { 
-                                                                    lock: true, 
-                                                                    myArgument1: arg1, 
-                                                                    myArgument2: arg2,
-                                                                    ...
-                                                                 }, 
-                         this, function( result ) {
-                            
-                            // What to do after the server call if it succeeded
-                            // (most of the time: nothing)
-                            
-                         }, function( is_error) {
-
-                            // What to do after the server call in anyway (success or failure)
-                            // (most of the time: nothing)
-
-                         } );        
-        },        
-        
-        */
-
-    ///////////////////////////////////////////////////
-    //// Reaction to cometD notifications
-
-    /*
-            setupNotifications:
-            
-            In this method, you associate each of your game notifications with your local method to handle it.
-            
-            Note: game notification names correspond to "notifyAllPlayers" and "notifyPlayer" calls in
-                  your seasofhavoc.game.php file.
-        
-        */
-    setupNotifications: function () {
-      console.log("notifications subscriptions setup");
-      this.bgaSetupPromiseNotifications();
-      
-      // Subscribe to card scrapped notification
-      dojo.subscribe('cardScrapped', this, 'notif_cardScrapped');
-      
-      // Subscribe to card discard notifications
-      dojo.subscribe('cardsDiscarded', this, 'notif_cardsDiscarded');
-      
-      // Subscribe to deck reshuffle notification
-      dojo.subscribe('deckReshuffled', this, 'notif_deckReshuffled');
-      
-      // Subscribe to cards purchased notification
-      dojo.subscribe('cardsPurchased', this, 'notif_cardsPurchased');
-      dojo.subscribe('marketUpdated', this, 'notif_marketUpdated');
-    },
-
-    // TODO: from this point and below, you can write your game notifications handling methods
-
-    // TODO: from this point and below, you can write your game notifications handling methods
-    notif_deckSizeChanged: function (args) {
-      console.log("notify: deck size changed");
-      console.log(args);
-      if (args.player_id == this.player_id) {
-        this.updateDeckCount(args.deck_size);
-      }
-    },
-    notif_showResourceChoiceDialog: function (args) {
-      console.groupCollapsed("show resource choice dialog");
-
-      this.clientStateVars.slot_context = args.context;
-      this.clientStateVars.slot_number = args.context_number;
-      console.log("context: " + this.clientStateVars.slot_context);
-      console.log("number: " + this.clientStateVars.slot_number);
-
-      this.setClientState("client_resourceDialog", {
-        descriptionmyturn: _("${you} must select a resource"),
-      });
-
-      console.groupEnd();
-    },
-    notif_dummyStart: function (args) {
-      console.log("dummystart");
-      this.bgaPerformAction("actExitDummyStart", {});
-    },
-    notif_resourcesChanged: function (args) {
-      console.groupCollapsed("notify: resources changed");
-      console.log("Notification: resourcesChanged");
-      console.log(args.resources);
-      console.log("current resources:");
-      console.log(this.resources);
-
-      this.resources = args.resources;
-      this.updateResources(args.resources);
-      console.groupEnd();
-    },
-    notif_skiffPlaced: function (args) {
-      console.groupCollapsed("notify: skiff placed");
-      console.log(args);
-
-      var slot_name = args.slot_name;
-      var slot_number = args.slot_number;
-      var postfix = "_" + slot_name + "_" + slot_number;
-      var skiff_id = "skiff_p" + args.player_id + postfix;
-
-      // Update islandSlots with the correct structure (object with occupying_player_id)
-      this.islandSlots[slot_name][slot_number] = {
-        occupying_player_id: args.player_id,
-        disabled: this.islandSlots[slot_name][slot_number]?.disabled || false
-      };
-
-      console.log("skiff_id: " + skiff_id);
-      var player_board_id = "overall_player_board_" + args.player_id;
-      console.log("player board id: " + player_board_id);
-
-      var skiff = this.format_block("jstpl_skiff", {
-        player_color: args.player_color,
-        id: skiff_id,
-      });
-      var skiff_slot = query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
-      console.log("skiff slot:");
-      console.log(skiff_slot);
-
-      domConstruct.place(
-        skiff,
-        //"skiff_slot" + postfix
-        skiff_slot,
-      );
-      this.placeOnObject(skiff_id, player_board_id);
-      domStyle.set(skiff_id, "zIndex", 1);
-      this.slideToObject(
-        skiff_id,
-        //"skiff_slot" + postfix,
-        skiff_slot,
-        1000,
-      ).play();
-      domClass.remove(skiff_slot, "unoccupied");
-      domClass.add(skiff_id, "skiff_placed");
-      console.groupEnd();
-    },
-    notif_cardsPurchased: function (args) {
-      console.groupCollapsed("notify: cards purchased");
-      console.log(args);
-      
-      // Remove purchased cards from market
-      // Cards were already added to player hands locally when they clicked purchase
-      var purchases = args.purchases || {};
-      
-      for (var player_id in purchases) {
-        var card_ids = purchases[player_id];
-        for (var i = 0; i < card_ids.length; i++) {
-          var card_id = card_ids[i];
-          
-          // Find the card in the market
-          var market_cards = this.market.getCards();
-          var purchased_card = market_cards.find(card => card.id == card_id);
-          
-          if (purchased_card) {
-            // Remove from market - after all players commit, all purchased cards should be removed
-            this.market.removeCard(purchased_card);
-            
-            // Remove the "purchased" class if present
-            var card_div = this.cardsManager.getCardElement(purchased_card);
-            if (card_div) {
-              domClass.remove(card_div, "purchased");
-              // Clear any skiffs from the card's skiff slot
-              var skiff_slot = query(`.skiff_slot`, card_div)[0];
-              if (skiff_slot) {
-                query(".skiff", skiff_slot).forEach(domConstruct.destroy);
-                query(".purchase_card_button", card_div).forEach(domConstruct.destroy);
-                domClass.add(skiff_slot, "unoccupied");
-                domStyle.set(skiff_slot, "display", "none");
-              }
-            }
-          }
-        }
-      }
-      
-      // Clear all skiffs from market slots (island slots should be cleared on backend)
-      // This ensures skiffs don't reappear if updateIslandSlots is called
-      query(".skiff_slot[data-slotname='market']").forEach(function(slot) {
-        query(".skiff", slot).forEach(domConstruct.destroy);
-        query(".purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
-        domClass.add(slot, "unoccupied");
-        // Hide skiff slots for empty market slots (no card in the slot)
-        // Check if there's a card in the corresponding market slot
-        var slot_number = attr.get(slot, "data-number");
-        var market_slot_id = "market_slot_n" + slot_number.substring(1);
-        var market_slot = $(market_slot_id);
-        if (market_slot) {
-          var has_card = query(".card", market_slot).length > 0;
-          if (!has_card) {
-            domStyle.set(slot, "display", "none");
-          }
-        }
-      });
-      
-      // Clear local purchases tracking
-      this.cards_purchased = [];
-      
-      // Market will be updated via marketUpdated notification
-      
-      console.groupEnd();
-    },
-    notif_marketUpdated: function (args) {
-      console.groupCollapsed("notify: market updated");
-      console.log(args);
-      
-      // Clear existing market cards
-      var existing_cards = this.market.getCards();
-      for (var i = 0; i < existing_cards.length; i++) {
-        this.market.removeCard(existing_cards[i]);
-      }
-      
-      // Clear market slot map
-      this.marketSlotMap = {};
-      
-      // Add new market cards
-      var market_array = Array.isArray(args.market) ? args.market : Object.values(args.market);
-      for (var i = 0; i < market_array.length; i++) {
-        var card = market_array[i];
-        if (!card || !card.id) {
-          continue;
-        }
-        
-        var slot_id = "market_slot_n" + (i + 1);
-        
-        // Build slot map for SlotStock
-        this.marketSlotMap[card.id] = slot_id;
-        
-        var cardObj = {
-          id: card.id,
-          type: card.type,
-          location: "market"
-        };
-        
-        // Add card to market SlotStock
-        this.market.addCard(cardObj);
-        
-        // Set data attributes on the card div for reference
-        var card_div = this.cardsManager.getCardElement(cardObj);
-        if (card_div) {
-          attr.set(card_div, "data-slotnumber", "n" + (i + 1));
-          attr.set(card_div, "data-cardid", card.id);
-        }
-      }
-      
-      // Update gamedatas with new market
-      if (this.gamedatas) {
-        this.gamedatas.market = args.market;
-      }
-      
-      // Position skiff slots for new market cards
-      this.positionMarketSkiffSlots();
-      
-      // Update island slots to show skiffs on new market cards
-      if (this.islandSlots && this.players) {
-        this.updateIslandSlots(this.islandSlots, this.players);
-      }
-      
-      console.groupEnd();
-    },
-    notif_tokenAcquired: function (args) {
-      console.groupCollapsed("notify: token acquired");
-      console.log(args);
-
-      var token_key = args.token_key;
-      var player_id = args.player_id;
-
-      var tokens = query("#" + token_key);
-      var token_element = null;
-      if (token_element != null) {
-        var token_element = tokens[0];
-      } else {
-        console.log("creating token");
-        var token_html = this.format_block("jstpl_unique_token", { token_key: args.token_key });
-        if (token_key == "first_player_token") {
-          var token_element = domConstruct.place(token_html, `skiff_slot_capitol_n1`);
-        } else {
-          var token_element = domConstruct.place(token_html, `skiff_slot_${token_key}_n1`);
-        }
-      }
-
-      this.unique_tokens[token_key] = args.player_id;
-
-      if (player_id != null) {
-        var target = `${token_key}_p${player_id}`;
-        domStyle.set(token_element, "zIndex", 1);
-        this.slideToObject(token_element, target, 1000).play();
-      }
-      console.groupEnd();
-    },
-    notif_cardPlayed: function (args) {
-      console.groupCollapsed("notify: card played");
-      console.log(args);
-      var shipid = "player_ship_" + args.player_id;
-
-      var anims = [];
-      for (var move of args.moveChain) {
-        console.log("processing move");
-        console.log(move);
-        switch (move.type) {
-          case "move": {
-            if (move.teleport_at != null) {
-              let target_id = "seaboardlocation_" + move.teleport_at.x + "_" + move.teleport_at.y;
-              let forward = this.slideToObject(shipid, target_id, 1000);
-              //let fadeout = baseFX.fadeOut({node: shipid});
-              //anims.push(fx.combine(forward, fadeout));
-              anims.push(forward);
-              target_id = "seaboardlocation_" + move.teleport_to.x + "_" + move.teleport_to.y;
-              anims.push(this.slideToObject(shipid, target_id, 0));
-              //anims.push(baseFX.fadeIn({node: shipid}));
-            }
-            var target_id = "seaboardlocation_" + move.new_x + "_" + move.new_y;
-            anims.push(this.slideToObject(shipid, target_id, 1000));
-            break;
-          }
-          case "turn": {
-            let player_ship = this.getObjectOnSeaboard("player_ship", args.player_id);
-            console.log(
-              args.player_id +
-                " my old heading " +
-                player_ship.heading +
-                " event old heading " +
-                move.old_heading +
-                " new heading " +
-                move.new_heading,
-            );
-            let current_deg = this.getHeadingDegrees(player_ship.heading);
-            let target_deg = this.getHeadingDegrees(move.new_heading);
-            let diff = Math.abs(target_deg - current_deg);
-            let curve = [current_deg, target_deg];
-            console.log("target: " + target_deg + " current: " + current_deg + " diff: " + diff);
-            if (diff > 180) {
-              if (target_deg > current_deg) {
-                curve = [current_deg, -(360 - target_deg)];
-                console.log("adjusted target to: " + -(360 - target_deg));
-              } else {
-                curve = [-(360 - current_deg), target_deg];
-                console.log("adjusted current to: " + -(360 - current_deg));
-              }
-            }
-            let anim = new baseFX.Animation({
-              curve: curve,
-              onAnimate: function (v) {
-                domStyle.set(shipid, "rotate", v + "deg");
-              },
-            });
-            console.log(anim);
-            anims.push(anim);
-            player_ship.heading = move.new_heading;
-            console.log(this.seaboard);
-            break;
-          }
-          case "fire_hit": {
-            let cannon_fire = this.format_block("jstpl_cannon_fire", {});
-            let rotation = this.getHeadingDegrees(move.fire_heading);
-            console.log("fire rotation " + rotation);
-            domConstruct.place(cannon_fire, shipid);
-            domStyle.set("cannonfire", "rotate", rotation + "deg");
-            let offset = null;
-            switch (move.fire_heading) {
-              case NORTH:
-                offset = ["top", "20px"];
-                break;
-              case SOUTH:
-                offset = ["top", "-20px"];
-                break;
-              case EAST:
-                offset = ["left", "20px"];
-                break;
-              case WEST:
-                offset = ["left", "-20px"];
-                break;
-            }
-            console.log(offset);
-            domStyle.set("cannonfire", "rotate", rotation + "deg");
-            domStyle.set("cannonfire", offset[0], offset[1], rotation + "deg");
-            let explosion = this.format_block("jstpl_explosion", {});
-            let target_id = "seaboardlocation_" + move.hit_x + "_" + move.hit_y;
-            domConstruct.place(explosion, target_id);
-            domStyle.set("explosion", "opacity", "0");
-            domStyle.set("cannonfire", "opacity", 0);
-            fx.chain([
-              baseFX.fadeIn({ node: "cannonfire", duration: 100 }),
-              baseFX.fadeOut({
-                node: "cannonfire",
-                duration: 100,
-                delay: 1000,
-                onEnd: function () {
-                  domConstruct.destroy("cannonfire");
-                },
-              }),
-            ]).play();
-            fx.chain([
-              baseFX.fadeIn({ node: "explosion", delay: 100 }),
-              baseFX.fadeOut({
-                node: "explosion",
-                delay: 1000,
-                onEnd: function () {
-                  domConstruct.destroy("explosion");
-                },
-              }),
-            ]).play();
-            break;
-          }
-        }
-      }
-      console.log(anims);
-      if (anims.length) {
-        fx.chain(anims).play();
-      }
-      console.groupEnd();
-    },
-    notif_score: function (args) {
-      console.log("score for " + args.player_id + " " + args.player_score);
-      this.scoreCtrl[args.player_id].setValue(args.player_score);
-    },
-    notif_damageReceived: function (args) {
-      console.log("notify damage received");
-      let damage_card = args.damage_card;
-      let player_id = args.player_id;
-      var shipid = "player_ship_" + args.player_id;
-      if (player_id == this.player_id) {
-        this.playerDiscard.addCard(damage_card.type, damage_card.id);
-      }
-    },
-    notif_cardDrawn: function (args) {
-      console.log("notify card drawn");
-      let cards = args.cards;
-      let player_id = args.player_id;
-      console.log("Cards drawn:", cards);
-      console.log("Player ID:", player_id);
-      if (player_id == this.player_id) {
-        this.updateDeckCount(args.deck_size);
-        let fromElement = dom.byId("mydeck");
-        console.log("fromElement: " + fromElement);
-        
-        // Add each card to the player's hand
-        cards.forEach(card => {
-          this.playerHand.addCard(
-            {
-              id: card.id,
-              type: card.type,
-              location: "hand",
-            },
-            {
-              fromElement: fromElement,
-              originalSide: "back",
-            },
-          );
-        });
-      }
-    },
-    notif_cardScrapped: function (args) {
-      console.log("notify card scrapped");
-      
-      let card = args.card;
-      let player_id = args.player_id;
-      let original_location = args.original_location;
-      
-      // Defensive check for card object
-      if (!card || !card.id) {
-        console.error("Invalid card data in cardScrapped notification:", card);
-        return;
-      }
-      
-      // Move the card to scrap pile visually
-      if (original_location === "hand" && player_id == this.player_id) {
-        // Remove from hand
-        this.playerHand.removeCard({id: card.id});
-      } else if (original_location === "player_discard" && player_id == this.player_id) {
-        // Remove from discard
-        this.playerDiscard.removeCard({id: card.id});
-      }
-      
-      // Add to scrap pile
-      this.scrapPile.addCard({
-        id: card.id,
-        type: card.type,
-        location: "scrap"
-      });
-      
-      // Close the scrap selection dialog
-      this.cleanupScrapCardSelection();
-    },
-    notif_cardsDiscarded: function (args) {
-      console.log("notify cards discarded");
-      let cards = args.cards;
-      let player_id = args.player_id;
-      console.log("Cards discarded:", cards);
-      console.log("Player ID:", player_id);
-      
-      if (player_id == this.player_id) {
-        // For the current player: remove from hand and add to discard
-        cards.forEach(card => {
-          this.playerHand.removeCard({id: card.id});
-          this.playerDiscard.addCard({
-            id: card.id,
-            type: card.type,
-            location: "discard"
-          });
-        });
-      } else {
-        // For other players: just add the cards to the discard pile (they're public)
-        cards.forEach(card => {
-          this.playerDiscard.addCard({
-            id: card.id,
-            type: card.type,
-            location: "discard"
-          });
-        });
-      }
-    },
-    notif_deckReshuffled: function (args) {
-      console.log("notify deck reshuffled");
-      let player_id = args.player_id;
-      let deck_size = args.deck_size;
-      console.log(`Player ${player_id} deck reshuffled, new deck size: ${deck_size}`);
-      
-      if (player_id == this.player_id) {
-        // Clear the discard pile visually (cards moved back to deck)
-        this.playerDiscard.removeAll();
-        
-        // Update deck count
-        this.updateDeckCount(deck_size);
-      }
-    },
-    /*
-        Example:
-        
-        notif_cardPlayed: function( notif )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( notif );
-            
-            // Note: notif.args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
   });
+  
+  // Mix in methods from all modules
+  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, StateHandlers, Notifications];
+  
+  for (var i = 0; i < modulesToMixin.length; i++) {
+    var module = modulesToMixin[i];
+    for (var methodName in module) {
+      if (module.hasOwnProperty(methodName)) {
+        gameClass.prototype[methodName] = module[methodName];
+      }
+    }
+  }
+  
+  return gameClass;
 });
