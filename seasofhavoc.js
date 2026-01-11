@@ -488,6 +488,16 @@ define([
       console.groupCollapsed("player card selected");
       var selection = this.playerHand.getSelection();
       console.log("player hand selection:", selection);
+      
+      // Only allow card selection when it's the player's turn and they can play cards
+      if (!this.isCurrentPlayerActive() || !this.checkAction("actPlayCard", true)) {
+        console.log("Not active player or cannot play cards - clearing selection");
+        this.playerHand.unselectAll();
+        this.cleanupCardPlayDialog();
+        console.groupEnd();
+        return;
+      }
+      
       if (selection.length == 1) {
         var selectedCard = selection[0];
         var card_type = selectedCard.type;
