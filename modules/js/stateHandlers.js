@@ -163,15 +163,23 @@ define([
      * Handle pivot button click in collision resolution
      */
     onPivotButtonClicked: function(event) {
-      const source = event.target || event.srcElement;
-      console.log("pivot button clicked");
-      console.log(source);
-      console.log("pivot picked " + source.dataset.pivot);
-      this.bgaPerformAction("actPivotPickedInDialog", {
-        direction: source.dataset.pivot,
-      });
-      this.statusBar.removeActionButtons();
       event.preventDefault();
+      // The data-pivot attribute is on the inner div, not the button itself
+      // Use currentTarget (the button) and find the inner element with data-pivot
+      const button = event.currentTarget;
+      const pivotElement = button.querySelector('[data-pivot]') || event.target;
+      const direction = pivotElement?.dataset?.pivot;
+      
+      console.log("pivot button clicked");
+      console.log(pivotElement);
+      console.log("pivot picked " + direction);
+      
+      if (direction != null) {
+        this.bgaPerformAction("actPivotPickedInDialog", {
+          direction: direction,
+        });
+        this.statusBar.removeActionButtons();
+      }
     }
   };
 });

@@ -132,14 +132,10 @@ define([
     },
 
     /**
-     * Position a single market skiff slot over its corresponding market slot
+     * Position a single market skiff slot inside its corresponding market slot container
+     * so it naturally moves with the card
      */
     positionMarketSkiffSlot: function(skiff_slot_id, market_slot_id) {
-      var market_container = $("market");
-      if (!market_container) {
-        return;
-      }
-      
       var skiff_slot = $(skiff_slot_id);
       if (!skiff_slot) {
         return;
@@ -156,23 +152,13 @@ define([
         return;
       }
       
-      domStyle.set(market_container, "position", "relative");
+      // Ensure the slot container has position relative for absolute child positioning
+      domStyle.set(slot_container, "position", "relative");
       
-      if (skiff_slot.parentNode !== market_container) {
-        market_container.appendChild(skiff_slot);
+      // Move skiff slot inside the card slot container if not already there
+      if (skiff_slot.parentNode !== slot_container) {
+        slot_container.appendChild(skiff_slot);
       }
-      
-      var market_rect = market_container.getBoundingClientRect();
-      var slot_rect = slot_container.getBoundingClientRect();
-      
-      var left = slot_rect.left - market_rect.left;
-      var top = slot_rect.top - market_rect.top;
-      
-      domStyle.set(skiff_slot, "position", "absolute");
-      domStyle.set(skiff_slot, "left", (left + slot_rect.width - 28) + "px");
-      domStyle.set(skiff_slot, "top", (top + slot_rect.height - 28) + "px");
-      domStyle.set(skiff_slot, "visibility", "visible");
-      domStyle.set(skiff_slot, "z-index", "1");
     },
 
     /**
