@@ -256,7 +256,6 @@ define([
             if (choice_names.length > 1) {
               var tree_choices = [];
               let parent_cost = action.cost;
-              delete action.cost;
               for (let i = 0; i < choice_names.length; i++) {
                 var to_push = {
                   name: choice_names[i],

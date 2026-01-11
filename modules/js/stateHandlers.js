@@ -17,10 +17,6 @@ define([
       console.log("Entering state: " + stateName);
 
       switch (stateName) {
-        case "dummyStart":
-          // this.bgaPerformAction("actExitDummyStart", {});
-          break;
-          
         case "cardPurchases": {
           this.cards_purchased = [];
           this.updateCardPurchaseButtons(true);

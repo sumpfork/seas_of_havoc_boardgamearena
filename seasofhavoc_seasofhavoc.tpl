@@ -103,9 +103,6 @@
 </div>
 
 <script type="text/javascript">
-    var jstpl_dummy_dialog=`<div class="dummy_dialog" id="dummy_dialog">
-                        <div id="dummy_button" class="dummy_button">Yep, this is dumb</div>
-                        </div>`;
     var jstpl_card_play_dialog=`<div id="card_display_dialog">
                         <div id="card_display"></div>
                         <div id="card_choices"></div>

@@ -4,7 +4,6 @@
  */
 
 define([
-  "dojo",
   "dojo/dom",
   "dojo/dom-class",
   "dojo/dom-construct",
@@ -13,7 +12,7 @@ define([
   "dojo/_base/fx",
   "dojo/fx",
   "dojo/query",
-], function(dojo, dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query) {
+], function(dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query) {
   
   return {
     /**
@@ -22,12 +21,6 @@ define([
     setupNotifications: function() {
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
-      
-      dojo.subscribe('cardScrapped', this, 'notif_cardScrapped');
-      dojo.subscribe('cardsDiscarded', this, 'notif_cardsDiscarded');
-      dojo.subscribe('deckReshuffled', this, 'notif_deckReshuffled');
-      dojo.subscribe('cardsPurchased', this, 'notif_cardsPurchased');
-      dojo.subscribe('marketUpdated', this, 'notif_marketUpdated');
     },
 
     /**

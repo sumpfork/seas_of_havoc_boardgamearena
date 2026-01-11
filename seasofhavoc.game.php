@@ -1207,13 +1207,6 @@ class SeasOfHavoc extends Table
         }
     }
 
-    function actExitDummyStart()
-    {
-        //throw new BgaSystemException("act dummy");
-        //only exists to make BGA debugging in setup code work
-        $this->gamestate->nextState();
-    }
-
     function actResourcePickedInDialog(string $resource, string $context, string $number)
     {
         $player_id = $this->getActivePlayerId();

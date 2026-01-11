@@ -78,15 +78,6 @@ $machinestates = [
         "action" => "stGameSetup",
         "transitions" => ["" => STATE_MY_SETUP],
     ],
-    // exists only for debugging initial php setup that doesn't produce log messages
-    // unless some player states have been active
-    // 2 => array(
-    //      "name" => "DummyStart",
-    //      "description" => "only exists because debugging doesn't work in start states",
-    //      "type" => "activeplayer",
-    //      "possibleactions" => array("actExitDummyStart"),
-    //      "transitions" => array("" => 3)
-    // ),
     STATE_MY_SETUP => [
         "name" => "mySetup",
         "description" => "f",
