@@ -237,7 +237,7 @@
     height: 63px;
     background-image: url('img/booty_seafeatures.jpg');
     background-repeat: no-repeat;
-    background-size: 189px 252px;
+    background-size: 252px 252px;
     position: relative;
     z-index: 1;
     mask-image:radial-gradient(#333 40%, #00000000 60%)
@@ -261,7 +261,7 @@
     display: block;
     background-image: url('img/booty_seafeatures.jpg');
     background-repeat: no-repeat;
-    background-size: 189px 252px;
+    background-size: 252px 252px;
     border-radius: 50%;
     overflow: hidden;
 }
@@ -280,7 +280,7 @@
     position: relative;
     background-image: url('img/booty_seafeatures.jpg');
     background-position: 0px 50px;
-    background-size: 150px 200px;
+    background-size: 200px 200px;
     opacity: 0.5;
 }
 /* Slot with token - full opacity */
@@ -291,7 +291,7 @@
 .booty-token-slot .booty-token {
     width: 50px;
     height: 50px;
-    background-size: 150px 200px;
+    background-size: 200px 200px;
     opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
 }
 .booty-token-slot .booty-token-back {

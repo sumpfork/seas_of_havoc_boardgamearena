@@ -41,34 +41,34 @@ define([
       }
     },
 
-    setBootyTokenImage: function(node, imageId) {
-      console.log("[booty] setBootyTokenImage", { imageId });
+    // Booty sprite: 4 cols. Col 0 = seafeatures. Cols 1,2 = 4 tokens each (rows 0–3). Col 3 = 1 token (row 0). cellSize 63 = full, 50 = slot.
+    setBootyTokenPosition: function(node, imageId, cellSize) {
       const index = parseInt(imageId, 10);
       if (Number.isNaN(index)) {
-        console.warn("[booty] setBootyTokenImage invalid imageId", imageId);
+        console.warn("[booty] setBootyTokenPosition invalid imageId", imageId);
         return;
       }
-      const col = index % 2;
-      const row = Math.floor(index / 2);
-      const spriteX = (col + 1) * 63;
-      const spriteY = row * 63;
-      domStyle.set(node, "backgroundPosition", `-${spriteX}px -${spriteY}px`);
+      let col, row;
+      if (index <= 3) {
+        col = 1; row = index;
+      } else if (index <= 7) {
+        col = 2; row = index - 4;
+      } else {
+        col = 3; row = 0;
+      }
+      const x = col * cellSize;
+      const y = row * cellSize;
+      domStyle.set(node, "backgroundPosition", `-${x}px -${y}px`);
     },
 
-    // Scaled sprite positioning for 50px slot (background-size: 150px 200px)
+    setBootyTokenImage: function(node, imageId) {
+      console.log("[booty] setBootyTokenImage", { imageId });
+      this.setBootyTokenPosition(node, imageId, 63);
+    },
+
     setBootyTokenImageForSlot: function(node, imageId) {
       console.log("[booty] setBootyTokenImageForSlot", { imageId });
-      const index = parseInt(imageId, 10);
-      if (Number.isNaN(index)) {
-        console.warn("[booty] setBootyTokenImageForSlot invalid imageId", imageId);
-        return;
-      }
-      const col = index % 2;
-      const row = Math.floor(index / 2);
-      // Scaled for 150x200 background-size (50px tokens instead of 63px)
-      const spriteX = (col + 1) * 50;
-      const spriteY = row * 50;
-      domStyle.set(node, "backgroundPosition", `-${spriteX}px -${spriteY}px`);
+      this.setBootyTokenPosition(node, imageId, 50);
     },
 
     createBootyTokenNode: function(isBack, imageId) {
