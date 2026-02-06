@@ -39,7 +39,6 @@ define([
               var slotnum = number;
               
               var slot_id = "market_slot_n" + number.substring(1);
-              var skiff_slot_id = "skiff_slot_market_" + number;
               var slot_element = $(slot_id);
               if (!slot_element) {
                 throw new Error("Market slot element not found: " + slot_id);

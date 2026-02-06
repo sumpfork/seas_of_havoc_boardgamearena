@@ -33,6 +33,17 @@ $this->card_types = [
 */
 $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 
+$this->booty_tokens = [
+    "booty_token_1" => ["image_id" => 0],
+    "booty_token_2" => ["image_id" => 1],
+    "booty_token_3" => ["image_id" => 2],
+    "booty_token_4" => ["image_id" => 3],
+    "booty_token_5" => ["image_id" => 4],
+    "booty_token_6" => ["image_id" => 5],
+    "booty_token_7" => ["image_id" => 6],
+    "booty_token_8" => ["image_id" => 7],
+];
+
 $this->token_names = [
     "first_player_token" => _("First Player Token"),
     "green_flag" => _("Green Purser's Flag"),

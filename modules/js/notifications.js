@@ -53,14 +53,6 @@ define([
     },
 
     /**
-     * Dummy start notification
-     */
-    notif_dummyStart: function(args) {
-      console.log("dummystart");
-      this.bgaPerformAction("actExitDummyStart", {});
-    },
-
-    /**
      * Resources changed notification
      */
     notif_resourcesChanged: function(args) {
@@ -256,6 +248,39 @@ define([
     },
 
     /**
+     * Booty token collected notification (public)
+     */
+    notif_bootyTokenCollected: function(args) {
+      console.groupCollapsed("notify: booty token collected");
+      console.log(args);
+      // Track that this player now has booty
+      if (!this.players_with_booty) {
+        this.players_with_booty = [];
+      }
+      if (args.player_id && this.players_with_booty.indexOf(args.player_id) === -1) {
+        this.players_with_booty.push(args.player_id);
+      }
+      console.groupEnd();
+    },
+
+    /**
+     * Booty token revealed notification (private)
+     */
+    notif_bootyTokenRevealed: function(args) {
+      console.groupCollapsed("notify: booty token revealed");
+      console.log(args);
+      console.log("[booty] this.player_id:", this.player_id);
+      this.booty_tokens = args.booty_tokens || [];
+      console.log("[booty] set this.booty_tokens:", this.booty_tokens);
+      if (args.new_token) {
+        this.lastBootyTokenTypeArg = args.new_token.type_arg;
+        console.log("[booty] set this.lastBootyTokenTypeArg:", this.lastBootyTokenTypeArg);
+      }
+      // Don't render here - animation onEnd will handle it
+      console.groupEnd();
+    },
+
+    /**
      * Card played notification (handles ship movement animations)
      */
     notif_cardPlayed: function(args) {
@@ -373,8 +398,18 @@ define([
         }
       }
       console.log(anims);
+      const applyShipwreckEvents = () => {
+        if (args.shipwreck_event) {
+          this.animateBootyTokenPickup(args.shipwreck_event, args.player_id);
+          this.applyShipwreckEvents([args.shipwreck_event]);
+        }
+      };
       if (anims.length) {
-        fx.chain(anims).play();
+        const chain = fx.chain(anims);
+        chain.onEnd = applyShipwreckEvents;
+        chain.play();
+      } else {
+        applyShipwreckEvents();
       }
       console.groupEnd();
     },

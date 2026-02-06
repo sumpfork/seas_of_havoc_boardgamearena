@@ -77,6 +77,22 @@ define([
       return Constants.getHeadingDegrees(direction);
     },
 
+    updateHandSelectionMode: function() {
+      if (!this.playerHand) {
+        return;
+      }
+      const canSelect = this.isCurrentPlayerActive() && this.checkAction("actPlayCard", true);
+      const selectionMode = canSelect ? "single" : "none";
+      console.log("[hand] updateHandSelectionMode", { canSelect, selectionMode });
+      this._handSelectionUpdating = true;
+      this.playerHand.setSelectionMode(selectionMode);
+      if (!canSelect) {
+        this.playerHand.unselectAll();
+        this.cleanupCardPlayDialog();
+      }
+      this._handSelectionUpdating = false;
+    },
+
     /*
             setup:
             
@@ -303,6 +319,8 @@ define([
         }
       }
       
+      this.updateHandSelectionMode();
+
       for (var i in gamedatas.discard) {
         var card = this.gamedatas.discard[i];
         console.log("adding card type: " + card.type + " id: " + card.id + " to player discard");
@@ -385,10 +403,20 @@ define([
       this.players = gamedatas.players;
       this.resources = gamedatas.resources;
       this.unique_tokens = gamedatas.unique_tokens;
+      this.booty_tokens = gamedatas.booty_tokens || [];
+      this.players_with_booty = gamedatas.players_with_booty || [];
 
       this.updateResources(gamedatas.resources);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
       this.updateUniqueTokens(gamedatas.unique_tokens);
+      this.updateMyBootyToken();
+      // Render facedown tokens for other players who have booty
+      for (var i = 0; i < this.players_with_booty.length; i++) {
+        var pid = this.players_with_booty[i];
+        if (pid != this.player_id) {
+          this.renderFacedownTokenForPlayer(pid);
+        }
+      }
 
       // Set up seaboard grid
       for (var x = -1; x <= 6; x++) {
@@ -486,19 +514,23 @@ define([
 
     onCardSelectedPlayerHand: function () {
       console.groupCollapsed("player card selected");
-      var selection = this.playerHand.getSelection();
-      console.log("player hand selection:", selection);
-      
-      // Only allow card selection when it's the player's turn and they can play cards
-      if (!this.isCurrentPlayerActive() || !this.checkAction("actPlayCard", true)) {
-        console.log("Not active player or cannot play cards - clearing selection");
-        this.playerHand.unselectAll();
-        this.cleanupCardPlayDialog();
+      if (this._handSelectionUpdating) {
+        console.log("selection update in progress; ignoring");
         console.groupEnd();
         return;
       }
-      
+      var selection = this.playerHand.getSelection();
+      console.log("player hand selection:", selection);
+            
       if (selection.length == 1) {
+              // Only allow card selection when it's the player's turn and they can play cards
+        if (!this.isCurrentPlayerActive() || !this.checkAction("actPlayCard", true)) {
+          console.log("Not active player or cannot play cards - clearing selection");
+          this.cleanupCardPlayDialog();
+          console.groupEnd();
+          return;
+        }
+
         var selectedCard = selection[0];
         var card_type = selectedCard.type;
         console.log("type: " + card_type);

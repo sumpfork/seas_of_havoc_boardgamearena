@@ -46,6 +46,7 @@ class SeasOfHavoc extends Table
     private array $resource_types;
     private array $token_names;
     private array $non_playable_cards;
+    private array $booty_tokens = [];
 
     function __construct()
     {
@@ -219,6 +220,77 @@ class SeasOfHavoc extends Table
         throw new BgaSystemException("Could not find an empty position on the board that doesn't collide with: " . implode(", ", $collision_types));
     }
 
+    private function getBootyTokensForPlayer(int $player_id): array
+    {
+        return $this->cards->getCardsInLocation("booty_player", $player_id);
+    }
+
+    private function getPlayersWithBooty(): array
+    {
+        $players_with_booty = [];
+        $player_info = $this->getPlayerInfo();
+        foreach ($player_info as $player_id => $player) {
+            if ($this->cards->countCardInLocation("booty_player", $player_id) > 0) {
+                $players_with_booty[] = $player_id;
+            }
+        }
+        return $players_with_booty;
+    }
+
+    private function drawBootyToken(int $player_id): ?array
+    {
+        $remaining = $this->cards->countCardInLocation("booty_deck");
+        $this->trace("drawBootyToken remaining: " . $remaining . " for player " . $player_id);
+        if ($remaining == 0) {
+            return null;
+        }
+        $card = $this->cards->pickCardForLocation("booty_deck", "booty_player", $player_id);
+        $this->dump("drawBootyToken picked", $card);
+        return $card;
+    }
+
+    private function collectShipwrecksAtPlayer(int $player_id): array
+    {
+        $ship_info = $this->seaboard->findObject("player_ship", $player_id);
+        if (!$ship_info) {
+            return ["shipwreck_event" => null, "booty_card" => null];
+        }
+        $this->dump("collectShipwrecksAtPlayer ship_info", $ship_info);
+        $x = $ship_info["x"];
+        $y = $ship_info["y"];
+        $shipwrecks = $this->seaboard->getObjectsOfTypes($x, $y, ["shipwreck"]);
+        $this->dump("collectShipwrecksAtPlayer shipwrecks", $shipwrecks);
+        if (empty($shipwrecks)) {
+            return ["shipwreck_event" => null, "booty_card" => null];
+        }
+        $shipwreck = $shipwrecks[0];
+        $this->seaboard->removeObject($x, $y, "shipwreck", $shipwreck["arg"]);
+        $new_position = $this->findEmptyBoardPosition([
+            "player_ship",
+            "rock",
+            "gust",
+            "whirlpool",
+            "shipwreck",
+            "sea_monster_part",
+        ]);
+        $this->dump("collectShipwrecksAtPlayer new_position", $new_position);
+        $this->seaboard->placeObject($new_position["x"], $new_position["y"], [
+            "type" => "shipwreck",
+            "arg" => $shipwreck["arg"],
+            "heading" => Heading::NO_HEADING,
+        ]);
+        $event = [
+            "shipwreck_arg" => $shipwreck["arg"],
+            "old_x" => $x,
+            "old_y" => $y,
+            "new_x" => $new_position["x"],
+            "new_y" => $new_position["y"],
+        ];
+        $booty_card = $this->drawBootyToken($player_id);
+        $this->dump("collectShipwrecksAtPlayer result", ["event" => $event, "booty_card" => $booty_card]);
+        return ["shipwreck_event" => $event, "booty_card" => $booty_card];
+    }
+
     function findSafeHeadingAtPosition(int $x, int $y, array $avoid_types)
     {
         // Get all possible headings
@@ -377,6 +449,18 @@ class SeasOfHavoc extends Table
                 "heading" => Heading::NO_HEADING,
             ]);
         }
+
+        // Create and shuffle the booty token deck
+        $booty_deck = [];
+        foreach ($this->booty_tokens as $token) {
+            $booty_deck[] = [
+                "type" => "booty",
+                "type_arg" => $token["image_id"],
+                "nbr" => 1,
+            ];
+        }
+        $this->cards->createCards($booty_deck, "booty_deck");
+        $this->cards->shuffle("booty_deck");
 
         foreach ($player_infos as $playerid => $player) {
             // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
@@ -627,6 +711,8 @@ class SeasOfHavoc extends Table
         // Send full island slots - frontend will filter based on pending_purchases
         $result["islandslots"] = $this->getIslandSlots();
         $result["unique_tokens"] = $this->getUniqueTokens();
+        $result["booty_tokens"] = $this->getBootyTokensForPlayer($current_player_id);
+        $result["players_with_booty"] = $this->getPlayersWithBooty();
         $result["playable_cards"] = $this->playable_cards;
         
         // Send the full, unmodified market to all players
@@ -1341,12 +1427,18 @@ class SeasOfHavoc extends Table
         $player_id = $this->getActivePlayerId();
         $outcome = [];
         $collision_occurred = false;
+        $shipwreck_event = null;
+        $booty_card = null;
         switch ($action_type) {
             case PrimitiveCardPlayAction::FORWARD:
                 $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
                 $outcome[] = $result;
                 if ($result["type"] == "collision") {
                     $collision_occurred = true;
+                } else {
+                    $pickup = $this->collectShipwrecksAtPlayer($player_id);
+                    $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
+                    $booty_card = $pickup["booty_card"] ?? $booty_card;
                 }
                 break;
             case PrimitiveCardPlayAction::PIVOT_LEFT:
@@ -1359,7 +1451,12 @@ class SeasOfHavoc extends Table
                 throw new BgaUserException($this->_("Unknown action type: $action_type->value"));
         }
         $this->dump("processSimpleAction outcome", $outcome);
-        return ["action_chain" => $outcome, "collision_occurred" => $collision_occurred];
+        return [
+            "action_chain" => $outcome,
+            "collision_occurred" => $collision_occurred,
+            "shipwreck_event" => $shipwreck_event,
+            "booty_card" => $booty_card,
+        ];
     }
 
     function processCaptainAbility(string $ability)
@@ -1368,14 +1465,33 @@ class SeasOfHavoc extends Table
         $player_id = $this->getActivePlayerId();
         $this->trace("player id: $player_id");
         # TODO: implement captain abilities
-        return ["action_chain" => [], "collision_occurred" => false];
+        return [
+            "action_chain" => [],
+            "collision_occurred" => false,
+            "shipwreck_event" => null,
+            "booty_card" => null,
+        ];
     }
 
-    function merge_results(array $result, $cost, array &$to_send, array &$total_cost, bool &$collision_occurred)
+    function merge_results(
+        array $result,
+        $cost,
+        array &$to_send,
+        array &$total_cost,
+        bool &$collision_occurred,
+        ?array &$shipwreck_event,
+        ?array &$booty_card,
+    )
     {
         $total_cost = $this->sum_array_by_key($total_cost, $cost);
         if (array_key_exists("collision_occurred", $result)) {
             $collision_occurred = $collision_occurred || $result["collision_occurred"];
+        }
+        if ($shipwreck_event == null && array_key_exists("shipwreck_event", $result)) {
+            $shipwreck_event = $result["shipwreck_event"];
+        }
+        if ($booty_card == null && array_key_exists("booty_card", $result)) {
+            $booty_card = $result["booty_card"];
         }
         $to_send = array_merge($to_send, $result["action_chain"]);
     }
@@ -1387,6 +1503,8 @@ class SeasOfHavoc extends Table
         $this->trace("processing card actions");
         $this->dump("actions", $actions);
         $collision_occurred = false;
+        $shipwreck_event = null;
+        $booty_card = null;
         foreach ($actions as $i => $action) {
             $typed_action =
                 gettype($action["action"]) == "string"
@@ -1412,6 +1530,8 @@ class SeasOfHavoc extends Table
                         $to_send,
                         $total_cost,
                         $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
                     );
                     break;
                 case PrimitiveCardPlayAction::CHOICE:
@@ -1420,7 +1540,15 @@ class SeasOfHavoc extends Table
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
                     $decision_index = array_search($decision, $choice_names);
                     $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
-                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        $result,
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                     $result = $this->processCardActions(
@@ -1431,7 +1559,15 @@ class SeasOfHavoc extends Table
                         ],
                         $decisions,
                     );
-                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        $result,
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
                 case PrimitiveCardPlayAction::RIGHT:
                     $result = $this->processCardActions(
@@ -1442,7 +1578,15 @@ class SeasOfHavoc extends Table
                         ],
                         $decisions,
                     );
-                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        $result,
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
                 case PrimitiveCardPlayAction::FIRE:
                 case PrimitiveCardPlayAction::FIRE2:
@@ -1509,15 +1653,39 @@ class SeasOfHavoc extends Table
                         }
                     }
                     // FIRE actions never cause movement collisions - explicitly set collision_occurred to false
-                    $this->merge_results(["action_chain" => [$outcome], "collision_occurred" => false], $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        ["action_chain" => [$outcome], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null],
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
                 case PrimitiveCardPlayAction::CAPTAIN_ABILITY:
                     $result = $this->processCaptainAbility($action["ability"]);
-                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        $result,
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
                 default:
                     $result = $this->processSimpleAction($typed_action);
-                    $this->merge_results($result, $cost, $to_send, $total_cost, $collision_occurred);
+                    $this->merge_results(
+                        $result,
+                        $cost,
+                        $to_send,
+                        $total_cost,
+                        $collision_occurred,
+                        $shipwreck_event,
+                        $booty_card,
+                    );
                     break;
             }
             if ($collision_occurred) {
@@ -1536,7 +1704,13 @@ class SeasOfHavoc extends Table
                 break;
             }
         }
-        return ["cost" => $total_cost, "action_chain" => $to_send, "collision_occurred" => $collision_occurred];
+        return [
+            "cost" => $total_cost,
+            "action_chain" => $to_send,
+            "collision_occurred" => $collision_occurred,
+            "shipwreck_event" => $shipwreck_event,
+            "booty_card" => $booty_card,
+        ];
     }
 
     function applyWhirlpoolRotation($player_id)
@@ -1568,6 +1742,8 @@ class SeasOfHavoc extends Table
     {
         $seafeature_moves = [];
         $collision = false;
+        $shipwreck_event = null;
+        $booty_card = null;
         
         // Apply whirlpool rotation first
         $whirlpool_result = $this->applyWhirlpoolRotation($player_id);
@@ -1580,9 +1756,19 @@ class SeasOfHavoc extends Table
         if ($gust_result["result"] !== null) {
             $seafeature_moves[] = $gust_result["result"];
             $collision = $gust_result["collision"];
+            if ($gust_result["result"]["type"] != "collision") {
+                $pickup = $this->collectShipwrecksAtPlayer($player_id);
+                $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
+                $booty_card = $pickup["booty_card"] ?? $booty_card;
+            }
         }
         
-        return ["moves" => $seafeature_moves, "collision" => $collision];
+        return [
+            "moves" => $seafeature_moves,
+            "collision" => $collision,
+            "shipwreck_event" => $shipwreck_event,
+            "booty_card" => $booty_card,
+        ];
     }
 
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
@@ -1606,6 +1792,8 @@ class SeasOfHavoc extends Table
             $notification_message = clienttranslate('${player_name} has passed (played a card without actions)');
             $all_moves = [];
             $seafeature_collision = false;
+            $shipwreck_event = null;
+            $booty_card = null;
         } else {
             $outcome = $this->processCardActions($card["actions"], $decisions);
             $this->dump("final card play outcome", $outcome);
@@ -1620,6 +1808,8 @@ class SeasOfHavoc extends Table
             $seafeature_collision = false;
             $all_moves = $outcome["action_chain"];
             $notification_message = clienttranslate('${player_name} has played a card');
+            $shipwreck_event = $outcome["shipwreck_event"] ?? null;
+            $booty_card = $outcome["booty_card"] ?? null;
             
             // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
             $this->setGameStateValue("seafeature_effects_attempted", 0);
@@ -1628,6 +1818,12 @@ class SeasOfHavoc extends Table
                 $seafeature_effects = $this->applySeafeatureEffects($player_id);
                 $seafeature_collision = $seafeature_effects["collision"];
                 $this->setGameStateValue("seafeature_effects_attempted", 1);
+                if ($shipwreck_event == null) {
+                    $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
+                }
+                if ($booty_card == null) {
+                    $booty_card = $seafeature_effects["booty_card"] ?? null;
+                }
                 
                 // Append seafeature moves to the moveChain for sequential animation
                 if (!empty($seafeature_effects["moves"])) {
@@ -1652,7 +1848,20 @@ class SeasOfHavoc extends Table
             "player_id" => $player_id,
             "moveChain" => $all_moves,
             "cost" => $outcome["cost"],
+            "shipwreck_event" => $shipwreck_event,
         ]);
+
+        if ($booty_card != null) {
+            $this->dump("booty collected", $booty_card);
+            $this->notifyAllPlayers("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+            ]);
+            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate('You reveal a booty token'), [
+                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                "new_token" => $booty_card,
+            ]);
+        }
 
         $this->gamestate->nextState(($outcome["collision_occurred"] || $seafeature_collision) ? "collisionOccurred" : "seaTurnDone");
     }
@@ -1683,6 +1892,8 @@ class SeasOfHavoc extends Table
         // But only if they haven't been attempted yet (seafeature effects are only applied once per card play)
         $seafeature_effects = ["moves" => [], "collision" => false];
         $seafeature_collision = false;
+        $shipwreck_event = null;
+        $booty_card = null;
         
         $seafeature_effects_attempted = $this->getGameStateValue("seafeature_effects_attempted");
         if ($seafeature_effects_attempted == 0) {
@@ -1706,6 +1917,14 @@ class SeasOfHavoc extends Table
             // Combine pivot moves with seafeature moves for sequential animation
             $all_moves = array_merge($outcome["action_chain"], $seafeature_effects["moves"]);
             $notification_message = clienttranslate('${player_name} pivots');
+            $shipwreck_event = $outcome["shipwreck_event"] ?? null;
+            if ($shipwreck_event == null) {
+                $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
+            }
+            $booty_card = $outcome["booty_card"] ?? null;
+            if ($booty_card == null) {
+                $booty_card = $seafeature_effects["booty_card"] ?? null;
+            }
             
             if (!empty($seafeature_effects["moves"])) {
                 if (count($seafeature_effects["moves"]) == 2) {
@@ -1722,11 +1941,14 @@ class SeasOfHavoc extends Table
                 "player_id" => $player_id,
                 "moveChain" => $all_moves,
                 "cost" => $outcome["cost"],
+                "shipwreck_event" => $shipwreck_event,
             ]);
             //TODO: check if player can fire due to interrupted maneuver ending in firing action
         } elseif (!empty($seafeature_effects["moves"])) {
             // No pivot, but we still need to notify about seafeature effects
             $notification_message = clienttranslate('${player_name} resolves collision');
+            $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
+            $booty_card = $seafeature_effects["booty_card"] ?? null;
             
             if (count($seafeature_effects["moves"]) == 2) {
                 $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
@@ -1741,6 +1963,18 @@ class SeasOfHavoc extends Table
                 "player_id" => $player_id,
                 "moveChain" => $seafeature_effects["moves"],
                 "cost" => [],
+                "shipwreck_event" => $shipwreck_event,
+            ]);
+        }
+
+        if ($booty_card != null) {
+            $this->notifyAllPlayers("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+            ]);
+            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate('You reveal a booty token'), [
+                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                "new_token" => $booty_card,
             ]);
         }
         

@@ -255,6 +255,23 @@
 .seafeature[data-seafeature="whirlpool"] {
     background-position: 0px -0px;
 }
+.booty-token {
+    width: 63px;
+    height: 63px;
+    display: block;
+    background-image: url('img/booty_seafeatures.jpg');
+    background-repeat: no-repeat;
+    background-size: 189px 252px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+.booty-token-back {
+    background-position: 0px -189px;
+}
+.booty-token-pickup {
+    position: absolute;
+    z-index: 1000;
+}
 .booty-token-slot {
     border-radius: 50%;
     width: 50px;
@@ -265,7 +282,20 @@
     background-position: 0px 50px;
     background-size: 150px 200px;
     opacity: 0.5;
-
+}
+/* Slot with token - full opacity */
+.booty-token-slot.has-token {
+    opacity: 1;
+}
+/* Token inside slot - smaller size to fit */
+.booty-token-slot .booty-token {
+    width: 50px;
+    height: 50px;
+    background-size: 150px 200px;
+    opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
+}
+.booty-token-slot .booty-token-back {
+    background-position: 0px -150px;
 }
 .resource_count {
     position: relative;

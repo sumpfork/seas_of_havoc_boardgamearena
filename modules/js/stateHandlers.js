@@ -15,6 +15,7 @@ define([
      */
     onEnteringState: function(stateName, args) {
       console.log("Entering state: " + stateName);
+      this.updateHandSelectionMode();
 
       switch (stateName) {
         case "cardPurchases": {
@@ -84,6 +85,7 @@ define([
       console.log("onUpdateActionButtons: " + stateName);
       console.log("isCurrentPlayerActive(): " + this.isCurrentPlayerActive());
       console.log("args:", args);
+      this.updateHandSelectionMode();
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
