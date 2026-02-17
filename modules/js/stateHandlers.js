@@ -19,13 +19,19 @@ define([
 
       switch (stateName) {
         case "cardPurchases": {
-          this.cards_purchased = [];
+          if (!this._restoringFromBootyConfirm) {
+            this.cards_purchased = [];
+            this._bootyUsedForPurchase = false;
+          }
           this.updateCardPurchaseButtons(true);
           break;
         }
         
         case "cardPurchasesPrivate": {
-          this.cards_purchased = [];
+          if (!this._restoringFromBootyConfirm) {
+            this.cards_purchased = [];
+            this._bootyUsedForPurchase = false;
+          }
           this.updateCardPurchaseButtons(true);
           break;
         }
@@ -56,6 +62,10 @@ define([
           this.setupScrapCardSelection(args.args);
           break;
         }
+
+        case "resolveCollision": {
+          break;
+        }
         
         case "dummmy":
           break;
@@ -73,6 +83,11 @@ define([
           this.cleanupScrapCardSelection();
           break;
 
+        case "resolveCollision":
+          var w = document.getElementById("pivot_booty_wrap");
+          if (w) domConstruct.destroy(w);
+          break;
+
         case "dummmy":
           break;
       }
@@ -85,7 +100,9 @@ define([
       console.log("onUpdateActionButtons: " + stateName);
       console.log("isCurrentPlayerActive(): " + this.isCurrentPlayerActive());
       console.log("args:", args);
-      this.updateHandSelectionMode();
+      // Note: updateHandSelectionMode is called from onEnteringState, not here.
+      // checkAction() returns false during onUpdateActionButtons because the
+      // BGA framework still has the interface locked at this point.
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
@@ -96,6 +113,42 @@ define([
             this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
             break;
             
+          case "client_bootyPurchaseConfirm":
+            this.statusBar.addActionButton(
+              _("Yes, use booty token"),
+              this.onBootyPurchaseYes.bind(this),
+              { classes: "bgabutton_green" },
+            );
+            this.statusBar.addActionButton(
+              _("No thanks"),
+              this.onBootyPurchaseNo.bind(this),
+              { classes: "bgabutton_gray" },
+            );
+            this.statusBar.addActionButton(
+              _("Cancel"),
+              this.onBootyPurchaseCancel.bind(this),
+              { classes: "bgabutton_red" },
+            );
+            break;
+
+          case "client_bootyPlayConfirm":
+            this.statusBar.addActionButton(
+              _("Yes, use booty token"),
+              this.onBootyPlayYes.bind(this),
+              { classes: "bgabutton_green" },
+            );
+            this.statusBar.addActionButton(
+              _("No thanks"),
+              this.onBootyPlayNo.bind(this),
+              { classes: "bgabutton_gray" },
+            );
+            this.statusBar.addActionButton(
+              _("Cancel"),
+              this.onBootyPlayCancel.bind(this),
+              { classes: "bgabutton_red" },
+            );
+            break;
+
           case "client_resourceDialog":
             this.statusBar.addActionButton(
               _("<div class='resource sail' data-resource='sail'></div>"),
@@ -182,7 +235,7 @@ define([
         });
         this.statusBar.removeActionButtons();
       }
-    }
+    },
   };
 });
 

@@ -156,6 +156,7 @@ define([
       });
       
       this.cards_purchased = [];
+      this._bootyUsedForPurchase = false;
       
       console.groupEnd();
     },
@@ -270,7 +271,8 @@ define([
       console.groupCollapsed("notify: booty token revealed");
       console.log(args);
       console.log("[booty] this.player_id:", this.player_id);
-      this.booty_tokens = args.booty_tokens || [];
+      var rawBooty = args.booty_tokens;
+      this.booty_tokens = Array.isArray(rawBooty) ? rawBooty : Object.values(rawBooty || {});
       console.log("[booty] set this.booty_tokens:", this.booty_tokens);
       if (args.new_token) {
         this.lastBootyTokenTypeArg = args.new_token.type_arg;
@@ -278,6 +280,14 @@ define([
       }
       // Don't render here - animation onEnd will handle it
       console.groupEnd();
+    },
+
+    notif_bootyTokenUsed: function(args) {
+      if (String(args.player_id) === String(this.player_id)) {
+        var rawBooty = args.booty_tokens;
+        this.booty_tokens = Array.isArray(rawBooty) ? rawBooty : Object.values(rawBooty || {});
+        this.updateMyBootyToken();
+      }
     },
 
     /**

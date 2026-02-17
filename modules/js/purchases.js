@@ -26,7 +26,10 @@ define([
         return;
       }
       
-      var pending_card_ids = this.cards_purchased || [];
+      var purchasedEntries = this.cards_purchased || [];
+      var pending_card_ids = purchasedEntries.map(function(e) {
+        return (typeof e === "object") ? e.card_id : e;
+      });
       
       for (const [slot, numbers] of Object.entries(this.islandSlots)) {
         if (slot == "market") {
@@ -157,19 +160,11 @@ define([
      */
     onClickPurchaseButton: function(event) {
       console.groupCollapsed("card purchase button clicked");
-      console.log("=== PURCHASE BUTTON CLICKED ===");
-      console.log("onClickPurchaseButton function called!");
-      console.log("Event object:", event);
-      console.log("Event type:", event.type);
-      console.log("Event target:", event.target);
-      console.log("Event currentTarget:", event.currentTarget);
       event.preventDefault();
       
       const source = event.target || event.srcElement;
       const slotnumber = source.dataset.slotnumber;
       const card_id = source.dataset.cardid;
-      console.log("slotnumber: " + slotnumber);
-      console.log("card_id: " + card_id);
       
       if (!card_id) {
         console.error("Card ID not found on button for slotnumber: " + slotnumber);
@@ -178,7 +173,6 @@ define([
       }
       
       var slot_card = this.market.getCards().find(card => card.id == card_id);
-      console.log(slot_card);
       if (!slot_card) {
         console.error("Card not found in market for card_id: " + card_id);
         console.groupEnd();
@@ -191,18 +185,56 @@ define([
         console.groupEnd();
         return;
       }
-      
-      this.playerSpendResources(card.cost);
-      console.log(card);
-      console.log(slot_card);
-      
-      // Remove purchase button before moving card to hand
+
+      // Check if player has an unused booty token with resources that overlap this card's cost
+      var tokenRes = (!this._bootyUsedForPurchase) ? this.getMyBootyTokenRes() : null;
+      var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
+
+      if (bootyOverlap) {
+        var canAffordWithout = this.canPlayerAfford(card.cost, false);
+
+        if (!canAffordWithout) {
+          // Must use booty — auto-use, no prompt
+          this._finalizePurchase(slot_card, card, slotnumber, true);
+          console.groupEnd();
+          return;
+        }
+
+        // Can afford either way — ask the player via client state in the status bar
+        this._pendingPurchase = { slot_card: slot_card, card: card, slotnumber: slotnumber };
+        this.setClientState("client_bootyPurchaseConfirm", {
+          descriptionmyturn: _("Use your booty token to help pay for this card?"),
+        });
+        console.groupEnd();
+        return;
+      }
+
+      // No booty applicable — purchase immediately
+      this._finalizePurchase(slot_card, card, slotnumber, false);
+      console.groupEnd();
+    },
+
+    /**
+     * Finalize a card purchase: move card, spend resources, record in cards_purchased.
+     */
+    _finalizePurchase: function(slot_card, card, slotnumber, useBooty) {
+      var effectiveCost = card.cost;
+
+      if (useBooty) {
+        var tokenRes = this.getMyBootyTokenRes();
+        if (tokenRes) {
+          var bootyResolved = this.resolveBootyResources(tokenRes, card.cost);
+          effectiveCost = this.computeEffectiveCost(card.cost, bootyResolved);
+        }
+      }
+
+      this.playerSpendResources(effectiveCost);
+
       var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`)[0];
       if (purchase_button) {
         domConstruct.destroy(purchase_button);
       }
-      
-      // Clean up skiff slot and skiff for this market slot
+
       var skiff_slot_id = "skiff_slot_market_" + slotnumber;
       var skiff_slot = $(skiff_slot_id);
       if (skiff_slot) {
@@ -213,20 +245,57 @@ define([
           this.islandSlots.market[slotnumber].occupying_player_id = null;
         }
       }
-      
-      // Add card to hand (local preview)
+
       this.playerHand.addCard({
         id: slot_card.id,
         type: slot_card.type,
         location: "hand",
       });
-      
-      // Remove card from market SlotStock
+
       this.market.removeCard(slot_card);
-      
       this.updateCardPurchaseButtons(false);
-      this.cards_purchased.push(slot_card.id);
-      console.groupEnd();
+
+      var entry = { card_id: slot_card.id };
+      if (useBooty) {
+        entry.use_booty_card_id = this.booty_tokens[0].id;
+        this._bootyUsedForPurchase = true;
+        // Remove booty token from local state and update UI
+        this.booty_tokens = [];
+        this.updateMyBootyToken();
+      }
+      this.cards_purchased.push(entry);
+    },
+
+    /**
+     * Called from onUpdateActionButtons for client_bootyPurchaseConfirm state.
+     */
+    onBootyPurchaseYes: function() {
+      var ctx = this._pendingPurchase;
+      this._pendingPurchase = null;
+      this._restoringFromBootyConfirm = true;
+      this.restoreServerGameState();
+      this._restoringFromBootyConfirm = false;
+      if (ctx) {
+        this._finalizePurchase(ctx.slot_card, ctx.card, ctx.slotnumber, true);
+      }
+    },
+
+    onBootyPurchaseNo: function() {
+      var ctx = this._pendingPurchase;
+      this._pendingPurchase = null;
+      this._restoringFromBootyConfirm = true;
+      this.restoreServerGameState();
+      this._restoringFromBootyConfirm = false;
+      if (ctx) {
+        this._finalizePurchase(ctx.slot_card, ctx.card, ctx.slotnumber, false);
+      }
+    },
+
+    onBootyPurchaseCancel: function() {
+      this._pendingPurchase = null;
+      this._restoringFromBootyConfirm = true;
+      this.restoreServerGameState();
+      this._restoringFromBootyConfirm = false;
     },
 
     /**
@@ -235,12 +304,16 @@ define([
     onCompletePurchasesClicked: function(event) {
       console.log("onCompletePurchasesClicked");
       console.log(this.cards_purchased);
-      
-      // Remove all purchase buttons
+      this._submitCompletePurchases(this.cards_purchased);
+    },
+
+    _submitCompletePurchases: function(cardsPayload) {
+      if (!cardsPayload || cardsPayload.length === 0) {
+        cardsPayload = [];
+      }
       query(".purchase_card_button").forEach(domConstruct.destroy);
-      
       this.bgaPerformAction("actCompletePurchases", {
-        cards_purchased: JSON.stringify(this.cards_purchased),
+        cards_purchased: JSON.stringify(cardsPayload),
       });
     }
   };

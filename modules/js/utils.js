@@ -283,25 +283,103 @@ define([
     },
 
     /**
-     * Check if current player can afford a resource cost
+     * Check if current player can afford a resource cost.
+     * @param {boolean} includeBooty - If true (default), count booty token resources.
      */
-    canPlayerAfford: function(resource_cost) {
-      var playerResources = this.getPlayerResources();
-      console.log("checking cost, player resources are");
-      console.log(playerResources);
-      console.log("cost is");
-      console.log(resource_cost);
+    canPlayerAfford: function(resource_cost, includeBooty) {
+      if (typeof includeBooty === "undefined") includeBooty = true;
       if (typeof resource_cost === "undefined") {
         return true;
       }
+      var playerResources = this.getPlayerResources();
+      var affordable = true;
       for (const [resource_key, num] of Object.entries(resource_cost)) {
         var player_has = playerResources[resource_key] || 0;
         if (player_has - num < 0) {
-          console.log("not enough " + resource_key + " (" + player_has + " vs " + num + ")");
-          return false;
+          affordable = false;
+          break;
         }
       }
-      return true;
+      if (affordable) return true;
+      if (!includeBooty) return false;
+      // Check if booty token could cover the gap
+      var tokenRes = this.getMyBootyTokenRes();
+      if (tokenRes && this.bootyOverlapsCost(tokenRes, resource_cost)) {
+        var bootyResolved = this.resolveBootyResources(tokenRes, resource_cost);
+        var reducedCost = this.computeEffectiveCost(resource_cost, bootyResolved);
+        return this.canPlayerAfford(reducedCost, false);
+      }
+      return false;
+    },
+
+    /**
+     * Client-side mirror of PHP resolveBootyResourcesForPayment.
+     * Resolves fixed resources and auto-assigns "choice" to highest-need cost resource.
+     */
+    resolveBootyResources: function(tokenRes, cost) {
+      var out = {};
+      var choiceAmount = 0;
+      for (var key in tokenRes) {
+        if (key === "choice") {
+          choiceAmount += tokenRes[key];
+        } else {
+          out[key] = (out[key] || 0) + tokenRes[key];
+        }
+      }
+      for (var i = 0; i < choiceAmount; i++) {
+        var bestRes = null;
+        var bestNeed = 0;
+        for (var res in cost) {
+          var covered = out[res] || 0;
+          var remaining = cost[res] - covered;
+          if (remaining > bestNeed) {
+            bestNeed = remaining;
+            bestRes = res;
+          }
+        }
+        if (bestRes) {
+          out[bestRes] = (out[bestRes] || 0) + 1;
+        }
+      }
+      return out;
+    },
+
+    /**
+     * Compute effective cost after applying booty token resources.
+     * Returns a cost object with only positive remaining amounts.
+     */
+    computeEffectiveCost: function(fullCost, bootyResolved) {
+      var effective = {};
+      for (var res in fullCost) {
+        var remaining = fullCost[res] - (bootyResolved[res] || 0);
+        if (remaining > 0) {
+          effective[res] = remaining;
+        }
+      }
+      return effective;
+    },
+
+    /**
+     * Get the current player's booty token resources, or null if none.
+     */
+    getMyBootyTokenRes: function() {
+      if (!this.booty_tokens || this.booty_tokens.length === 0) return null;
+      return (this.gamedatas.booty_token_resources || {})[this.booty_tokens[0].type_arg] || null;
+    },
+
+    /**
+     * Check if a booty token's resources overlap with a cost (i.e. could save any resources).
+     */
+    bootyOverlapsCost: function(tokenRes, cost) {
+      if (!tokenRes || !cost) return false;
+      var costKeys = Object.keys(cost).filter(function(k) { return cost[k] > 0; });
+      if (costKeys.length === 0) return false;
+      for (var res in tokenRes) {
+        if (tokenRes[res] > 0 && (res === "choice" || costKeys.indexOf(res) !== -1)) {
+          return true;
+        }
+      }
+      return false;
     }
   };
 });

@@ -104,6 +104,8 @@ ALTER TABLE extra_turns ADD CONSTRAINT fk_extra_turns_player_id FOREIGN KEY (pla
 CREATE TABLE IF NOT EXISTS `pending_purchases` (
   `player_id` int(10) unsigned NOT NULL,
   `card_id` int(10) unsigned NOT NULL,
+  `use_booty_card_id` int(10) unsigned DEFAULT NULL,
+  `booty_choice` varchar(16) DEFAULT NULL,
   PRIMARY KEY (`player_id`, `card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

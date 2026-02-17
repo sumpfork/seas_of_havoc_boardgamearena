@@ -40,6 +40,9 @@ enum PrimitiveCardPlayAction: string
 
 class SeasOfHavoc extends Table
 {
+    // Debug flag: give each player a booty token at game start (one with a wild resource)
+    private const DEBUG_START_WITH_BOOTY = true;
+
     private SeaBoard $seaboard;
     private $cards;
     private array $playable_cards;
@@ -222,7 +225,8 @@ class SeasOfHavoc extends Table
 
     private function getBootyTokensForPlayer(int $player_id): array
     {
-        return $this->cards->getCardsInLocation("booty_player", $player_id);
+        // array_values ensures JSON encodes as a JS array, not an object keyed by card id
+        return array_values($this->cards->getCardsInLocation("booty_player", $player_id));
     }
 
     private function getPlayersWithBooty(): array
@@ -240,9 +244,17 @@ class SeasOfHavoc extends Table
     private function drawBootyToken(int $player_id): ?array
     {
         $remaining = $this->cards->countCardInLocation("booty_deck");
-        $this->trace("drawBootyToken remaining: " . $remaining . " for player " . $player_id);
         if ($remaining == 0) {
-            return null;
+            // Refill deck from discard, then shuffle
+            $discard = $this->cards->getCardsInLocation("booty_discard");
+            if (empty($discard)) {
+                return null;
+            }
+            foreach ($discard as $card) {
+                $this->cards->moveCard($card["id"], "booty_deck", 0);
+            }
+            $this->cards->shuffle("booty_deck");
+            $this->trace("Booty deck refilled from discard and shuffled");
         }
         $card = $this->cards->pickCardForLocation("booty_deck", "booty_player", $player_id);
         $this->dump("drawBootyToken picked", $card);
@@ -538,6 +550,25 @@ class SeasOfHavoc extends Table
             "damage_deck",
         );
 
+        // Debug: give each player a starting booty token
+        if (self::DEBUG_START_WITH_BOOTY) {
+            $player_ids = array_keys($player_infos);
+            // First player gets a token with a wild "choice" resource (image_id 3 = doubloon + choice)
+            // Other players get a regular token (image_id 6 = doubloon + cannonball)
+            $wild_image_id = 3;
+            $regular_image_id = 6;
+            foreach ($player_ids as $i => $pid) {
+                $target_image_id = ($i === 0) ? $wild_image_id : $regular_image_id;
+                $card = self::getObjectFromDB(
+                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1"
+                );
+                if ($card) {
+                    $this->cards->moveCard($card["card_id"], "booty_player", $pid);
+                    $this->trace("DEBUG: Gave player $pid booty token image_id=$target_image_id");
+                }
+            }
+        }
+
         $this->gamestate->nextState();
     }
 
@@ -713,6 +744,11 @@ class SeasOfHavoc extends Table
         $result["unique_tokens"] = $this->getUniqueTokens();
         $result["booty_tokens"] = $this->getBootyTokensForPlayer($current_player_id);
         $result["players_with_booty"] = $this->getPlayersWithBooty();
+        // Resources each booty token provides (type_arg => resources), for "use booty" UI and choice resolution
+        $result["booty_token_resources"] = [];
+        foreach ($this->booty_tokens as $cfg) {
+            $result["booty_token_resources"][$cfg["image_id"]] = $cfg["resources"] ?? [];
+        }
         $result["playable_cards"] = $this->playable_cards;
         
         // Send the full, unmodified market to all players
@@ -1038,6 +1074,113 @@ class SeasOfHavoc extends Table
         // Check that no resource goes negative (all values >= 0)
         return array_reduce($result, fn($carry, $value): bool => $carry && $value >= 0, true);
     }
+    /** Get booty token config (including "resources") by card type_arg (image_id). */
+    private function getBootyTokenConfigByTypeArg(int $type_arg): ?array
+    {
+        foreach ($this->booty_tokens as $cfg) {
+            if (($cfg["image_id"] ?? null) === $type_arg) {
+                return $cfg;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolve booty "resources" for payment.
+     * If $player_choice is set, all "choice" units are assigned to that resource type.
+     * Otherwise, auto-assign each "choice" unit to whichever cost resource has the
+     * highest remaining need after fixed resources are applied.
+     */
+    private function resolveBootyResourcesForPayment(array $resources, array $cost, ?string $player_choice = null): array
+    {
+        // First, collect fixed (non-choice) resources
+        $out = [];
+        $choiceAmount = 0;
+        foreach ($resources as $key => $amount) {
+            if ($key === "choice") {
+                $choiceAmount += $amount;
+            } else {
+                $out[$key] = ($out[$key] ?? 0) + $amount;
+            }
+        }
+
+        if ($choiceAmount <= 0) {
+            return $out;
+        }
+
+        // If player explicitly chose a valid resource type, use it
+        if ($player_choice !== null && $player_choice !== "" && in_array($player_choice, $this->resource_types, true) && $player_choice !== "skiff") {
+            $out[$player_choice] = ($out[$player_choice] ?? 0) + $choiceAmount;
+            return $out;
+        }
+
+        // Auto-assign each "choice" unit to the cost resource with the highest remaining need
+        for ($i = 0; $i < $choiceAmount; $i++) {
+            $bestRes = null;
+            $bestNeed = 0;
+            foreach ($cost as $res => $need) {
+                $coveredByFixed = $out[$res] ?? 0;
+                $remaining = $need - $coveredByFixed;
+                if ($remaining > $bestNeed) {
+                    $bestNeed = $remaining;
+                    $bestRes = $res;
+                }
+            }
+            if ($bestRes !== null) {
+                $out[$bestRes] = ($out[$bestRes] ?? 0) + 1;
+            }
+            // If no remaining need, the choice is wasted (no refund)
+        }
+
+        return $out;
+    }
+
+    /**
+     * Pay a cost, optionally using the player's booty token to cover some or all of it.
+     * If use_booty_card_id is set, that booty card is applied to reduce the cost (no refund for excess), then discarded to booty_discard.
+     * $booty_choice is the player's chosen resource type for "choice" (wild) resources. If null, auto-resolved.
+     */
+    function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void
+    {
+        if (empty($cost)) {
+            return;
+        }
+        $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        $remaining_cost = $cost;
+
+        if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
+            $booty_card = $this->cards->getCard($use_booty_card_id);
+            if (!$booty_card || $booty_card["location"] !== "booty_player" || (int) $booty_card["location_arg"] !== (int) $player_id) {
+                throw new BgaUserException($this->_("Invalid booty token"));
+            }
+            $config = $this->getBootyTokenConfigByTypeArg((int) $booty_card["type_arg"]);
+            if (!$config || empty($config["resources"])) {
+                throw new BgaUserException($this->_("Invalid booty token"));
+            }
+            $booty_resources = $this->resolveBootyResourcesForPayment($config["resources"], $cost, $booty_choice);
+            // Reduce cost by booty (no refund: only subtract up to cost amount per resource)
+            $remaining_cost = [];
+            foreach ($cost as $res => $need) {
+                $have_from_booty = $booty_resources[$res] ?? 0;
+                $remaining_cost[$res] = max(0, $need - $have_from_booty);
+            }
+            if (!$this->canPayFor($remaining_cost, $player_resources)) {
+                throw new BgaUserException($this->_("You cannot afford this cost even with the booty token"));
+            }
+            $this->pay($player_id, $remaining_cost);
+            $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
+            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token to help pay'), [
+                "player_id" => $player_id,
+                "player_name" => $this->getPlayerNameById($player_id),
+                "booty_card" => $booty_card,
+                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+            ]);
+            return;
+        }
+
+        $this->pay($player_id, $remaining_cost);
+    }
+
     function pay($player_id, $cost)
     {
         $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
@@ -1328,8 +1471,20 @@ class SeasOfHavoc extends Table
         }
     }
 
+    /** One-time schema upgrade: add booty columns to pending_purchases if missing (e.g. table created before booty feature). */
+    private function ensurePendingPurchasesBootyColumns(): void
+    {
+        $row = self::getObjectFromDB("SHOW COLUMNS FROM pending_purchases LIKE 'use_booty_card_id'");
+        if ($row) {
+            return;
+        }
+        self::DbQuery("ALTER TABLE pending_purchases ADD COLUMN use_booty_card_id int(10) unsigned DEFAULT NULL, ADD COLUMN booty_choice varchar(16) DEFAULT NULL");
+    }
+
     function actCompletePurchases(#[JsonParam] array $cards_purchased)
     {
+        $this->ensurePendingPurchasesBootyColumns();
+
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
         
@@ -1340,13 +1495,22 @@ class SeasOfHavoc extends Table
         }
         
         // Validate and store purchases in pending_purchases table
-        foreach ($cards_purchased as $card_id) {
+        // Each item: int card_id or { card_id, use_booty_card_id? }
+        foreach ($cards_purchased as $item) {
+            $card_id = is_array($item) ? ($item["card_id"] ?? null) : $item;
+            $use_booty_card_id = is_array($item) ? ($item["use_booty_card_id"] ?? null) : null;
+            if ($card_id === null) {
+                throw new BgaUserException($this->_("Invalid card purchase"));
+            }
             $card = $this->cards->getCard($card_id);
             if (!$card || $card["location"] != "market") {
                 throw new BgaUserException($this->_("Invalid card purchase"));
             }
-            // Store pending purchase
-            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id) VALUES ('$player_id', '$card_id')");
+            $use_sql = "NULL";
+            if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
+                $use_sql = "'" . intval($use_booty_card_id) . "'";
+            }
+            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id) VALUES ('$player_id', '" . intval($card_id) . "', $use_sql)");
         }
         
         $this->trace("active player list before: " . implode(", ", $this->gamestate->getActivePlayerList()));
@@ -1361,10 +1525,12 @@ class SeasOfHavoc extends Table
     
     function commitAllPurchases()
     {
+        $this->ensurePendingPurchasesBootyColumns();
+
         $this->trace("Committing all purchases");
         
-        // Get all pending purchases
-        $pending = self::getObjectListFromDB("SELECT player_id, card_id FROM pending_purchases");
+        // Get all pending purchases (including optional booty usage)
+        $pending = self::getObjectListFromDB("SELECT player_id, card_id, use_booty_card_id FROM pending_purchases");
         
         // Group by player for notification
         $purchases_by_player = [];
@@ -1372,7 +1538,9 @@ class SeasOfHavoc extends Table
         
         foreach ($pending as $purchase) {
             $player_id = $purchase["player_id"];
-            $card_id = $purchase["card_id"];
+            $card_id = (int) $purchase["card_id"];
+            $use_booty_card_id = isset($purchase["use_booty_card_id"]) && $purchase["use_booty_card_id"] !== null && $purchase["use_booty_card_id"] !== ""
+                ? (int) $purchase["use_booty_card_id"] : null;
             
             $card = $this->cards->getCard($card_id);
             if (!$card || $card["location"] != "market") {
@@ -1382,8 +1550,8 @@ class SeasOfHavoc extends Table
             
             $market_card = $this->playable_cards[$card["type"]];
             
-            // Pay for the card
-            $this->pay($player_id, $market_card["cost"]);
+            // Pay for the card (optionally using booty token)
+            $this->payWithOptionalBooty($player_id, $market_card["cost"], $use_booty_card_id);
             
             // Move card to player's hand
             $this->cards->moveCard($card_id, "hand", $player_id);
@@ -1771,7 +1939,7 @@ class SeasOfHavoc extends Table
         ];
     }
 
-    function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions)
+    function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null)
     {
         $this->dump("card_type", $card_type);
         $this->dump("decisions", $decisions);
@@ -1798,9 +1966,9 @@ class SeasOfHavoc extends Table
             $outcome = $this->processCardActions($card["actions"], $decisions);
             $this->dump("final card play outcome", $outcome);
 
-            // Pay the total cost from all actions (pay() includes validation)
+            // Pay the total cost from all actions (optionally using booty token)
             if (!empty($outcome["cost"])) {
-                $this->pay($player_id, $outcome["cost"]);
+                $this->payWithOptionalBooty($player_id, $outcome["cost"], $use_booty_card_id);
             }
 
             // Apply seafeature effects (whirlpool rotation and gust push) if no collision occurred
@@ -1909,9 +2077,9 @@ class SeasOfHavoc extends Table
             $outcome = $this->processCardActions([["action" => $typed_action]], []);
             $this->dump("final pivot outcome", $outcome);
             
-            // Pay the cost for pivot actions (pay() includes validation)
+            // Pay the cost for pivot actions (pivots are free, but just in case)
             if (!empty($outcome["cost"])) {
-                $this->pay($player_id, $outcome["cost"]);
+                $this->payWithOptionalBooty($player_id, $outcome["cost"]);
             }
 
             // Combine pivot moves with seafeature moves for sequential animation

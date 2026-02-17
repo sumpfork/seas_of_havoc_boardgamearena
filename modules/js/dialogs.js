@@ -16,36 +16,6 @@ define([
 ], function(dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards) {
   
   return {
-    /**
-     * Show dummy dialog (for BGA logging requirement)
-     */
-    showDummyDialog: function() {
-      this.myDlg = new ebg.popindialog();
-      this.myDlg.create("dummyDialog");
-      this.myDlg.setTitle(_("Yep, this is dumb"));
-      this.myDlg.setMaxWidth(500);
-
-      var html = this.format_block("jstpl_dummy_dialog");
-
-      this.myDlg.setContent(html);
-      this.myDlg.hideCloseIcon();
-      this.myDlg.show();
-
-      this.setClientState("client_dummyDialog", {
-        descriptionmyturn: _("${you} must abide by BGA's dumb logging"),
-      });
-
-      on(
-        query(".dummy_button"),
-        "click",
-        lang.hitch(this, (event) => {
-          console.log("dummy button clicked");
-          event.preventDefault();
-          this.bgaPerformAction("actExitDummyStart", {});
-          this.myDlg.destroy();
-        }),
-      );
-    },
 
     /**
      * Clean up card play dialog
@@ -100,22 +70,38 @@ define([
         "click",
         lang.hitch(this, (event) => {
           console.groupCollapsed("card play button clicked");
-          console.log("play card button clicked");
           event.preventDefault();
           var decisionSummary = makeDecisionSummary(this.dep_tree);
-          console.log("decisions");
-          console.log(decisionSummary);
-          console.log("card ");
-          console.log(card);
-          this.bgaPerformAction("actPlayCard", {
-            card_type: card.card_type,
-            card_id: card_id,
-            decisions: JSON.stringify(decisionSummary),
-          });
-          this.cleanupCardPlayDialog();
-          console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
-          this.playerHand.removeCard({ id: card_id, type: card.card_type });
+          var totalCost = this._computeTotalPlayCost(this.dep_tree);
+
+          var tokenRes = this.getMyBootyTokenRes();
+          var hasOverlap = this.bootyOverlapsCost(tokenRes, totalCost);
+
+          if (hasOverlap) {
+            var canAffordWithout = this.canPlayerAfford(totalCost, false);
+
+            if (!canAffordWithout) {
+              // Must use booty — auto-use, no prompt
+              this._sendPlayCard(card, card_id, decisionSummary, true);
+              console.groupEnd();
+              return;
+            }
+
+            // Can afford either way — ask the player via status bar buttons
+            this._pendingPlayCard = {
+              card: card,
+              card_id: card_id,
+              decisions: decisionSummary,
+            };
+            this.setClientState("client_bootyPlayConfirm", {
+              descriptionmyturn: _("Use your booty token to help pay for this card?"),
+            });
+            console.groupEnd();
+            return;
+          }
+
+          // No booty applicable — play immediately
+          this._sendPlayCard(card, card_id, decisionSummary, false);
           console.groupEnd();
         }),
       );
@@ -176,6 +162,60 @@ define([
       console.groupEnd();
       this._updatePlayCardButton();
       this.cardPlayDialogShown = true;
+    },
+
+    /**
+     * Send the actPlayCard action to the server and update local UI.
+     */
+    _sendPlayCard: function(card, card_id, decisions, useBooty) {
+      var params = {
+        card_type: card.card_type,
+        card_id: card_id,
+        decisions: JSON.stringify(decisions),
+      };
+      if (useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
+        params.use_booty_card_id = this.booty_tokens[0].id;
+        // Spend only the effective cost (after booty) from displayed resources
+        var totalCost = this._computeTotalPlayCost(this.dep_tree);
+        var tokenRes = this.getMyBootyTokenRes();
+        if (tokenRes && totalCost) {
+          var bootyResolved = this.resolveBootyResources(tokenRes, totalCost);
+          var effectiveCost = this.computeEffectiveCost(totalCost, bootyResolved);
+          this.playerSpendResources(effectiveCost);
+        }
+        this.booty_tokens = [];
+        this.updateMyBootyToken();
+      }
+      this.bgaPerformAction("actPlayCard", params);
+      this.cleanupCardPlayDialog();
+      this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
+      this.playerHand.removeCard({ id: card_id, type: card.card_type });
+    },
+
+    /**
+     * Called from onUpdateActionButtons for client_bootyPlayConfirm state.
+     */
+    onBootyPlayYes: function() {
+      var ctx = this._pendingPlayCard;
+      this._pendingPlayCard = null;
+      this.restoreServerGameState();
+      if (ctx) {
+        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, true);
+      }
+    },
+
+    onBootyPlayNo: function() {
+      var ctx = this._pendingPlayCard;
+      this._pendingPlayCard = null;
+      this.restoreServerGameState();
+      if (ctx) {
+        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, false);
+      }
+    },
+
+    onBootyPlayCancel: function() {
+      this._pendingPlayCard = null;
+      this.restoreServerGameState();
     },
 
     /**

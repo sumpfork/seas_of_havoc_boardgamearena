@@ -81,16 +81,18 @@ define([
       if (!this.playerHand) {
         return;
       }
-      const canSelect = this.isCurrentPlayerActive() && this.checkAction("actPlayCard", true);
+      // Don't use checkAction() here — it returns false during state transitions
+      // because the BGA framework locks the interface. Instead check possibleactions directly.
+      const possibleActions = this.gamedatas.gamestate.possibleactions || [];
+      const canSelect = this.isCurrentPlayerActive() && possibleActions.indexOf("actPlayCard") !== -1;
       const selectionMode = canSelect ? "single" : "none";
-      console.log("[hand] updateHandSelectionMode", { canSelect, selectionMode });
-      this._handSelectionUpdating = true;
+      console.warn("[hand] updateHandSelectionMode canSelect=" + canSelect + " mode=" + selectionMode
+        + " active=" + this.isCurrentPlayerActive()
+        + " possibleactions=" + JSON.stringify(possibleActions));
       this.playerHand.setSelectionMode(selectionMode);
       if (!canSelect) {
-        this.playerHand.unselectAll();
         this.cleanupCardPlayDialog();
       }
-      this._handSelectionUpdating = false;
     },
 
     /*
@@ -277,12 +279,26 @@ define([
       });
 
       this.cards_purchased = [];
+      this._bootyUsedForPurchase = false;
 
       // Set up selection change callback for HandStock
       this.playerHand.onSelectionChange = (selection, lastChange) => {
         this.onCardSelectedPlayerHand();
       };
-      
+
+      // Debug: log clicks on hand to diagnose selection issues
+      var self = this;
+      $("myhand").addEventListener('click', function(e) {
+        var cardDiv = e.target.closest('.card');
+        if (cardDiv) {
+          console.warn("[hand-debug] click cardId=" + cardDiv.id
+            + " hasSelectableClass=" + cardDiv.classList.contains('bga-cards_selectable-card')
+            + " hasDisabledClass=" + cardDiv.classList.contains('bga-cards_disabled-card')
+            + " cardsInHand=" + self.playerHand.getCards().length
+            + " allClasses=" + cardDiv.className);
+        }
+      });
+
       // Build a set of pending purchase card IDs
       var pending_card_ids = new Set();
       if (gamedatas.pending_purchases) {
@@ -403,7 +419,9 @@ define([
       this.players = gamedatas.players;
       this.resources = gamedatas.resources;
       this.unique_tokens = gamedatas.unique_tokens;
-      this.booty_tokens = gamedatas.booty_tokens || [];
+      // Ensure booty_tokens is always a JS array (PHP assoc arrays encode as objects)
+      var rawBooty = gamedatas.booty_tokens;
+      this.booty_tokens = Array.isArray(rawBooty) ? rawBooty : Object.values(rawBooty || {});
       this.players_with_booty = gamedatas.players_with_booty || [];
 
       this.updateResources(gamedatas.resources);
@@ -514,11 +532,6 @@ define([
 
     onCardSelectedPlayerHand: function () {
       console.groupCollapsed("player card selected");
-      if (this._handSelectionUpdating) {
-        console.log("selection update in progress; ignoring");
-        console.groupEnd();
-        return;
-      }
       var selection = this.playerHand.getSelection();
       console.log("player hand selection:", selection);
             
