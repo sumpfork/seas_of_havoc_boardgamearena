@@ -81,7 +81,6 @@ define([
             var canAffordWithout = this.canPlayerAfford(totalCost, false);
 
             if (!canAffordWithout) {
-              // Must use booty — auto-use, no prompt
               this._sendPlayCard(card, card_id, decisionSummary, true);
               console.groupEnd();
               return;
@@ -175,12 +174,13 @@ define([
       };
       if (useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
         params.use_booty_card_id = this.booty_tokens[0].id;
-        // Spend only the effective cost (after booty) from displayed resources
         var totalCost = this._computeTotalPlayCost(this.dep_tree);
         var tokenRes = this.getMyBootyTokenRes();
         if (tokenRes && totalCost) {
           var bootyResolved = this.resolveBootyResources(tokenRes, totalCost);
           var effectiveCost = this.computeEffectiveCost(totalCost, bootyResolved);
+          var msg = this.formatBootyUsageMessage(bootyResolved, totalCost);
+          if (msg) this.showMessage(msg, "info");
           this.playerSpendResources(effectiveCost);
         }
         this.booty_tokens = [];

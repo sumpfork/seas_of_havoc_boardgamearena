@@ -22,6 +22,7 @@ define([
           if (!this._restoringFromBootyConfirm) {
             this.cards_purchased = [];
             this._bootyUsedForPurchase = false;
+            this._savePurchaseSnapshot();
           }
           this.updateCardPurchaseButtons(true);
           break;
@@ -31,6 +32,7 @@ define([
           if (!this._restoringFromBootyConfirm) {
             this.cards_purchased = [];
             this._bootyUsedForPurchase = false;
+            this._savePurchaseSnapshot();
           }
           this.updateCardPurchaseButtons(true);
           break;
@@ -111,6 +113,11 @@ define([
           case "cardPurchasesMaking":
             console.log("Adding Complete Purchases button for state: " + stateName);
             this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
+            this.statusBar.addActionButton(
+              _("Restart Purchases"),
+              this.onRestartPurchasesClicked.bind(this),
+              { classes: "bgabutton_gray" },
+            );
             break;
             
           case "client_bootyPurchaseConfirm":

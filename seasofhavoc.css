@@ -182,6 +182,28 @@
     background-repeat: none;
     display: inline-block;
 }
+.resource.log_resource {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    background-size: 72px 72px;
+    vertical-align: middle;
+    margin: 0 2px;
+    display: inline-block;
+}
+.resource.log_resource.cannonball {
+    background-position: 0px 0px;
+}
+.resource.log_resource.sail {
+    background-position: -18px 0px;
+}
+.resource.log_resource.doubloon {
+    background-position: 0px -18px;
+}
+.resource.log_resource.infamy {
+    background-position: -18px -18px;
+}
 .cannonball {
     background-position: 0px 0px;
 }

@@ -1169,11 +1169,21 @@ class SeasOfHavoc extends Table
             }
             $this->pay($player_id, $remaining_cost);
             $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
-            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token to help pay'), [
+            // Build a description of what the booty token covered, capped at cost
+            $booty_parts = [];
+            foreach ($booty_resources as $res => $amount) {
+                $used = min($amount, $cost[$res] ?? 0);
+                for ($i = 0; $i < $used; $i++) {
+                    $booty_parts[] = "[$res]";
+                }
+            }
+            $booty_desc = implode(" + ", $booty_parts);
+            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token as ${booty_usage}'), [
                 "player_id" => $player_id,
                 "player_name" => $this->getPlayerNameById($player_id),
                 "booty_card" => $booty_card,
                 "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                "booty_usage" => $booty_desc,
             ]);
             return;
         }
@@ -1208,22 +1218,60 @@ class SeasOfHavoc extends Table
         $this->mytrace("gain resources sql: $sql");
 
         self::DbQuery($sql);
-        $this->notifyAllPlayers("resourcesChanged", clienttranslate('resources changed for ${player_name}'), [
+        $msg = $this->formatResourceChangeMessage($resources);
+        $log = $msg ? '${player_name} ${resource_change}' : '';
+        $this->notifyAllPlayers("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
+            "resource_change" => $msg,
         ]);
     }
 
     function playerSetResourceCount($player_id, $resource_type, $count)
     {
         $this->mytrace("playerSetResourceCount $player_id $resource_type $count");
+        $current = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        $old_count = $current[$resource_type] ?? 0;
+        $diff = $count - $old_count;
         self::DbQuery(
             "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ('$player_id','$resource_type','$count')",
         );
-        $this->notifyAllPlayers("resourcesChanged", clienttranslate('resources changed for ${player_name}'), [
+        $msg = $this->formatResourceChangeMessage([$resource_type => $diff]);
+        $log = $msg ? '${player_name} ${resource_change}' : '';
+        $this->notifyAllPlayers("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
+            "resource_change" => $msg,
         ]);
+    }
+
+    /**
+     * Build a human-readable string describing resource changes, using [resource] markers
+     * that the client replaces with icons.
+     * e.g. ["sail" => -2, "cannonball" => 1] => "pays 2 [sail], gains 1 [cannonball]"
+     */
+    private function formatResourceChangeMessage(array $resources): string
+    {
+        $gains = [];
+        $losses = [];
+        foreach ($resources as $type => $amount) {
+            if ($amount > 0) {
+                $gains[] = "$amount [$type]";
+            } elseif ($amount < 0) {
+                $losses[] = abs($amount) . " [$type]";
+            }
+        }
+        $parts = [];
+        if (!empty($losses)) {
+            $parts[] = "pays " . implode(" ", $losses);
+        }
+        if (!empty($gains)) {
+            $parts[] = "gains " . implode(" ", $gains);
+        }
+        if (empty($parts)) {
+            return "";
+        }
+        return implode(", ", $parts);
     }
 
     function showResourceChoiceDialog(string $context, string $context_number)

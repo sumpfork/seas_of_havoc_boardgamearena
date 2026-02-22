@@ -77,6 +77,29 @@ define([
       return Constants.getHeadingDegrees(direction);
     },
 
+    /**
+     * BGA framework hook: replace [resource] markers in log messages with inline icons.
+     */
+    bgaFormatText: function(log, args) {
+      try {
+        if (log && args && !args.processed) {
+          args.processed = true;
+          var keys = ["resource_change", "booty_usage"];
+          for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (typeof args[key] === "string") {
+              args[key] = args[key].replace(/\[(sail|cannonball|doubloon|skiff)\]/g, function(match, res) {
+                return "<span class='resource log_resource " + res + "'></span>";
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error(log, args, "bgaFormatText exception", e.stack);
+      }
+      return { log: log, args: args };
+    },
+
     updateHandSelectionMode: function() {
       if (!this.playerHand) {
         return;

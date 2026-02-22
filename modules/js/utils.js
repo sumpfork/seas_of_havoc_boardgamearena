@@ -380,6 +380,23 @@ define([
         }
       }
       return false;
+    },
+
+    /**
+     * Build an HTML string describing how a booty token's resolved resources are being used.
+     * e.g. "Using booty token as <sail icon> + <cannonball icon>"
+     * Only includes resources that actually offset the cost (capped at what's needed).
+     */
+    formatBootyUsageMessage: function(bootyResolved, cost) {
+      var parts = [];
+      for (var res in bootyResolved) {
+        var used = Math.min(bootyResolved[res] || 0, cost[res] || 0);
+        for (var i = 0; i < used; i++) {
+          parts.push("<span class='resource log_resource " + res + "'></span>");
+        }
+      }
+      if (parts.length === 0) return null;
+      return _("Using booty token as ") + parts.join(" + ");
     }
   };
 });

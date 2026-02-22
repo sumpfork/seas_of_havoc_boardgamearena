@@ -194,7 +194,6 @@ define([
         var canAffordWithout = this.canPlayerAfford(card.cost, false);
 
         if (!canAffordWithout) {
-          // Must use booty — auto-use, no prompt
           this._finalizePurchase(slot_card, card, slotnumber, true);
           console.groupEnd();
           return;
@@ -225,6 +224,8 @@ define([
         if (tokenRes) {
           var bootyResolved = this.resolveBootyResources(tokenRes, card.cost);
           effectiveCost = this.computeEffectiveCost(card.cost, bootyResolved);
+          var msg = this.formatBootyUsageMessage(bootyResolved, card.cost);
+          if (msg) this.showMessage(msg, "info");
         }
       }
 
@@ -253,17 +254,22 @@ define([
       });
 
       this.market.removeCard(slot_card);
-      this.updateCardPurchaseButtons(false);
 
-      var entry = { card_id: slot_card.id };
+      var entry = {
+        card_id: slot_card.id,
+        slot_card: { id: slot_card.id, type: slot_card.type },
+        slotnumber: slotnumber,
+      };
       if (useBooty) {
         entry.use_booty_card_id = this.booty_tokens[0].id;
         this._bootyUsedForPurchase = true;
-        // Remove booty token from local state and update UI
         this.booty_tokens = [];
         this.updateMyBootyToken();
       }
       this.cards_purchased.push(entry);
+
+      // Re-evaluate buttons after resources and booty state are fully updated
+      this.updateCardPurchaseButtons(false);
     },
 
     /**
@@ -315,6 +321,54 @@ define([
       this.bgaPerformAction("actCompletePurchases", {
         cards_purchased: JSON.stringify(cardsPayload),
       });
+    },
+
+    _savePurchaseSnapshot: function() {
+      this._purchaseSnapshot = {
+        resources: JSON.parse(JSON.stringify(this.resources)),
+        booty_tokens: JSON.parse(JSON.stringify(this.booty_tokens || [])),
+        marketOccupancy: {},
+      };
+      if (this.islandSlots && this.islandSlots.market) {
+        for (var num in this.islandSlots.market) {
+          this._purchaseSnapshot.marketOccupancy[num] = this.islandSlots.market[num].occupying_player_id;
+        }
+      }
+    },
+
+    onRestartPurchasesClicked: function() {
+      var snap = this._purchaseSnapshot;
+      if (!snap) {
+        window.location.reload();
+        return;
+      }
+
+      for (var i = this.cards_purchased.length - 1; i >= 0; i--) {
+        var entry = this.cards_purchased[i];
+        this.playerHand.removeCard({ id: entry.slot_card.id, type: entry.slot_card.type });
+        this.market.addCard({ id: entry.slot_card.id, type: entry.slot_card.type, location: "market" });
+      }
+
+      this.resources = JSON.parse(JSON.stringify(snap.resources));
+      this.updateResources(this.resources);
+
+      this.booty_tokens = JSON.parse(JSON.stringify(snap.booty_tokens));
+      this.updateMyBootyToken();
+
+      if (this.islandSlots && this.islandSlots.market) {
+        for (var num in snap.marketOccupancy) {
+          this.islandSlots.market[num].occupying_player_id = snap.marketOccupancy[num];
+        }
+      }
+
+      this.cards_purchased = [];
+      this._bootyUsedForPurchase = false;
+
+      query(".purchase_card_button").forEach(domConstruct.destroy);
+      this.updateCardPurchaseButtons(true);
+
+      this.updateIslandSlots(this.islandSlots, this.gamedatas.players);
+      this.positionMarketSkiffSlots();
     }
   };
 });
