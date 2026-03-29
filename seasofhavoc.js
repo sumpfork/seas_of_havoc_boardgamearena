@@ -32,6 +32,7 @@ define([
   g_gamethemeurl + "modules/js/cardManager.js",
   g_gamethemeurl + "modules/js/dialogs.js",
   g_gamethemeurl + "modules/js/purchases.js",
+  g_gamethemeurl + "modules/js/tradingPost.js",
   g_gamethemeurl + "modules/js/stateHandlers.js",
   g_gamethemeurl + "modules/js/notifications.js",
   // Dojo extras
@@ -56,6 +57,7 @@ define([
   CardManager,
   Dialogs,
   Purchases,
+  TradingPost,
   StateHandlers,
   Notifications
 ) {
@@ -582,7 +584,7 @@ define([
   });
   
   // Mix in methods from all modules
-  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, StateHandlers, Notifications];
+  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, TradingPost, StateHandlers, Notifications];
   
   for (var i = 0; i < modulesToMixin.length; i++) {
     var module = modulesToMixin[i];

@@ -53,6 +53,16 @@ define([
     },
 
     /**
+     * Trading post dialog notification
+     */
+    notif_showTradingPostDialog: function(args) {
+      console.groupCollapsed("show trading post dialog");
+      console.log("slot_number:", args.slot_number);
+      this.initTradingPost(args.slot_number);
+      console.groupEnd();
+    },
+
+    /**
      * Resources changed notification
      */
     notif_resourcesChanged: function(args) {

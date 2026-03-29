@@ -97,7 +97,7 @@ $machinestates = [
         "description" => clienttranslate('${actplayer} must place a skiff'),
         "descriptionmyturn" => clienttranslate('${you} must place a skiff'),
         "type" => "activeplayer",
-        "possibleactions" => ["actPlaceSkiff", "actResourcePickedInDialog"],
+        "possibleactions" => ["actPlaceSkiff", "actResourcePickedInDialog", "actTradingPostExchange"],
         "transitions" => ["islandTurnDone" => STATE_NEXT_PLAYER_ISLAND_PHASE, "scrapCard" => STATE_SCRAP_CARD],
     ],
 

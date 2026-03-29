@@ -9,28 +9,38 @@ class SeasOfHavocUT extends SeasOfHavoc {
     public array $token_names;
     public array $non_playable_cards;
     public array $playable_cards;
+    public array $booty_tokens = [];
+    public array $trackedNotifications = [];
     
     function __construct() {
         // Don't call parent constructor to avoid DB initialization
         include __DIR__ . "/../material.inc.php";
     }
     
-    public function notifyAllPlayers($notification_type, $notification_log, $notification_args) {
-        // Stub implementation for testing - just return without doing anything
-        return;
+    public function notifyAllPlayers($type, $message, $args) {
+        $this->trackedNotifications[] = [
+            'type' => $type,
+            'log' => $message,
+            'args' => $args,
+        ];
     }
     
     public function getActivePlayerId() {
-        // Stub implementation for testing
         return 1;
     }
     
     public function getPlayersNumber() {
-        // Stub implementation for testing
         return 2;
     }
     
-    // Simple method to test basic functionality
+    public function getPlayerNameById($player_id) {
+        return "TestPlayer";
+    }
+    
+    public function _($s) {
+        return $s;
+    }
+    
     public function testGetResourceTypes() {
         return $this->resource_types;
     }

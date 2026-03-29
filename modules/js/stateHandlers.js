@@ -42,6 +42,13 @@ define([
           this.updateCardPurchaseButtons(false);
           break;
         }
+
+        case "islandPhase": {
+          if (this.isCurrentPlayerActive() && this.gamedatas.pending_trading_post_slot) {
+            this.initTradingPost(this.gamedatas.pending_trading_post_slot);
+          }
+          break;
+        }
         
         case "seaPhaseSetup": {
           // Clear all skiffs when entering sea phase
@@ -81,6 +88,12 @@ define([
       console.log("Leaving state: " + stateName);
 
       switch (stateName) {
+        case "client_tradingPostBootyChoice":
+        case "client_tradingPostSpend":
+        case "client_tradingPostGain":
+          this.cleanupTradingPostUi();
+          break;
+
         case "scrapCard":
           this.cleanupScrapCardSelection();
           break;
@@ -154,6 +167,27 @@ define([
               this.onBootyPlayCancel.bind(this),
               { classes: "bgabutton_red" },
             );
+            break;
+
+          case "client_tradingPostBootyChoice":
+            this.statusBar.addActionButton(
+              _("Yes, use booty token"),
+              this.onTradingPostBootyYes.bind(this),
+              { classes: "bgabutton_green" },
+            );
+            this.statusBar.addActionButton(
+              _("No, trade resources"),
+              this.onTradingPostBootyNo.bind(this),
+              { classes: "bgabutton_gray" },
+            );
+            break;
+
+          case "client_tradingPostSpend":
+            this.buildTradingPostSpendUI();
+            break;
+
+          case "client_tradingPostGain":
+            this.buildTradingPostGainUI();
             break;
 
           case "client_resourceDialog":

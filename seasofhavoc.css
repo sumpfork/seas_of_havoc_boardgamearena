@@ -596,3 +596,37 @@ a.disabled {
 }
 
 /* BGA Cards library will handle card flipping animations */
+
+/* Trading post resource selection rows */
+.trading-post-rows {
+    display: block;
+    width: 100%;
+    margin-bottom: 6px;
+}
+.trading-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.trading-row-label {
+    font-weight: bold;
+    min-width: 20px;
+    text-align: right;
+    margin-right: 2px;
+}
+.trading-resource-btn {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    transition: border-color 0.15s, opacity 0.15s;
+}
+.trading-resource-btn.trading-selected {
+    border-color: #2196F3;
+    box-shadow: 0 0 6px rgba(33, 150, 243, 0.5);
+}
+.trading-resource-btn.disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+}

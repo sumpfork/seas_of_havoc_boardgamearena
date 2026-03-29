@@ -65,6 +65,8 @@ class SeasOfHavoc extends Table
 
         self::initGameStateLabels([
             "seafeature_effects_attempted" => 10,
+            "pending_trading_post_player" => 11,
+            "pending_trading_post_slot" => 12,
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
@@ -749,6 +751,11 @@ class SeasOfHavoc extends Table
         foreach ($this->booty_tokens as $cfg) {
             $result["booty_token_resources"][$cfg["image_id"]] = $cfg["resources"] ?? [];
         }
+        $pending_trading_post = $this->getPendingTradingPostSelection();
+        $result["pending_trading_post_slot"] = null;
+        if ($pending_trading_post !== null && (int) $pending_trading_post["player_id"] === (int) $current_player_id) {
+            $result["pending_trading_post_slot"] = $pending_trading_post["slot_number"];
+        }
         $result["playable_cards"] = $this->playable_cards;
         
         // Send the full, unmodified market to all players
@@ -910,6 +917,53 @@ class SeasOfHavoc extends Table
             "slot_name" => $slot_name,
             "slot_number" => $number,
         ]);
+    }
+
+    private function setPendingTradingPostSelection(?int $player_id, ?string $slot_number): void
+    {
+        $slot_value = 0;
+        if ($slot_number !== null) {
+            $slot_value = (int) ltrim($slot_number, "n");
+        }
+
+        $this->setGameStateValue("pending_trading_post_player", $player_id ?? 0);
+        $this->setGameStateValue("pending_trading_post_slot", $slot_value);
+    }
+
+    private function getPendingTradingPostSelection(): ?array
+    {
+        $player_id = (int) $this->getGameStateValue("pending_trading_post_player");
+        $slot_value = (int) $this->getGameStateValue("pending_trading_post_slot");
+
+        if ($player_id <= 0 || $slot_value <= 0) {
+            return null;
+        }
+
+        return [
+            "player_id" => $player_id,
+            "slot_number" => "n" . $slot_value,
+        ];
+    }
+
+    private function assertPendingTradingPostSelection(int $player_id, string $slot_number): void
+    {
+        $pending = $this->getPendingTradingPostSelection();
+        if ($pending === null) {
+            throw new BgaUserException($this->_("You must place a skiff on the trading post first"));
+        }
+
+        if ((int) $pending["player_id"] !== $player_id || $pending["slot_number"] !== $slot_number) {
+            throw new BgaUserException($this->_("This trading post exchange is no longer valid"));
+        }
+
+        $occupancies = $this->getIslandSlots();
+        $slot_state = $occupancies["trading_post"][$slot_number] ?? null;
+        if ($slot_state === null || $slot_state["disabled"]) {
+            throw new BgaUserException($this->_("This trading post is not available"));
+        }
+        if ($slot_state["occupying_player_id"] !== null) {
+            throw new BgaUserException($this->_("There is already a skiff on trading_post"));
+        }
     }
 
     function acquireToken(string $player_id, string $token_key)
@@ -1399,6 +1453,9 @@ class SeasOfHavoc extends Table
     {
         $player_id = self::getActivePlayerId();
         $this->mytrace("placeSkiff: $player_id slotname: $slotname number: $number");
+        if ($this->getPendingTradingPostSelection() !== null) {
+            throw new BgaUserException($this->_("Finish the trading post exchange before placing another skiff"));
+        }
         $occupancies = $this->getIslandSlots();
 
         $this->dump("occupancies", $occupancies);
@@ -1453,6 +1510,12 @@ class SeasOfHavoc extends Table
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 $this->gamestate->nextState("islandTurnDone");
+                break;
+            case "trading_post":
+                $this->setPendingTradingPostSelection((int) $player_id, $number);
+                $this->notifyPlayer($player_id, "showTradingPostDialog", "", [
+                    "slot_number" => $number,
+                ]);
                 break;
             case "green_flag":
                 $this->showResourceChoiceDialog($slotname, $number);
@@ -1517,6 +1580,90 @@ class SeasOfHavoc extends Table
             default:
                 throw new BgaSystemException("bad context: $context");
         }
+    }
+
+    function actTradingPostExchange(
+        #[JsonParam] array $resources_spent,
+        #[JsonParam] array $resources_gained,
+        string $slot_number,
+        ?int $use_booty_card_id = null
+    ): void {
+        $player_id = self::getActivePlayerId();
+        $valid_resources = ["sail", "cannonball", "doubloon"];
+
+        $this->assertPendingTradingPostSelection((int) $player_id, $slot_number);
+
+        foreach ($resources_spent as $res) {
+            if (!in_array($res, $valid_resources)) {
+                throw new BgaSystemException("Invalid resource type in resources_spent: $res");
+            }
+        }
+        foreach ($resources_gained as $res) {
+            if (!in_array($res, $valid_resources)) {
+                throw new BgaSystemException("Invalid resource type in resources_gained: $res");
+            }
+        }
+
+        if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
+            // Booty trade: consume the token and gain 2 resources
+            if (count($resources_spent) > 0) {
+                throw new BgaUserException($this->_("Cannot spend resources when using a booty token"));
+            }
+            if (count($resources_gained) !== 2) {
+                throw new BgaUserException($this->_("Must gain exactly 2 resources when using a booty token"));
+            }
+
+            $booty_card = $this->cards->getCard($use_booty_card_id);
+            if (!$booty_card || $booty_card["location"] !== "booty_player" || (int) $booty_card["location_arg"] !== (int) $player_id) {
+                throw new BgaUserException($this->_("Invalid booty token"));
+            }
+            $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
+            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token at the trading post'), [
+                "player_id" => $player_id,
+                "player_name" => self::getPlayerNameById($player_id),
+                "booty_card" => $booty_card,
+                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                "booty_usage" => "trading post",
+            ]);
+        } else {
+            // Normal trade: spend 1-2 resources, gain the same number
+            if (count($resources_spent) < 1 || count($resources_spent) > 2) {
+                throw new BgaUserException($this->_("Must spend 1 or 2 resources"));
+            }
+            if (count($resources_gained) !== count($resources_spent)) {
+                throw new BgaUserException($this->_("Must gain the same number of resources as spent"));
+            }
+
+            $spend_counts = [];
+            foreach ($resources_spent as $res) {
+                $spend_counts[$res] = ($spend_counts[$res] ?? 0) + 1;
+            }
+            $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+            foreach ($spend_counts as $res => $count) {
+                if (($player_resources[$res] ?? 0) < $count) {
+                    throw new BgaUserException($this->_("You don't have enough resources"));
+                }
+            }
+
+            $negative_spend = [];
+            foreach ($spend_counts as $res => $count) {
+                $negative_spend[$res] = -$count;
+            }
+            $this->playerGainResources($player_id, $negative_spend);
+        }
+
+        // Gain the chosen resources
+        $gain_counts = [];
+        foreach ($resources_gained as $res) {
+            $gain_counts[$res] = ($gain_counts[$res] ?? 0) + 1;
+        }
+        $this->playerGainResources($player_id, $gain_counts);
+
+        // Spend skiff and occupy slot
+        $this->playerGainResources($player_id, ["skiff" => -1]);
+        $this->occupyIslandSlot($player_id, "trading_post", $slot_number);
+        $this->setPendingTradingPostSelection(null, null);
+        $this->gamestate->nextState("islandTurnDone");
     }
 
     /** One-time schema upgrade: add booty columns to pending_purchases if missing (e.g. table created before booty feature). */
