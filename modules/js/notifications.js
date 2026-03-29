@@ -441,7 +441,10 @@ define([
      */
     notif_score: function(args) {
       console.log("score for " + args.player_id + " " + args.player_score);
-      this.scoreCtrl[args.player_id].setValue(args.player_score);
+      var scoreCounter = this.bga.playerPanels.getScoreCounter(args.player_id);
+      if (scoreCounter) {
+        scoreCounter.setValue(args.player_score);
+      }
     },
 
     /**
