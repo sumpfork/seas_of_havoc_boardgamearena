@@ -46,12 +46,12 @@ $this->booty_tokens = [
 ];
 
 $this->token_names = [
-    "first_player_token" => _("First Player Token"),
-    "green_flag" => _("Green Purser's Flag"),
-    "tan_flag" => _("Tan Flag"),
-    "red_flag" => _("Red Flag"),
-    "blue_flag" => _("Blue Flag"),
-    "yellow_flag" => _("Yellow Flag"),
+    "first_player_token" => clienttranslate("First Player Token"),
+    "green_flag" => clienttranslate("Green Purser's Flag"),
+    "tan_flag" => clienttranslate("Tan Flag"),
+    "red_flag" => clienttranslate("Red Flag"),
+    "blue_flag" => clienttranslate("Blue Flag"),
+    "yellow_flag" => clienttranslate("Yellow Flag"),
 ];
 
 $this->non_playable_cards = [

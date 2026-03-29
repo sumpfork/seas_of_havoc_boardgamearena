@@ -51,7 +51,7 @@ class view_seasofhavoc_seasofhavoc extends game_view
         $this->tpl['MY_VARIABLE_ELEMENT'] = $number_to_display;
 
         // Display a string to be translated in all languages: 
-        $this->tpl['MY_VARIABLE_ELEMENT'] = self::_("A string to be translated");
+        $this->tpl['MY_VARIABLE_ELEMENT'] = clienttranslate("A string to be translated");
 
         // Display some HTML content of your own:
         $this->tpl['MY_VARIABLE_ELEMENT'] = self::raw( $some_html_code );
