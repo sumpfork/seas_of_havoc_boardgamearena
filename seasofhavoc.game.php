@@ -75,8 +75,7 @@ class SeasOfHavoc extends Table
             //      ...
         ]);
 
-        $this->cards = $this->getNew("module.common.deck");
-        $this->cards->init("card");
+        $this->cards = $this->deckFactory->createDeck("card");
         $this->cards->autoreshuffle = true;
         $this->cards->autoreshuffle_custom = [
             "player_deck" => "player_discard",
