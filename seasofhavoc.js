@@ -431,13 +431,16 @@ define([
           id: "skiff_p" + player_id,
         });
 
-        document.getElementById("player_board_" + player_id).insertAdjacentHTML(
-          "beforeend",
-          this.format_block("jstpl_resources_playerboard", {
-            player_id: player.id,
-            skiff: skiff,
-          }),
-        );
+        var player_board = this.bga.playerPanels.getElement(player_id);
+        if (player_board) {
+          player_board.insertAdjacentHTML(
+            "beforeend",
+            this.format_block("jstpl_resources_playerboard", {
+              player_id: player.id,
+              skiff: skiff,
+            }),
+          );
+        }
       }
 
       this.islandSlots = gamedatas.islandslots;

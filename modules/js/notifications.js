@@ -95,8 +95,8 @@ define([
       };
 
       console.log("skiff_id: " + skiff_id);
-      var player_board_id = "overall_player_board_" + args.player_id;
-      console.log("player board id: " + player_board_id);
+      var player_board = this.bga.playerPanels.getElement(args.player_id);
+      console.log("player board:", player_board);
 
       var skiff = this.format_block("jstpl_skiff", {
         player_color: args.player_color,
@@ -107,7 +107,9 @@ define([
       console.log(skiff_slot);
 
       domConstruct.place(skiff, skiff_slot);
-      this.placeOnObject(skiff_id, player_board_id);
+      if (player_board) {
+        this.placeOnObject(skiff_id, player_board);
+      }
       domStyle.set(skiff_id, "zIndex", 1);
       this.slideToObject(skiff_id, skiff_slot, 1000).play();
       domClass.remove(skiff_slot, "unoccupied");
