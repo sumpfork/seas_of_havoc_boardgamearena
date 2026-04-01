@@ -17,10 +17,10 @@
  *
  */
 
-require_once APP_GAMEMODULE_PATH . "module/table/table.game.php";
 require_once "modules/SeaBoard.php";
 
 use Bga\GameFramework\Actions\Types\JsonParam;
+use Bga\GameFramework\Table;
 
 
 enum PrimitiveCardPlayAction: string
