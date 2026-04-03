@@ -974,7 +974,9 @@ class SeasOfHavoc extends Table
             $this->mytrace("Player $player_id already owns token $token_key, skipping notification");
             return;
         }
-        
+
+        $taken_from_another_player = $current_owner !== null;
+
         self::DbQuery(
             "REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')",
         );
@@ -984,6 +986,37 @@ class SeasOfHavoc extends Table
             "token_name" => $token_name,
             "player_id" => $player_id,
             "token_key" => $token_key,
+        ]);
+
+        // Admiral ability: rewards when taking tokens from other players
+        if ($taken_from_another_player && $this->getPlayerCaptain($player_id) === "admiral") {
+            if ($token_key === "first_player_token") {
+                $this->drawCards($player_id);
+                $this->notifyAllPlayers("log", clienttranslate('${player_name}\'s Admiral ability: draws a card for taking the first player token'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                ]);
+            } elseif (str_ends_with($token_key, "_flag")) {
+                $this->scoreInfamy($player_id, 1, clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'));
+            }
+        }
+    }
+
+    function scoreInfamy(string $player_id, int $amount, string $message = '')
+    {
+        $this->DbQuery(
+            "UPDATE player SET player_score=player_score+$amount WHERE player_id='$player_id'",
+        );
+        $new_score = $this->getUniqueValueFromDB(
+            "SELECT player_score FROM player WHERE player_id='$player_id'",
+        );
+        if ($message === '') {
+            $message = clienttranslate('${player_name} scored ${score_increment} infamy');
+        }
+        $this->notifyAllPlayers("score", $message, [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => $player_id,
+            "player_score" => $new_score,
+            "score_increment" => $amount,
         ]);
     }
 
@@ -1668,19 +1701,8 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState("islandTurnDone");
     }
 
-    /** One-time schema upgrade: add booty columns to pending_purchases if missing (e.g. table created before booty feature). */
-    private function ensurePendingPurchasesBootyColumns(): void
-    {
-        $row = self::getObjectFromDB("SHOW COLUMNS FROM pending_purchases LIKE 'use_booty_card_id'");
-        if ($row) {
-            return;
-        }
-        self::DbQuery("ALTER TABLE pending_purchases ADD COLUMN use_booty_card_id int(10) unsigned DEFAULT NULL, ADD COLUMN booty_choice varchar(16) DEFAULT NULL");
-    }
-
     function actCompletePurchases(#[JsonParam] array $cards_purchased)
     {
-        $this->ensurePendingPurchasesBootyColumns();
 
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
@@ -1692,10 +1714,11 @@ class SeasOfHavoc extends Table
         }
         
         // Validate and store purchases in pending_purchases table
-        // Each item: int card_id or { card_id, use_booty_card_id? }
+        // Each item: int card_id or { card_id, use_booty_card_id?, doubloons_as_cannonballs? }
         foreach ($cards_purchased as $item) {
             $card_id = is_array($item) ? ($item["card_id"] ?? null) : $item;
             $use_booty_card_id = is_array($item) ? ($item["use_booty_card_id"] ?? null) : null;
+            $doubloons_as_cannonballs = is_array($item) ? intval($item["doubloons_as_cannonballs"] ?? 0) : 0;
             if ($card_id === null) {
                 throw new BgaUserException(clienttranslate("Invalid card purchase"));
             }
@@ -1703,11 +1726,22 @@ class SeasOfHavoc extends Table
             if (!$card || $card["location"] != "market") {
                 throw new BgaUserException(clienttranslate("Invalid card purchase"));
             }
+            // Validate Merchant substitution
+            if ($doubloons_as_cannonballs > 0) {
+                if ($this->getPlayerCaptain($player_id) !== "merchant") {
+                    throw new BgaUserException(clienttranslate("Only the Merchant can spend doubloons as cannonballs"));
+                }
+                $market_card = $this->playable_cards[$card["type"]];
+                $cannonball_cost = $market_card["cost"]["cannonball"] ?? 0;
+                if ($doubloons_as_cannonballs > $cannonball_cost) {
+                    throw new BgaUserException(clienttranslate("Cannot substitute more doubloons than the cannonball cost"));
+                }
+            }
             $use_sql = "NULL";
             if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
                 $use_sql = "'" . intval($use_booty_card_id) . "'";
             }
-            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id) VALUES ('$player_id', '" . intval($card_id) . "', $use_sql)");
+            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id, doubloons_as_cannonballs) VALUES ('$player_id', '" . intval($card_id) . "', $use_sql, $doubloons_as_cannonballs)");
         }
         
         $this->trace("active player list before: " . implode(", ", $this->gamestate->getActivePlayerList()));
@@ -1722,12 +1756,11 @@ class SeasOfHavoc extends Table
     
     function commitAllPurchases()
     {
-        $this->ensurePendingPurchasesBootyColumns();
 
         $this->trace("Committing all purchases");
         
-        // Get all pending purchases (including optional booty usage)
-        $pending = self::getObjectListFromDB("SELECT player_id, card_id, use_booty_card_id FROM pending_purchases");
+        // Get all pending purchases (including optional booty usage and Merchant substitution)
+        $pending = self::getObjectListFromDB("SELECT player_id, card_id, use_booty_card_id, doubloons_as_cannonballs FROM pending_purchases");
         
         // Group by player for notification
         $purchases_by_player = [];
@@ -1746,9 +1779,20 @@ class SeasOfHavoc extends Table
             }
             
             $market_card = $this->playable_cards[$card["type"]];
-            
+            $cost = $market_card["cost"];
+
+            // Merchant ability: shift cannonball cost to doubloon cost
+            $doubloons_as_cannonballs = intval($purchase["doubloons_as_cannonballs"] ?? 0);
+            if ($doubloons_as_cannonballs > 0) {
+                $cost["cannonball"] = ($cost["cannonball"] ?? 0) - $doubloons_as_cannonballs;
+                $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_cannonballs;
+                if ($cost["cannonball"] <= 0) {
+                    unset($cost["cannonball"]);
+                }
+            }
+
             // Pay for the card (optionally using booty token)
-            $this->payWithOptionalBooty($player_id, $market_card["cost"], $use_booty_card_id);
+            $this->payWithOptionalBooty($player_id, $cost, $use_booty_card_id);
             
             // Move card to player's hand
             $this->cards->moveCard($card_id, "hand", $player_id);

@@ -286,12 +286,32 @@ define([
      * Check if current player can afford a resource cost.
      * @param {boolean} includeBooty - If true (default), count booty token resources.
      */
-    canPlayerAfford: function(resource_cost, includeBooty) {
+    canPlayerAfford: function(resource_cost, includeBooty, includeMerchant) {
       if (typeof includeBooty === "undefined") includeBooty = true;
+      if (typeof includeMerchant === "undefined") includeMerchant = true;
       if (typeof resource_cost === "undefined") {
         return true;
       }
       var playerResources = this.getPlayerResources();
+
+      // Merchant ability: doubloons can cover cannonball costs for market purchases
+      if (includeMerchant && this.player_captain === "merchant" && resource_cost.cannonball) {
+        var cannonball_need = resource_cost.cannonball;
+        var cannonball_have = playerResources.cannonball || 0;
+        var doubloon_have = playerResources.doubloon || 0;
+        var doubloon_need = resource_cost.doubloon || 0;
+        var cannonball_shortfall = Math.max(0, cannonball_need - cannonball_have);
+        var doubloon_surplus = Math.max(0, doubloon_have - doubloon_need);
+        if (cannonball_shortfall > 0 && doubloon_surplus >= cannonball_shortfall) {
+          // Can afford by substituting doubloons — check with adjusted cost
+          var adjusted = Object.assign({}, resource_cost);
+          adjusted.cannonball = cannonball_need - cannonball_shortfall;
+          adjusted.doubloon = doubloon_need + cannonball_shortfall;
+          if (adjusted.cannonball <= 0) delete adjusted.cannonball;
+          return this.canPlayerAfford(adjusted, includeBooty, false);
+        }
+      }
+
       var affordable = true;
       for (const [resource_key, num] of Object.entries(resource_cost)) {
         var player_has = playerResources[resource_key] || 0;

@@ -133,6 +133,26 @@ define([
             );
             break;
             
+          case "client_merchantSubstitute":
+            var ctx = this._pendingMerchantPurchase;
+            if (ctx) {
+              for (var i = ctx.minSub; i <= ctx.maxSub; i++) {
+                (function(amount, self) {
+                  self.statusBar.addActionButton(
+                    "" + amount + " doubloon" + (amount !== 1 ? "s" : ""),
+                    function() { self.onMerchantSubstituteChosen(amount); },
+                    { classes: amount === 0 ? "bgabutton_gray" : "bgabutton_green" },
+                  );
+                })(i, this);
+              }
+              this.statusBar.addActionButton(
+                _("Cancel"),
+                this.onMerchantSubstituteCancel.bind(this),
+                { classes: "bgabutton_red" },
+              );
+            }
+            break;
+
           case "client_bootyPurchaseConfirm":
             this.statusBar.addActionButton(
               _("Yes, use booty token"),

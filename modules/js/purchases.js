@@ -186,6 +186,36 @@ define([
         return;
       }
 
+      // Merchant ability: ask how many doubloons to substitute for cannonballs
+      var cannonballCost = card.cost.cannonball || 0;
+      if (this.player_captain === "merchant" && cannonballCost > 0) {
+        var playerRes = this.getPlayerResources();
+        var doubloonAvail = (playerRes.doubloon || 0) - (card.cost.doubloon || 0);
+        if (doubloonAvail > 0) {
+          var cannonballAvail = playerRes.cannonball || 0;
+          // Max substitution: limited by cannonball cost and available surplus doubloons
+          var maxSub = Math.min(cannonballCost, doubloonAvail);
+          // Min substitution: if not enough cannonballs, must substitute some
+          var minSub = Math.max(0, cannonballCost - cannonballAvail);
+
+          if (minSub < maxSub) {
+            // Player has a real choice — show dialog
+            this._pendingMerchantPurchase = {
+              slot_card: slot_card, card: card, slotnumber: slotnumber,
+              minSub: minSub, maxSub: maxSub,
+            };
+            this.setClientState("client_merchantSubstitute", {
+              descriptionmyturn: _("How many doubloons to spend as cannonballs? (${min}-${max})").replace("${min}", minSub).replace("${max}", maxSub),
+            });
+            console.groupEnd();
+            return;
+          } else {
+            // No choice: must substitute exactly minSub (== maxSub)
+            this._pendingDoubloonsAsCannonballs = minSub;
+          }
+        }
+      }
+
       // Check if player has an unused booty token with resources that overlap this card's cost
       var tokenRes = (!this._bootyUsedForPurchase) ? this.getMyBootyTokenRes() : null;
       var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
@@ -217,14 +247,23 @@ define([
      * Finalize a card purchase: move card, spend resources, record in cards_purchased.
      */
     _finalizePurchase: function(slot_card, card, slotnumber, useBooty) {
-      var effectiveCost = card.cost;
+      var effectiveCost = Object.assign({}, card.cost);
+
+      // Apply Merchant doubloon-as-cannonball substitution
+      var doubloonsAsCannonballs = this._pendingDoubloonsAsCannonballs || 0;
+      this._pendingDoubloonsAsCannonballs = 0;
+      if (doubloonsAsCannonballs > 0) {
+        effectiveCost.cannonball = (effectiveCost.cannonball || 0) - doubloonsAsCannonballs;
+        effectiveCost.doubloon = (effectiveCost.doubloon || 0) + doubloonsAsCannonballs;
+        if (effectiveCost.cannonball <= 0) delete effectiveCost.cannonball;
+      }
 
       if (useBooty) {
         var tokenRes = this.getMyBootyTokenRes();
         if (tokenRes) {
-          var bootyResolved = this.resolveBootyResources(tokenRes, card.cost);
-          effectiveCost = this.computeEffectiveCost(card.cost, bootyResolved);
-          var msg = this.formatBootyUsageMessage(bootyResolved, card.cost);
+          var bootyResolved = this.resolveBootyResources(tokenRes, effectiveCost);
+          effectiveCost = this.computeEffectiveCost(effectiveCost, bootyResolved);
+          var msg = this.formatBootyUsageMessage(bootyResolved, effectiveCost);
           if (msg) this.showMessage(msg, "info");
         }
       }
@@ -259,6 +298,7 @@ define([
         card_id: slot_card.id,
         slot_card: { id: slot_card.id, type: slot_card.type },
         slotnumber: slotnumber,
+        doubloons_as_cannonballs: doubloonsAsCannonballs,
       };
       if (useBooty) {
         entry.use_booty_card_id = this.booty_tokens[0].id;
@@ -295,6 +335,54 @@ define([
       if (ctx) {
         this._finalizePurchase(ctx.slot_card, ctx.card, ctx.slotnumber, false);
       }
+    },
+
+    onMerchantSubstituteChosen: function(amount) {
+      var ctx = this._pendingMerchantPurchase;
+      this._pendingMerchantPurchase = null;
+      this._pendingDoubloonsAsCannonballs = amount;
+      this._restoringFromBootyConfirm = true;
+      this.restoreServerGameState();
+      this._restoringFromBootyConfirm = false;
+      if (ctx) {
+        // Continue to booty check / finalize
+        this.onClickPurchaseButton_afterMerchant(ctx.slot_card, ctx.card, ctx.slotnumber);
+      }
+    },
+
+    onMerchantSubstituteCancel: function() {
+      this._pendingMerchantPurchase = null;
+      this._pendingDoubloonsAsCannonballs = 0;
+      this._restoringFromBootyConfirm = true;
+      this.restoreServerGameState();
+      this._restoringFromBootyConfirm = false;
+    },
+
+    /**
+     * Continue purchase flow after Merchant substitution has been chosen.
+     * This runs the booty-token check and finalization.
+     */
+    onClickPurchaseButton_afterMerchant: function(slot_card, card, slotnumber) {
+      // Check if player has an unused booty token with resources that overlap this card's cost
+      var tokenRes = (!this._bootyUsedForPurchase) ? this.getMyBootyTokenRes() : null;
+      var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
+
+      if (bootyOverlap) {
+        var canAffordWithout = this.canPlayerAfford(card.cost, false);
+
+        if (!canAffordWithout) {
+          this._finalizePurchase(slot_card, card, slotnumber, true);
+          return;
+        }
+
+        this._pendingPurchase = { slot_card: slot_card, card: card, slotnumber: slotnumber };
+        this.setClientState("client_bootyPurchaseConfirm", {
+          descriptionmyturn: _("Use your booty token to help pay for this card?"),
+        });
+        return;
+      }
+
+      this._finalizePurchase(slot_card, card, slotnumber, false);
     },
 
     onBootyPurchaseCancel: function() {
@@ -363,6 +451,7 @@ define([
 
       this.cards_purchased = [];
       this._bootyUsedForPurchase = false;
+      this._pendingDoubloonsAsCannonballs = 0;
 
       query(".purchase_card_button").forEach(domConstruct.destroy);
       this.updateCardPurchaseButtons(true);

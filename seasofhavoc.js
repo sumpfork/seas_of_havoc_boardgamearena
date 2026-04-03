@@ -304,6 +304,7 @@ define([
 
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;
+      this.player_captain = gamedatas.player_captain;
 
       // Card setup helper for playable cards
       this.setupHelper = (card, div) => {
