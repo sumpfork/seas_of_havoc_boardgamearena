@@ -47,7 +47,7 @@
 /********* You can start writing your CSS below this line: **********/
 
 .cp_board {
-	clear: both;
+  clear: both;
 }
 
 .board {
@@ -58,592 +58,596 @@
   background-image: url(img/board.jpg);
 }
 #seaboard {
-    position: relative;
-    top: 97px;
-    left: 310px;
-    width: 380px;
-    height: 380px;
+  position: relative;
+  top: 97px;
+  left: 310px;
+  width: 380px;
+  height: 380px;
 }
 .skiff_slot[data-slotname="capitol"][data-number="n1"] {
-	top: 180px;
-	left: 152px;
+  top: 180px;
+  left: 152px;
 }
 .skiff_slot[data-slotname="bank"][data-number="n1"] {
-	top: 309px;
-	left: 138px;
+  top: 309px;
+  left: 138px;
 }
 .skiff_slot[data-slotname="workshop"][data-number="n1"] {
-	top: 420px;
-	left: 52px;
+  top: 420px;
+  left: 52px;
 }
 .skiff_slot[data-slotname="workshop"][data-number="n2"] {
-	top: 471px;
-	left: 47px;
+  top: 471px;
+  left: 47px;
 }
 .skiff_slot[data-slotname="trading_post"][data-number="n1"] {
-	top: 585px;
-	left: 144px;
+  top: 585px;
+  left: 144px;
 }
 .skiff_slot[data-slotname="trading_post"][data-number="n2"] {
-	top: 630px;
-	left: 120px;
+  top: 630px;
+  left: 120px;
 }
 .skiff_slot[data-slotname="shipyard"][data-number="n1"] {
-    top: 148px;
-    left: 848px;
+  top: 148px;
+  left: 848px;
 }
 .skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
-    top: 431px;
-    left: 845px;
+  top: 431px;
+  left: 845px;
 }
 .skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
-    top: 471px;
-    left: 812px;
+  top: 471px;
+  left: 812px;
 }
 .skiff_slot[data-slotname="sailmaker"][data-number="n1"] {
-    top: 348px;
-    left: 935px;
+  top: 348px;
+  left: 935px;
 }
 .skiff_slot[data-slotname="deep_cove"][data-number="n1"] {
-    top: 567px;
-    left: 805px;
+  top: 567px;
+  left: 805px;
 }
 .skiff_slot[data-slotname="deep_cove"][data-number="n2"] {
-    top: 600px;
-    left: 847px;
+  top: 600px;
+  left: 847px;
 }
 .skiff_slot[data-slotname="green_flag"][data-number="n1"] {
-    top: 69px;
-    left: 53px;
+  top: 69px;
+  left: 53px;
 }
 .skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
-    top: 69px;
-    left: 145px;
+  top: 69px;
+  left: 145px;
 }
 .skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
-    top: 69px;
-    left: 823px;
+  top: 69px;
+  left: 823px;
 }
 .skiff_slot[data-slotname="red_flag"][data-number="n1"] {
-    top: 69px;
-    left: 917px;
+  top: 69px;
+  left: 917px;
 }
 
 .skiff_slot {
-	position: absolute;
-	width: 26px;
-	height: 26px;
-    border-radius: 50%;
-	/* padding: 9px 7px 6px 4px; */
-    margin: 2px;
-    background-color: rgba(0, 34, 255, 0.306);
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  /* padding: 9px 7px 6px 4px; */
+  margin: 2px;
+  background-color: rgba(0, 34, 255, 0.306);
 }
 
 /* Market slots (SlotStock containers) - positioned by SlotStock */
 .market_slot {
-    position: relative;
+  position: relative;
 }
 
 /* Skiff slots are separate overlay elements positioned absolutely over market slots */
 .skiff_slot[data-slotname="market"] {
-    position: absolute;
-    bottom: 3px;
-    right: 2px;
-    z-index: 1;
-    pointer-events: all;
+  position: absolute;
+  bottom: 3px;
+  right: 2px;
+  z-index: 1;
+  pointer-events: all;
 }
 
 /* Skiff indicator inside market skiff slots */
 .skiff_slot[data-slotname="market"] .skiff {
-    position: relative;
+  position: relative;
 }
 .skiff_slot.unoccupied:hover {
-	outline-color: rgba(41, 145, 198, 0.7);
-    background-color: rgba(25, 52, 226, 0.7);
-	outline-style: solid;
-	outline-width: 2px;
-    cursor: pointer;
+  outline-color: rgba(41, 145, 198, 0.7);
+  background-color: rgba(25, 52, 226, 0.7);
+  outline-style: solid;
+  outline-width: 2px;
+  cursor: pointer;
 }
 .skiff_slot.corsair_selectable {
-    background-color: rgba(232, 179, 53, 0.4);
+  background-color: rgba(232, 179, 53, 0.4);
 }
 .skiff_slot.corsair_selectable:hover {
-    outline-color: rgba(232, 179, 53, 0.9);
-    background-color: rgba(232, 179, 53, 0.75);
-    outline-style: solid;
-    outline-width: 2px;
-    cursor: pointer;
+  outline-color: rgba(232, 179, 53, 0.9);
+  background-color: rgba(232, 179, 53, 0.75);
+  outline-style: solid;
+  outline-width: 2px;
+  cursor: pointer;
 }
 .skiff_slot.corsair_selectable .skiff.corsair_selectable_hint {
-    filter: drop-shadow(0 0 4px rgba(232, 179, 53, 0.95));
+  filter: drop-shadow(0 0 4px rgba(232, 179, 53, 0.95));
 }
 .skiff_slot.disabled {
-    background-color: transparent;
-    pointer-events: none;
+  background-color: transparent;
+  pointer-events: none;
 }
 .skiff_slot.disabled:hover {
-    outline: none;
-    background-color: transparent;
-    cursor: default;
+  outline: none;
+  background-color: transparent;
+  cursor: default;
 }
 .resource {
-    width: 30px;
-    height: 30px;
-    background-image: url('img/resources.png');
-    background-repeat: none;
-    display: inline-block;
+  width: 30px;
+  height: 30px;
+  background-image: url("img/resources.png");
+  background-repeat: none;
+  display: inline-block;
 }
 .resource.log_resource {
-    width: 18px;
-    height: 18px;
-    min-width: 18px;
-    min-height: 18px;
-    background-size: 72px 72px;
-    vertical-align: middle;
-    margin: 0 2px;
-    display: inline-block;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  background-size: 72px 72px;
+  vertical-align: middle;
+  margin: 0 2px;
+  display: inline-block;
 }
 .resource.log_resource.cannonball {
-    background-position: 0px 0px;
+  background-position: 0px 0px;
 }
 .resource.log_resource.sail {
-    background-position: -18px 0px;
+  background-position: -18px 0px;
 }
 .resource.log_resource.doubloon {
-    background-position: 0px -18px;
+  background-position: 0px -18px;
 }
 .resource.log_resource.infamy {
-    background-position: -18px -18px;
+  background-position: -18px -18px;
 }
 .cannonball {
-    background-position: 0px 0px;
+  background-position: 0px 0px;
 }
 .sail {
-    background-position: -30px 0px;
+  background-position: -30px 0px;
 }
 .doubloon {
-    background-position: 0px -30px;
+  background-position: 0px -30px;
 }
 .infamy {
-    background-position: -30px -30px;
+  background-position: -30px -30px;
 }
 .pivot_left {
-    background-position: -60px 0px;
+  background-position: -60px 0px;
 }
 .pivot_right {
-    background-position: -90px 0px;
+  background-position: -90px 0px;
 }
 .nope {
-    background-position: -60px -30px;
+  background-position: -60px -30px;
 }
 .bgabutton_resource {
-    background-color: #ecdfc3;
+  background-color: #ecdfc3;
 }
 .flagish {
-    background-image: url('img/flags_1stplayer.png');
-    width: 50px;
-    height: 50px;
-    background-repeat: none;
-    display: inline-block;
-    position: relative;
+  background-image: url("img/flags_1stplayer.png");
+  width: 50px;
+  height: 50px;
+  background-repeat: none;
+  display: inline-block;
+  position: relative;
 }
 .flagish[data-tokenkey="red_flag"] {
-    background-position: 0px 0px;
+  background-position: 0px 0px;
 }
 .flagish[data-tokenkey="tan_flag"] {
-    background-position: 0px -50px;
+  background-position: 0px -50px;
 }
 .flagish[data-tokenkey="green_flag"] {
-    background-position: 0px -100px;
+  background-position: 0px -100px;
 }
 .flagish[data-tokenkey="blue_flag"] {
-    background-position: 0px -150px;
+  background-position: 0px -150px;
 }
 .flagish[data-tokenkey="first_player_token"] {
-    background-position: 0px -200px
+  background-position: 0px -200px;
 }
 .no_own_flag {
-    opacity: 0.25;
+  opacity: 0.25;
 }
 .seafeature {
-    width: 63px;
-    height: 63px;
-    background-image: url('img/booty_seafeatures.jpg');
-    background-repeat: no-repeat;
-    background-size: 252px 252px;
-    position: relative;
-    z-index: 1;
-    mask-image:radial-gradient(#333 40%, #00000000 60%)
+  width: 63px;
+  height: 63px;
+  background-image: url("img/booty_seafeatures.jpg");
+  background-repeat: no-repeat;
+  background-size: 252px 252px;
+  position: relative;
+  z-index: 1;
+  mask-image: radial-gradient(#333 40%, #00000000 60%);
 }
 .seafeature[data-seafeature="shipwreck"] {
-    border-radius: 50%;
-    background-position: 0px -189px;
+  border-radius: 50%;
+  background-position: 0px -189px;
 }
 .seafeature[data-seafeature="gust"] {
-    background-position: 0px -126px;
+  background-position: 0px -126px;
 }
 .seafeature[data-seafeature="rock"] {
-    background-position: 0px -63px;
+  background-position: 0px -63px;
 }
 .seafeature[data-seafeature="whirlpool"] {
-    background-position: 0px -0px;
+  background-position: 0px -0px;
 }
 .booty-token {
-    width: 63px;
-    height: 63px;
-    display: block;
-    background-image: url('img/booty_seafeatures.jpg');
-    background-repeat: no-repeat;
-    background-size: 252px 252px;
-    border-radius: 50%;
-    overflow: hidden;
+  width: 63px;
+  height: 63px;
+  display: block;
+  background-image: url("img/booty_seafeatures.jpg");
+  background-repeat: no-repeat;
+  background-size: 252px 252px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 .booty-token-back {
-    background-position: 0px -189px;
+  background-position: 0px -189px;
 }
 .booty-token-pickup {
-    position: absolute;
-    z-index: 1000;
+  position: absolute;
+  z-index: 1000;
 }
 .booty-token-slot {
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    display: inline-block;
-    position: relative;
-    background-image: url('img/booty_seafeatures.jpg');
-    background-position: 0px 50px;
-    background-size: 200px 200px;
-    opacity: 0.5;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: inline-block;
+  position: relative;
+  background-image: url("img/booty_seafeatures.jpg");
+  background-position: 0px 50px;
+  background-size: 200px 200px;
+  opacity: 0.5;
 }
 /* Slot with token - full opacity */
 .booty-token-slot.has-token {
-    opacity: 1;
+  opacity: 1;
 }
 /* Token inside slot - smaller size to fit */
 .booty-token-slot .booty-token {
-    width: 50px;
-    height: 50px;
-    background-size: 200px 200px;
-    opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
+  width: 50px;
+  height: 50px;
+  background-size: 200px 200px;
+  opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
 }
 .booty-token-slot .booty-token-back {
-    background-position: 0px -150px;
+  background-position: 0px -150px;
 }
 .resource_count {
-    position: relative;
-    top: -10px;
+  position: relative;
+  top: -10px;
 }
 .skiff {
-    width: 40px;
-    height: 40px;
-    display: inline-block;
-    position: relative;
+  width: 40px;
+  height: 40px;
+  display: inline-block;
+  position: relative;
 }
 .skiff.corsair_overlay {
-    position: absolute;
-    left: 14px;
-    top: -4px;
-    z-index: 2;
+  position: absolute;
+  left: 14px;
+  top: -4px;
+  z-index: 2;
 }
 .player_ship {
-    width: 60px;
-    height: 45.5px;
-    background-image: url('img/bga_ships.png');
-    background-size: 60px;
-    position: relative;
-    z-index: 2;
+  width: 60px;
+  height: 45.5px;
+  background-image: url("img/bga_ships.png");
+  background-size: 60px;
+  position: relative;
+  z-index: 2;
 }
 .player_ship[data-shipname="Galleon"] {
-    background-position: 0% 0%;
+  background-position: 0% 0%;
 }
 .player_ship[data-shipname="Sloop of War"] {
-    background-position: 0% -100%;
+  background-position: 0% -100%;
 }
 .player_ship[data-shipname="Ship-of-the-Line"] {
-    background-position: 0% -200%;
+  background-position: 0% -200%;
 }
 .player_ship[data-shipname="War Junk"] {
-    background-position: 0% -300%;
+  background-position: 0% -300%;
 }
 .player_ship[data-shipname="Xebec"] {
-    background-position: 0% -400%;
+  background-position: 0% -400%;
 }
 .player_ship[data-shipname="Brig"] {
-    background-position: 0% -500%;
+  background-position: 0% -500%;
 }
-
 
 .seaboardlocation {
-    position: relative;
-    background-color: red;
-    width: 1px;
-    height: 1px;
+  position: relative;
+  background-color: red;
+  width: 1px;
+  height: 1px;
 }
 #card_display_dialog {
-    width: 350px;
-    background-color: white;
-    height: 250px;
-    margin-top: -200px;
-    z-index: 20;
-    position: absolute;
-    display: grid;
-    grid-template-columns: 150px 200px;
-    grid-template-rows: 200px 50px;
+  width: 350px;
+  background-color: white;
+  height: 250px;
+  margin-top: -200px;
+  z-index: 20;
+  position: absolute;
+  display: grid;
+  grid-template-columns: 150px 200px;
+  grid-template-rows: 200px 50px;
 }
 #card_choices {
-    font-size: 18px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    display: flex;
-    flex-direction: column;
+  font-size: 18px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
 }
 .card-sides {
-    width: 144px;
-    height: 198px;
+  width: 144px;
+  height: 198px;
 }
 .card_choice_radio_container {
-    display: inline;
+  display: inline;
 }
 .card_choice_row_num {
-    display: inline;
-    margin-right: 10px;
+  display: inline;
+  margin-right: 10px;
 }
 #play_card_button {
-    left: 60%;
-    top: 5px;
-    position: relative;  
-    width: fit-content;
-    height: fit-content;
-    justify-self: center; 
+  left: 60%;
+  top: 5px;
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  justify-self: center;
 }
 #pass_card_button {
-    left: 60%;
-    top: 5px;
-    position: relative;  
-    width: fit-content;
-    height: fit-content;
-    justify-self: center;
-    margin-top: 10px;
+  left: 60%;
+  top: 5px;
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  justify-self: center;
+  margin-top: 10px;
 }
 .purchase_card_button {
-    display: block;
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 5px;
-    white-space: nowrap;
-    z-index: 50;
+  display: block;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 5px;
+  white-space: nowrap;
+  z-index: 50;
 }
 a.disabled {
-    pointer-events: none;
+  pointer-events: none;
 }
 #cannonfire {
-    position: relative;
+  position: relative;
 }
 #explosion {
-    position: relative;
-    left: -32px;
-    top: -32px;
-    z-index: 5;
+  position: relative;
+  left: -32px;
+  top: -32px;
+  z-index: 5;
 }
 #mycards {
-    display: grid;
-    grid-template-columns: 200px 1fr 200px;
+  display: grid;
+  grid-template-columns: 200px 1fr 200px;
 }
 #myship {
-    display: grid;
-    grid-template-columns: 200px 350px 1fr;
+  display: grid;
+  grid-template-columns: 200px 350px 1fr;
 }
 .seasofhavoc-card {
-    width: 144px;
-    height: 198px;
-    position: relative;
+  width: 144px;
+  height: 198px;
+  position: relative;
 }
 .playable-card-front {
-    background-image: url('img/playable_cards.jpg');
-    background-size: 864px 2772px;
-    background-repeat: no-repeat;
-    border-radius: 5px;
-    /* width: 144px; */
-    /* height: 198px; */
+  background-image: url("img/playable_cards.jpg");
+  background-size: 864px 2772px;
+  background-repeat: no-repeat;
+  border-radius: 5px;
+  /* width: 144px; */
+  /* height: 198px; */
 }
 .playable-card-back {
-    background-image: url('img/non_playable_cards.png');
-    background-size: 864px 1188px;
-    background-repeat: no-repeat;
-    border-radius: 5px;
-    /* width: 144px; */ 
-    /* height: 198px; */
+  background-image: url("img/non_playable_cards.png");
+  background-size: 864px 1188px;
+  background-repeat: no-repeat;
+  border-radius: 5px;
+  /* width: 144px; */
+  /* height: 198px; */
 }
 
 /* Scrap card selection dialog styles */
 .scrap_card_dialog {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    border: 2px solid #333;
-    border-radius: 10px;
-    padding: 20px;
-    z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    min-width: 600px;
-    max-width: 80vw;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border: 2px solid #333;
+  border-radius: 10px;
+  padding: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  min-width: 600px;
+  max-width: 80vw;
 }
 
 .scrap_card_dialog h3 {
-    margin-top: 0;
-    text-align: center;
-    color: #333;
+  margin-top: 0;
+  text-align: center;
+  color: #333;
 }
 
 #scrap_card_selection_wrapper {
-    margin: 20px 0;
-    min-height: 220px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    background: #f9f9f9;
+  margin: 20px 0;
+  min-height: 220px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  background: #f9f9f9;
 }
 
 .scrap_dialog_buttons {
-    text-align: center;
-    margin-top: 20px;
+  text-align: center;
+  margin-top: 20px;
 }
 
 .scrap_dialog_buttons button {
-    margin: 0 10px;
+  margin: 0 10px;
 }
 
 /* Scrollable stock arrow buttons in scrap dialog */
 #scrap_card_selection_wrapper button {
-    width: 30px;
-    font-size: 16px;
-    padding: 0;
-    min-width: 30px;
-    flex-shrink: 0;
+  width: 30px;
+  font-size: 16px;
+  padding: 0;
+  min-width: 30px;
+  flex-shrink: 0;
 }
 
 #scrap_card_selection_wrapper .scrollable-stock-inner {
-    flex: 1 !important;
-    max-width: calc(100% - 80px) !important; /* Account for smaller buttons + gaps */
+  flex: 1 !important;
+  max-width: calc(100% - 80px) !important; /* Account for smaller buttons + gaps */
 }
 
 /* Market and Scrap Pile Layout */
 .market-section {
-    min-height: 250px;
+  min-height: 250px;
 }
 
 .market-container {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
 .market-area {
-    flex: 1;
-    min-width: 0; /* Allows flex item to shrink */
-    margin-right: auto; /* Push market to the left */
+  flex: 1;
+  min-width: 0; /* Allows flex item to shrink */
+  margin-right: auto; /* Push market to the left */
 }
 
 #market {
-    position: relative;
+  position: relative;
 }
 
 .scrap-area {
-    margin-left: auto; /* Force to the right */
+  margin-left: auto; /* Force to the right */
 }
 
 .scrap-area h3 {
-    text-align: left;
-    margin-bottom: 10px;
+  text-align: left;
+  margin-bottom: 10px;
 }
 
 .market-area h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    text-align: center;
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-align: center;
 }
 
 #scrap {
-    min-height: 200px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    background: rgba(128, 128, 128, 0.2);
-    box-sizing: border-box; /* Include padding and border in width calculation */
-    position: relative;
+  min-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  background: rgba(128, 128, 128, 0.2);
+  box-sizing: border-box; /* Include padding and border in width calculation */
+  position: relative;
 }
 
 /* Player deck and discard pile styling */
-#mydeck, #mydiscard {
-    min-height: 200px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    background: rgba(128, 128, 128, 0.2);
+#mydeck,
+#mydiscard {
+  min-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  background: rgba(128, 128, 128, 0.2);
 }
 
 #myhand_wrap {
-    text-align: center;
+  text-align: center;
 }
 
 /* Player deck and discard pile styling */
-#captain_stock, #upgrades_stock {
-    min-height: 200px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
-    background: rgba(128, 128, 128, 0.2);
+#captain_stock,
+#upgrades_stock {
+  min-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  background: rgba(128, 128, 128, 0.2);
 }
 
 /* SlotStock will handle layout with its own settings */
 
 /* Non-playable card styling */
-.non-playable-card-front, .non-playable-card-back {
-    background-image: url('img/non_playable_cards.png');
-    background-size: 864px 1189px;
-    background-repeat: no-repeat;
-    border-radius: 5px;
-    width: 144px;
-    height: 198px;
+.non-playable-card-front,
+.non-playable-card-back {
+  background-image: url("img/non_playable_cards.png");
+  background-size: 864px 1189px;
+  background-repeat: no-repeat;
+  border-radius: 5px;
+  width: 144px;
+  height: 198px;
 }
 
 /* BGA Cards library will handle card flipping animations */
 
 /* Trading post resource selection rows */
 .trading-post-rows {
-    display: block;
-    width: 100%;
-    margin-bottom: 6px;
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
 }
 .trading-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 .trading-row-label {
-    font-weight: bold;
-    min-width: 20px;
-    text-align: right;
-    margin-right: 2px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: right;
+  margin-right: 2px;
 }
 .trading-resource-btn {
-    cursor: pointer;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    transition: border-color 0.15s, opacity 0.15s;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition:
+    border-color 0.15s,
+    opacity 0.15s;
 }
 .trading-resource-btn.trading-selected {
-    border-color: #2196F3;
-    box-shadow: 0 0 6px rgba(33, 150, 243, 0.5);
+  border-color: #2196f3;
+  box-shadow: 0 0 6px rgba(33, 150, 243, 0.5);
 }
 .trading-resource-btn.disabled {
-    opacity: 0.35;
-    cursor: default;
-    pointer-events: none;
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }

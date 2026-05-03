@@ -11,26 +11,25 @@ define([
   "dojo/html",
   "dojo/_base/lang",
   "dojo/query",
-], function(domClass, domConstruct, domStyle, attr, html, lang, query) {
-  
+], function (domClass, domConstruct, domStyle, attr, html, lang, query) {
   return {
     /**
      * Update card purchase buttons on market cards
      */
-    updateCardPurchaseButtons: function(create) {
+    updateCardPurchaseButtons: function (create) {
       console.groupCollapsed("update card purchase buttons");
-      
+
       // Check if player has completed purchases
       if (this.gamedatas && this.gamedatas.player_has_completed_purchases) {
         console.log("Player has completed purchases, skipping purchase button creation");
         return;
       }
-      
+
       var purchasedEntries = this.cards_purchased || [];
-      var pending_card_ids = purchasedEntries.map(function(e) {
-        return (typeof e === "object") ? e.card_id : e;
+      var pending_card_ids = purchasedEntries.map(function (e) {
+        return typeof e === "object" ? e.card_id : e;
       });
-      
+
       for (const [slot, numbers] of Object.entries(this.islandSlots)) {
         if (slot == "market") {
           for (const [number, info] of Object.entries(numbers)) {
@@ -40,29 +39,31 @@ define([
               console.log("number " + number + " is ours");
               var slot_card = null;
               var slotnum = number;
-              
+
               var slot_id = "market_slot_n" + number.substring(1);
               var slot_element = $(slot_id);
               if (!slot_element) {
                 throw new Error("Market slot element not found: " + slot_id);
               }
-              
+
               if (!this.market.slots || !this.market.slots[slot_id]) {
                 throw new Error("SlotStock slot not found: " + slot_id);
               }
-              
+
               var slot_index = parseInt(number.substring(1)) - 1;
-              var market_array = Array.isArray(this.gamedatas.market) ? 
-                                 this.gamedatas.market : 
-                                 Object.values(this.gamedatas.market);
-              
+              var market_array = Array.isArray(this.gamedatas.market)
+                ? this.gamedatas.market
+                : Object.values(this.gamedatas.market);
+
               if (market_array.length <= slot_index || !market_array[slot_index]) {
-                console.log("No card at slot position " + number + " (index " + slot_index + "), skipping purchase button");
+                console.log(
+                  "No card at slot position " + number + " (index " + slot_index + "), skipping purchase button",
+                );
                 continue;
               }
-              
+
               var card_data = market_array[slot_index];
-              
+
               for (const cardspec of this.market.getCards()) {
                 if (String(cardspec.id) == String(card_data.id)) {
                   slot_card = cardspec;
@@ -70,58 +71,70 @@ define([
                   break;
                 }
               }
-              
+
               if (!slot_card) {
-                console.log("Card spec not found for card ID " + card_data.id + " in slot " + number + ", skipping purchase button");
+                console.log(
+                  "Card spec not found for card ID " +
+                    card_data.id +
+                    " in slot " +
+                    number +
+                    ", skipping purchase button",
+                );
                 continue;
               }
-              
+
               var card_element = this.cardsManager.getCardElement(slot_card);
               if (!card_element) {
-                console.log("Card element not found for card " + slot_card.id + " in slot " + number + ", skipping purchase button");
+                console.log(
+                  "Card element not found for card " +
+                    slot_card.id +
+                    " in slot " +
+                    number +
+                    ", skipping purchase button",
+                );
                 continue;
               }
-              
+
               if (pending_card_ids.indexOf(slot_card.id) !== -1) {
                 console.log("Card " + slot_card.id + " is already purchased, skipping purchase button");
                 continue;
               }
-              
+
               console.log(slot_card);
               var card = this.playable_cards[slot_card.type];
               console.log(card);
-              
+
               if (create) {
                 // Remove any existing button for this slot first
                 var existing_button = $(button_id);
                 if (existing_button) {
                   domConstruct.destroy(existing_button);
                 }
-                
+
                 var cardIdValue = String(slot_card.id);
                 var purchase_button = this.format_block("jstpl_card_purchase_button", {
                   id: button_id,
                   slotnumber: slotnum,
                   cardid: cardIdValue,
                 });
-                
+
                 // Get the SlotStock's slot element
                 var slot_container = this.market.slots[slot_id];
                 if (!slot_container) {
                   console.error("Slot container not found for: " + slot_id);
                   continue;
                 }
-                
+
                 // Ensure slot container has position:relative for absolute positioning
                 domStyle.set(slot_container, "position", "relative");
-                
+
                 // Place button at end of slot container
                 domConstruct.place(purchase_button, slot_container);
               }
-              
+
               var buttonNodes = query("#" + button_id);
 
-              buttonNodes.forEach(function(node) {
+              buttonNodes.forEach(function (node) {
                 if (node._purchaseHandler) {
                   node._purchaseHandler.remove();
                 }
@@ -129,20 +142,20 @@ define([
 
               var handler = buttonNodes.on("click", lang.hitch(this, "onClickPurchaseButton"));
 
-              buttonNodes.forEach(function(node) {
+              buttonNodes.forEach(function (node) {
                 node._purchaseHandler = handler;
               });
 
               if (!this.canPlayerAfford(card.cost)) {
                 console.log("disabling");
-                buttonNodes.forEach(function(node) {
+                buttonNodes.forEach(function (node) {
                   domClass.remove(node, "bgabutton_green");
                   domClass.add(node, "disabled");
                   html.set(node, "Cannot Afford");
                 });
               } else {
                 console.log("enabling purchase button");
-                buttonNodes.forEach(function(node) {
+                buttonNodes.forEach(function (node) {
                   domClass.add(node, "bgabutton_green");
                   domClass.remove(node, "disabled");
                   html.set(node, "Purchase Card");
@@ -158,27 +171,27 @@ define([
     /**
      * Handle purchase button click
      */
-    onClickPurchaseButton: function(event) {
+    onClickPurchaseButton: function (event) {
       console.groupCollapsed("card purchase button clicked");
       event.preventDefault();
-      
+
       const source = event.target || event.srcElement;
       const slotnumber = source.dataset.slotnumber;
       const card_id = source.dataset.cardid;
-      
+
       if (!card_id) {
         console.error("Card ID not found on button for slotnumber: " + slotnumber);
         console.groupEnd();
         return;
       }
-      
-      var slot_card = this.market.getCards().find(card => card.id == card_id);
+
+      var slot_card = this.market.getCards().find((card) => card.id == card_id);
       if (!slot_card) {
         console.error("Card not found in market for card_id: " + card_id);
         console.groupEnd();
         return;
       }
-      
+
       var card = this.playable_cards[slot_card.type];
       if (!card) {
         console.error("Playable card not found for type: " + slot_card.type);
@@ -201,11 +214,16 @@ define([
           if (minSub < maxSub) {
             // Player has a real choice — show dialog
             this._pendingMerchantPurchase = {
-              slot_card: slot_card, card: card, slotnumber: slotnumber,
-              minSub: minSub, maxSub: maxSub,
+              slot_card: slot_card,
+              card: card,
+              slotnumber: slotnumber,
+              minSub: minSub,
+              maxSub: maxSub,
             };
             this.setClientState("client_merchantSubstitute", {
-              descriptionmyturn: _("How many doubloons to spend as cannonballs? (${min}-${max})").replace("${min}", minSub).replace("${max}", maxSub),
+              descriptionmyturn: _("How many doubloons to spend as cannonballs? (${min}-${max})")
+                .replace("${min}", minSub)
+                .replace("${max}", maxSub),
             });
             console.groupEnd();
             return;
@@ -217,7 +235,7 @@ define([
       }
 
       // Check if player has an unused booty token with resources that overlap this card's cost
-      var tokenRes = (!this._bootyUsedForPurchase) ? this.getMyBootyTokenRes() : null;
+      var tokenRes = !this._bootyUsedForPurchase ? this.getMyBootyTokenRes() : null;
       var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
 
       if (bootyOverlap) {
@@ -246,7 +264,7 @@ define([
     /**
      * Finalize a card purchase: move card, spend resources, record in cards_purchased.
      */
-    _finalizePurchase: function(slot_card, card, slotnumber, useBooty) {
+    _finalizePurchase: function (slot_card, card, slotnumber, useBooty) {
       var effectiveCost = Object.assign({}, card.cost);
 
       // Apply Merchant doubloon-as-cannonball substitution
@@ -315,7 +333,7 @@ define([
     /**
      * Called from onUpdateActionButtons for client_bootyPurchaseConfirm state.
      */
-    onBootyPurchaseYes: function() {
+    onBootyPurchaseYes: function () {
       var ctx = this._pendingPurchase;
       this._pendingPurchase = null;
       this._restoringFromBootyConfirm = true;
@@ -326,7 +344,7 @@ define([
       }
     },
 
-    onBootyPurchaseNo: function() {
+    onBootyPurchaseNo: function () {
       var ctx = this._pendingPurchase;
       this._pendingPurchase = null;
       this._restoringFromBootyConfirm = true;
@@ -337,7 +355,7 @@ define([
       }
     },
 
-    onMerchantSubstituteChosen: function(amount) {
+    onMerchantSubstituteChosen: function (amount) {
       var ctx = this._pendingMerchantPurchase;
       this._pendingMerchantPurchase = null;
       this._pendingDoubloonsAsCannonballs = amount;
@@ -350,7 +368,7 @@ define([
       }
     },
 
-    onMerchantSubstituteCancel: function() {
+    onMerchantSubstituteCancel: function () {
       this._pendingMerchantPurchase = null;
       this._pendingDoubloonsAsCannonballs = 0;
       this._restoringFromBootyConfirm = true;
@@ -362,9 +380,9 @@ define([
      * Continue purchase flow after Merchant substitution has been chosen.
      * This runs the booty-token check and finalization.
      */
-    onClickPurchaseButton_afterMerchant: function(slot_card, card, slotnumber) {
+    onClickPurchaseButton_afterMerchant: function (slot_card, card, slotnumber) {
       // Check if player has an unused booty token with resources that overlap this card's cost
-      var tokenRes = (!this._bootyUsedForPurchase) ? this.getMyBootyTokenRes() : null;
+      var tokenRes = !this._bootyUsedForPurchase ? this.getMyBootyTokenRes() : null;
       var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
 
       if (bootyOverlap) {
@@ -385,7 +403,7 @@ define([
       this._finalizePurchase(slot_card, card, slotnumber, false);
     },
 
-    onBootyPurchaseCancel: function() {
+    onBootyPurchaseCancel: function () {
       this._pendingPurchase = null;
       this._restoringFromBootyConfirm = true;
       this.restoreServerGameState();
@@ -395,13 +413,13 @@ define([
     /**
      * Handle complete purchases button click
      */
-    onCompletePurchasesClicked: function(event) {
+    onCompletePurchasesClicked: function (event) {
       console.log("onCompletePurchasesClicked");
       console.log(this.cards_purchased);
       this._submitCompletePurchases(this.cards_purchased);
     },
 
-    _submitCompletePurchases: function(cardsPayload) {
+    _submitCompletePurchases: function (cardsPayload) {
       if (!cardsPayload || cardsPayload.length === 0) {
         cardsPayload = [];
       }
@@ -411,7 +429,7 @@ define([
       });
     },
 
-    _savePurchaseSnapshot: function() {
+    _savePurchaseSnapshot: function () {
       this._purchaseSnapshot = {
         resources: JSON.parse(JSON.stringify(this.resources)),
         booty_tokens: JSON.parse(JSON.stringify(this.booty_tokens || [])),
@@ -424,7 +442,7 @@ define([
       }
     },
 
-    onRestartPurchasesClicked: function() {
+    onRestartPurchasesClicked: function () {
       var snap = this._purchaseSnapshot;
       if (!snap) {
         window.location.reload();
@@ -458,15 +476,6 @@ define([
 
       this.updateIslandSlots(this.islandSlots, this.gamedatas.players);
       this.positionMarketSkiffSlots();
-    }
+    },
   };
 });
-
-
-
-
-
-
-
-
-

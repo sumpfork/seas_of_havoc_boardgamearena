@@ -505,7 +505,7 @@ $this->playable_cards = [
         "captain_key" => "pirate_queen",
         "category" => "captain",
     ],
-    [   
+    [
         "cost" => [],
         "actions" => [["action" => "captain ability", "ability" => "extortion"]],
         "image_id" => 72,

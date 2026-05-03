@@ -1,21 +1,20 @@
- /**
+/**
  * Seas of Havoc - Utility Methods Module
  * Helper functions for resource management and game state utilities
  */
 
-define([
-  "dojo/dom",
-  "dojo/dom-class",
-  "dojo/dom-construct",
-  "dojo/dom-style",
-  "dojo/query",
-], function(dom, domClass, domConstruct, domStyle, query) {
-  
+define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"], function (
+  dom,
+  domClass,
+  domConstruct,
+  domStyle,
+  query,
+) {
   return {
     /**
      * Find an object on the seaboard by type and arg
      */
-    getObjectOnSeaboard: function(object_type, arg) {
+    getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {
           return entry;
@@ -26,7 +25,7 @@ define([
     /**
      * Update unique token displays (first player, etc.)
      */
-    updateUniqueTokens: function(unique_tokens) {
+    updateUniqueTokens: function (unique_tokens) {
       console.log("updating unique tokens");
       console.log(unique_tokens);
       for (const [token_key, player_id] of Object.entries(unique_tokens)) {
@@ -42,7 +41,7 @@ define([
     },
 
     // Booty sprite: 4 cols. Col 0 = seafeatures. Cols 1,2 = 4 tokens each (rows 0–3). Col 3 = 1 token (row 0). cellSize 63 = full, 50 = slot.
-    setBootyTokenPosition: function(node, imageId, cellSize) {
+    setBootyTokenPosition: function (node, imageId, cellSize) {
       const index = parseInt(imageId, 10);
       if (Number.isNaN(index)) {
         console.warn("[booty] setBootyTokenPosition invalid imageId", imageId);
@@ -50,28 +49,31 @@ define([
       }
       let col, row;
       if (index <= 3) {
-        col = 1; row = index;
+        col = 1;
+        row = index;
       } else if (index <= 7) {
-        col = 2; row = index - 4;
+        col = 2;
+        row = index - 4;
       } else {
-        col = 3; row = 0;
+        col = 3;
+        row = 0;
       }
       const x = col * cellSize;
       const y = row * cellSize;
       domStyle.set(node, "backgroundPosition", `-${x}px -${y}px`);
     },
 
-    setBootyTokenImage: function(node, imageId) {
+    setBootyTokenImage: function (node, imageId) {
       console.log("[booty] setBootyTokenImage", { imageId });
       this.setBootyTokenPosition(node, imageId, 63);
     },
 
-    setBootyTokenImageForSlot: function(node, imageId) {
+    setBootyTokenImageForSlot: function (node, imageId) {
       console.log("[booty] setBootyTokenImageForSlot", { imageId });
       this.setBootyTokenPosition(node, imageId, 50);
     },
 
-    createBootyTokenNode: function(isBack, imageId) {
+    createBootyTokenNode: function (isBack, imageId) {
       if (isBack) {
         console.log("[booty] createBootyTokenNode facedown (back art)");
       } else {
@@ -85,7 +87,7 @@ define([
       return node;
     },
 
-    updateMyBootyToken: function(typeArgOverride) {
+    updateMyBootyToken: function (typeArgOverride) {
       console.groupCollapsed("[booty] updateMyBootyToken");
       const tokens = this.booty_tokens || [];
       const mySlot = dom.byId(`booty_token_p${this.player_id}`);
@@ -115,7 +117,7 @@ define([
       console.groupEnd();
     },
 
-    renderFacedownTokenForPlayer: function(playerId) {
+    renderFacedownTokenForPlayer: function (playerId) {
       console.log("[booty] renderFacedownTokenForPlayer", playerId);
       const slot = dom.byId(`booty_token_p${playerId}`);
       domConstruct.empty(slot);
@@ -124,7 +126,7 @@ define([
       domClass.add(slot, "has-token");
     },
 
-    animateBootyTokenPickup: function(event, playerId) {
+    animateBootyTokenPickup: function (event, playerId) {
       if (!event) {
         return;
       }
@@ -135,9 +137,10 @@ define([
       const isOwner = playerId == this.player_id;
       const faceupTypeArg = isOwner ? this.lastBootyTokenTypeArg : null;
       console.log("[booty] pickup animation", { isOwner, faceupTypeArg });
-      const tokenNode = isOwner && faceupTypeArg != null
-        ? this.createBootyTokenNode(false, faceupTypeArg)
-        : this.createBootyTokenNode(true, null);
+      const tokenNode =
+        isOwner && faceupTypeArg != null
+          ? this.createBootyTokenNode(false, faceupTypeArg)
+          : this.createBootyTokenNode(true, null);
       const tokenId = `booty_pickup_${playerId}_${event.shipwreck_arg}_${Date.now()}`;
       tokenNode.id = tokenId;
       domClass.add(tokenNode, "booty-token-pickup");
@@ -147,8 +150,13 @@ define([
       this.placeOnObject(tokenId, startId);
       const anim = this.slideToObject(tokenId, targetSlotId, 1000);
       const self = this;
-      anim.onEnd = function() {
-        console.log("[booty] animation onEnd", {tokenId, playerId, myPlayerId: self.player_id, lastTypeArg: self.lastBootyTokenTypeArg});
+      anim.onEnd = function () {
+        console.log("[booty] animation onEnd", {
+          tokenId,
+          playerId,
+          myPlayerId: self.player_id,
+          lastTypeArg: self.lastBootyTokenTypeArg,
+        });
         if (!self.debugBootyPickup) {
           domConstruct.destroy(tokenId);
         }
@@ -162,7 +170,7 @@ define([
       console.groupEnd();
     },
 
-    applyShipwreckEvents: function(events) {
+    applyShipwreckEvents: function (events) {
       if (!events || !events.length) {
         return;
       }
@@ -206,7 +214,7 @@ define([
     /**
      * Update resource count displays for all players
      */
-    updateResources: function(resources) {
+    updateResources: function (resources) {
       console.log("updating resources");
       console.log(resources);
       for (const resource of resources) {
@@ -220,7 +228,7 @@ define([
     /**
      * Update deck card count display
      */
-    updateDeckCount: function(deckSize) {
+    updateDeckCount: function (deckSize) {
       console.log("updating deck count");
       console.log("deck size: " + deckSize);
       const deckSizeNum = parseInt(deckSize, 10);
@@ -230,7 +238,7 @@ define([
     /**
      * Get current player's resources as an object
      */
-    getPlayerResources: function() {
+    getPlayerResources: function () {
       var playerResources = {};
       console.log("active player id: " + this.getActivePlayerId());
       console.log("this.player_id: " + this.player_id);
@@ -245,7 +253,7 @@ define([
     /**
      * Add two resource objects together
      */
-    addResources: function(r1, r2) {
+    addResources: function (r1, r2) {
       var sum = {};
       for (const [resource_key, num] of Object.entries(r1)) {
         sum[resource_key] = num;
@@ -263,7 +271,7 @@ define([
     /**
      * Spend resources for current player (local update)
      */
-    playerSpendResources: function(resource_cost) {
+    playerSpendResources: function (resource_cost) {
       console.log("player " + this.player_id + " spending resources:");
       console.log(resource_cost);
       for (var resource of this.resources) {
@@ -286,7 +294,7 @@ define([
      * Check if current player can afford a resource cost.
      * @param {boolean} includeBooty - If true (default), count booty token resources.
      */
-    canPlayerAfford: function(resource_cost, includeBooty, includeMerchant) {
+    canPlayerAfford: function (resource_cost, includeBooty, includeMerchant) {
       if (typeof includeBooty === "undefined") includeBooty = true;
       if (typeof includeMerchant === "undefined") includeMerchant = true;
       if (typeof resource_cost === "undefined") {
@@ -336,7 +344,7 @@ define([
      * Client-side mirror of PHP resolveBootyResourcesForPayment.
      * Resolves fixed resources and auto-assigns "choice" to highest-need cost resource.
      */
-    resolveBootyResources: function(tokenRes, cost) {
+    resolveBootyResources: function (tokenRes, cost) {
       var out = {};
       var choiceAmount = 0;
       for (var key in tokenRes) {
@@ -368,7 +376,7 @@ define([
      * Compute effective cost after applying booty token resources.
      * Returns a cost object with only positive remaining amounts.
      */
-    computeEffectiveCost: function(fullCost, bootyResolved) {
+    computeEffectiveCost: function (fullCost, bootyResolved) {
       var effective = {};
       for (var res in fullCost) {
         var remaining = fullCost[res] - (bootyResolved[res] || 0);
@@ -382,7 +390,7 @@ define([
     /**
      * Get the current player's booty token resources, or null if none.
      */
-    getMyBootyTokenRes: function() {
+    getMyBootyTokenRes: function () {
       if (!this.booty_tokens || this.booty_tokens.length === 0) return null;
       return (this.gamedatas.booty_token_resources || {})[this.booty_tokens[0].type_arg] || null;
     },
@@ -390,9 +398,11 @@ define([
     /**
      * Check if a booty token's resources overlap with a cost (i.e. could save any resources).
      */
-    bootyOverlapsCost: function(tokenRes, cost) {
+    bootyOverlapsCost: function (tokenRes, cost) {
       if (!tokenRes || !cost) return false;
-      var costKeys = Object.keys(cost).filter(function(k) { return cost[k] > 0; });
+      var costKeys = Object.keys(cost).filter(function (k) {
+        return cost[k] > 0;
+      });
       if (costKeys.length === 0) return false;
       for (var res in tokenRes) {
         if (tokenRes[res] > 0 && (res === "choice" || costKeys.indexOf(res) !== -1)) {
@@ -407,7 +417,7 @@ define([
      * e.g. "Using booty token as <sail icon> + <cannonball icon>"
      * Only includes resources that actually offset the cost (capped at what's needed).
      */
-    formatBootyUsageMessage: function(bootyResolved, cost) {
+    formatBootyUsageMessage: function (bootyResolved, cost) {
       var parts = [];
       for (var res in bootyResolved) {
         var used = Math.min(bootyResolved[res] || 0, cost[res] || 0);
@@ -417,15 +427,6 @@ define([
       }
       if (parts.length === 0) return null;
       return _("Using booty token as ") + parts.join(" + ");
-    }
+    },
   };
 });
-
-
-
-
-
-
-
-
-

@@ -3,16 +3,16 @@
  * Shared constants used throughout the game
  */
 
-define([], function() {
+define([], function () {
   return {
     // Direction constants - must match PHP versions
     NORTH: 1,
     EAST: 2,
     SOUTH: 3,
     WEST: 4,
-    
+
     // Convert direction to degrees for rotation
-    getHeadingDegrees: function(direction) {
+    getHeadingDegrees: function (direction) {
       var deg;
       switch (Number(direction)) {
         case 1: // NORTH
@@ -33,15 +33,6 @@ define([], function() {
       }
       console.log(deg + " degrees");
       return deg;
-    }
+    },
   };
 });
-
-
-
-
-
-
-
-
-

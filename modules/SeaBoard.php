@@ -332,7 +332,7 @@ class SeaBoard
         $object_info = $this->findObject($object_type, $arg);
         $object = $object_info["object"];
         $this->bga->trace("Pushing " . $object_type . " " . $arg . " in direction " . $direction->toString());
-        
+
         $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $direction);
 
         $collided = $this->getObjectsOfTypes($movement_result["new_x"], $movement_result["new_y"], $collision_types);

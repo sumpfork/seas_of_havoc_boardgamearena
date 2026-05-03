@@ -3,17 +3,12 @@
  * Game state enter/leave/update action button handlers
  */
 
-define([
-  "dojo/dom-class",
-  "dojo/dom-construct",
-  "dojo/query",
-], function(domClass, domConstruct, query) {
-  
+define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClass, domConstruct, query) {
   return {
     /**
      * Called when entering a new game state
      */
-    onEnteringState: function(stateName, args) {
+    onEnteringState: function (stateName, args) {
       console.log("Entering state: " + stateName);
       this.updateHandSelectionMode();
 
@@ -27,7 +22,7 @@ define([
           this.updateCardPurchaseButtons(true);
           break;
         }
-        
+
         case "cardPurchasesPrivate": {
           if (!this._restoringFromBootyConfirm) {
             this.cards_purchased = [];
@@ -37,7 +32,7 @@ define([
           this.updateCardPurchaseButtons(true);
           break;
         }
-        
+
         case "cardPurchasesCompleted": {
           this.updateCardPurchaseButtons(false);
           break;
@@ -49,24 +44,24 @@ define([
           }
           break;
         }
-        
+
         case "seaPhaseSetup": {
           // Clear all skiffs when entering sea phase
           query(".skiff_placed").forEach(domConstruct.destroy);
           query(".purchase_card_button").forEach(domConstruct.destroy);
-          query(".skiff_slot").forEach(function(slot) {
+          query(".skiff_slot").forEach(function (slot) {
             domClass.add(slot, "unoccupied");
             query(".skiff", slot).forEach(domConstruct.destroy);
           });
           break;
         }
-        
+
         case "seaTurn": {
           query(".skiff_placed").forEach(domConstruct.destroy);
           query(".purchase_card_button").forEach(domConstruct.destroy);
           break;
         }
-        
+
         case "scrapCard": {
           this.setupScrapCardSelection(args.args);
           break;
@@ -75,7 +70,7 @@ define([
         case "resolveCollision": {
           break;
         }
-        
+
         case "dummmy":
           break;
       }
@@ -84,7 +79,7 @@ define([
     /**
      * Called when leaving a game state
      */
-    onLeavingState: function(stateName) {
+    onLeavingState: function (stateName) {
       console.log("Leaving state: " + stateName);
 
       switch (stateName) {
@@ -111,7 +106,7 @@ define([
     /**
      * Update action buttons in the status bar
      */
-    onUpdateActionButtons: function(stateName, args) {
+    onUpdateActionButtons: function (stateName, args) {
       console.log("onUpdateActionButtons: " + stateName);
       console.log("isCurrentPlayerActive(): " + this.isCurrentPlayerActive());
       console.log("args:", args);
@@ -126,80 +121,62 @@ define([
           case "cardPurchasesMaking":
             console.log("Adding Complete Purchases button for state: " + stateName);
             this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
-            this.statusBar.addActionButton(
-              _("Restart Purchases"),
-              this.onRestartPurchasesClicked.bind(this),
-              { classes: "bgabutton_gray" },
-            );
+            this.statusBar.addActionButton(_("Restart Purchases"), this.onRestartPurchasesClicked.bind(this), {
+              classes: "bgabutton_gray",
+            });
             break;
-            
+
           case "client_merchantSubstitute":
             var ctx = this._pendingMerchantPurchase;
             if (ctx) {
               for (var i = ctx.minSub; i <= ctx.maxSub; i++) {
-                (function(amount, self) {
+                (function (amount, self) {
                   self.statusBar.addActionButton(
                     "" + amount + " doubloon" + (amount !== 1 ? "s" : ""),
-                    function() { self.onMerchantSubstituteChosen(amount); },
+                    function () {
+                      self.onMerchantSubstituteChosen(amount);
+                    },
                     { classes: amount === 0 ? "bgabutton_gray" : "bgabutton_green" },
                   );
                 })(i, this);
               }
-              this.statusBar.addActionButton(
-                _("Cancel"),
-                this.onMerchantSubstituteCancel.bind(this),
-                { classes: "bgabutton_red" },
-              );
+              this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
+                classes: "bgabutton_red",
+              });
             }
             break;
 
           case "client_bootyPurchaseConfirm":
-            this.statusBar.addActionButton(
-              _("Yes, use booty token"),
-              this.onBootyPurchaseYes.bind(this),
-              { classes: "bgabutton_green" },
-            );
-            this.statusBar.addActionButton(
-              _("No thanks"),
-              this.onBootyPurchaseNo.bind(this),
-              { classes: "bgabutton_gray" },
-            );
-            this.statusBar.addActionButton(
-              _("Cancel"),
-              this.onBootyPurchaseCancel.bind(this),
-              { classes: "bgabutton_red" },
-            );
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPurchaseYes.bind(this), {
+              classes: "bgabutton_green",
+            });
+            this.statusBar.addActionButton(_("No thanks"), this.onBootyPurchaseNo.bind(this), {
+              classes: "bgabutton_gray",
+            });
+            this.statusBar.addActionButton(_("Cancel"), this.onBootyPurchaseCancel.bind(this), {
+              classes: "bgabutton_red",
+            });
             break;
 
           case "client_bootyPlayConfirm":
-            this.statusBar.addActionButton(
-              _("Yes, use booty token"),
-              this.onBootyPlayYes.bind(this),
-              { classes: "bgabutton_green" },
-            );
-            this.statusBar.addActionButton(
-              _("No thanks"),
-              this.onBootyPlayNo.bind(this),
-              { classes: "bgabutton_gray" },
-            );
-            this.statusBar.addActionButton(
-              _("Cancel"),
-              this.onBootyPlayCancel.bind(this),
-              { classes: "bgabutton_red" },
-            );
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPlayYes.bind(this), {
+              classes: "bgabutton_green",
+            });
+            this.statusBar.addActionButton(_("No thanks"), this.onBootyPlayNo.bind(this), {
+              classes: "bgabutton_gray",
+            });
+            this.statusBar.addActionButton(_("Cancel"), this.onBootyPlayCancel.bind(this), {
+              classes: "bgabutton_red",
+            });
             break;
 
           case "client_tradingPostBootyChoice":
-            this.statusBar.addActionButton(
-              _("Yes, use booty token"),
-              this.onTradingPostBootyYes.bind(this),
-              { classes: "bgabutton_green" },
-            );
-            this.statusBar.addActionButton(
-              _("No, trade resources"),
-              this.onTradingPostBootyNo.bind(this),
-              { classes: "bgabutton_gray" },
-            );
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onTradingPostBootyYes.bind(this), {
+              classes: "bgabutton_green",
+            });
+            this.statusBar.addActionButton(_("No, trade resources"), this.onTradingPostBootyNo.bind(this), {
+              classes: "bgabutton_gray",
+            });
             break;
 
           case "client_tradingPostSpend":
@@ -227,7 +204,7 @@ define([
               { classes: "bgabutton_resource" },
             );
             break;
-            
+
           case "resolveCollision":
             this.statusBar.addActionButton(
               "<div class='resource pivot_left' data-pivot='pivot left'></div>",
@@ -252,7 +229,7 @@ define([
     /**
      * Handle resource button click in dialog
      */
-    onResourceButtonClicked: function(event) {
+    onResourceButtonClicked: function (event) {
       console.log("resource button clicked");
       const source = event.target || event.srcElement;
       console.log(
@@ -278,18 +255,18 @@ define([
     /**
      * Handle pivot button click in collision resolution
      */
-    onPivotButtonClicked: function(event) {
+    onPivotButtonClicked: function (event) {
       event.preventDefault();
       // The data-pivot attribute is on the inner div, not the button itself
       // Use currentTarget (the button) and find the inner element with data-pivot
       const button = event.currentTarget;
-      const pivotElement = button.querySelector('[data-pivot]') || event.target;
+      const pivotElement = button.querySelector("[data-pivot]") || event.target;
       const direction = pivotElement?.dataset?.pivot;
-      
+
       console.log("pivot button clicked");
       console.log(pivotElement);
       console.log("pivot picked " + direction);
-      
+
       if (direction != null) {
         this.bgaPerformAction("actPivotPickedInDialog", {
           direction: direction,
@@ -299,12 +276,3 @@ define([
     },
   };
 });
-
-
-
-
-
-
-
-
-

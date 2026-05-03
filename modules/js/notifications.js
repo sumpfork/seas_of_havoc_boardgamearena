@@ -12,13 +12,12 @@ define([
   "dojo/_base/fx",
   "dojo/fx",
   "dojo/query",
-], function(dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query) {
-  
+], function (dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query) {
   return {
     /**
      * Set up all notification subscriptions
      */
-    setupNotifications: function() {
+    setupNotifications: function () {
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications();
     },
@@ -26,7 +25,7 @@ define([
     /**
      * Deck size changed notification
      */
-    notif_deckSizeChanged: function(args) {
+    notif_deckSizeChanged: function (args) {
       console.log("notify: deck size changed");
       console.log(args);
       if (args.player_id == this.player_id) {
@@ -37,7 +36,7 @@ define([
     /**
      * Show resource choice dialog notification
      */
-    notif_showResourceChoiceDialog: function(args) {
+    notif_showResourceChoiceDialog: function (args) {
       console.groupCollapsed("show resource choice dialog");
 
       this.clientStateVars.slot_context = args.context;
@@ -55,7 +54,7 @@ define([
     /**
      * Trading post dialog notification
      */
-    notif_showTradingPostDialog: function(args) {
+    notif_showTradingPostDialog: function (args) {
       console.groupCollapsed("show trading post dialog");
       console.log("slot_number:", args.slot_number);
       this.initTradingPost(args.slot_number);
@@ -65,7 +64,7 @@ define([
     /**
      * Resources changed notification
      */
-    notif_resourcesChanged: function(args) {
+    notif_resourcesChanged: function (args) {
       console.groupCollapsed("notify: resources changed");
       console.log("Notification: resourcesChanged");
       console.log(args.resources);
@@ -80,7 +79,7 @@ define([
     /**
      * Skiff placed notification
      */
-    notif_skiffPlaced: function(args) {
+    notif_skiffPlaced: function (args) {
       console.groupCollapsed("notify: skiff placed");
       console.log(args);
 
@@ -93,8 +92,10 @@ define([
       var existingSlot = this.islandSlots[slot_name][slot_number] || {};
       this.islandSlots[slot_name][slot_number] = {
         occupying_player_id: isCorsairOverlay ? (existingSlot.occupying_player_id ?? null) : args.player_id,
-        corsair_occupying_player_id: isCorsairOverlay ? args.player_id : (existingSlot.corsair_occupying_player_id ?? null),
-        disabled: existingSlot.disabled || false
+        corsair_occupying_player_id: isCorsairOverlay
+          ? args.player_id
+          : (existingSlot.corsair_occupying_player_id ?? null),
+        disabled: existingSlot.disabled || false,
       };
       if (isCorsairOverlay && String(args.player_id) === String(this.player_id)) {
         this.corsairOccupiedPlacementAvailable = false;
@@ -119,23 +120,23 @@ define([
     /**
      * Cards purchased notification
      */
-    notif_cardsPurchased: function(args) {
+    notif_cardsPurchased: function (args) {
       console.groupCollapsed("notify: cards purchased");
       console.log(args);
-      
+
       var purchases = args.purchases || {};
-      
+
       for (var player_id in purchases) {
         var card_ids = purchases[player_id];
         for (var i = 0; i < card_ids.length; i++) {
           var card_id = card_ids[i];
-          
+
           var market_cards = this.market.getCards();
-          var purchased_card = market_cards.find(card => card.id == card_id);
-          
+          var purchased_card = market_cards.find((card) => card.id == card_id);
+
           if (purchased_card) {
             this.market.removeCard(purchased_card);
-            
+
             var card_div = this.cardsManager.getCardElement(purchased_card);
             if (card_div) {
               domClass.remove(card_div, "purchased");
@@ -150,8 +151,8 @@ define([
           }
         }
       }
-      
-      query(".skiff_slot[data-slotname='market']").forEach(function(slot) {
+
+      query(".skiff_slot[data-slotname='market']").forEach(function (slot) {
         query(".skiff", slot).forEach(domConstruct.destroy);
         query(".purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
         domClass.add(slot, "unoccupied");
@@ -165,70 +166,70 @@ define([
           }
         }
       });
-      
+
       this.cards_purchased = [];
       this._bootyUsedForPurchase = false;
-      
+
       console.groupEnd();
     },
 
     /**
      * Market updated notification
      */
-    notif_marketUpdated: function(args) {
+    notif_marketUpdated: function (args) {
       console.groupCollapsed("notify: market updated");
       console.log(args);
-      
+
       var existing_cards = this.market.getCards();
       for (var i = 0; i < existing_cards.length; i++) {
         this.market.removeCard(existing_cards[i]);
       }
-      
+
       this.marketSlotMap = {};
-      
+
       var market_array = Array.isArray(args.market) ? args.market : Object.values(args.market);
       for (var i = 0; i < market_array.length; i++) {
         var card = market_array[i];
         if (!card || !card.id) {
           continue;
         }
-        
+
         var slot_id = "market_slot_n" + (i + 1);
-        
+
         this.marketSlotMap[card.id] = slot_id;
-        
+
         var cardObj = {
           id: card.id,
           type: card.type,
-          location: "market"
+          location: "market",
         };
-        
+
         this.market.addCard(cardObj);
-        
+
         var card_div = this.cardsManager.getCardElement(cardObj);
         if (card_div) {
           attr.set(card_div, "data-slotnumber", "n" + (i + 1));
           attr.set(card_div, "data-cardid", card.id);
         }
       }
-      
+
       if (this.gamedatas) {
         this.gamedatas.market = args.market;
       }
-      
+
       this.positionMarketSkiffSlots();
-      
+
       if (this.islandSlots && this.players) {
         this.updateIslandSlots(this.islandSlots, this.players);
       }
-      
+
       console.groupEnd();
     },
 
     /**
      * Token acquired notification
      */
-    notif_tokenAcquired: function(args) {
+    notif_tokenAcquired: function (args) {
       console.groupCollapsed("notify: token acquired");
       console.log(args);
 
@@ -262,7 +263,7 @@ define([
     /**
      * Booty token collected notification (public)
      */
-    notif_bootyTokenCollected: function(args) {
+    notif_bootyTokenCollected: function (args) {
       console.groupCollapsed("notify: booty token collected");
       console.log(args);
       // Track that this player now has booty
@@ -278,7 +279,7 @@ define([
     /**
      * Booty token revealed notification (private)
      */
-    notif_bootyTokenRevealed: function(args) {
+    notif_bootyTokenRevealed: function (args) {
       console.groupCollapsed("notify: booty token revealed");
       console.log(args);
       console.log("[booty] this.player_id:", this.player_id);
@@ -293,7 +294,7 @@ define([
       console.groupEnd();
     },
 
-    notif_bootyTokenUsed: function(args) {
+    notif_bootyTokenUsed: function (args) {
       if (String(args.player_id) === String(this.player_id)) {
         var rawBooty = args.booty_tokens;
         this.booty_tokens = Array.isArray(rawBooty) ? rawBooty : Object.values(rawBooty || {});
@@ -304,7 +305,7 @@ define([
     /**
      * Card played notification (handles ship movement animations)
      */
-    notif_cardPlayed: function(args) {
+    notif_cardPlayed: function (args) {
       console.groupCollapsed("notify: card played");
       console.log(args);
       var shipid = "player_ship_" + args.player_id;
@@ -353,7 +354,7 @@ define([
             }
             let anim = new baseFX.Animation({
               curve: curve,
-              onAnimate: function(v) {
+              onAnimate: function (v) {
                 domStyle.set(shipid, "rotate", v + "deg");
               },
             });
@@ -370,7 +371,10 @@ define([
             domConstruct.place(cannon_fire, shipid);
             domStyle.set("cannonfire", "rotate", rotation + "deg");
             let offset = null;
-            var NORTH = 1, SOUTH = 3, EAST = 2, WEST = 4;
+            var NORTH = 1,
+              SOUTH = 3,
+              EAST = 2,
+              WEST = 4;
             switch (move.fire_heading) {
               case NORTH:
                 offset = ["top", "20px"];
@@ -399,7 +403,7 @@ define([
                 node: "cannonfire",
                 duration: 100,
                 delay: 1000,
-                onEnd: function() {
+                onEnd: function () {
                   domConstruct.destroy("cannonfire");
                 },
               }),
@@ -409,7 +413,7 @@ define([
               baseFX.fadeOut({
                 node: "explosion",
                 delay: 1000,
-                onEnd: function() {
+                onEnd: function () {
                   domConstruct.destroy("explosion");
                 },
               }),
@@ -438,7 +442,7 @@ define([
     /**
      * Score notification
      */
-    notif_score: function(args) {
+    notif_score: function (args) {
       console.log("score for " + args.player_id + " " + args.player_score);
       var scoreCounter = this.bga.playerPanels.getScoreCounter(args.player_id);
       if (scoreCounter) {
@@ -449,7 +453,7 @@ define([
     /**
      * Damage received notification
      */
-    notif_damageReceived: function(args) {
+    notif_damageReceived: function (args) {
       console.log("notify damage received");
       let damage_card = args.damage_card;
       let player_id = args.player_id;
@@ -462,7 +466,7 @@ define([
     /**
      * Card drawn notification
      */
-    notif_cardDrawn: function(args) {
+    notif_cardDrawn: function (args) {
       console.log("notify card drawn");
       let cards = args.cards;
       let player_id = args.player_id;
@@ -472,8 +476,8 @@ define([
         this.updateDeckCount(args.deck_size);
         let fromElement = dom.byId("mydeck");
         console.log("fromElement: " + fromElement);
-        
-        cards.forEach(card => {
+
+        cards.forEach((card) => {
           this.playerHand.addCard(
             {
               id: card.id,
@@ -492,58 +496,58 @@ define([
     /**
      * Card scrapped notification
      */
-    notif_cardScrapped: function(args) {
+    notif_cardScrapped: function (args) {
       console.log("notify card scrapped");
-      
+
       let card = args.card;
       let player_id = args.player_id;
       let original_location = args.original_location;
-      
+
       if (!card || !card.id) {
         console.error("Invalid card data in cardScrapped notification:", card);
         return;
       }
-      
+
       if (original_location === "hand" && player_id == this.player_id) {
-        this.playerHand.removeCard({id: card.id});
+        this.playerHand.removeCard({ id: card.id });
       } else if (original_location === "player_discard" && player_id == this.player_id) {
-        this.playerDiscard.removeCard({id: card.id});
+        this.playerDiscard.removeCard({ id: card.id });
       }
-      
+
       this.scrapPile.addCard({
         id: card.id,
         type: card.type,
-        location: "scrap"
+        location: "scrap",
       });
-      
+
       this.cleanupScrapCardSelection();
     },
 
     /**
      * Cards discarded notification
      */
-    notif_cardsDiscarded: function(args) {
+    notif_cardsDiscarded: function (args) {
       console.log("notify cards discarded");
       let cards = args.cards;
       let player_id = args.player_id;
       console.log("Cards discarded:", cards);
       console.log("Player ID:", player_id);
-      
+
       if (player_id == this.player_id) {
-        cards.forEach(card => {
-          this.playerHand.removeCard({id: card.id});
+        cards.forEach((card) => {
+          this.playerHand.removeCard({ id: card.id });
           this.playerDiscard.addCard({
             id: card.id,
             type: card.type,
-            location: "discard"
+            location: "discard",
           });
         });
       } else {
-        cards.forEach(card => {
+        cards.forEach((card) => {
           this.playerDiscard.addCard({
             id: card.id,
             type: card.type,
-            location: "discard"
+            location: "discard",
           });
         });
       }
@@ -552,25 +556,16 @@ define([
     /**
      * Deck reshuffled notification
      */
-    notif_deckReshuffled: function(args) {
+    notif_deckReshuffled: function (args) {
       console.log("notify deck reshuffled");
       let player_id = args.player_id;
       let deck_size = args.deck_size;
       console.log(`Player ${player_id} deck reshuffled, new deck size: ${deck_size}`);
-      
+
       if (player_id == this.player_id) {
         this.playerDiscard.removeAll();
         this.updateDeckCount(deck_size);
       }
-    }
+    },
   };
 });
-
-
-
-
-
-
-
-
-

@@ -22,7 +22,6 @@ require_once "modules/SeaBoard.php";
 use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\Table;
 
-
 enum PrimitiveCardPlayAction: string
 {
     case FORWARD = "forward";
@@ -67,8 +66,8 @@ class SeasOfHavoc extends Table
             "seafeature_effects_attempted" => 10,
             "pending_trading_post_player" => 11,
             "pending_trading_post_slot" => 12,
-                "corsair_occupied_placement_used" => 13,
-                //    "my_first_global_variable" => 10,
+            "corsair_occupied_placement_used" => 13,
+            //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
             //    "my_first_game_variant" => 100,
@@ -174,17 +173,17 @@ class SeasOfHavoc extends Table
     function assignShipUpgradesToPlayer($player_id, $ship_name)
     {
         // Get ship upgrade cards matching the player's ship
-        $ship_upgrades = array_filter($this->non_playable_cards, function($card) use ($ship_name) {
-            return isset($card["category"]) && 
-                   $card["category"] == "ship_upgrade" && 
-                   isset($card["ship_name"]) && 
-                   $card["ship_name"] == $ship_name;
+        $ship_upgrades = array_filter($this->non_playable_cards, function ($card) use ($ship_name) {
+            return isset($card["category"]) &&
+                $card["category"] == "ship_upgrade" &&
+                isset($card["ship_name"]) &&
+                $card["ship_name"] == $ship_name;
         });
-        
+
         // Take first 2 upgrades for this ship (or all if less than 2)
         $upgrade_keys = array_keys($ship_upgrades);
         $selected_upgrades = array_slice($upgrade_keys, 0, 2);
-        
+
         foreach ($selected_upgrades as $upgrade_key) {
             $sql = "INSERT INTO player_ship_upgrades (player_id, upgrade_key, is_activated) VALUES ('$player_id', '$upgrade_key', 0)";
             self::DbQuery($sql);
@@ -197,20 +196,20 @@ class SeasOfHavoc extends Table
         // Maximum attempts to avoid infinite loop
         $max_attempts = 100;
         $attempts = 0;
-        
+
         while ($attempts < $max_attempts) {
             $x = rand(0, SeaBoard::WIDTH - 1);
             $y = rand(0, SeaBoard::HEIGHT - 1);
-            
+
             // Check if this position has any objects of the collision types
             $colliding_objects = $this->seaboard->getObjectsOfTypes($x, $y, $collision_types);
             if (empty($colliding_objects)) {
                 return ["x" => $x, "y" => $y];
             }
-            
+
             $attempts++;
         }
-        
+
         // If we couldn't find a random empty spot, search systematically
         for ($x = 0; $x < SeaBoard::WIDTH; $x++) {
             for ($y = 0; $y < SeaBoard::HEIGHT; $y++) {
@@ -220,9 +219,12 @@ class SeasOfHavoc extends Table
                 }
             }
         }
-        
+
         // Should never happen unless the board is completely full
-        throw new BgaSystemException("Could not find an empty position on the board that doesn't collide with: " . implode(", ", $collision_types));
+        throw new BgaSystemException(
+            "Could not find an empty position on the board that doesn't collide with: " .
+                implode(", ", $collision_types),
+        );
     }
 
     private function getBootyTokensForPlayer(int $player_id): array
@@ -310,19 +312,19 @@ class SeasOfHavoc extends Table
         // Get all possible headings
         $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
         shuffle($all_headings);
-        
+
         // Try each heading and see if it faces an object to avoid
         foreach ($all_headings as $heading) {
             // Check what's in front of this position with this heading
             $forward_pos = $this->seaboard->getForwardPosition($x, $y, $heading);
             $objects_ahead = $this->seaboard->getObjectsOfTypes($forward_pos["x"], $forward_pos["y"], $avoid_types);
-            
+
             if (empty($objects_ahead)) {
                 // This heading is safe
                 return $heading;
             }
         }
-        
+
         // If no heading is safe, return a random one anyway
         // (this might happen on a very crowded board)
         return $all_headings[0];
@@ -371,14 +373,20 @@ class SeasOfHavoc extends Table
         return (int) $this->getGameStateValue("corsair_occupied_placement_used") === 0;
     }
 
-    private function finalizeCorsairOccupiedPlacement(string $player_id, string $slot_name, string $number, array $resources): void
-    {
+    private function finalizeCorsairOccupiedPlacement(
+        string $player_id,
+        string $slot_name,
+        string $number,
+        array $resources,
+    ): void {
         $this->playerGainResources($player_id, $this->sum_array_by_key($resources, ["skiff" => -1]));
         $this->occupyIslandSlotAsCorsairOverlay($player_id, $slot_name, $number);
         $this->setGameStateValue("corsair_occupied_placement_used", 1);
         $this->notifyAllPlayers(
             "log",
-            clienttranslate('${player_name} uses Corsair to place on occupied ${slot_name} and gains only resources shown there'),
+            clienttranslate(
+                '${player_name} uses Corsair to place on occupied ${slot_name} and gains only resources shown there',
+            ),
             [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "slot_name" => $slot_name,
@@ -402,7 +410,6 @@ class SeasOfHavoc extends Table
         $this->finalizeCorsairOccupiedPlacement($player_id, $slot_name, $number, $benefit["fixed"] ?? []);
         return true;
     }
-
 
     function stMyGameSetup()
     {
@@ -452,16 +459,22 @@ class SeasOfHavoc extends Table
         // Assign first player token to a random player
         $player_ids = array_keys($player_infos);
         $random_first_player = $player_ids[array_rand($player_ids)];
-        self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')");
-        
+        self::DbQuery(
+            "INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')",
+        );
+
         // Notify players who got the first player token
-        $this->notifyAllPlayers("tokenAcquired", clienttranslate('${player_name} starts the game with the ${token_name}'), [
-            "player_name" => $this->getPlayerNameById($random_first_player),
-            "token_name" => $this->token_names["first_player_token"],
-            "player_id" => $random_first_player,
-            "token_key" => "first_player_token",
-        ]);
-        
+        $this->notifyAllPlayers(
+            "tokenAcquired",
+            clienttranslate('${player_name} starts the game with the ${token_name}'),
+            [
+                "player_name" => $this->getPlayerNameById($random_first_player),
+                "token_name" => $this->token_names["first_player_token"],
+                "player_id" => $random_first_player,
+                "token_key" => "first_player_token",
+            ],
+        );
+
         // Create other tokens without owners
         foreach (["green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
             self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES (NULL, '$token')");
@@ -473,54 +486,85 @@ class SeasOfHavoc extends Table
         uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
 
         // Get all captain cards for random assignment
-        $captain_cards = array_filter($this->non_playable_cards, fn($card) => isset($card["category"]) && $card["category"] == "captain");
+        $captain_cards = array_filter(
+            $this->non_playable_cards,
+            fn($card) => isset($card["category"]) && $card["category"] == "captain",
+        );
         $captain_keys = array_keys($captain_cards);
         shuffle($captain_keys);
 
         // Place seafeatures on the board based on player count
         $num_players = count($player_infos);
-        $num_rocks = ($num_players <= 3) ? 3 : 2;
-        $num_gusts = ($num_players <= 3) ? 2 : 3;
+        $num_rocks = $num_players <= 3 ? 3 : 2;
+        $num_gusts = $num_players <= 3 ? 2 : 3;
         $num_whirlpools = 1;
         $num_shipwrecks = 2;
-        
+
         // Pick a random heading for all gusts (they all face the same direction)
         $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
         $gust_heading = $all_headings[array_rand($all_headings)];
-        
+
         // Place rocks
         for ($i = 0; $i < $num_rocks; $i++) {
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "rock",
                 "arg" => strval($i),
                 "heading" => Heading::NO_HEADING,
             ]);
         }
-        
+
         // Place gusts (all with the same random heading)
         for ($i = 0; $i < $num_gusts; $i++) {
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "gust",
                 "arg" => strval($i),
                 "heading" => $gust_heading,
             ]);
         }
-        
+
         // Place whirlpools
         for ($i = 0; $i < $num_whirlpools; $i++) {
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "whirlpool",
                 "arg" => strval($i),
                 "heading" => Heading::NO_HEADING,
             ]);
         }
-        
+
         // Place shipwrecks
         for ($i = 0; $i < $num_shipwrecks; $i++) {
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "gust", "whirlpool", "shipwreck", "sea_monster_part"]);
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "shipwreck",
                 "arg" => strval($i),
@@ -547,16 +591,16 @@ class SeasOfHavoc extends Table
             // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
             // Ships CAN start on gusts and whirlpools
             $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
-            
+
             // Find a safe random heading that doesn't face rocks or other obstacles
             $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
-            
+
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "player_ship",
                 "arg" => $playerid,
                 "heading" => $heading,
             ]);
-            
+
             // TEMP HACK: force first players to specific captains for ability testing.
             if (isset($forced_captains_for_testing[$player_index])) {
                 $captain_key = $forced_captains_for_testing[$player_index];
@@ -565,10 +609,10 @@ class SeasOfHavoc extends Table
                 $captain_key = array_pop($captain_keys);
             }
             $this->assignCaptainToPlayer($playerid, $captain_key);
-            
+
             // Assign ship upgrade cards matching player's ship
             $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
-            
+
             // Get ship starting cards
             $player_starting_cards = array_filter(
                 array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
@@ -576,7 +620,7 @@ class SeasOfHavoc extends Table
                     return $v["ship_name"] == $player["player_ship"];
                 },
             );
-            
+
             // Get captain starting cards
             $captain_starting_cards = array_filter(
                 array_filter($this->playable_cards, fn($x) => $x["category"] == "captain"),
@@ -584,10 +628,10 @@ class SeasOfHavoc extends Table
                     return isset($v["captain_key"]) && $v["captain_key"] == $captain_key;
                 },
             );
-            
+
             // Combine ship and captain starting cards
             $all_starting_cards = array_merge($player_starting_cards, $captain_starting_cards);
-            
+
             $start_deck = [];
             foreach ($all_starting_cards as $starting_card) {
                 $start_deck[] = [
@@ -634,9 +678,9 @@ class SeasOfHavoc extends Table
             $wild_image_id = 3;
             $regular_image_id = 6;
             foreach ($player_ids as $i => $pid) {
-                $target_image_id = ($i === 0) ? $wild_image_id : $regular_image_id;
+                $target_image_id = $i === 0 ? $wild_image_id : $regular_image_id;
                 $card = self::getObjectFromDB(
-                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1"
+                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1",
                 );
                 if ($card) {
                     $this->cards->moveCard($card["card_id"], "booty_player", $pid);
@@ -653,23 +697,25 @@ class SeasOfHavoc extends Table
         $this->mytrace("stIslandPhaseSetup");
         $player_infos = $this->getPlayerInfo();
 
-        foreach ($player_infos as $playerid => $player) {            
+        foreach ($player_infos as $playerid => $player) {
             // Draw 4 new cards
             $this->drawCards($playerid, 4);
         }
-        
+
         // Clear any leftover extra turns from previous phases
         $this->clearExtraTurns("island");
-        
+
         // Set the first player token holder as the active player for the island phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
             throw new BgaSystemException("No player has the first player token - this should never happen");
         }
-        
-        $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for island phase");
+
+        $this->mytrace(
+            "Setting first player token owner ($first_player_token_owner) as active player for island phase",
+        );
         $this->gamestate->changeActivePlayer($first_player_token_owner);
-        
+
         $this->gamestate->nextState();
     }
 
@@ -681,12 +727,12 @@ class SeasOfHavoc extends Table
         $this->dump("fetched resources:", $resources);
 
         $current_player = $this->getActivePlayerId();
-        
+
         // Check if current player has an extra turn
         if ($this->hasExtraTurn($current_player, "island")) {
             $this->mytrace("Current player $current_player has an extra turn");
             $this->consumeExtraTurn($current_player, "island");
-            
+
             // Check if current player still has skiffs
             $current_player_skiffs = $resources[$current_player]["skiff"] ?? 0;
             if ($current_player_skiffs > 0) {
@@ -702,7 +748,7 @@ class SeasOfHavoc extends Table
         // Find next player with skiffs
         $starting_player = $current_player;
         $active_player = $this->activeNextPlayer();
-        
+
         while (($resources[$active_player]["skiff"] ?? 0) == 0) {
             // Prevent infinite loop if we've gone through all players
             if ($active_player == $starting_player) {
@@ -711,10 +757,9 @@ class SeasOfHavoc extends Table
                 $this->gamestate->nextState("islandPhaseDone");
                 return;
             }
-            
+
             $this->mytrace("Player $active_player has no skiffs, skipping");
             $active_player = $this->activeNextPlayer();
-            
         }
 
         $this->mytrace("Next player with skiffs: $active_player");
@@ -727,7 +772,7 @@ class SeasOfHavoc extends Table
         // Clear any pending purchases from previous round
         self::DbQuery("DELETE FROM pending_purchases");
         $this->gamestate->setAllPlayersMultiactive();
-        
+
         // Initialize all players to the "making purchases" private state
         $this->gamestate->initializePrivateStateForAllActivePlayers();
     }
@@ -742,16 +787,16 @@ class SeasOfHavoc extends Table
     function stSeaPhaseSetup()
     {
         $this->mytrace("stSeaPhaseSetup");
-        
+
         // Set the first player token holder as the active player for the sea phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
             throw new BgaSystemException("No player has the first player token - this should never happen");
         }
-        
+
         $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
         $this->gamestate->changeActivePlayer($first_player_token_owner);
-        
+
         $this->gamestate->nextState();
     }
 
@@ -802,19 +847,21 @@ class SeasOfHavoc extends Table
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
         $result["resources"] = $this->getGameResources();
-        
+
         // Get pending purchases for current player ONLY
         // Pending purchases are private per-player and not visible to other players until all players commit
-        $pending_purchases = self::getObjectListFromDB("SELECT card_id FROM pending_purchases WHERE player_id = '$current_player_id'");
+        $pending_purchases = self::getObjectListFromDB(
+            "SELECT card_id FROM pending_purchases WHERE player_id = '$current_player_id'",
+        );
         $pending_card_ids = array_column($pending_purchases, "card_id");
-        
+
         // Check if current player has completed purchases (has any pending purchases)
         $result["player_has_completed_purchases"] = !empty($pending_card_ids);
-        
+
         // Send pending purchases separately - frontend will handle filtering
         // This is only sent to the current player, not to other players
         $result["pending_purchases"] = $pending_card_ids;
-        
+
         // Send full island slots - frontend will filter based on pending_purchases
         $result["islandslots"] = $this->getIslandSlots();
         $result["unique_tokens"] = $this->getUniqueTokens();
@@ -831,13 +878,13 @@ class SeasOfHavoc extends Table
             $result["pending_trading_post_slot"] = $pending_trading_post["slot_number"];
         }
         $result["playable_cards"] = $this->playable_cards;
-        
+
         // Send the full, unmodified market to all players
         // Frontend will filter out pending purchases for the current player
         // Market cards are returned in a consistent order (by location_arg), so frontend can use array position as slot number
         $market_cards = $this->cards->getCardsInLocation("market");
         $result["market"] = $market_cards;
-        
+
         // Send player's actual hand - frontend will add pending purchases to hand display
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
         $result["discard"] = $this->cards->getCardsInLocation("player_discard", $current_player_id);
@@ -845,7 +892,7 @@ class SeasOfHavoc extends Table
         $result["playerinfo"] = $this->getPlayerInfo();
         $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
         $result["non_playable_cards"] = $this->non_playable_cards;
-        
+
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
         $result["player_captain"] = $this->getPlayerCaptain($current_player_id);
         $result["corsair_occupied_placement_available"] = $this->canUseCorsairOccupiedPlacement($current_player_id);
@@ -983,10 +1030,11 @@ class SeasOfHavoc extends Table
         $sql = "SELECT disabled, corsair_occupying_player_id FROM islandslots WHERE slot_key = '$slot_name' AND number = '$number'";
         $current_slot = $this->getObjectFromDB($sql);
         $disabled = $current_slot ? $current_slot["disabled"] : 0;
-        $corsair_occupying_player_id = $current_slot && $current_slot["corsair_occupying_player_id"] !== null
-            ? "'" . $current_slot["corsair_occupying_player_id"] . "'"
-            : "null";
-        
+        $corsair_occupying_player_id =
+            $current_slot && $current_slot["corsair_occupying_player_id"] !== null
+                ? "'" . $current_slot["corsair_occupying_player_id"] . "'"
+                : "null";
+
         self::DbQuery(
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $corsair_occupying_player_id, $disabled)",
         );
@@ -1005,14 +1053,18 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "UPDATE islandslots SET corsair_occupying_player_id = '$player_id' WHERE slot_key = '$slot_name' AND number = '$number'",
         );
-        $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'), [
-            "player_name" => self::getActivePlayerName(),
-            "player_id" => $player_id,
-            "player_color" => $this->getPlayerColor($player_id),
-            "slot_name" => $slot_name,
-            "slot_number" => $number,
-            "is_corsair_overlay" => true,
-        ]);
+        $this->notifyAllPlayers(
+            "skiffPlaced",
+            clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'),
+            [
+                "player_name" => self::getActivePlayerName(),
+                "player_id" => $player_id,
+                "player_color" => $this->getPlayerColor($player_id),
+                "slot_name" => $slot_name,
+                "slot_number" => $number,
+                "is_corsair_overlay" => true,
+            ],
+        );
     }
 
     private function setPendingTradingPostSelection(?int $player_id, ?string $slot_number): void
@@ -1074,9 +1126,7 @@ class SeasOfHavoc extends Table
 
         $taken_from_another_player = $current_owner !== null;
 
-        self::DbQuery(
-            "REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')",
-        );
+        self::DbQuery("REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')");
         $token_name = $this->token_names[$token_key];
         $this->notifyAllPlayers("tokenAcquired", clienttranslate('${player_name} acquired the ${token_name}'), [
             "player_name" => $this->getPlayerNameById($player_id),
@@ -1089,24 +1139,30 @@ class SeasOfHavoc extends Table
         if ($taken_from_another_player && $this->getPlayerCaptain($player_id) === "admiral") {
             if ($token_key === "first_player_token") {
                 $this->drawCards($player_id);
-                $this->notifyAllPlayers("log", clienttranslate('${player_name}\'s Admiral ability: draws a card for taking the first player token'), [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                ]);
+                $this->notifyAllPlayers(
+                    "log",
+                    clienttranslate(
+                        '${player_name}\'s Admiral ability: draws a card for taking the first player token',
+                    ),
+                    [
+                        "player_name" => $this->getPlayerNameById($player_id),
+                    ],
+                );
             } elseif (str_ends_with($token_key, "_flag")) {
-                $this->scoreInfamy($player_id, 1, clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'));
+                $this->scoreInfamy(
+                    $player_id,
+                    1,
+                    clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
+                );
             }
         }
     }
 
-    function scoreInfamy(string $player_id, int $amount, string $message = '')
+    function scoreInfamy(string $player_id, int $amount, string $message = "")
     {
-        $this->DbQuery(
-            "UPDATE player SET player_score=player_score+$amount WHERE player_id='$player_id'",
-        );
-        $new_score = $this->getUniqueValueFromDB(
-            "SELECT player_score FROM player WHERE player_id='$player_id'",
-        );
-        if ($message === '') {
+        $this->DbQuery("UPDATE player SET player_score=player_score+$amount WHERE player_id='$player_id'");
+        $new_score = $this->getUniqueValueFromDB("SELECT player_score FROM player WHERE player_id='$player_id'");
+        if ($message === "") {
             $message = clienttranslate('${player_name} scored ${score_increment} infamy');
         }
         $this->notifyAllPlayers("score", $message, [
@@ -1125,7 +1181,9 @@ class SeasOfHavoc extends Table
 
     function hasExtraTurn(string $player_id, string $phase)
     {
-        $result = self::getUniqueValueFromDB("SELECT COUNT(*) FROM extra_turns WHERE player_id = '$player_id' AND phase = '$phase'");
+        $result = self::getUniqueValueFromDB(
+            "SELECT COUNT(*) FROM extra_turns WHERE player_id = '$player_id' AND phase = '$phase'",
+        );
         return $result > 0;
     }
 
@@ -1144,50 +1202,53 @@ class SeasOfHavoc extends Table
     function clearIslandSlots()
     {
         $player_count = $this->getPlayersNumber();
-        
+
         // Define which slots should be disabled based on player count
         $disabled_slots = [];
 
-            // Corsair occupied placement can be used once per island phase.
-            $this->setGameStateValue("corsair_occupied_placement_used", 0);
-        
+        // Corsair occupied placement can be used once per island phase.
+        $this->setGameStateValue("corsair_occupied_placement_used", 0);
+
         if ($player_count < 3) {
             $disabled_slots["sailmaker"]["n1"] = true;
             $disabled_slots["trading_post"]["n1"] = true;
         }
-        
+
         if ($player_count < 4) {
             $disabled_slots["blacksmith"]["n2"] = true;
             $disabled_slots["workshop"]["n2"] = true;
         }
-        
+
         if ($player_count < 5) {
             $disabled_slots["trading_post"]["n2"] = true;
         }
-        
-        foreach ([
-            ["capitol", "n1"],
-            ["bank", "n1"],
-            ["workshop", "n1"],
-            ["workshop", "n2"],
-            ["trading_post", "n1"],
-            ["trading_post", "n2"],
-            ["shipyard", "n1"],
-            ["blacksmith", "n1"],
-            ["blacksmith", "n2"],
-            ["sailmaker", "n1"],
-            ["deep_cove", "n1"],
-            ["deep_cove", "n2"],
-            ["green_flag", "n1"],
-            ["tan_flag", "n1"],
-            ["red_flag", "n1"],
-            ["blue_flag", "n1"],
-            ["market", "n1"],
-            ["market", "n2"],
-            ["market", "n3"],
-            ["market", "n4"],
-            ["market", "n5"],
-        ] as [$slot_key, $number]) {
+
+        foreach (
+            [
+                ["capitol", "n1"],
+                ["bank", "n1"],
+                ["workshop", "n1"],
+                ["workshop", "n2"],
+                ["trading_post", "n1"],
+                ["trading_post", "n2"],
+                ["shipyard", "n1"],
+                ["blacksmith", "n1"],
+                ["blacksmith", "n2"],
+                ["sailmaker", "n1"],
+                ["deep_cove", "n1"],
+                ["deep_cove", "n2"],
+                ["green_flag", "n1"],
+                ["tan_flag", "n1"],
+                ["red_flag", "n1"],
+                ["blue_flag", "n1"],
+                ["market", "n1"],
+                ["market", "n2"],
+                ["market", "n3"],
+                ["market", "n4"],
+                ["market", "n5"],
+            ]
+            as [$slot_key, $number]
+        ) {
             $disabled = isset($disabled_slots[$slot_key][$number]) ? 1 : 0;
             self::DbQuery(
                 "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_key', '$number', null, null, $disabled)",
@@ -1277,8 +1338,11 @@ class SeasOfHavoc extends Table
      * Otherwise, auto-assign each "choice" unit to whichever cost resource has the
      * highest remaining need after fixed resources are applied.
      */
-    private function resolveBootyResourcesForPayment(array $resources, array $cost, ?string $player_choice = null): array
-    {
+    private function resolveBootyResourcesForPayment(
+        array $resources,
+        array $cost,
+        ?string $player_choice = null,
+    ): array {
         // First, collect fixed (non-choice) resources
         $out = [];
         $choiceAmount = 0;
@@ -1295,7 +1359,12 @@ class SeasOfHavoc extends Table
         }
 
         // If player explicitly chose a valid resource type, use it
-        if ($player_choice !== null && $player_choice !== "" && in_array($player_choice, $this->resource_types, true) && $player_choice !== "skiff") {
+        if (
+            $player_choice !== null &&
+            $player_choice !== "" &&
+            in_array($player_choice, $this->resource_types, true) &&
+            $player_choice !== "skiff"
+        ) {
             $out[$player_choice] = ($out[$player_choice] ?? 0) + $choiceAmount;
             return $out;
         }
@@ -1326,8 +1395,12 @@ class SeasOfHavoc extends Table
      * If use_booty_card_id is set, that booty card is applied to reduce the cost (no refund for excess), then discarded to booty_discard.
      * $booty_choice is the player's chosen resource type for "choice" (wild) resources. If null, auto-resolved.
      */
-    function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void
-    {
+    function payWithOptionalBooty(
+        int $player_id,
+        array $cost,
+        ?int $use_booty_card_id = null,
+        ?string $booty_choice = null,
+    ): void {
         if (empty($cost)) {
             return;
         }
@@ -1336,7 +1409,11 @@ class SeasOfHavoc extends Table
 
         if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
             $booty_card = $this->cards->getCard($use_booty_card_id);
-            if (!$booty_card || $booty_card["location"] !== "booty_player" || (int) $booty_card["location_arg"] !== (int) $player_id) {
+            if (
+                !$booty_card ||
+                $booty_card["location"] !== "booty_player" ||
+                (int) $booty_card["location_arg"] !== (int) $player_id
+            ) {
                 throw new BgaUserException(clienttranslate("Invalid booty token"));
             }
             $config = $this->getBootyTokenConfigByTypeArg((int) $booty_card["type_arg"]);
@@ -1364,13 +1441,17 @@ class SeasOfHavoc extends Table
                 }
             }
             $booty_desc = implode(" + ", $booty_parts);
-            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token as ${booty_usage}'), [
-                "player_id" => $player_id,
-                "player_name" => $this->getPlayerNameById($player_id),
-                "booty_card" => $booty_card,
-                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                "booty_usage" => $booty_desc,
-            ]);
+            $this->notifyAllPlayers(
+                "bootyTokenUsed",
+                clienttranslate('${player_name} uses a booty token as ${booty_usage}'),
+                [
+                    "player_id" => $player_id,
+                    "player_name" => $this->getPlayerNameById($player_id),
+                    "booty_card" => $booty_card,
+                    "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                    "booty_usage" => $booty_desc,
+                ],
+            );
             return;
         }
 
@@ -1406,7 +1487,7 @@ class SeasOfHavoc extends Table
 
         self::DbQuery($sql);
         $msg = $this->formatResourceChangeMessage($resources);
-        $log = $msg ? '${player_name} ${resource_change}' : '';
+        $log = $msg ? '${player_name} ${resource_change}' : "";
         $this->notifyAllPlayers("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
@@ -1424,7 +1505,7 @@ class SeasOfHavoc extends Table
             "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ('$player_id','$resource_type','$count')",
         );
         $msg = $this->formatResourceChangeMessage([$resource_type => $diff]);
-        $log = $msg ? '${player_name} ${resource_change}' : '';
+        $log = $msg ? '${player_name} ${resource_change}' : "";
         $this->notifyAllPlayers("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
@@ -1469,7 +1550,8 @@ class SeasOfHavoc extends Table
         ]);
     }
 
-    function notifyDeckSizeChanged(string $player_id, string $message = ""){
+    function notifyDeckSizeChanged(string $player_id, string $message = "")
+    {
         $deck_size = $this->cards->countCardInLocation($this->playerDeckName($player_id));
         $this->notifyPlayer($player_id, "deckSizeChanged", $message, [
             "player_id" => $player_id,
@@ -1477,31 +1559,38 @@ class SeasOfHavoc extends Table
         ]);
     }
 
-    function drawCards(string $player_id, int $num_cards = 1){
+    function drawCards(string $player_id, int $num_cards = 1)
+    {
         $this->mytrace("drawCard - drawing $num_cards cards");
         $deck_name = $this->playerDeckName($player_id);
-        
+
         // Track discard pile count before drawing to detect autoreshuffle
         $discard_count_before = $this->cards->countCardInLocation("player_discard", $player_id);
-        
+
         $cards_drawn = $this->cards->pickCards($num_cards, $deck_name, $player_id);
         $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards");
-        
+
         // Check if autoreshuffle happened (discard pile was emptied during pickCards)
         $discard_count_after = $this->cards->countCardInLocation("player_discard", $player_id);
         if ($discard_count_before > 0 && $discard_count_after == 0) {
             $this->mytrace("drawCard - autoreshuffle detected, notifying player");
-            $this->notifyPlayer($player_id, "deckReshuffled", clienttranslate('Your discard pile was shuffled into your deck'), [
-                "player_id" => $player_id,
-                "deck_size" => $this->cards->countCardInLocation($deck_name),
-            ]);
+            $this->notifyPlayer(
+                $player_id,
+                "deckReshuffled",
+                clienttranslate("Your discard pile was shuffled into your deck"),
+                [
+                    "player_id" => $player_id,
+                    "deck_size" => $this->cards->countCardInLocation($deck_name),
+                ],
+            );
         }
-        
+
         if (count($cards_drawn) > 0) {
-            $message = count($cards_drawn) == 1 
-                ? clienttranslate('You drew a card') 
-                : clienttranslate('You drew ${num_cards} cards');
-            
+            $message =
+                count($cards_drawn) == 1
+                    ? clienttranslate("You drew a card")
+                    : clienttranslate('You drew ${num_cards} cards');
+
             $this->notifyPlayer($player_id, "cardDrawn", $message, [
                 "player_id" => $player_id,
                 "cards" => $cards_drawn,
@@ -1516,19 +1605,25 @@ class SeasOfHavoc extends Table
             $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards, but need " . $num_cards . " cards");
             $this->cards->moveAllCardsInLocation("player_discard", $deck_name, $player_id);
             $this->cards->shuffle($deck_name);
-            
+
             // Notify that deck was reshuffled from discard
-            $this->notifyPlayer($player_id, "deckReshuffled", clienttranslate('Your discard pile was shuffled into your deck'), [
-                "player_id" => $player_id,
-                "deck_size" => $this->cards->countCardInLocation($deck_name),
-            ]);
+            $this->notifyPlayer(
+                $player_id,
+                "deckReshuffled",
+                clienttranslate("Your discard pile was shuffled into your deck"),
+                [
+                    "player_id" => $player_id,
+                    "deck_size" => $this->cards->countCardInLocation($deck_name),
+                ],
+            );
             $cards_drawn = $this->cards->pickCards($num_cards - count($cards_drawn), $deck_name, $player_id);
             $this->mytrace("drawCard - drew another " . count($cards_drawn) . " cards");
             if (count($cards_drawn) > 0) {
-                $message = count($cards_drawn) == 1 
-                    ? clienttranslate('You drew a card') 
-                    : clienttranslate('You drew ${num_cards} cards');
-                
+                $message =
+                    count($cards_drawn) == 1
+                        ? clienttranslate("You drew a card")
+                        : clienttranslate('You drew ${num_cards} cards');
+
                 $this->notifyPlayer($player_id, "cardDrawn", $message, [
                     "player_id" => $player_id,
                     "cards" => $cards_drawn,
@@ -1537,12 +1632,12 @@ class SeasOfHavoc extends Table
                 ]);
             }
         }
-
     }
 
-    function discardCards(string $player_id, array $card_ids){
+    function discardCards(string $player_id, array $card_ids)
+    {
         $this->mytrace("discardCards - discarding " . count($card_ids) . " cards");
-        
+
         $cards_discarded = [];
         foreach ($card_ids as $card_id) {
             // Validate that the card belongs to the player and is in their hand
@@ -1550,21 +1645,22 @@ class SeasOfHavoc extends Table
             if ($card == null) {
                 throw new BgaUserException(clienttranslate("Invalid card"));
             }
-            
-            if ($card['location'] != 'hand' || $card['location_arg'] != $player_id) {
+
+            if ($card["location"] != "hand" || $card["location_arg"] != $player_id) {
                 throw new BgaUserException(clienttranslate("You can only discard cards from your hand"));
             }
-            
+
             // Move card to player's discard pile
             $this->cards->moveCard($card_id, "player_discard", $player_id);
             $cards_discarded[] = $card;
         }
-        
+
         if (count($cards_discarded) > 0) {
-            $message = count($cards_discarded) == 1 
-                ? clienttranslate('${player_name} discarded a card') 
-                : clienttranslate('${player_name} discarded ${num_cards} cards');
-            
+            $message =
+                count($cards_discarded) == 1
+                    ? clienttranslate('${player_name} discarded a card')
+                    : clienttranslate('${player_name} discarded ${num_cards} cards');
+
             $this->notifyAllPlayers("cardsDiscarded", $message, [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
@@ -1587,7 +1683,9 @@ class SeasOfHavoc extends Table
         $player_id = self::getActivePlayerId();
         $this->mytrace("placeSkiff: $player_id slotname: $slotname number: $number");
         if ($this->getPendingTradingPostSelection() !== null) {
-            throw new BgaUserException(clienttranslate("Finish the trading post exchange before placing another skiff"));
+            throw new BgaUserException(
+                clienttranslate("Finish the trading post exchange before placing another skiff"),
+            );
         }
         $occupancies = $this->getIslandSlots();
 
@@ -1609,10 +1707,11 @@ class SeasOfHavoc extends Table
                 }
                 return;
             }
-            throw new BgaUserException(new \Bga\GameFramework\NotificationMessage(
-                clienttranslate("There is already a skiff on {slotname}"),
-                ["slotname" => $slotname]
-            ));
+            throw new BgaUserException(
+                new \Bga\GameFramework\NotificationMessage(clienttranslate("There is already a skiff on {slotname}"), [
+                    "slotname" => $slotname,
+                ]),
+            );
             return;
         }
 
@@ -1741,7 +1840,7 @@ class SeasOfHavoc extends Table
         #[JsonParam] array $resources_spent,
         #[JsonParam] array $resources_gained,
         string $slot_number,
-        ?int $use_booty_card_id = null
+        ?int $use_booty_card_id = null,
     ): void {
         $player_id = self::getActivePlayerId();
         $valid_resources = ["sail", "cannonball", "doubloon"];
@@ -1769,17 +1868,25 @@ class SeasOfHavoc extends Table
             }
 
             $booty_card = $this->cards->getCard($use_booty_card_id);
-            if (!$booty_card || $booty_card["location"] !== "booty_player" || (int) $booty_card["location_arg"] !== (int) $player_id) {
+            if (
+                !$booty_card ||
+                $booty_card["location"] !== "booty_player" ||
+                (int) $booty_card["location_arg"] !== (int) $player_id
+            ) {
                 throw new BgaUserException(clienttranslate("Invalid booty token"));
             }
             $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
-            $this->notifyAllPlayers("bootyTokenUsed", clienttranslate('${player_name} uses a booty token at the trading post'), [
-                "player_id" => $player_id,
-                "player_name" => self::getPlayerNameById($player_id),
-                "booty_card" => $booty_card,
-                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                "booty_usage" => "trading post",
-            ]);
+            $this->notifyAllPlayers(
+                "bootyTokenUsed",
+                clienttranslate('${player_name} uses a booty token at the trading post'),
+                [
+                    "player_id" => $player_id,
+                    "player_name" => self::getPlayerNameById($player_id),
+                    "booty_card" => $booty_card,
+                    "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                    "booty_usage" => "trading post",
+                ],
+            );
         } else {
             // Normal trade: spend 1-2 resources, gain the same number
             if (count($resources_spent) < 1 || count($resources_spent) > 2) {
@@ -1823,21 +1930,22 @@ class SeasOfHavoc extends Table
 
     function actCompletePurchases(#[JsonParam] array $cards_purchased)
     {
-
         $player_id = $this->getCurrentPlayerId();
         $this->dump("cards_purchased", $cards_purchased);
-        
+
         // Check if player has already completed purchases (is in pending_purchases table)
-        $existing = self::getObjectFromDB("SELECT player_id FROM pending_purchases WHERE player_id = '$player_id' LIMIT 1");
+        $existing = self::getObjectFromDB(
+            "SELECT player_id FROM pending_purchases WHERE player_id = '$player_id' LIMIT 1",
+        );
         if ($existing) {
             throw new BgaUserException(clienttranslate("You have already completed your purchases"));
         }
-        
+
         // Validate and store purchases in pending_purchases table
         // Each item: int card_id or { card_id, use_booty_card_id?, doubloons_as_cannonballs? }
         foreach ($cards_purchased as $item) {
-            $card_id = is_array($item) ? ($item["card_id"] ?? null) : $item;
-            $use_booty_card_id = is_array($item) ? ($item["use_booty_card_id"] ?? null) : null;
+            $card_id = is_array($item) ? $item["card_id"] ?? null : $item;
+            $use_booty_card_id = is_array($item) ? $item["use_booty_card_id"] ?? null : null;
             $doubloons_as_cannonballs = is_array($item) ? intval($item["doubloons_as_cannonballs"] ?? 0) : 0;
             if ($card_id === null) {
                 throw new BgaUserException(clienttranslate("Invalid card purchase"));
@@ -1854,50 +1962,61 @@ class SeasOfHavoc extends Table
                 $market_card = $this->playable_cards[$card["type"]];
                 $cannonball_cost = $market_card["cost"]["cannonball"] ?? 0;
                 if ($doubloons_as_cannonballs > $cannonball_cost) {
-                    throw new BgaUserException(clienttranslate("Cannot substitute more doubloons than the cannonball cost"));
+                    throw new BgaUserException(
+                        clienttranslate("Cannot substitute more doubloons than the cannonball cost"),
+                    );
                 }
             }
             $use_sql = "NULL";
             if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
                 $use_sql = "'" . intval($use_booty_card_id) . "'";
             }
-            self::DbQuery("INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id, doubloons_as_cannonballs) VALUES ('$player_id', '" . intval($card_id) . "', $use_sql, $doubloons_as_cannonballs)");
+            self::DbQuery(
+                "INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id, doubloons_as_cannonballs) VALUES ('$player_id', '" .
+                    intval($card_id) .
+                    "', $use_sql, $doubloons_as_cannonballs)",
+            );
         }
-        
+
         $this->trace("active player list before: " . implode(", ", $this->gamestate->getActivePlayerList()));
-        
+
         // Transition this player to the "completed purchases" private state
         $this->gamestate->nextPrivateState($player_id, "completedPurchases");
-        
+
         // Deactivate this player (they've completed their purchases)
         // The transition name "cardPurchasesDone" will be used when all players are done
         $this->gamestate->setPlayerNonMultiactive($player_id, "cardPurchasesDone");
     }
-    
+
     function commitAllPurchases()
     {
-
         $this->trace("Committing all purchases");
-        
+
         // Get all pending purchases (including optional booty usage and Merchant substitution)
-        $pending = self::getObjectListFromDB("SELECT player_id, card_id, use_booty_card_id, doubloons_as_cannonballs FROM pending_purchases");
-        
+        $pending = self::getObjectListFromDB(
+            "SELECT player_id, card_id, use_booty_card_id, doubloons_as_cannonballs FROM pending_purchases",
+        );
+
         // Group by player for notification
         $purchases_by_player = [];
         $purchased_card_ids = [];
-        
+
         foreach ($pending as $purchase) {
             $player_id = $purchase["player_id"];
             $card_id = (int) $purchase["card_id"];
-            $use_booty_card_id = isset($purchase["use_booty_card_id"]) && $purchase["use_booty_card_id"] !== null && $purchase["use_booty_card_id"] !== ""
-                ? (int) $purchase["use_booty_card_id"] : null;
-            
+            $use_booty_card_id =
+                isset($purchase["use_booty_card_id"]) &&
+                $purchase["use_booty_card_id"] !== null &&
+                $purchase["use_booty_card_id"] !== ""
+                    ? (int) $purchase["use_booty_card_id"]
+                    : null;
+
             $card = $this->cards->getCard($card_id);
             if (!$card || $card["location"] != "market") {
                 $this->trace("Warning: Card $card_id is not in market, skipping");
                 continue;
             }
-            
+
             $market_card = $this->playable_cards[$card["type"]];
             $cost = $market_card["cost"];
 
@@ -1913,10 +2032,10 @@ class SeasOfHavoc extends Table
 
             // Pay for the card (optionally using booty token)
             $this->payWithOptionalBooty($player_id, $cost, $use_booty_card_id);
-            
+
             // Move card to player's hand
             $this->cards->moveCard($card_id, "hand", $player_id);
-            
+
             // Track for notification
             if (!isset($purchases_by_player[$player_id])) {
                 $purchases_by_player[$player_id] = [];
@@ -1924,16 +2043,16 @@ class SeasOfHavoc extends Table
             $purchases_by_player[$player_id][] = $card_id;
             $purchased_card_ids[] = $card_id;
         }
-        
+
         // Notify all players about purchases
         $this->notifyAllPlayers("cardsPurchased", clienttranslate("Card purchases completed"), [
             "purchases" => $purchases_by_player,
             "purchased_card_ids" => $purchased_card_ids,
         ]);
-        
+
         // Clear pending purchases table
         self::DbQuery("DELETE FROM pending_purchases");
-        
+
         // Clear island slots and refill market
         $this->clearIslandSlots();
         $num_market_cards = $this->cards->countCardInLocation("market");
@@ -1942,7 +2061,7 @@ class SeasOfHavoc extends Table
             $this->trace("picking " . (5 - $num_market_cards) . " market cards");
             $this->cards->pickCardsForLocation(5 - $num_market_cards, "market_deck", "market");
         }
-        
+
         // Notify all players about the updated market
         $updated_market = $this->cards->getCardsInLocation("market");
         $this->notifyAllPlayers("marketUpdated", clienttranslate("Market has been refilled"), [
@@ -1977,10 +2096,11 @@ class SeasOfHavoc extends Table
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
                 break;
             default:
-                throw new BgaUserException(new \Bga\GameFramework\NotificationMessage(
-                    clienttranslate("Unknown action type: {action_type}"),
-                    ["action_type" => $action_type->value]
-                ));
+                throw new BgaUserException(
+                    new \Bga\GameFramework\NotificationMessage(clienttranslate("Unknown action type: {action_type}"), [
+                        "action_type" => $action_type->value,
+                    ]),
+                );
         }
         $this->dump("processSimpleAction outcome", $outcome);
         return [
@@ -2013,8 +2133,7 @@ class SeasOfHavoc extends Table
         bool &$collision_occurred,
         ?array &$shipwreck_event,
         ?array &$booty_card,
-    )
-    {
+    ) {
         $total_cost = $this->sum_array_by_key($total_cost, $cost);
         if (array_key_exists("collision_occurred", $result)) {
             $collision_occurred = $collision_occurred || $result["collision_occurred"];
@@ -2186,7 +2305,12 @@ class SeasOfHavoc extends Table
                     }
                     // FIRE actions never cause movement collisions - explicitly set collision_occurred to false
                     $this->merge_results(
-                        ["action_chain" => [$outcome], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null],
+                        [
+                            "action_chain" => [$outcome],
+                            "collision_occurred" => false,
+                            "shipwreck_event" => null,
+                            "booty_card" => null,
+                        ],
                         $cost,
                         $to_send,
                         $total_cost,
@@ -2262,8 +2386,11 @@ class SeasOfHavoc extends Table
         $gust = $this->seaboard->getGustAtObjectLocation("player_ship", $player_id);
         if ($gust) {
             $this->trace("Ship is on gust - pushing in direction " . $gust["heading"]->toString());
-            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $player_id, $gust["heading"], ["rock", "player_ship"]);
-            
+            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $player_id, $gust["heading"], [
+                "rock",
+                "player_ship",
+            ]);
+
             // Return the result and whether a collision occurred
             return ["result" => $push_result, "collision" => $push_result["type"] == "collision"];
         }
@@ -2276,13 +2403,13 @@ class SeasOfHavoc extends Table
         $collision = false;
         $shipwreck_event = null;
         $booty_card = null;
-        
+
         // Apply whirlpool rotation first
         $whirlpool_result = $this->applyWhirlpoolRotation($player_id);
         if ($whirlpool_result["occurred"]) {
             $seafeature_moves[] = $whirlpool_result["result"];
         }
-        
+
         // Then apply gust push (which can cause collision)
         $gust_result = $this->applyGustPush($player_id);
         if ($gust_result["result"] !== null) {
@@ -2294,7 +2421,7 @@ class SeasOfHavoc extends Table
                 $booty_card = $pickup["booty_card"] ?? $booty_card;
             }
         }
-        
+
         return [
             "moves" => $seafeature_moves,
             "collision" => $collision,
@@ -2313,7 +2440,7 @@ class SeasOfHavoc extends Table
 
         // Check if this is a "pass" play (playing card without executing actions)
         $is_pass = !empty($decisions) && $decisions[0] === "pass";
-        
+
         if ($is_pass) {
             // Pass: skip all actions, but still discard the card
             $outcome = [
@@ -2342,10 +2469,10 @@ class SeasOfHavoc extends Table
             $notification_message = clienttranslate('${player_name} has played a card');
             $shipwreck_event = $outcome["shipwreck_event"] ?? null;
             $booty_card = $outcome["booty_card"] ?? null;
-            
+
             // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
             $this->setGameStateValue("seafeature_effects_attempted", 0);
-            
+
             if (!$outcome["collision_occurred"]) {
                 $seafeature_effects = $this->applySeafeatureEffects($player_id);
                 $seafeature_collision = $seafeature_effects["collision"];
@@ -2356,18 +2483,24 @@ class SeasOfHavoc extends Table
                 if ($booty_card == null) {
                     $booty_card = $seafeature_effects["booty_card"] ?? null;
                 }
-                
+
                 // Append seafeature moves to the moveChain for sequential animation
                 if (!empty($seafeature_effects["moves"])) {
                     $all_moves = array_merge($all_moves, $seafeature_effects["moves"]);
-                    
+
                     // Update notification message to mention seafeature effects
                     if (count($seafeature_effects["moves"]) == 2) {
-                        $notification_message = clienttranslate('${player_name} has played a card and is affected by the whirlpool and gust');
+                        $notification_message = clienttranslate(
+                            '${player_name} has played a card and is affected by the whirlpool and gust',
+                        );
                     } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
-                        $notification_message = clienttranslate('${player_name} has played a card and is rotated by the whirlpool');
+                        $notification_message = clienttranslate(
+                            '${player_name} has played a card and is rotated by the whirlpool',
+                        );
                     } else {
-                        $notification_message = clienttranslate('${player_name} has played a card and is pushed by the gust');
+                        $notification_message = clienttranslate(
+                            '${player_name} has played a card and is pushed by the gust',
+                        );
                     }
                 }
             }
@@ -2389,13 +2522,15 @@ class SeasOfHavoc extends Table
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
             ]);
-            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate('You reveal a booty token'), [
+            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
                 "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
                 "new_token" => $booty_card,
             ]);
         }
 
-        $this->gamestate->nextState(($outcome["collision_occurred"] || $seafeature_collision) ? "collisionOccurred" : "seaTurnDone");
+        $this->gamestate->nextState(
+            $outcome["collision_occurred"] || $seafeature_collision ? "collisionOccurred" : "seaTurnDone",
+        );
     }
 
     function stResolveCollision()
@@ -2419,14 +2554,14 @@ class SeasOfHavoc extends Table
     {
         $this->mytrace("actPivotPickedInDialog");
         $player_id = $this->getActivePlayerId();
-        
+
         // Apply seafeature effects (whirlpool rotation and gust push) after collision resolution
         // But only if they haven't been attempted yet (seafeature effects are only applied once per card play)
         $seafeature_effects = ["moves" => [], "collision" => false];
         $seafeature_collision = false;
         $shipwreck_event = null;
         $booty_card = null;
-        
+
         $seafeature_effects_attempted = $this->getGameStateValue("seafeature_effects_attempted");
         if ($seafeature_effects_attempted == 0) {
             $seafeature_effects = $this->applySeafeatureEffects($player_id);
@@ -2435,12 +2570,12 @@ class SeasOfHavoc extends Table
         } else {
             $this->mytrace("Seafeature effects already attempted, skipping");
         }
-        
+
         if ($direction != "no pivot") {
             $typed_action = PrimitiveCardPlayAction::from($direction);
             $outcome = $this->processCardActions([["action" => $typed_action]], []);
             $this->dump("final pivot outcome", $outcome);
-            
+
             // Pay the cost for pivot actions (pivots are free, but just in case)
             if (!empty($outcome["cost"])) {
                 $this->payWithOptionalBooty($player_id, $outcome["cost"]);
@@ -2457,10 +2592,12 @@ class SeasOfHavoc extends Table
             if ($booty_card == null) {
                 $booty_card = $seafeature_effects["booty_card"] ?? null;
             }
-            
+
             if (!empty($seafeature_effects["moves"])) {
                 if (count($seafeature_effects["moves"]) == 2) {
-                    $notification_message = clienttranslate('${player_name} pivots and is affected by the whirlpool and gust');
+                    $notification_message = clienttranslate(
+                        '${player_name} pivots and is affected by the whirlpool and gust',
+                    );
                 } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
                     $notification_message = clienttranslate('${player_name} pivots and is rotated by the whirlpool');
                 } else {
@@ -2481,7 +2618,7 @@ class SeasOfHavoc extends Table
             $notification_message = clienttranslate('${player_name} resolves collision');
             $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
             $booty_card = $seafeature_effects["booty_card"] ?? null;
-            
+
             if (count($seafeature_effects["moves"]) == 2) {
                 $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
             } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
@@ -2489,7 +2626,7 @@ class SeasOfHavoc extends Table
             } else {
                 $notification_message = clienttranslate('${player_name} is pushed by the gust');
             }
-            
+
             $this->notifyAllPlayers("cardPlayed", $notification_message, [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
@@ -2504,12 +2641,12 @@ class SeasOfHavoc extends Table
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
             ]);
-            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate('You reveal a booty token'), [
+            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
                 "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
                 "new_token" => $booty_card,
             ]);
         }
-        
+
         // If gust push caused another collision, stay in collision resolution state
         // Note: Seafeature effects are only applied once per card play, so this can only happen
         // when resolving a collision from the initial card play (gust push after collision resolution)
@@ -2520,19 +2657,18 @@ class SeasOfHavoc extends Table
         }
     }
 
-
     function argScrapCard()
     {
         $this->mytrace("argScrapCard");
         $player_id = self::getActivePlayerId();
-        
+
         // Get cards from hand and discard pile
         $hand_cards = $this->cards->getPlayerHand($player_id);
         $discard_cards = $this->cards->getCardsInLocation("player_discard", $player_id);
-        
+
         // Combine and prepare for scrollable stock
         $available_cards = array_merge($hand_cards, $discard_cards);
-        
+
         return [
             "available_cards" => $available_cards,
         ];
@@ -2542,32 +2678,32 @@ class SeasOfHavoc extends Table
     {
         $this->mytrace("actScrapCard: card_id=$card_id");
         $player_id = self::getActivePlayerId();
-        
+
         // Validate that the card belongs to the player and is in hand or discard
         $card = $this->cards->getCard($card_id);
         if (!$card) {
             throw new BgaUserException(clienttranslate("Invalid card"));
         }
-        
+
         $valid_locations = ["hand", "player_discard"];
         if (!in_array($card["location"], $valid_locations) || $card["location_arg"] != $player_id) {
             throw new BgaUserException(clienttranslate("You can only scrap cards from your hand or discard pile"));
         }
-        
+
         // Store the original location before moving
         $original_location = $card["location"];
-        
+
         // Move card to scrap pile
         $this->cards->moveCard($card_id, "scrap");
-        
+
         // Ensure card ID is properly formatted
         $card_for_notification = [
             "id" => intval($card["id"]),
             "type" => intval($card["type"]),
             "location" => $card["location"],
-            "location_arg" => intval($card["location_arg"])
+            "location_arg" => intval($card["location_arg"]),
         ];
-        
+
         // Notify players
         $this->notifyAllPlayers("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
             "player_name" => self::getActivePlayerName(),
@@ -2575,7 +2711,7 @@ class SeasOfHavoc extends Table
             "card" => $card_for_notification,
             "original_location" => $original_location,
         ]);
-        
+
         $this->gamestate->nextState("cardScrapped");
     }
 

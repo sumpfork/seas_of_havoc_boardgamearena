@@ -12,15 +12,13 @@ define([
   "dojo/on",
   "dojo/query",
   "dojo/dom-attr",
-  getLibUrl('bga-cards', '1.x'),
-], function(dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards) {
-  
+  getLibUrl("bga-cards", "1.x"),
+], function (dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards) {
   return {
-
     /**
      * Clean up card play dialog
      */
-    cleanupCardPlayDialog: function() {
+    cleanupCardPlayDialog: function () {
       if (this.cardDisplayStock) {
         try {
           this.cardDisplayStock.removeAll();
@@ -36,16 +34,16 @@ define([
     /**
      * Show card play dialog with choices
      */
-    showCardPlayDialog: function(card, card_id) {
+    showCardPlayDialog: function (card, card_id) {
       var bga = this;
-      
+
       // Clean up previous dialog properly
       this.cleanupCardPlayDialog();
-      
+
       var dlg = this.format_block("jstpl_card_play_dialog");
       domConstruct.place(dlg, "myhand_wrap", "first");
-      
-      var makeDecisionSummary = function(tree, decisionSummary) {
+
+      var makeDecisionSummary = function (tree, decisionSummary) {
         if (typeof decisionSummary === "undefined") {
           decisionSummary = [];
         }
@@ -104,7 +102,7 @@ define([
           console.groupEnd();
         }),
       );
-      
+
       on(
         query(".pass_card_button"),
         "click",
@@ -121,12 +119,17 @@ define([
           });
           this.cleanupCardPlayDialog();
           console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
+          this.playerDiscard.addCard({
+            id: card_id,
+            type: card.card_type,
+            location: "discard",
+            fromStock: this.playerHand,
+          });
           this.playerHand.removeCard({ id: card_id, type: card.card_type });
           console.groupEnd();
         }),
       );
-      
+
       var display_dom = query("#card_display");
       console.log("display dom:");
       console.log(display_dom);
@@ -134,7 +137,7 @@ define([
       this.cardDisplayStock.addCard({ id: 10000, type: card.card_type });
 
       console.log(card);
-      
+
       // Build card dependency tree
       this.dep_tree = this._makeCardDependencyTree(card.actions);
       console.log(this.dep_tree);
@@ -155,7 +158,7 @@ define([
           this._updatePlayCardButton();
         });
       }
-      
+
       console.groupCollapsed("show/hide play controls");
       this._showHideCardPlayControls(this.dep_tree);
       console.groupEnd();
@@ -166,7 +169,7 @@ define([
     /**
      * Send the actPlayCard action to the server and update local UI.
      */
-    _sendPlayCard: function(card, card_id, decisions, useBooty) {
+    _sendPlayCard: function (card, card_id, decisions, useBooty) {
       var params = {
         card_type: card.card_type,
         card_id: card_id,
@@ -188,14 +191,19 @@ define([
       }
       this.bgaPerformAction("actPlayCard", params);
       this.cleanupCardPlayDialog();
-      this.playerDiscard.addCard({id: card_id, type: card.card_type, location: "discard", fromStock: this.playerHand});
+      this.playerDiscard.addCard({
+        id: card_id,
+        type: card.card_type,
+        location: "discard",
+        fromStock: this.playerHand,
+      });
       this.playerHand.removeCard({ id: card_id, type: card.card_type });
     },
 
     /**
      * Called from onUpdateActionButtons for client_bootyPlayConfirm state.
      */
-    onBootyPlayYes: function() {
+    onBootyPlayYes: function () {
       var ctx = this._pendingPlayCard;
       this._pendingPlayCard = null;
       this.restoreServerGameState();
@@ -204,7 +212,7 @@ define([
       }
     },
 
-    onBootyPlayNo: function() {
+    onBootyPlayNo: function () {
       var ctx = this._pendingPlayCard;
       this._pendingPlayCard = null;
       this.restoreServerGameState();
@@ -213,7 +221,7 @@ define([
       }
     },
 
-    onBootyPlayCancel: function() {
+    onBootyPlayCancel: function () {
       this._pendingPlayCard = null;
       this.restoreServerGameState();
     },
@@ -222,19 +230,19 @@ define([
      * Build dependency tree from card actions
      * @private
      */
-    _makeCardDependencyTree: function(actions, choice_count) {
+    _makeCardDependencyTree: function (actions, choice_count) {
       var bga = this;
       var tree = new Map();
       if (typeof choice_count === "undefined") {
         choice_count = 0;
       }
-      
+
       for (const action of actions) {
         console.log("tree considering action:");
         console.log(action);
         var option_count = 0;
         var num_descendant_choices = 0;
-        
+
         switch (action.action) {
           case "choice":
             var tree_choices = [];
@@ -273,14 +281,14 @@ define([
             choice_count++;
             choice_count += num_descendant_choices;
             break;
-            
+
           case "sequence":
             var children = this._makeCardDependencyTree(action.actions, choice_count);
             children.forEach((value, key) => {
               tree.set(key, value);
             });
             break;
-            
+
           default: {
             let choice_names = [];
             let choice_name = action.name || action.action;
@@ -314,7 +322,7 @@ define([
           }
         }
       }
-      
+
       console.log("returning tree");
       console.log(tree);
       return tree;
@@ -324,11 +332,11 @@ define([
      * Render card choice rows HTML
      * @private
      */
-    _renderCardChoiceRows: function(tree, row_number) {
+    _renderCardChoiceRows: function (tree, row_number) {
       var bga = this;
       var rendered_choices = [];
       row_number = row_number || 1;
-      
+
       tree.forEach((options, choice_id) => {
         var rendered_options = [];
         console.log(options);
@@ -351,7 +359,7 @@ define([
         rendered_choices.unshift(choice_html);
         row_number++;
       });
-      
+
       return rendered_choices;
     },
 
@@ -359,13 +367,13 @@ define([
      * Compute total play cost from selected choices
      * @private
      */
-    _computeTotalPlayCost: function(tree, costAcc) {
+    _computeTotalPlayCost: function (tree, costAcc) {
       var bga = this;
       if (typeof costAcc === "undefined") {
         costAcc = {};
       }
       console.log("computing total play cost " + costAcc);
-      
+
       tree.forEach((options) => {
         for (var option of options) {
           console.log(option);
@@ -379,7 +387,7 @@ define([
           costAcc = this._computeTotalPlayCost(option.children, costAcc);
         }
       });
-      
+
       return costAcc;
     },
 
@@ -387,10 +395,10 @@ define([
      * Show/hide controls based on current selections
      * @private
      */
-    _showHideCardPlayControls: function(tree, hide, totalCost) {
+    _showHideCardPlayControls: function (tree, hide, totalCost) {
       var bga = this;
       console.log("showing/hiding controls " + hide);
-      
+
       if (typeof totalCost === "undefined") {
         console.groupCollapsed("compute total play cost");
         totalCost = this._computeTotalPlayCost(tree);
@@ -398,7 +406,7 @@ define([
         console.log("total play cost is:");
         console.log(totalCost);
       }
-      
+
       tree.forEach((options) => {
         for (var option of options) {
           var checkbox = dom.byId(option.id);
@@ -435,13 +443,13 @@ define([
      * Check if card is ready to be played (all choices made)
      * @private
      */
-    _checkIsCardReadyToBePlayed: function(tree) {
+    _checkIsCardReadyToBePlayed: function (tree) {
       var isReady = true;
       if (tree.length == 0) {
         return true;
       }
       console.log("starting ready to play check");
-      
+
       tree.forEach((options) => {
         if (!isReady) {
           return;
@@ -474,7 +482,7 @@ define([
         isReady &= anythingChecked;
         console.log("updated isReady to " + isReady);
       });
-      
+
       console.log("final ready to play: " + isReady);
       return isReady;
     },
@@ -483,7 +491,7 @@ define([
      * Update play card button enabled state
      * @private
      */
-    _updatePlayCardButton: function() {
+    _updatePlayCardButton: function () {
       const button_id = "play_card_button";
       console.groupCollapsed("check whether card is ready to be played");
       let ready = this._checkIsCardReadyToBePlayed(this.dep_tree);
@@ -500,50 +508,51 @@ define([
     /**
      * Set up scrap card selection dialog
      */
-    setupScrapCardSelection: function(args) {
+    setupScrapCardSelection: function (args) {
       console.log("Setting up scrap card selection");
       console.log(args);
-      
-      var scrapDialog = this.format_block('jstpl_scrap_card_dialog', {});
-      document.body.insertAdjacentHTML('beforeend', scrapDialog);
-      
-      this.scrapCardSelection = new BgaCards.ScrollableStock(
-        this.cardsManager, 
-        $("scrap_card_selection_wrapper"), 
-        {
-          gap: '8px',
-          center: true,
-          scrollStep: 150,
-          leftButton: { html: '◀' },
-          rightButton: { html: '▶' }
-        }
-      );
-      
+
+      var scrapDialog = this.format_block("jstpl_scrap_card_dialog", {});
+      document.body.insertAdjacentHTML("beforeend", scrapDialog);
+
+      this.scrapCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("scrap_card_selection_wrapper"), {
+        gap: "8px",
+        center: true,
+        scrollStep: 150,
+        leftButton: { html: "◀" },
+        rightButton: { html: "▶" },
+      });
+
       this.scrapCardSelection.setSelectionMode("single");
-      
+
       if (args.available_cards) {
         for (var i in args.available_cards) {
           var card = args.available_cards[i];
           this.scrapCardSelection.addCard({
             id: card.id,
             type: card.type,
-            location: card.location
+            location: card.location,
           });
         }
       }
-      
+
       this.scrapCardSelection.onSelectionChange = (selection, lastChange) => {
         if (selection.length > 0) {
           var selectedCard = selection[0];
           console.log("Card selected for scrapping:", selectedCard);
-          
+
           if (!$("confirm_scrap_button")) {
-            domConstruct.create("button", {
-              id: "confirm_scrap_button",
-              class: "bgabutton bgabutton_red",
-              innerHTML: "Scrap Card"
-            }, $("cancel_scrap_button"), "before");
-            
+            domConstruct.create(
+              "button",
+              {
+                id: "confirm_scrap_button",
+                class: "bgabutton bgabutton_red",
+                innerHTML: "Scrap Card",
+              },
+              $("cancel_scrap_button"),
+              "before",
+            );
+
             on($("confirm_scrap_button"), "click", () => {
               this.confirmScrapCard(selectedCard.id);
             });
@@ -554,7 +563,7 @@ define([
           }
         }
       };
-      
+
       on($("cancel_scrap_button"), "click", () => {
         this.cleanupScrapCardSelection();
       });
@@ -563,13 +572,13 @@ define([
     /**
      * Clean up scrap card selection dialog
      */
-    cleanupScrapCardSelection: function() {
+    cleanupScrapCardSelection: function () {
       console.log("Cleaning up scrap card selection");
-      
+
       if (this.scrapCardSelection) {
         this.scrapCardSelection = null;
       }
-      
+
       if ($("scrap_card_dialog")) {
         domConstruct.destroy("scrap_card_dialog");
       }
@@ -578,23 +587,14 @@ define([
     /**
      * Confirm scrap card action
      */
-    confirmScrapCard: function(cardId) {
+    confirmScrapCard: function (cardId) {
       console.log("Confirming scrap of card:", cardId);
-      
+
       if (this.checkAction("actScrapCard")) {
         this.bgaPerformAction("actScrapCard", {
-          card_id: cardId
+          card_id: cardId,
         });
       }
-    }
+    },
   };
 });
-
-
-
-
-
-
-
-
-

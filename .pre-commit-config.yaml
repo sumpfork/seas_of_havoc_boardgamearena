@@ -1,0 +1,8 @@
+repos:
+- repo: https://github.com/JoC0de/pre-commit-prettier
+  rev: "v3.8.3" # Use the sha / tag you want to point at
+  hooks:
+    - id: prettier
+      additional_dependencies:
+        - prettier@3.3.3
+        - "@prettier/plugin-php@0.25.0"
