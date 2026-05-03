@@ -4,59 +4,29 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
 
-class TradingPostGamestateStub extends GameState {
-    public ?string $transition = null;
-
-    public function __construct() {
-        parent::__construct([]);
-    }
-
-    public function nextState($transition = null) {
-        $this->transition = $transition;
-    }
-}
-
 class TradingPostActionUT extends SeasOfHavocUT {
-    public array $gameStateValues = [
-        'pending_trading_post_player' => 0,
-        'pending_trading_post_slot' => 0,
-    ];
     public array $mockPlayerResources = [];
     public array $resourceAdjustments = [];
     public array $occupiedSlots = [];
-    public array $playerNotifications = [];
     public array $mockIslandSlots = [
+        'market' => [
+            'n1' => ['occupying_player_id' => null, 'disabled' => false],
+        ],
         'trading_post' => [
             'n1' => ['occupying_player_id' => null, 'disabled' => false],
             'n2' => ['occupying_player_id' => null, 'disabled' => false],
         ],
     ];
-    public int $activePlayerId = 1;
     public array $booty_tokens = [];
-    public TradingPostGamestateStub $gamestateStub;
 
     public function __construct() {
         parent::__construct();
-        $this->gamestateStub = new TradingPostGamestateStub();
-        /** @var mixed $gamestate */
-        $gamestate = $this->gamestateStub;
-        $this->gamestate = $gamestate;
-    }
-
-    public function getGameStateValue($value_label, ?int $def = null) {
-        return $this->gameStateValues[$value_label] ?? ($def ?? 0);
-    }
-
-    public function setGameStateValue($value_label, $value_value) {
-        $this->gameStateValues[$value_label] = $value_value;
-    }
-
-    public function getActivePlayerId() {
-        return $this->activePlayerId;
+        $this->setGameStateValue('pending_trading_post_player', 0);
+        $this->setGameStateValue('pending_trading_post_slot', 0);
     }
 
     public function getGameResourcesHierarchical(?int $player_id = null) {
-        $pid = $player_id ?? $this->activePlayerId;
+        $pid = $player_id ?? (int) $this->gamestate->getActivePlayerId();
         return [$pid => $this->mockPlayerResources];
     }
 
@@ -76,18 +46,10 @@ class TradingPostActionUT extends SeasOfHavocUT {
         $this->mockIslandSlots[$slot_name][$number]['occupying_player_id'] = $player_id;
     }
 
-    public function notifyPlayer($player_id, $type, $message, $args): void {
-        $this->playerNotifications[] = [
-            'player_id' => $player_id,
-            'type' => $type,
-            'message' => $message,
-            'args' => $args,
-        ];
-    }
-
     public function getIslandSlots() {
         return $this->mockIslandSlots;
     }
+
 }
 
 final class TradingPostTest extends TestCase {
@@ -106,17 +68,18 @@ final class TradingPostTest extends TestCase {
     public function testPlacingSkiffStartsPendingTradingPostFlow(): void {
         $this->game->actPlaceSkiff('trading_post', 'n1');
 
-        $this->assertSame(1, $this->game->gameStateValues['pending_trading_post_player']);
-        $this->assertSame(1, $this->game->gameStateValues['pending_trading_post_slot']);
-        $this->assertCount(1, $this->game->playerNotifications);
-        $this->assertSame('showTradingPostDialog', $this->game->playerNotifications[0]['type']);
+        $this->assertSame(1, $this->game->getGameStateValue('pending_trading_post_player'));
+        $this->assertSame(1, $this->game->getGameStateValue('pending_trading_post_slot'));
+        $this->assertNotNull($this->game->debugLastNotif);
+        $this->assertSame('showTradingPostDialog', $this->game->debugLastNotif['type']);
+        $this->assertSame(1, $this->game->debugLastNotif['player_id']);
         $this->assertEmpty($this->game->resourceAdjustments);
         $this->assertEmpty($this->game->occupiedSlots);
     }
 
     public function testCannotPlaceAnotherSkiffWhileTradingPostPending(): void {
-        $this->game->gameStateValues['pending_trading_post_player'] = 1;
-        $this->game->gameStateValues['pending_trading_post_slot'] = 1;
+        $this->game->setGameStateValue('pending_trading_post_player', 1);
+        $this->game->setGameStateValue('pending_trading_post_slot', 1);
 
         $this->expectException(BgaUserException::class);
         $this->game->actPlaceSkiff('market', 'n1');
@@ -128,27 +91,27 @@ final class TradingPostTest extends TestCase {
     }
 
     public function testTradingPostExchangeRejectsMismatchedPendingSlot(): void {
-        $this->game->gameStateValues['pending_trading_post_player'] = 1;
-        $this->game->gameStateValues['pending_trading_post_slot'] = 2;
+        $this->game->setGameStateValue('pending_trading_post_player', 1);
+        $this->game->setGameStateValue('pending_trading_post_slot', 2);
 
         $this->expectException(BgaUserException::class);
         $this->game->actTradingPostExchange(['sail'], ['cannonball'], 'n1');
     }
 
     public function testTradingPostExchangeCompletesAndClearsPendingSelection(): void {
-        $this->game->gameStateValues['pending_trading_post_player'] = 1;
-        $this->game->gameStateValues['pending_trading_post_slot'] = 1;
+        $this->game->setGameStateValue('pending_trading_post_player', 1);
+        $this->game->setGameStateValue('pending_trading_post_slot', 1);
 
         $this->game->actTradingPostExchange(['sail'], ['cannonball'], 'n1');
 
-        $this->assertSame(0, $this->game->gameStateValues['pending_trading_post_player']);
-        $this->assertSame(0, $this->game->gameStateValues['pending_trading_post_slot']);
+        $this->assertSame(0, $this->game->getGameStateValue('pending_trading_post_player'));
+        $this->assertSame(0, $this->game->getGameStateValue('pending_trading_post_slot'));
         $this->assertSame(0, $this->game->mockPlayerResources['sail']);
         $this->assertSame(1, $this->game->mockPlayerResources['cannonball']);
         $this->assertSame(0, $this->game->mockPlayerResources['skiff']);
         $this->assertCount(1, $this->game->occupiedSlots);
         $this->assertSame('trading_post', $this->game->occupiedSlots[0]['slot_name']);
         $this->assertSame('n1', $this->game->occupiedSlots[0]['slot_number']);
-        $this->assertSame('islandTurnDone', $this->game->gamestateStub->transition);
+        $this->assertSame(3, $this->game->gamestate->state_id());
     }
 }

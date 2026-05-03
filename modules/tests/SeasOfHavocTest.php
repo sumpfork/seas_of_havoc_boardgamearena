@@ -4,44 +4,43 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/../../seasofhavoc.game.php";
 
+class TestGamestateMachine extends \Bga\GameFramework\GamestateMachine {
+}
+
 class SeasOfHavocUT extends SeasOfHavoc {
     public array $resource_types;
     public array $token_names;
     public array $non_playable_cards;
     public array $playable_cards;
     public array $booty_tokens = [];
-    public array $trackedNotifications = [];
     
     function __construct() {
         // Don't call parent constructor to avoid DB initialization
         include __DIR__ . "/../material.inc.php";
-    }
-    
-    public function notifyAllPlayers($type, $message, $args) {
-        $this->trackedNotifications[] = [
-            'type' => $type,
-            'log' => $message,
-            'args' => $args,
+        $this->players = [
+            1 => ['player_name' => 'TestPlayer', 'player_color' => 'ff0000', 'player_no' => 1],
+            2 => ['player_name' => 'OtherPlayer', 'player_color' => '00ff00', 'player_no' => 2],
         ];
+        $this->gamestate = new TestGamestateMachine();
+        $this->gamestate->_setStates([
+            2 => [
+                'id' => 2,
+                'name' => 'test',
+                'type' => 'activeplayer',
+                'active_player' => '1',
+                'transitions' => ['islandTurnDone' => 3],
+            ],
+            3 => [
+                'id' => 3,
+                'name' => 'done',
+                'type' => 'game',
+                'active_player' => '1',
+                'transitions' => [],
+            ],
+        ]);
     }
     
-    public function getActivePlayerId() {
-        return 1;
-    }
-    
-    public function getPlayersNumber() {
-        return 2;
-    }
-    
-    public function getPlayerNameById($player_id) {
-        return "TestPlayer";
-    }
-    
-    public function _($s) {
-        return $s;
-    }
-    
-    public function testGetResourceTypes() {
+    public function testGetResourceTypes(): array {
         return $this->resource_types;
     }
 }

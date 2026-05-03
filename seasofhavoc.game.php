@@ -67,7 +67,8 @@ class SeasOfHavoc extends Table
             "seafeature_effects_attempted" => 10,
             "pending_trading_post_player" => 11,
             "pending_trading_post_slot" => 12,
-            //    "my_first_global_variable" => 10,
+                "corsair_occupied_placement_used" => 13,
+                //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
             //    "my_first_game_variant" => 100,
@@ -337,6 +338,44 @@ class SeasOfHavoc extends Table
     {
         $sql = "SELECT upgrade_key, is_activated FROM player_ship_upgrades WHERE player_id = '$player_id'";
         return self::getObjectListFromDb($sql);
+    }
+
+    private function corsairOccupiedPlacementResourcesForSlot(string $slot_name): ?array
+    {
+        return match ($slot_name) {
+            "shipyard" => ["sail" => 2, "cannonball" => 1],
+            "blacksmith" => ["cannonball" => 2],
+            "sailmaker" => ["sail" => 3],
+            default => null,
+        };
+    }
+
+    private function canUseCorsairOccupiedPlacement(string $player_id): bool
+    {
+        if ($this->getPlayerCaptain($player_id) !== "corsair") {
+            return false;
+        }
+        return (int) $this->getGameStateValue("corsair_occupied_placement_used") === 0;
+    }
+
+    private function resolveCorsairOccupiedPlacement(string $player_id, string $slot_name, string $number): void
+    {
+        $resource_gain = $this->corsairOccupiedPlacementResourcesForSlot($slot_name);
+        if ($resource_gain === null) {
+            throw new BgaUserException(clienttranslate("Corsair can only use occupied spaces that show resources"));
+        }
+
+        $this->playerGainResources($player_id, $this->sum_array_by_key($resource_gain, ["skiff" => -1]));
+        $this->setGameStateValue("corsair_occupied_placement_used", 1);
+        $this->notifyAllPlayers(
+            "log",
+            clienttranslate('${player_name} uses Corsair to place on occupied ${slot_name} and gains only resources shown there'),
+            [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "slot_name" => $slot_name,
+                "slot_number" => $number,
+            ],
+        );
     }
 
 
@@ -1050,6 +1089,9 @@ class SeasOfHavoc extends Table
         
         // Define which slots should be disabled based on player count
         $disabled_slots = [];
+
+            // Corsair occupied placement can be used once per island phase.
+            $this->setGameStateValue("corsair_occupied_placement_used", 0);
         
         if ($player_count < 3) {
             $disabled_slots["sailmaker"]["n1"] = true;
@@ -1297,6 +1339,7 @@ class SeasOfHavoc extends Table
         $this->dump("summed resources", $summed_resources);
 
         $sql = "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ";
+        $values = [];
         foreach ($summed_resources as $resource_type => $resource_count) {
             $values[] = "('" . $player_id . "','$resource_type','" . $resource_count . "')";
         }
@@ -1501,6 +1544,11 @@ class SeasOfHavoc extends Table
 
         // Check if slot is already occupied
         if ($occupancies[$slotname][$number]["occupying_player_id"] != null) {
+            if ($this->canUseCorsairOccupiedPlacement($player_id)) {
+                $this->resolveCorsairOccupiedPlacement($player_id, $slotname, $number);
+                $this->gamestate->nextState("islandTurnDone");
+                return;
+            }
             throw new BgaUserException(new \Bga\GameFramework\NotificationMessage(
                 clienttranslate("There is already a skiff on {slotname}"),
                 ["slotname" => $slotname]

@@ -96,6 +96,11 @@ final class BootyPaymentTest extends TestCase {
         $this->game = new BootyPaymentUT();
     }
 
+    private function lastNotification(): array {
+        $this->assertIsArray($this->game->debugLastNotif);
+        return $this->game->debugLastNotif;
+    }
+
     // =========================================================================
     //  getBootyTokenConfigByTypeArg
     // =========================================================================
@@ -360,7 +365,7 @@ final class BootyPaymentTest extends TestCase {
         $this->addBootyCard($deck, 100, 2); // sail:1, cannonball:1
         $this->game->mockPlayerResources = ['sail' => 0, 'cannonball' => 0, 'doubloon' => 0];
         $this->game->paidCosts = [];
-        $this->game->trackedNotifications = [];
+        $this->game->debugLastNotif = null;
 
         $this->game->payWithOptionalBooty(1, ['sail' => 1, 'cannonball' => 1], 100);
 
@@ -372,8 +377,7 @@ final class BootyPaymentTest extends TestCase {
         $this->assertCount(1, $deck->moved);
         $this->assertEquals('booty_discard', $deck->moved[0]['location']);
         // Notification sent
-        $this->assertCount(1, $this->game->trackedNotifications);
-        $this->assertEquals('bootyTokenUsed', $this->game->trackedNotifications[0]['type']);
+        $this->assertEquals('bootyTokenUsed', $this->lastNotification()['type']);
     }
 
     public function testPayWithBootyZeroResourcePlayerCanAffordZero(): void {
@@ -512,11 +516,11 @@ final class BootyPaymentTest extends TestCase {
         $deck = $this->setupMockCards();
         $this->addBootyCard($deck, 300, 2); // sail:1, cannonball:1
         $this->game->mockPlayerResources = ['sail' => 0, 'cannonball' => 0];
-        $this->game->trackedNotifications = [];
+        $this->game->debugLastNotif = null;
 
         $this->game->payWithOptionalBooty(1, ['sail' => 1, 'cannonball' => 1], 300);
 
-        $notif = $this->game->trackedNotifications[0];
+        $notif = $this->lastNotification();
         $this->assertEquals('bootyTokenUsed', $notif['type']);
         $usage = $notif['args']['booty_usage'];
         $this->assertStringContainsString('[sail]', $usage);
@@ -527,12 +531,12 @@ final class BootyPaymentTest extends TestCase {
         $deck = $this->setupMockCards();
         $this->addBootyCard($deck, 301, 0); // sail:3
         $this->game->mockPlayerResources = ['sail' => 0];
-        $this->game->trackedNotifications = [];
+        $this->game->debugLastNotif = null;
 
         // Cost: sail:1. Booty resolved = sail:3, but usage caps at cost.
         $this->game->payWithOptionalBooty(1, ['sail' => 1], 301);
 
-        $usage = $this->game->trackedNotifications[0]['args']['booty_usage'];
+        $usage = $this->lastNotification()['args']['booty_usage'];
         // Should contain exactly one [sail] (min(3,1) = 1)
         $this->assertEquals('[sail]', $usage);
     }
