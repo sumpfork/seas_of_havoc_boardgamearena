@@ -164,6 +164,19 @@
 	outline-width: 2px;
     cursor: pointer;
 }
+.skiff_slot.corsair_selectable {
+    background-color: rgba(232, 179, 53, 0.4);
+}
+.skiff_slot.corsair_selectable:hover {
+    outline-color: rgba(232, 179, 53, 0.9);
+    background-color: rgba(232, 179, 53, 0.75);
+    outline-style: solid;
+    outline-width: 2px;
+    cursor: pointer;
+}
+.skiff_slot.corsair_selectable .skiff.corsair_selectable_hint {
+    filter: drop-shadow(0 0 4px rgba(232, 179, 53, 0.95));
+}
 .skiff_slot.disabled {
     background-color: transparent;
     pointer-events: none;
@@ -326,6 +339,12 @@
     height: 40px;
     display: inline-block;
     position: relative;
+}
+.skiff.corsair_overlay {
+    position: absolute;
+    left: 14px;
+    top: -4px;
+    z-index: 2;
 }
 .player_ship {
     width: 60px;

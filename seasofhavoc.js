@@ -305,6 +305,8 @@ define([
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;
       this.player_captain = gamedatas.player_captain;
+      this.corsairOccupiedPlacementAvailable = !!gamedatas.corsair_occupied_placement_available;
+      this.corsairOccupiedSlotNames = gamedatas.corsair_occupied_slot_names || [];
 
       // Card setup helper for playable cards
       this.setupHelper = (card, div) => {
@@ -697,28 +699,30 @@ define([
       console.log(event);
       event.preventDefault();
       const source = event.target || event.srcElement;
+      const sourceElement = source && source.nodeType === 1 ? source : null;
+      const slotElement = sourceElement ? sourceElement.closest(".skiff_slot") : null;
       if (!this.checkAction("actPlaceSkiff")) {
         console.log("nope");
         return;
       }
 
-      if (!source.classList.contains("skiff_slot")) {
+      if (!slotElement) {
         console.log("not a skiff slot");
         return;
       }
       
-      if (source.classList.contains("disabled")) {
+      if (slotElement.classList.contains("disabled")) {
         console.log("skiff slot is disabled for this player count");
         return;
       }
       
-      console.log(source.dataset.slotname, source.dataset.number);
+      console.log(slotElement.dataset.slotname, slotElement.dataset.number);
 
       if (this.isCurrentPlayerActive()) {
         console.log("calling actPlaceSkiff");
         this.bgaPerformAction("actPlaceSkiff", {
-          slotname: source.dataset.slotname,
-          number: source.dataset.number,
+          slotname: slotElement.dataset.slotname,
+          number: slotElement.dataset.number,
         });
       }
     },

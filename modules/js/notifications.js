@@ -86,34 +86,33 @@ define([
 
       var slot_name = args.slot_name;
       var slot_number = args.slot_number;
+      var isCorsairOverlay = !!args.is_corsair_overlay;
       var postfix = "_" + slot_name + "_" + slot_number;
-      var skiff_id = "skiff_p" + args.player_id + postfix;
+      var skiff_id = "skiff_p" + args.player_id + postfix + (isCorsairOverlay ? "_corsair" : "");
 
+      var existingSlot = this.islandSlots[slot_name][slot_number] || {};
       this.islandSlots[slot_name][slot_number] = {
-        occupying_player_id: args.player_id,
-        disabled: this.islandSlots[slot_name][slot_number]?.disabled || false
+        occupying_player_id: isCorsairOverlay ? (existingSlot.occupying_player_id ?? null) : args.player_id,
+        corsair_occupying_player_id: isCorsairOverlay ? args.player_id : (existingSlot.corsair_occupying_player_id ?? null),
+        disabled: existingSlot.disabled || false
       };
+      if (isCorsairOverlay && String(args.player_id) === String(this.player_id)) {
+        this.corsairOccupiedPlacementAvailable = false;
+      }
+      this.updateIslandSlots(this.islandSlots, this.players);
 
       console.log("skiff_id: " + skiff_id);
       var player_board = this.bga.playerPanels.getElement(args.player_id);
       console.log("player board:", player_board);
-
-      var skiff = this.format_block("jstpl_skiff", {
-        player_color: args.player_color,
-        id: skiff_id,
-      });
       var skiff_slot = query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
       console.log("skiff slot:");
       console.log(skiff_slot);
 
-      domConstruct.place(skiff, skiff_slot);
       if (player_board) {
         this.placeOnObject(skiff_id, player_board);
       }
       domStyle.set(skiff_id, "zIndex", 1);
       this.slideToObject(skiff_id, skiff_slot, 1000).play();
-      domClass.remove(skiff_slot, "unoccupied");
-      domClass.add(skiff_id, "skiff_placed");
       console.groupEnd();
     },
 

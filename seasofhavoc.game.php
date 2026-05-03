@@ -340,14 +340,27 @@ class SeasOfHavoc extends Table
         return self::getObjectListFromDb($sql);
     }
 
-    private function corsairOccupiedPlacementResourcesForSlot(string $slot_name): ?array
+    private function corsairOccupiedPlacementBenefits(): array
     {
-        return match ($slot_name) {
-            "shipyard" => ["sail" => 2, "cannonball" => 1],
-            "blacksmith" => ["cannonball" => 2],
-            "sailmaker" => ["sail" => 3],
-            default => null,
-        };
+        return [
+            "capitol" => ["fixed" => [], "choice_count" => 1],
+            "bank" => ["fixed" => ["doubloon" => 1], "choice_count" => 1],
+            "green_flag" => ["fixed" => [], "choice_count" => 1],
+            "shipyard" => ["fixed" => ["sail" => 2, "cannonball" => 1], "choice_count" => 0],
+            "blacksmith" => ["fixed" => ["cannonball" => 2], "choice_count" => 0],
+            "sailmaker" => ["fixed" => ["sail" => 3], "choice_count" => 0],
+        ];
+    }
+
+    private function corsairOccupiedPlacementSlotNames(): array
+    {
+        return array_keys($this->corsairOccupiedPlacementBenefits());
+    }
+
+    private function corsairOccupiedPlacementBenefitForSlot(string $slot_name): ?array
+    {
+        $benefits = $this->corsairOccupiedPlacementBenefits();
+        return $benefits[$slot_name] ?? null;
     }
 
     private function canUseCorsairOccupiedPlacement(string $player_id): bool
@@ -358,14 +371,10 @@ class SeasOfHavoc extends Table
         return (int) $this->getGameStateValue("corsair_occupied_placement_used") === 0;
     }
 
-    private function resolveCorsairOccupiedPlacement(string $player_id, string $slot_name, string $number): void
+    private function finalizeCorsairOccupiedPlacement(string $player_id, string $slot_name, string $number, array $resources): void
     {
-        $resource_gain = $this->corsairOccupiedPlacementResourcesForSlot($slot_name);
-        if ($resource_gain === null) {
-            throw new BgaUserException(clienttranslate("Corsair can only use occupied spaces that show resources"));
-        }
-
-        $this->playerGainResources($player_id, $this->sum_array_by_key($resource_gain, ["skiff" => -1]));
+        $this->playerGainResources($player_id, $this->sum_array_by_key($resources, ["skiff" => -1]));
+        $this->occupyIslandSlotAsCorsairOverlay($player_id, $slot_name, $number);
         $this->setGameStateValue("corsair_occupied_placement_used", 1);
         $this->notifyAllPlayers(
             "log",
@@ -376,6 +385,22 @@ class SeasOfHavoc extends Table
                 "slot_number" => $number,
             ],
         );
+    }
+
+    private function resolveCorsairOccupiedPlacement(string $player_id, string $slot_name, string $number): bool
+    {
+        $benefit = $this->corsairOccupiedPlacementBenefitForSlot($slot_name);
+        if ($benefit === null) {
+            throw new BgaUserException(clienttranslate("Corsair can only use occupied spaces that show resources"));
+        }
+
+        if ((int) ($benefit["choice_count"] ?? 0) > 0) {
+            $this->showResourceChoiceDialog("corsair_occupied_" . $slot_name, $number);
+            return false;
+        }
+
+        $this->finalizeCorsairOccupiedPlacement($player_id, $slot_name, $number, $benefit["fixed"] ?? []);
+        return true;
     }
 
 
@@ -445,6 +470,7 @@ class SeasOfHavoc extends Table
         $this->clearIslandSlots();
 
         $player_infos = $this->getPlayerInfo();
+        uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
 
         // Get all captain cards for random assignment
         $captain_cards = array_filter($this->non_playable_cards, fn($card) => isset($card["category"]) && $card["category"] == "captain");
@@ -514,6 +540,9 @@ class SeasOfHavoc extends Table
         $this->cards->createCards($booty_deck, "booty_deck");
         $this->cards->shuffle("booty_deck");
 
+        $forced_captains_for_testing = ["corsair", "merchant", "admiral"];
+        $player_index = 0;
+
         foreach ($player_infos as $playerid => $player) {
             // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
             // Ships CAN start on gusts and whirlpools
@@ -528,8 +557,13 @@ class SeasOfHavoc extends Table
                 "heading" => $heading,
             ]);
             
-            // Assign random captain to player
-            $captain_key = array_pop($captain_keys);
+            // TEMP HACK: force first players to specific captains for ability testing.
+            if (isset($forced_captains_for_testing[$player_index])) {
+                $captain_key = $forced_captains_for_testing[$player_index];
+                $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
+            } else {
+                $captain_key = array_pop($captain_keys);
+            }
             $this->assignCaptainToPlayer($playerid, $captain_key);
             
             // Assign ship upgrade cards matching player's ship
@@ -564,6 +598,8 @@ class SeasOfHavoc extends Table
             }
             $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
             $this->cards->shuffle($this->playerDeckName($playerid));
+
+            $player_index++;
         }
 
         $market_deck = [];
@@ -812,6 +848,8 @@ class SeasOfHavoc extends Table
         
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
         $result["player_captain"] = $this->getPlayerCaptain($current_player_id);
+        $result["corsair_occupied_placement_available"] = $this->canUseCorsairOccupiedPlacement($current_player_id);
+        $result["corsair_occupied_slot_names"] = $this->corsairOccupiedPlacementSlotNames();
         $result["player_ship_upgrades"] = $this->getPlayerShipUpgrades($current_player_id);
 
         return $result;
@@ -924,7 +962,7 @@ class SeasOfHavoc extends Table
     {
         $sql = "
     		SELECT
-    		    slot_key, number, occupying_player_id, disabled
+    		    slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled
     		FROM islandslots
     	";
         $slots = $this->getObjectListFromDB($sql);
@@ -932,6 +970,7 @@ class SeasOfHavoc extends Table
         foreach ($slots as $slot) {
             $indexed_slots[$slot["slot_key"]][$slot["number"]] = [
                 "occupying_player_id" => $slot["occupying_player_id"],
+                "corsair_occupying_player_id" => $slot["corsair_occupying_player_id"],
                 "disabled" => (bool) $slot["disabled"],
             ];
         }
@@ -940,13 +979,16 @@ class SeasOfHavoc extends Table
 
     function occupyIslandSlot(string $player_id, string $slot_name, string $number)
     {
-        // Get current disabled status to preserve it
-        $sql = "SELECT disabled FROM islandslots WHERE slot_key = '$slot_name' AND number = '$number'";
+        // Preserve any existing overlay occupant when replacing the main occupant.
+        $sql = "SELECT disabled, corsair_occupying_player_id FROM islandslots WHERE slot_key = '$slot_name' AND number = '$number'";
         $current_slot = $this->getObjectFromDB($sql);
         $disabled = $current_slot ? $current_slot["disabled"] : 0;
+        $corsair_occupying_player_id = $current_slot && $current_slot["corsair_occupying_player_id"] !== null
+            ? "'" . $current_slot["corsair_occupying_player_id"] . "'"
+            : "null";
         
         self::DbQuery(
-            "REPLACE INTO islandslots (slot_key, number, occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $disabled)",
+            "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $corsair_occupying_player_id, $disabled)",
         );
         $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
             "player_name" => self::getActivePlayerName(),
@@ -954,6 +996,22 @@ class SeasOfHavoc extends Table
             "player_color" => $this->getPlayerColor($player_id),
             "slot_name" => $slot_name,
             "slot_number" => $number,
+            "is_corsair_overlay" => false,
+        ]);
+    }
+
+    function occupyIslandSlotAsCorsairOverlay(string $player_id, string $slot_name, string $number)
+    {
+        self::DbQuery(
+            "UPDATE islandslots SET corsair_occupying_player_id = '$player_id' WHERE slot_key = '$slot_name' AND number = '$number'",
+        );
+        $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'), [
+            "player_name" => self::getActivePlayerName(),
+            "player_id" => $player_id,
+            "player_color" => $this->getPlayerColor($player_id),
+            "slot_name" => $slot_name,
+            "slot_number" => $number,
+            "is_corsair_overlay" => true,
         ]);
     }
 
@@ -1132,7 +1190,7 @@ class SeasOfHavoc extends Table
         ] as [$slot_key, $number]) {
             $disabled = isset($disabled_slots[$slot_key][$number]) ? 1 : 0;
             self::DbQuery(
-                "REPLACE INTO islandslots (slot_key, number, occupying_player_id, disabled) VALUES ('$slot_key', '$number', null, $disabled)",
+                "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_key', '$number', null, null, $disabled)",
             );
         }
         $player_infos = $this->getPlayerInfo();
@@ -1545,8 +1603,10 @@ class SeasOfHavoc extends Table
         // Check if slot is already occupied
         if ($occupancies[$slotname][$number]["occupying_player_id"] != null) {
             if ($this->canUseCorsairOccupiedPlacement($player_id)) {
-                $this->resolveCorsairOccupiedPlacement($player_id, $slotname, $number);
-                $this->gamestate->nextState("islandTurnDone");
+                $resolved = $this->resolveCorsairOccupiedPlacement($player_id, $slotname, $number);
+                if ($resolved) {
+                    $this->gamestate->nextState("islandTurnDone");
+                }
                 return;
             }
             throw new BgaUserException(new \Bga\GameFramework\NotificationMessage(
@@ -1658,6 +1718,18 @@ class SeasOfHavoc extends Table
                 ]);
                 $this->acquireToken($player_id, $context);
                 $this->occupyIslandSlot($player_id, $context, $number);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            case "corsair_occupied_capitol":
+                $this->finalizeCorsairOccupiedPlacement($player_id, "capitol", $number, [$resource => 1]);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            case "corsair_occupied_bank":
+                $this->finalizeCorsairOccupiedPlacement($player_id, "bank", $number, ["doubloon" => 1, $resource => 1]);
+                $this->gamestate->nextState("islandTurnDone");
+                break;
+            case "corsair_occupied_green_flag":
+                $this->finalizeCorsairOccupiedPlacement($player_id, "green_flag", $number, [$resource => 1]);
                 $this->gamestate->nextState("islandTurnDone");
                 break;
             default:

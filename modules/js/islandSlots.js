@@ -11,6 +11,54 @@ define([
 ], function(domClass, domConstruct, domStyle, query) {
   
   return {
+    canCurrentPlayerUseCorsairOnSlot: function(slotName, slotData) {
+      if (this.player_captain !== "corsair") {
+        return false;
+      }
+      if (!this.corsairOccupiedPlacementAvailable) {
+        return false;
+      }
+      if (!this.isCurrentPlayerActive()) {
+        return false;
+      }
+      const possibleActions = (this.gamedatas && this.gamedatas.gamestate && this.gamedatas.gamestate.possibleactions) || [];
+      if (possibleActions.indexOf("actPlaceSkiff") === -1) {
+        return false;
+      }
+      if (this.gamedatas && this.gamedatas.pending_trading_post_slot != null) {
+        return false;
+      }
+      if (slotData.disabled) {
+        return false;
+      }
+      if (slotData.occupying_player_id == null) {
+        return false;
+      }
+      if (slotData.corsair_occupying_player_id != null) {
+        return false;
+      }
+      const eligibleSlots = this.corsairOccupiedSlotNames || [];
+      return eligibleSlots.indexOf(slotName) !== -1;
+    },
+
+    renderSkiffInSlot: function(skiffSlot, slotName, slotNumber, playerId, players, isCorsairOverlay) {
+      var suffix = isCorsairOverlay ? "_corsair" : "";
+      var skiff_id = "skiff_p" + playerId + "_" + slotName + "_" + slotNumber + suffix;
+      var skiff = this.format_block("jstpl_skiff", {
+        player_color: players[playerId].color,
+        id: skiff_id,
+      });
+
+      domConstruct.place(skiff, skiffSlot);
+      domClass.add(skiff_id, "skiff_placed");
+      if (domClass.contains(skiffSlot, "corsair_selectable") && !isCorsairOverlay) {
+        domClass.add(skiff_id, "corsair_selectable_hint");
+      }
+      if (isCorsairOverlay) {
+        domClass.add(skiff_id, "corsair_overlay");
+      }
+    },
+
     /**
      * Update island slots display (skiffs on islands, market, etc.)
      */
@@ -44,9 +92,18 @@ define([
           } else {
             domClass.remove(skiff_slot_id, "disabled");
           }
+
+          if (this.canCurrentPlayerUseCorsairOnSlot(slot, slotData)) {
+            domClass.add(skiff_slot_id, "corsair_selectable");
+          } else {
+            domClass.remove(skiff_slot_id, "corsair_selectable");
+          }
           
+          var primaryOccupantId = slotData.occupying_player_id;
+          var corsairOccupantId = slotData.corsair_occupying_player_id;
+
           // Handle occupied slots
-          if (slotData.occupying_player_id != null) {
+          if (primaryOccupantId != null) {
             // For market slots, check if the card in this slot is in pending purchases
             if (slot == "market") {
               var slot_index = parseInt(number.substring(1)) - 1;
@@ -68,25 +125,22 @@ define([
                                    Object.values(this.gamedatas.pending_purchases);
                 var is_pending = pending_array.indexOf(card_id_for_slot) !== -1;
                 
-                if (is_pending && slotData.occupying_player_id == this.player_id) {
+                if (is_pending && primaryOccupantId == this.player_id) {
                   console.log("Skipping skiff for slot " + number + " - card " + card_id_for_slot + " is pending purchase");
                   domClass.add(skiff_slot_id, "unoccupied");
                   continue;
                 }
               }
             }
-            
-            var skiff_id = "skiff_p" + slotData.occupying_player_id + "_" + slot + "_" + number;
-            console.log("skiff_id: " + skiff_id);
 
-            var skiff = this.format_block("jstpl_skiff", {
-              player_color: players[slotData.occupying_player_id].color,
-              id: skiff_id,
-            });
-            
-            domConstruct.place(skiff, skiff_slot);
+            this.renderSkiffInSlot(skiff_slot, slot, number, primaryOccupantId, players, false);
+            if (corsairOccupantId != null) {
+              this.renderSkiffInSlot(skiff_slot, slot, number, corsairOccupantId, players, true);
+            }
             domClass.remove(skiff_slot_id, "unoccupied");
-            domClass.add(skiff_id, "skiff_placed");
+          } else if (corsairOccupantId != null) {
+            this.renderSkiffInSlot(skiff_slot, slot, number, corsairOccupantId, players, true);
+            domClass.remove(skiff_slot_id, "unoccupied");
           } else {
             // Slot is unoccupied
             domClass.add(skiff_slot_id, "unoccupied");

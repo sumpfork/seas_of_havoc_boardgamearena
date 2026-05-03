@@ -37,11 +37,13 @@ CREATE TABLE IF NOT EXISTS `islandslots` (
     `slot_key` varchar(32) NOT NULL,
     `number` varchar(2) NOT NULL,
     `occupying_player_id` int(10) unsigned,
+    `corsair_occupying_player_id` int(10) unsigned,
     `disabled` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`slot_key`, `number`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE islandslots ADD CONSTRAINT fk_occupying_player_id FOREIGN KEY (occupying_player_id) REFERENCES player(player_id);
+ALTER TABLE islandslots ADD CONSTRAINT fk_corsair_occupying_player_id FOREIGN KEY (corsair_occupying_player_id) REFERENCES player(player_id);
 
 CREATE TABLE IF NOT EXISTS `player_captain` (
   `player_id` int(10) unsigned NOT NULL,
