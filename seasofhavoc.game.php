@@ -373,6 +373,59 @@ class SeasOfHavoc extends Table
         return (int) $this->getGameStateValue("corsair_occupied_placement_used") === 0;
     }
 
+    private function flagTokenKeys(): array
+    {
+        return ["green_flag", "tan_flag", "blue_flag", "red_flag"];
+    }
+
+    function getPlayerFlagCounts(): array
+    {
+        $counts = [];
+        foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
+            $counts[$player_id] = 0;
+        }
+
+        $flag_keys = array_flip($this->flagTokenKeys());
+        foreach ($this->getUniqueTokens() as $token_key => $player_id) {
+            if ($player_id !== null && isset($flag_keys[$token_key])) {
+                $counts[$player_id] = ($counts[$player_id] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
+    }
+
+    function applyPirateQueenIslandPhaseStartAbilities(): void
+    {
+        $flag_counts = $this->getPlayerFlagCounts();
+
+        foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
+            if ($this->getPlayerCaptain($player_id) !== "pirate_queen") {
+                continue;
+            }
+
+            $player_flags = $flag_counts[$player_id] ?? 0;
+            $other_max = 0;
+            foreach ($flag_counts as $other_id => $count) {
+                if ($other_id != $player_id) {
+                    $other_max = max($other_max, $count);
+                }
+            }
+
+            if ($player_flags <= $other_max) {
+                continue;
+            }
+
+            $this->scoreInfamy(
+                $player_id,
+                2,
+                clienttranslate(
+                    '${player_name}\'s Pirate Queen ability: gains 2 infamy for controlling the most flags',
+                ),
+            );
+        }
+    }
+
     private function finalizeCorsairOccupiedPlacement(
         string $player_id,
         string $slot_name,
@@ -695,6 +748,8 @@ class SeasOfHavoc extends Table
     function stIslandPhaseSetup()
     {
         $this->mytrace("stIslandPhaseSetup");
+        $this->applyPirateQueenIslandPhaseStartAbilities();
+
         $player_infos = $this->getPlayerInfo();
 
         foreach ($player_infos as $playerid => $player) {
