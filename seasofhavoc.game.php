@@ -426,6 +426,36 @@ class SeasOfHavoc extends Table
         }
     }
 
+    function getRebelPlayerId(): ?string
+    {
+        foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
+            if ($this->getPlayerCaptain($player_id) === "rebel") {
+                return (string) $player_id;
+            }
+        }
+
+        return null;
+    }
+
+    function applyRebelIslandPhaseStartDraw(): ?string
+    {
+        $rebel_id = $this->getRebelPlayerId();
+        if ($rebel_id === null) {
+            return null;
+        }
+
+        $this->drawCards($rebel_id, 1);
+        $this->notifyAllPlayers(
+            "log",
+            clienttranslate('${player_name}\'s Rebel ability: draws 1 additional card'),
+            [
+                "player_name" => $this->getPlayerNameById($rebel_id),
+            ],
+        );
+
+        return $rebel_id;
+    }
+
     private function finalizeCorsairOccupiedPlacement(
         string $player_id,
         string $slot_name,
@@ -757,6 +787,8 @@ class SeasOfHavoc extends Table
             $this->drawCards($playerid, 4);
         }
 
+        $rebel_id = $this->applyRebelIslandPhaseStartDraw();
+
         // Clear any leftover extra turns from previous phases
         $this->clearExtraTurns("island");
 
@@ -764,6 +796,13 @@ class SeasOfHavoc extends Table
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
             throw new BgaSystemException("No player has the first player token - this should never happen");
+        }
+
+        if ($rebel_id !== null) {
+            $this->mytrace("Rebel player ($rebel_id) must discard before island phase begins");
+            $this->gamestate->changeActivePlayer($rebel_id);
+            $this->gamestate->nextState("rebelDiscard");
+            return;
         }
 
         $this->mytrace(
@@ -2710,6 +2749,36 @@ class SeasOfHavoc extends Table
         } else {
             $this->gamestate->nextState("collisionResolved");
         }
+    }
+
+    function argRebelDiscard()
+    {
+        $this->mytrace("argRebelDiscard");
+        $player_id = self::getActivePlayerId();
+
+        return [
+            "available_cards" => $this->cards->getPlayerHand($player_id),
+        ];
+    }
+
+    function actRebelDiscardCard(int $card_id)
+    {
+        $this->mytrace("actRebelDiscardCard: card_id=$card_id");
+        $player_id = self::getActivePlayerId();
+
+        if ($this->getPlayerCaptain($player_id) !== "rebel") {
+            throw new BgaUserException(clienttranslate("Only the Rebel can use this action"));
+        }
+
+        $this->discardCards($player_id, [$card_id]);
+
+        $first_player_token_owner = $this->getFirstPlayerTokenOwner();
+        if ($first_player_token_owner === null) {
+            throw new BgaSystemException("No player has the first player token - this should never happen");
+        }
+
+        $this->gamestate->changeActivePlayer($first_player_token_owner);
+        $this->gamestate->nextState("cardDiscarded");
     }
 
     function argScrapCard()

@@ -67,6 +67,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
+        case "rebelDiscard": {
+          this.setupDiscardCardSelection(args.args);
+          break;
+        }
+
         case "resolveCollision": {
           break;
         }
@@ -91,6 +96,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
         case "scrapCard":
           this.cleanupScrapCardSelection();
+          break;
+
+        case "rebelDiscard":
+          this.cleanupDiscardCardSelection();
           break;
 
         case "resolveCollision":

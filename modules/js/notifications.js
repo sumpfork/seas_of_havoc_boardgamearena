@@ -551,6 +551,8 @@ define([
           });
         });
       }
+
+      this.cleanupDiscardCardSelection();
     },
 
     /**

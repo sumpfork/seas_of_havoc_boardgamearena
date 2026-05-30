@@ -66,6 +66,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_RESOLVE_COLLISION", 9);
     define("STATE_ISLAND_PHASE_SETUP", 10);
     define("STATE_SCRAP_CARD", 11);
+    define("STATE_REBEL_DISCARD", 12);
     define("STATE_END_GAME", 99);
 }
 
@@ -90,7 +91,16 @@ $machinestates = [
         "description" => clienttranslate("Starting Island Phase"),
         "type" => "game",
         "action" => "stIslandPhaseSetup",
-        "transitions" => ["" => STATE_ISLAND_TURN],
+        "transitions" => ["rebelDiscard" => STATE_REBEL_DISCARD, "" => STATE_ISLAND_TURN],
+    ],
+    STATE_REBEL_DISCARD => [
+        "name" => "rebelDiscard",
+        "description" => clienttranslate('${actplayer} must discard a card'),
+        "descriptionmyturn" => clienttranslate('${you} must discard a card (Rebel ability)'),
+        "type" => "activeplayer",
+        "args" => "argRebelDiscard",
+        "possibleactions" => ["actRebelDiscardCard"],
+        "transitions" => ["cardDiscarded" => STATE_ISLAND_TURN],
     ],
     STATE_ISLAND_TURN => [
         "name" => "islandTurn",

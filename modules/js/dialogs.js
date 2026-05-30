@@ -547,7 +547,7 @@ define([
               {
                 id: "confirm_scrap_button",
                 class: "bgabutton bgabutton_red",
-                innerHTML: "Scrap Card",
+                innerHTML: _("Scrap Card"),
               },
               $("cancel_scrap_button"),
               "before",
@@ -570,6 +570,62 @@ define([
     },
 
     /**
+     * Set up discard card selection dialog (Rebel ability)
+     */
+    setupDiscardCardSelection: function (args) {
+      console.log("Setting up discard card selection");
+      console.log(args);
+
+      var discardDialog = this.format_block("jstpl_discard_card_dialog", {});
+      document.body.insertAdjacentHTML("beforeend", discardDialog);
+      $("discard_card_dialog").querySelector("h3").innerHTML = _("Choose a card to discard (Rebel ability)");
+
+      this.discardCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("discard_card_selection_wrapper"), {
+        gap: "8px",
+        center: true,
+        scrollStep: 150,
+        leftButton: { html: "◀" },
+        rightButton: { html: "▶" },
+      });
+
+      this.discardCardSelection.setSelectionMode("single");
+
+      if (args.available_cards) {
+        for (var i in args.available_cards) {
+          var card = args.available_cards[i];
+          if (card.location !== "hand") {
+            continue;
+          }
+          this.discardCardSelection.addCard({
+            id: card.id,
+            type: card.type,
+            location: card.location,
+          });
+        }
+      }
+
+      domClass.add("confirm_discard_button", "disabled");
+      this.rebelDiscardSelectedCardId = null;
+
+      this.discardCardSelection.onSelectionChange = (selection, lastChange) => {
+        if (selection.length > 0) {
+          this.rebelDiscardSelectedCardId = selection[0].id;
+          console.log("Card selected for discard:", selection[0]);
+          domClass.remove("confirm_discard_button", "disabled");
+        } else {
+          this.rebelDiscardSelectedCardId = null;
+          domClass.add("confirm_discard_button", "disabled");
+        }
+      };
+
+      on($("confirm_discard_button"), "click", () => {
+        if (this.rebelDiscardSelectedCardId != null) {
+          this.confirmDiscardCard(this.rebelDiscardSelectedCardId);
+        }
+      });
+    },
+
+    /**
      * Clean up scrap card selection dialog
      */
     cleanupScrapCardSelection: function () {
@@ -585,6 +641,21 @@ define([
     },
 
     /**
+     * Clean up discard card selection dialog
+     */
+    cleanupDiscardCardSelection: function () {
+      console.log("Cleaning up discard card selection");
+
+      if (this.discardCardSelection) {
+        this.discardCardSelection = null;
+      }
+
+      if ($("discard_card_dialog")) {
+        domConstruct.destroy("discard_card_dialog");
+      }
+    },
+
+    /**
      * Confirm scrap card action
      */
     confirmScrapCard: function (cardId) {
@@ -592,6 +663,19 @@ define([
 
       if (this.checkAction("actScrapCard")) {
         this.bgaPerformAction("actScrapCard", {
+          card_id: cardId,
+        });
+      }
+    },
+
+    /**
+     * Confirm discard card action (Rebel ability)
+     */
+    confirmDiscardCard: function (cardId) {
+      console.log("Confirming discard of card:", cardId);
+
+      if (this.checkAction("actRebelDiscardCard")) {
+        this.bgaPerformAction("actRebelDiscardCard", {
           card_id: cardId,
         });
       }

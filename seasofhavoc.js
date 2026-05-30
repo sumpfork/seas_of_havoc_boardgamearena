@@ -250,6 +250,16 @@ define([
                           </div>
                       </div>`;
 
+      window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="scrap_card_dialog">
+                          <h3>Choose a card to discard</h3>
+                          <div id="discard_card_selection_wrapper">
+                              <div id="discard_card_selection"></div>
+                          </div>
+                          <div class="discard_dialog_buttons">
+                              <button id="confirm_discard_button" class="bgabutton bgabutton_orange">Discard Card</button>
+                          </div>
+                      </div>`;
+
       window.jstpl_card_choices_row = `<div class="card_choices_row"><div class="card_choice_row_num">\${row_number}</div>\${card_choices}</div>`;
 
       window.jstpl_card_choice_radio = `<div class="card_choice_radio_container"><input type="radio" class="card_choice_radio" id="\${id}" name="\${name}" value="\${value}"/><label for="\${id}">\${label}</label></div>`;
