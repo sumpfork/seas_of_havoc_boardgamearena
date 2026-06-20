@@ -456,6 +456,38 @@ class SeasOfHavoc extends Table
         return $rebel_id;
     }
 
+    function applyAdmiralTokenTakenAbilities(
+        string $player_id,
+        string $token_key,
+        bool $taken_from_another_player,
+    ): void {
+        if (!$taken_from_another_player || $this->getPlayerCaptain($player_id) !== "admiral") {
+            return;
+        }
+
+        if ($token_key === "first_player_token") {
+            $this->drawCards($player_id);
+            $this->notifyAllPlayers(
+                "log",
+                clienttranslate(
+                    '${player_name}\'s Admiral ability: draws a card for taking the first player token',
+                ),
+                [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                ],
+            );
+            return;
+        }
+
+        if (str_ends_with($token_key, "_flag")) {
+            $this->scoreInfamy(
+                $player_id,
+                1,
+                clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
+            );
+        }
+    }
+
     private function finalizeCorsairOccupiedPlacement(
         string $player_id,
         string $slot_name,
@@ -1230,26 +1262,7 @@ class SeasOfHavoc extends Table
         ]);
 
         // Admiral ability: rewards when taking tokens from other players
-        if ($taken_from_another_player && $this->getPlayerCaptain($player_id) === "admiral") {
-            if ($token_key === "first_player_token") {
-                $this->drawCards($player_id);
-                $this->notifyAllPlayers(
-                    "log",
-                    clienttranslate(
-                        '${player_name}\'s Admiral ability: draws a card for taking the first player token',
-                    ),
-                    [
-                        "player_name" => $this->getPlayerNameById($player_id),
-                    ],
-                );
-            } elseif (str_ends_with($token_key, "_flag")) {
-                $this->scoreInfamy(
-                    $player_id,
-                    1,
-                    clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
-                );
-            }
-        }
+        $this->applyAdmiralTokenTakenAbilities($player_id, $token_key, $taken_from_another_player);
     }
 
     function scoreInfamy(string $player_id, int $amount, string $message = "")
