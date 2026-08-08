@@ -701,4 +701,27 @@ final class SeaBoardTest extends TestCase
         $this->assertEquals(2, $result["new_x"]);
         $this->assertEquals(3, $result["new_y"]); // Moved south (y+1)
     }
+
+    public function testGetSurroundingPositionsIncludesWrappedNeighbors(): void
+    {
+        $surrounding = $this->seaBoard->getSurroundingPositions(0, 0);
+
+        $this->assertCount(8, $surrounding);
+        $this->assertContains(["x" => 0, "y" => 5], $surrounding);
+        $this->assertContains(["x" => 5, "y" => 0], $surrounding);
+        $this->assertContains(["x" => 5, "y" => 5], $surrounding);
+        $this->assertContains(["x" => 1, "y" => 0], $surrounding);
+        $this->assertContains(["x" => 0, "y" => 1], $surrounding);
+    }
+
+    public function testGetSurroundingPositionsWrapsAcrossEdges(): void
+    {
+        $surrounding = $this->seaBoard->getSurroundingPositions(5, 2);
+
+        $this->assertContains(["x" => 0, "y" => 2], $surrounding);
+        $this->assertContains(["x" => 5, "y" => 1], $surrounding);
+        $this->assertContains(["x" => 5, "y" => 3], $surrounding);
+        $this->assertContains(["x" => 0, "y" => 1], $surrounding);
+        $this->assertContains(["x" => 0, "y" => 3], $surrounding);
+    }
 }

@@ -164,18 +164,74 @@
   outline-width: 2px;
   cursor: pointer;
 }
+.skiff_slot.occupied_blocked {
+  pointer-events: none;
+  cursor: default;
+  background-color: rgba(90, 90, 90, 0.2) !important;
+  box-shadow: none;
+  opacity: 0.7;
+}
+.skiff_slot.occupied_blocked:hover {
+  outline: none;
+  background-color: rgba(90, 90, 90, 0.2) !important;
+}
 .skiff_slot.corsair_selectable {
-  background-color: rgba(232, 179, 53, 0.4);
+  background-color: rgba(232, 179, 53, 0.45) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(201, 140, 20, 0.95),
+    0 0 10px rgba(232, 179, 53, 0.75);
+  animation: corsair-slot-pulse 1.6s ease-in-out infinite;
+}
+.skiff_slot.corsair_selectable::before {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border: 2px dashed rgba(201, 140, 20, 1);
+  border-radius: 50%;
+  background: rgba(255, 236, 179, 0.85);
+  z-index: 2;
+  pointer-events: none;
+}
+.skiff_slot.corsair_selectable::after {
+  content: "+";
+  position: absolute;
+  bottom: -1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #8a5a00;
+  z-index: 3;
+  pointer-events: none;
 }
 .skiff_slot.corsair_selectable:hover {
-  outline-color: rgba(232, 179, 53, 0.9);
-  background-color: rgba(232, 179, 53, 0.75);
+  outline-color: rgba(201, 140, 20, 1);
+  background-color: rgba(232, 179, 53, 0.8) !important;
   outline-style: solid;
   outline-width: 2px;
   cursor: pointer;
 }
 .skiff_slot.corsair_selectable .skiff.corsair_selectable_hint {
-  filter: drop-shadow(0 0 4px rgba(232, 179, 53, 0.95));
+  filter: drop-shadow(0 0 5px rgba(232, 179, 53, 1));
+}
+@keyframes corsair-slot-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(201, 140, 20, 0.85),
+      0 0 6px rgba(232, 179, 53, 0.55);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 3px rgba(201, 140, 20, 1),
+      0 0 14px rgba(232, 179, 53, 0.95);
+  }
 }
 .skiff_slot.disabled {
   background-color: transparent;
@@ -236,8 +292,10 @@
 .nope {
   background-position: -60px -30px;
 }
-.bgabutton_resource {
-  background-color: #ecdfc3;
+/* Resource buttons: solid beige, no default button gradient */
+.bgabutton.bgabutton_resource {
+  background: #ecdfc3;
+  filter: none;
 }
 .flagish {
   background-image: url("img/flags_1stplayer.png");
@@ -477,7 +535,7 @@ a.disabled {
   /* height: 198px; */
 }
 
-/* Scrap card selection dialog styles */
+/* Scrap / discard card selection dialog styles */
 .scrap_card_dialog {
   position: fixed;
   top: 50%;
@@ -486,11 +544,11 @@ a.disabled {
   background: white;
   border: 2px solid #333;
   border-radius: 10px;
-  padding: 20px;
+  padding: 16px 20px;
   z-index: 1000;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  min-width: 600px;
-  max-width: 80vw;
+  min-width: 720px;
+  max-width: 92vw;
 }
 
 .scrap_card_dialog h3 {
@@ -499,36 +557,56 @@ a.disabled {
   color: #333;
 }
 
-#scrap_card_selection_wrapper {
-  margin: 20px 0;
-  min-height: 220px;
+.scrap_card_dialog .card_selection_wrapper {
+  margin: 12px 0;
+  min-height: 210px;
   border: 1px solid #ddd;
   border-radius: 5px;
-  padding: 10px;
+  padding: 6px 4px;
   background: #f9f9f9;
 }
 
-.scrap_dialog_buttons {
-  text-align: center;
-  margin-top: 20px;
+.scrap_card_dialog .scrollable-stock {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 198px;
 }
 
-.scrap_dialog_buttons button {
+.scrap_card_dialog .scrollable-stock-inner {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.scrap_dialog_buttons,
+.discard_dialog_buttons {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.scrap_dialog_buttons .bgabutton,
+.discard_dialog_buttons .bgabutton {
   margin: 0 10px;
 }
 
-/* Scrollable stock arrow buttons in scrap dialog */
-#scrap_card_selection_wrapper button {
-  width: 30px;
-  font-size: 16px;
-  padding: 0;
-  min-width: 30px;
+/* Compact scroll arrows — override global bgabutton sizing */
+.scrap_card_dialog .card_dialog_scroll_btn {
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 44px !important;
+  max-height: 44px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
   flex-shrink: 0;
-}
-
-#scrap_card_selection_wrapper .scrollable-stock-inner {
-  flex: 1 !important;
-  max-width: calc(100% - 80px) !important; /* Account for smaller buttons + gaps */
+  align-self: center;
+  background: #e8e8e8 !important;
+  border: 1px solid #aaa !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  color: #333 !important;
 }
 
 /* Market and Scrap Pile Layout */
@@ -643,8 +721,8 @@ a.disabled {
     opacity 0.15s;
 }
 .trading-resource-btn.trading-selected {
-  border-color: #2196f3;
-  box-shadow: 0 0 6px rgba(33, 150, 243, 0.5);
+  border-color: #333;
+  box-shadow: none;
 }
 .trading-resource-btn.disabled {
   opacity: 0.35;

@@ -518,9 +518,11 @@ define([
       this.scrapCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("scrap_card_selection_wrapper"), {
         gap: "8px",
         center: true,
-        scrollStep: 150,
-        leftButton: { html: "◀" },
-        rightButton: { html: "▶" },
+        scrollStep: 152,
+        buttonGap: "4px",
+        scrollbarVisible: false,
+        leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
+        rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
       });
 
       this.scrapCardSelection.setSelectionMode("single");
@@ -543,17 +545,19 @@ define([
 
           if (!$("confirm_scrap_button")) {
             domConstruct.create(
-              "button",
+              "a",
               {
                 id: "confirm_scrap_button",
                 class: "bgabutton bgabutton_red",
                 innerHTML: _("Scrap Card"),
+                href: "#",
               },
               $("cancel_scrap_button"),
               "before",
             );
 
-            on($("confirm_scrap_button"), "click", () => {
+            on($("confirm_scrap_button"), "click", (event) => {
+              event.preventDefault();
               this.confirmScrapCard(selectedCard.id);
             });
           }
@@ -564,7 +568,8 @@ define([
         }
       };
 
-      on($("cancel_scrap_button"), "click", () => {
+      on($("cancel_scrap_button"), "click", (event) => {
+        event.preventDefault();
         this.cleanupScrapCardSelection();
       });
     },
@@ -583,9 +588,11 @@ define([
       this.discardCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("discard_card_selection_wrapper"), {
         gap: "8px",
         center: true,
-        scrollStep: 150,
-        leftButton: { html: "◀" },
-        rightButton: { html: "▶" },
+        scrollStep: 152,
+        buttonGap: "4px",
+        scrollbarVisible: false,
+        leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
+        rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
       });
 
       this.discardCardSelection.setSelectionMode("single");
@@ -605,6 +612,8 @@ define([
       }
 
       domClass.add("confirm_discard_button", "disabled");
+      domClass.add("confirm_discard_button", "bgabutton_gray");
+      domClass.remove("confirm_discard_button", "bgabutton_green");
       this.rebelDiscardSelectedCardId = null;
 
       this.discardCardSelection.onSelectionChange = (selection, lastChange) => {
@@ -612,13 +621,18 @@ define([
           this.rebelDiscardSelectedCardId = selection[0].id;
           console.log("Card selected for discard:", selection[0]);
           domClass.remove("confirm_discard_button", "disabled");
+          domClass.add("confirm_discard_button", "bgabutton_green");
+          domClass.remove("confirm_discard_button", "bgabutton_gray");
         } else {
           this.rebelDiscardSelectedCardId = null;
           domClass.add("confirm_discard_button", "disabled");
+          domClass.remove("confirm_discard_button", "bgabutton_green");
+          domClass.add("confirm_discard_button", "bgabutton_gray");
         }
       };
 
-      on($("confirm_discard_button"), "click", () => {
+      on($("confirm_discard_button"), "click", (event) => {
+        event.preventDefault();
         if (this.rebelDiscardSelectedCardId != null) {
           this.confirmDiscardCard(this.rebelDiscardSelectedCardId);
         }
@@ -626,14 +640,61 @@ define([
     },
 
     /**
-     * Clean up scrap card selection dialog
+     * Return cards still held in a dialog selection stock to their normal piles.
+     * @private
      */
+    _restoreSelectionStockCards: function (selectionStock) {
+      if (!selectionStock) {
+        return;
+      }
+
+      const cards = [...selectionStock.getCards()];
+      cards.forEach((card) => {
+        selectionStock.removeCard({ id: card.id });
+        if (card.location === "player_discard") {
+          this.playerDiscard.addCard({
+            id: card.id,
+            type: card.type,
+            location: "player_discard",
+          });
+        } else {
+          this.playerHand.addCard({
+            id: card.id,
+            type: card.type,
+            location: "hand",
+          });
+        }
+      });
+
+      selectionStock.remove();
+    },
+
+    /**
+     * Remove a card from a dialog selection stock if present, otherwise from the normal pile.
+     * @private
+     */
+    _removeCardFromSelectionOrPile: function (card, originalLocation, playerId, selectionStock) {
+      if (playerId != this.player_id) {
+        return;
+      }
+
+      if (selectionStock && selectionStock.contains(card)) {
+        selectionStock.removeCard({ id: card.id });
+        return;
+      }
+
+      if (originalLocation === "hand") {
+        this.playerHand.removeCard({ id: card.id });
+      } else if (originalLocation === "player_discard") {
+        this.playerDiscard.removeCard({ id: card.id });
+      }
+    },
+
     cleanupScrapCardSelection: function () {
       console.log("Cleaning up scrap card selection");
 
-      if (this.scrapCardSelection) {
-        this.scrapCardSelection = null;
-      }
+      this._restoreSelectionStockCards(this.scrapCardSelection);
+      this.scrapCardSelection = null;
 
       if ($("scrap_card_dialog")) {
         domConstruct.destroy("scrap_card_dialog");
@@ -646,9 +707,8 @@ define([
     cleanupDiscardCardSelection: function () {
       console.log("Cleaning up discard card selection");
 
-      if (this.discardCardSelection) {
-        this.discardCardSelection = null;
-      }
+      this._restoreSelectionStockCards(this.discardCardSelection);
+      this.discardCardSelection = null;
 
       if ($("discard_card_dialog")) {
         domConstruct.destroy("discard_card_dialog");

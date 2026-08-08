@@ -33,6 +33,7 @@ define([
   g_gamethemeurl + "modules/js/dialogs.js",
   g_gamethemeurl + "modules/js/purchases.js",
   g_gamethemeurl + "modules/js/tradingPost.js",
+  g_gamethemeurl + "modules/js/treasureSeeker.js",
   g_gamethemeurl + "modules/js/stateHandlers.js",
   g_gamethemeurl + "modules/js/notifications.js",
   // Dojo extras
@@ -58,6 +59,7 @@ define([
   Dialogs,
   Purchases,
   TradingPost,
+  TreasureSeeker,
   StateHandlers,
   Notifications,
 ) {
@@ -242,21 +244,17 @@ define([
 
       window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="scrap_card_dialog">
                           <h3>Choose a card to scrap</h3>
-                          <div id="scrap_card_selection_wrapper">
-                              <div id="scrap_card_selection"></div>
-                          </div>
+                          <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="scrap_dialog_buttons">
-                              <button id="cancel_scrap_button" class="bgabutton bgabutton_gray">Cancel</button>
+                              <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_gray">Cancel</a>
                           </div>
                       </div>`;
 
       window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="scrap_card_dialog">
                           <h3>Choose a card to discard</h3>
-                          <div id="discard_card_selection_wrapper">
-                              <div id="discard_card_selection"></div>
-                          </div>
+                          <div id="discard_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="discard_dialog_buttons">
-                              <button id="confirm_discard_button" class="bgabutton bgabutton_orange">Discard Card</button>
+                              <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_gray disabled">Discard Card</a>
                           </div>
                       </div>`;
 
@@ -742,6 +740,11 @@ define([
         return;
       }
 
+      if (slotElement.classList.contains("occupied_blocked")) {
+        console.log("skiff slot is occupied and not available");
+        return;
+      }
+
       console.log(slotElement.dataset.slotname, slotElement.dataset.number);
 
       if (this.isCurrentPlayerActive()) {
@@ -782,7 +785,7 @@ define([
   });
 
   // Mix in methods from all modules
-  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, TradingPost, StateHandlers, Notifications];
+  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, TradingPost, TreasureSeeker, StateHandlers, Notifications];
 
   for (var i = 0; i < modulesToMixin.length; i++) {
     var module = modulesToMixin[i];

@@ -136,16 +136,14 @@ final class CorsairAbilityTest extends TestCase {
     public function testCorsairCannotUseOccupiedPlacementTwiceInSameIslandPhase(): void {
         $this->game->actPlaceSkiff('shipyard', 'n1');
 
-        // In stubs, occupied-slot error path may surface as TypeError due NotificationMessage handling.
-        $this->expectException(\Throwable::class);
+        $this->expectException(BgaUserException::class);
         $this->game->actPlaceSkiff('blacksmith', 'n1');
     }
 
     public function testNonCorsairCannotPlaceOnOccupiedSpace(): void {
         $this->game->captain = 'merchant';
 
-        // In stubs, occupied-slot error path may surface as TypeError due NotificationMessage handling.
-        $this->expectException(\Throwable::class);
+        $this->expectException(BgaUserException::class);
         $this->game->actPlaceSkiff('shipyard', 'n1');
     }
 

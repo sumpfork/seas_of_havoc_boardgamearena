@@ -67,6 +67,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_ISLAND_PHASE_SETUP", 10);
     define("STATE_SCRAP_CARD", 11);
     define("STATE_REBEL_DISCARD", 12);
+    define("STATE_TREASURE_SEEKER_ADJUST", 13);
     define("STATE_END_GAME", 99);
 }
 
@@ -85,6 +86,15 @@ $machinestates = [
         "type" => "game",
         "action" => "stMyGameSetup",
         "transitions" => ["" => STATE_ISLAND_PHASE_SETUP],
+    ],
+    STATE_TREASURE_SEEKER_ADJUST => [
+        "name" => "treasureSeekerAdjust",
+        "description" => clienttranslate('${actplayer} may adjust the shipwreck location'),
+        "descriptionmyturn" => clienttranslate('${you} may move the shipwreck to a surrounding space (Treasure Seeker ability)'),
+        "type" => "activeplayer",
+        "args" => "argTreasureSeekerAdjust",
+        "possibleactions" => ["actAdjustShipwreck", "actSkipTreasureSeekerAdjust"],
+        "transitions" => [],
     ],
     STATE_ISLAND_PHASE_SETUP => [
         "name" => "islandPhaseSetup",

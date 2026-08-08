@@ -39,9 +39,26 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
         }
 
         case "islandPhase": {
+          if (this.player_captain === "corsair") {
+            this.corsairOccupiedPlacementAvailable = true;
+          }
+          this.refreshSkiffSlotPlaceability();
           if (this.isCurrentPlayerActive() && this.gamedatas.pending_trading_post_slot) {
             this.initTradingPost(this.gamedatas.pending_trading_post_slot);
           }
+          break;
+        }
+
+        case "islandPhaseSetup": {
+          if (this.player_captain === "corsair") {
+            this.corsairOccupiedPlacementAvailable = true;
+          }
+          this.refreshSkiffSlotPlaceability();
+          break;
+        }
+
+        case "islandTurn": {
+          this.refreshSkiffSlotPlaceability();
           break;
         }
 
@@ -69,6 +86,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
         case "rebelDiscard": {
           this.setupDiscardCardSelection(args.args);
+          break;
+        }
+
+        case "treasureSeekerAdjust": {
+          this.setupTreasureSeekerAdjust(args.args);
           break;
         }
 
@@ -100,6 +122,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
         case "rebelDiscard":
           this.cleanupDiscardCardSelection();
+          break;
+
+        case "treasureSeekerAdjust":
+          this.cleanupTreasureSeekerAdjust();
           break;
 
         case "resolveCollision":
@@ -230,6 +256,26 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               this.onPivotButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
+            break;
+
+          case "treasureSeekerAdjust":
+            this.statusBar.addActionButton(_("Keep current location"), this.onSkipTreasureSeekerAdjust.bind(this), {
+              classes: "bgabutton_gray",
+            });
+            break;
+
+          case "islandTurn":
+            this.refreshSkiffSlotPlaceability();
+            if (
+              this.player_captain === "corsair" &&
+              this.corsairOccupiedPlacementAvailable &&
+              (this.corsairOccupiedSlotNames || []).length > 0
+            ) {
+              this.showMessage(
+                _("Corsair: you may place one skiff on a highlighted occupied space (resources only)"),
+                "info",
+              );
+            }
             break;
         }
       }

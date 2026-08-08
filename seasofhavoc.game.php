@@ -42,6 +42,11 @@ class SeasOfHavoc extends Table
     // Debug flag: give each player a booty token at game start (one with a wild resource)
     private const DEBUG_START_WITH_BOOTY = true;
 
+    private const TREASURE_SEEKER_RESUME_SETUP = 1;
+    private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
+    private const TREASURE_SEEKER_RESUME_COLLISION = 3;
+    private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
+
     private SeaBoard $seaboard;
     private $cards;
     private array $playable_cards;
@@ -67,6 +72,11 @@ class SeasOfHavoc extends Table
             "pending_trading_post_player" => 11,
             "pending_trading_post_slot" => 12,
             "corsair_occupied_placement_used" => 13,
+            "setup_shipwreck_next_index" => 15,
+            "pending_shipwreck_arg" => 16,
+            "pending_shipwreck_x" => 17,
+            "pending_shipwreck_y" => 18,
+            "pending_treasure_seeker_resume" => 19,
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
@@ -281,20 +291,9 @@ class SeasOfHavoc extends Table
         }
         $shipwreck = $shipwrecks[0];
         $this->seaboard->removeObject($x, $y, "shipwreck", $shipwreck["arg"]);
-        $new_position = $this->findEmptyBoardPosition([
-            "player_ship",
-            "rock",
-            "gust",
-            "whirlpool",
-            "shipwreck",
-            "sea_monster_part",
-        ]);
+        $new_position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
         $this->dump("collectShipwrecksAtPlayer new_position", $new_position);
-        $this->seaboard->placeObject($new_position["x"], $new_position["y"], [
-            "type" => "shipwreck",
-            "arg" => $shipwreck["arg"],
-            "heading" => Heading::NO_HEADING,
-        ]);
+        $this->placeShipwreck($shipwreck["arg"], $new_position["x"], $new_position["y"]);
         $event = [
             "shipwreck_arg" => $shipwreck["arg"],
             "old_x" => $x,
@@ -488,6 +487,169 @@ class SeasOfHavoc extends Table
         }
     }
 
+    private function shipwreckPlacementBlockingTypes(): array
+    {
+        // Rulebook: shipwrecks may be on gusts/whirlpools, but not rocks, ships, or other shipwrecks.
+        return ["player_ship", "rock", "shipwreck", "sea_monster_part"];
+    }
+
+    function getTreasureSeekerPlayerId(): ?string
+    {
+        foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
+            if ($this->getPlayerCaptain($player_id) === "treasure_seeker") {
+                return (string) $player_id;
+            }
+        }
+
+        return null;
+    }
+
+    function getSurroundingBoardPositions(int $x, int $y): array
+    {
+        return $this->seaboard->getSurroundingPositions($x, $y);
+    }
+
+    function isValidShipwreckBoardPosition(int $x, int $y): bool
+    {
+        return empty($this->seaboard->getObjectsOfTypes($x, $y, $this->shipwreckPlacementBlockingTypes()));
+    }
+
+    function getValidTreasureSeekerShipwreckPositions(int $x, int $y): array
+    {
+        return array_values(
+            array_filter(
+                $this->getSurroundingBoardPositions($x, $y),
+                fn($pos) => $this->isValidShipwreckBoardPosition($pos["x"], $pos["y"]),
+            ),
+        );
+    }
+
+    function placeShipwreck(string $arg, int $x, int $y): void
+    {
+        $this->seaboard->placeObject($x, $y, [
+            "type" => "shipwreck",
+            "arg" => $arg,
+            "heading" => Heading::NO_HEADING,
+        ]);
+    }
+
+    function moveShipwreck(string $arg, int $from_x, int $from_y, int $to_x, int $to_y): array
+    {
+        $this->seaboard->removeObject($from_x, $from_y, "shipwreck", $arg);
+        $this->placeShipwreck($arg, $to_x, $to_y);
+
+        return [
+            "shipwreck_arg" => $arg,
+            "old_x" => $from_x,
+            "old_y" => $from_y,
+            "new_x" => $to_x,
+            "new_y" => $to_y,
+        ];
+    }
+
+    function tryBeginTreasureSeekerShipwreckAdjust(string $shipwreck_arg, int $x, int $y, int $resume): bool
+    {
+        $treasure_seeker_id = $this->getTreasureSeekerPlayerId();
+        if ($treasure_seeker_id === null) {
+            return false;
+        }
+
+        $valid_positions = $this->getValidTreasureSeekerShipwreckPositions($x, $y);
+        if (empty($valid_positions)) {
+            return false;
+        }
+
+        $this->setGameStateValue("pending_shipwreck_arg", (int) $shipwreck_arg);
+        $this->setGameStateValue("pending_shipwreck_x", $x);
+        $this->setGameStateValue("pending_shipwreck_y", $y);
+        $this->setGameStateValue("pending_treasure_seeker_resume", $resume);
+
+        $this->gamestate->changeActivePlayer((int) $treasure_seeker_id);
+        $this->gamestate->jumpToState(STATE_TREASURE_SEEKER_ADJUST);
+        return true;
+    }
+
+    private function maybeDeferSeaPhaseForTreasureSeeker(?array $shipwreck_event, bool $collision_pending): bool
+    {
+        if ($shipwreck_event === null) {
+            return false;
+        }
+
+        $resume = $collision_pending
+            ? self::TREASURE_SEEKER_RESUME_COLLISION
+            : self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE;
+
+        return $this->tryBeginTreasureSeekerShipwreckAdjust(
+            (string) $shipwreck_event["shipwreck_arg"],
+            (int) $shipwreck_event["new_x"],
+            (int) $shipwreck_event["new_y"],
+            $resume,
+        );
+    }
+
+    private function completeTreasureSeekerAdjust(): void
+    {
+        $resume = (int) $this->getGameStateValue("pending_treasure_seeker_resume");
+        $this->setGameStateValue("pending_shipwreck_arg", 0);
+        $this->setGameStateValue("pending_shipwreck_x", 0);
+        $this->setGameStateValue("pending_shipwreck_y", 0);
+        $this->setGameStateValue("pending_treasure_seeker_resume", 0);
+
+        switch ($resume) {
+            case self::TREASURE_SEEKER_RESUME_SETUP:
+                $this->continueSetupShipwreckAdjustments();
+                break;
+            case self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE:
+            case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
+                $this->gamestate->jumpToState(STATE_NEXT_PLAYER_SEA_PHASE);
+                break;
+            case self::TREASURE_SEEKER_RESUME_COLLISION:
+                $this->gamestate->jumpToState(STATE_RESOLVE_COLLISION);
+                break;
+            default:
+                throw new BgaSystemException("Unknown treasure seeker resume value: $resume");
+        }
+    }
+
+    private function getShipwrecksOnBoard(): array
+    {
+        $shipwrecks = array_values(
+            array_filter($this->seaboard->getAllObjectsFlat(), fn($entry) => $entry["type"] === "shipwreck"),
+        );
+        usort($shipwrecks, fn($a, $b) => ((int) $a["arg"]) <=> ((int) $b["arg"]));
+        return $shipwrecks;
+    }
+
+    private function beginSetupShipwreckAdjustments(): void
+    {
+        $this->setGameStateValue("setup_shipwreck_next_index", 0);
+        $this->continueSetupShipwreckAdjustments();
+    }
+
+    private function continueSetupShipwreckAdjustments(): void
+    {
+        $shipwrecks = $this->getShipwrecksOnBoard();
+        $next_index = (int) $this->getGameStateValue("setup_shipwreck_next_index");
+
+        for ($i = $next_index; $i < count($shipwrecks); $i++) {
+            $shipwreck = $shipwrecks[$i];
+            if (
+                $this->tryBeginTreasureSeekerShipwreckAdjust(
+                    (string) $shipwreck["arg"],
+                    (int) $shipwreck["x"],
+                    (int) $shipwreck["y"],
+                    self::TREASURE_SEEKER_RESUME_SETUP,
+                )
+            ) {
+                $this->setGameStateValue("setup_shipwreck_next_index", $i + 1);
+                return;
+            }
+        }
+
+        $this->setGameStateValue("setup_shipwreck_next_index", 0);
+        $this->gamestate->nextState();
+    }
+
     private function finalizeCorsairOccupiedPlacement(
         string $player_id,
         string $slot_name,
@@ -672,19 +834,8 @@ class SeasOfHavoc extends Table
 
         // Place shipwrecks
         for ($i = 0; $i < $num_shipwrecks; $i++) {
-            $position = $this->findEmptyBoardPosition([
-                "player_ship",
-                "rock",
-                "gust",
-                "whirlpool",
-                "shipwreck",
-                "sea_monster_part",
-            ]);
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "shipwreck",
-                "arg" => strval($i),
-                "heading" => Heading::NO_HEADING,
-            ]);
+            $position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
+            $this->placeShipwreck(strval($i), $position["x"], $position["y"]);
         }
 
         // Create and shuffle the booty token deck
@@ -804,7 +955,7 @@ class SeasOfHavoc extends Table
             }
         }
 
-        $this->gamestate->nextState();
+        $this->beginSetupShipwreckAdjustments();
     }
 
     function stIslandPhaseSetup()
@@ -1814,11 +1965,7 @@ class SeasOfHavoc extends Table
                 }
                 return;
             }
-            throw new BgaUserException(
-                new \Bga\GameFramework\NotificationMessage(clienttranslate("There is already a skiff on {slotname}"), [
-                    "slotname" => $slotname,
-                ]),
-            );
+            throw new BgaUserException(clienttranslate("There is already a skiff on this slot"));
             return;
         }
 
@@ -2204,9 +2351,7 @@ class SeasOfHavoc extends Table
                 break;
             default:
                 throw new BgaUserException(
-                    new \Bga\GameFramework\NotificationMessage(clienttranslate("Unknown action type: {action_type}"), [
-                        "action_type" => $action_type->value,
-                    ]),
+                    clienttranslate("Unknown action type") . ": " . $action_type->value,
                 );
         }
         $this->dump("processSimpleAction outcome", $outcome);
@@ -2635,6 +2780,15 @@ class SeasOfHavoc extends Table
             ]);
         }
 
+        if (
+            $this->maybeDeferSeaPhaseForTreasureSeeker(
+                $shipwreck_event,
+                $outcome["collision_occurred"] || $seafeature_collision,
+            )
+        ) {
+            return;
+        }
+
         $this->gamestate->nextState(
             $outcome["collision_occurred"] || $seafeature_collision ? "collisionOccurred" : "seaTurnDone",
         );
@@ -2754,6 +2908,22 @@ class SeasOfHavoc extends Table
             ]);
         }
 
+        if ($shipwreck_event !== null) {
+            $resume = $seafeature_collision
+                ? self::TREASURE_SEEKER_RESUME_COLLISION
+                : self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED;
+            if (
+                $this->tryBeginTreasureSeekerShipwreckAdjust(
+                    (string) $shipwreck_event["shipwreck_arg"],
+                    (int) $shipwreck_event["new_x"],
+                    (int) $shipwreck_event["new_y"],
+                    $resume,
+                )
+            ) {
+                return;
+            }
+        }
+
         // If gust push caused another collision, stay in collision resolution state
         // Note: Seafeature effects are only applied once per card play, so this can only happen
         // when resolving a collision from the initial card play (gust push after collision resolution)
@@ -2762,6 +2932,74 @@ class SeasOfHavoc extends Table
         } else {
             $this->gamestate->nextState("collisionResolved");
         }
+    }
+
+    function argTreasureSeekerAdjust()
+    {
+        $this->mytrace("argTreasureSeekerAdjust");
+        $player_id = self::getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
+            throw new BgaSystemException("Only the Treasure Seeker can adjust shipwreck placement");
+        }
+
+        $x = (int) $this->getGameStateValue("pending_shipwreck_x");
+        $y = (int) $this->getGameStateValue("pending_shipwreck_y");
+
+        return [
+            "shipwreck_arg" => (string) $this->getGameStateValue("pending_shipwreck_arg"),
+            "x" => $x,
+            "y" => $y,
+            "valid_positions" => $this->getValidTreasureSeekerShipwreckPositions($x, $y),
+        ];
+    }
+
+    function actAdjustShipwreck(int $x, int $y)
+    {
+        $this->mytrace("actAdjustShipwreck: x=$x y=$y");
+        $player_id = self::getActivePlayerId();
+
+        if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
+            throw new BgaUserException(clienttranslate("Only the Treasure Seeker can use this action"));
+        }
+
+        $shipwreck_arg = (string) $this->getGameStateValue("pending_shipwreck_arg");
+        $from_x = (int) $this->getGameStateValue("pending_shipwreck_x");
+        $from_y = (int) $this->getGameStateValue("pending_shipwreck_y");
+
+        $valid = false;
+        foreach ($this->getValidTreasureSeekerShipwreckPositions($from_x, $from_y) as $position) {
+            if ($position["x"] === $x && $position["y"] === $y) {
+                $valid = true;
+                break;
+            }
+        }
+        if (!$valid) {
+            throw new BgaUserException(clienttranslate("That is not a valid surrounding space for the shipwreck"));
+        }
+
+        $event = $this->moveShipwreck($shipwreck_arg, $from_x, $from_y, $x, $y);
+        $this->notifyAllPlayers(
+            "shipwreckAdjusted",
+            clienttranslate('${player_name}\'s Treasure Seeker ability: moves the shipwreck'),
+            [
+                "player_name" => $this->getPlayerNameById((int) $player_id),
+                "player_id" => (int) $player_id,
+                "shipwreck_event" => $event,
+            ],
+        );
+        $this->completeTreasureSeekerAdjust();
+    }
+
+    function actSkipTreasureSeekerAdjust()
+    {
+        $this->mytrace("actSkipTreasureSeekerAdjust");
+        $player_id = self::getActivePlayerId();
+
+        if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
+            throw new BgaUserException(clienttranslate("Only the Treasure Seeker can use this action"));
+        }
+
+        $this->completeTreasureSeekerAdjust();
     }
 
     function argRebelDiscard()

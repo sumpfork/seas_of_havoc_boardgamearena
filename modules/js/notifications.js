@@ -100,7 +100,7 @@ define([
       if (isCorsairOverlay && String(args.player_id) === String(this.player_id)) {
         this.corsairOccupiedPlacementAvailable = false;
       }
-      this.updateIslandSlots(this.islandSlots, this.players);
+      this.refreshSkiffSlotPlaceability();
 
       console.log("skiff_id: " + skiff_id);
       var player_board = this.bga.playerPanels.getElement(args.player_id);
@@ -509,9 +509,9 @@ define([
       }
 
       if (original_location === "hand" && player_id == this.player_id) {
-        this.playerHand.removeCard({ id: card.id });
+        this._removeCardFromSelectionOrPile(card, original_location, player_id, this.scrapCardSelection);
       } else if (original_location === "player_discard" && player_id == this.player_id) {
-        this.playerDiscard.removeCard({ id: card.id });
+        this._removeCardFromSelectionOrPile(card, original_location, player_id, this.scrapCardSelection);
       }
 
       this.scrapPile.addCard({
@@ -535,7 +535,7 @@ define([
 
       if (player_id == this.player_id) {
         cards.forEach((card) => {
-          this.playerHand.removeCard({ id: card.id });
+          this._removeCardFromSelectionOrPile(card, "hand", player_id, this.discardCardSelection);
           this.playerDiscard.addCard({
             id: card.id,
             type: card.type,
@@ -553,6 +553,17 @@ define([
       }
 
       this.cleanupDiscardCardSelection();
+    },
+
+    /**
+     * Treasure Seeker adjusted shipwreck placement
+     */
+    notif_shipwreckAdjusted: function (args) {
+      console.log("notify shipwreck adjusted", args);
+      if (args.shipwreck_event) {
+        this.applyShipwreckEvents([args.shipwreck_event]);
+      }
+      this.cleanupTreasureSeekerAdjust();
     },
 
     /**

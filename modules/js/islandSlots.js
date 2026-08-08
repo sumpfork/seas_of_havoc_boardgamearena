@@ -10,13 +10,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
   query,
 ) {
   return {
-    canCurrentPlayerUseCorsairOnSlot: function (slotName, slotData) {
-      if (this.player_captain !== "corsair") {
-        return false;
-      }
-      if (!this.corsairOccupiedPlacementAvailable) {
-        return false;
-      }
+    isIslandSkiffPlacementActive: function () {
       if (!this.isCurrentPlayerActive()) {
         return false;
       }
@@ -26,6 +20,19 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
         return false;
       }
       if (this.gamedatas && this.gamedatas.pending_trading_post_slot != null) {
+        return false;
+      }
+      return true;
+    },
+
+    canCurrentPlayerUseCorsairOnSlot: function (slotName, slotData) {
+      if (this.player_captain !== "corsair") {
+        return false;
+      }
+      if (!this.corsairOccupiedPlacementAvailable) {
+        return false;
+      }
+      if (!this.isIslandSkiffPlacementActive()) {
         return false;
       }
       if (slotData.disabled) {
@@ -39,6 +46,25 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
       }
       const eligibleSlots = this.corsairOccupiedSlotNames || [];
       return eligibleSlots.indexOf(slotName) !== -1;
+    },
+
+    shouldBlockOccupiedSkiffSlot: function (slotName, slotData) {
+      if (slotData.occupying_player_id == null) {
+        return false;
+      }
+      if (!this.isIslandSkiffPlacementActive()) {
+        return false;
+      }
+      if (slotData.disabled) {
+        return false;
+      }
+      return !this.canCurrentPlayerUseCorsairOnSlot(slotName, slotData);
+    },
+
+    refreshSkiffSlotPlaceability: function () {
+      if (this.islandSlots && this.players) {
+        this.updateIslandSlots(this.islandSlots, this.players);
+      }
     },
 
     renderSkiffInSlot: function (skiffSlot, slotName, slotNumber, playerId, players, isCorsairOverlay) {
@@ -97,6 +123,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
             domClass.add(skiff_slot_id, "corsair_selectable");
           } else {
             domClass.remove(skiff_slot_id, "corsair_selectable");
+          }
+
+          if (this.shouldBlockOccupiedSkiffSlot(slot, slotData)) {
+            domClass.add(skiff_slot_id, "occupied_blocked");
+          } else {
+            domClass.remove(skiff_slot_id, "occupied_blocked");
           }
 
           var primaryOccupantId = slotData.occupying_player_id;

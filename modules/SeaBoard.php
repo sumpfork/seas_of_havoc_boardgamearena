@@ -129,6 +129,43 @@ class SeaBoard
         return ["x" => $result["new_x"], "y" => $result["new_y"]];
     }
 
+    public function getSurroundingPositions(int $x, int $y): array
+    {
+        $this->syncFromDB();
+        $positions = [];
+        $seen = [];
+
+        $addPosition = function (int $px, int $py) use (&$positions, &$seen): void {
+            $key = $px . "," . $py;
+            if (isset($seen[$key])) {
+                return;
+            }
+            $seen[$key] = true;
+            $positions[] = ["x" => $px, "y" => $py];
+        };
+
+        foreach ([Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST] as $heading) {
+            $pos = $this->getForwardPosition($x, $y, $heading);
+            $addPosition($pos["x"], $pos["y"]);
+        }
+
+        foreach (
+            [
+                [Heading::NORTH, Heading::EAST],
+                [Heading::NORTH, Heading::WEST],
+                [Heading::SOUTH, Heading::EAST],
+                [Heading::SOUTH, Heading::WEST],
+            ]
+            as [$first_heading, $second_heading]
+        ) {
+            $mid = $this->getForwardPosition($x, $y, $first_heading);
+            $pos = $this->getForwardPosition($mid["x"], $mid["y"], $second_heading);
+            $addPosition($pos["x"], $pos["y"]);
+        }
+
+        return $positions;
+    }
+
     private function computeForwardMovement(int $x, int $y, Heading $heading)
     {
         $new_x = $x;
