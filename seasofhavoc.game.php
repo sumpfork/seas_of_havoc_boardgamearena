@@ -2368,7 +2368,89 @@ class SeasOfHavoc extends Table
         $this->trace("processing captain ability: $ability");
         $player_id = $this->getActivePlayerId();
         $this->trace("player id: $player_id");
-        # TODO: implement captain abilities
+        switch ($ability) {
+            case "government_funding":
+                return $this->processGovernmentFunding($player_id);
+            case "inspire":
+                return $this->processInspire($player_id);
+            default:
+                return [
+                    "action_chain" => [],
+                    "collision_occurred" => false,
+                    "shipwreck_event" => null,
+                    "booty_card" => null,
+                ];
+        }
+    }
+
+    function processGovernmentFunding(string $player_id): array
+    {
+        $standard_resources = array_filter($this->resource_types, fn($r) => $r !== "skiff");
+        $current = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];
+        $to_gain = [];
+        foreach ($standard_resources as $r) {
+            if (($current[$r] ?? 0) === 0) {
+                $to_gain[$r] = 1;
+            }
+        }
+        if (empty($to_gain)) {
+            $this->drawCards($player_id);
+            $this->notifyAllPlayers(
+                "log",
+                clienttranslate(
+                    '${player_name}\'s Government Funding: draws a card (already owns all resource types)',
+                ),
+                ["player_name" => $this->getPlayerNameById($player_id)],
+            );
+        } else {
+            $this->playerGainResources($player_id, $to_gain);
+            $this->notifyAllPlayers(
+                "log",
+                clienttranslate('${player_name}\'s Government Funding: gains 1 of each resource type not owned'),
+                ["player_name" => $this->getPlayerNameById($player_id)],
+            );
+        }
+        return [
+            "action_chain" => [],
+            "collision_occurred" => false,
+            "shipwreck_event" => null,
+            "booty_card" => null,
+        ];
+    }
+
+    function processInspire(string $player_id): array
+    {
+        $discard_cards = $this->cards->getCardsInLocation("player_discard", $player_id);
+        $damage_cards = array_filter(
+            $discard_cards,
+            fn($c) => ($this->playable_cards[$c["type"]]["category"] ?? "") === "damage",
+        );
+        if (empty($damage_cards)) {
+            $this->scoreInfamy(
+                $player_id,
+                1,
+                clienttranslate('${player_name}\'s Inspire: gains 1 infamy'),
+            );
+            $this->drawCards($player_id);
+        } else {
+            $damage_card = reset($damage_cards);
+            $this->cards->moveCard($damage_card["id"], "scrap");
+            $this->notifyAllPlayers(
+                "cardScrapped",
+                clienttranslate('${player_name}\'s Inspire: scrapped a damage card'),
+                [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                    "player_id" => intval($player_id),
+                    "card" => [
+                        "id" => intval($damage_card["id"]),
+                        "type" => intval($damage_card["type"]),
+                        "location" => "player_discard",
+                        "location_arg" => intval($player_id),
+                    ],
+                    "original_location" => "player_discard",
+                ],
+            );
+        }
         return [
             "action_chain" => [],
             "collision_occurred" => false,
