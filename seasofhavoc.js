@@ -113,7 +113,7 @@ define([
       const possibleActions = this.gamedatas.gamestate.possibleactions || [];
       const canSelect = this.isCurrentPlayerActive() && possibleActions.indexOf("actPlayCard") !== -1;
       const selectionMode = canSelect ? "single" : "none";
-      console.warn(
+      console.log(
         "[hand] updateHandSelectionMode canSelect=" +
           canSelect +
           " mode=" +
@@ -416,13 +416,12 @@ define([
 
       // Create the deck
       this.playerDeck = new BgaCards.Deck(this.cardsManager, $("mydeck"), {
+        cardNumber: deckSize,
         counter: {
           position: "center",
           extraClasses: "text-shadow",
         },
       });
-
-      this.playerDeck.setCardNumber(deckSize);
 
       // Set selection mode to single
       this.playerHand.setSelectionMode("single");
