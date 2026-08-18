@@ -36,7 +36,7 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
             "seaboard",
           );
           this.placeOnObject(markerId, locId);
-          var handler = on(markerId, "click", () => {
+          var handler = on($(markerId), "click", () => {
             this.onTreasureSeekerPositionChosen(pos.x, pos.y);
           });
           this._treasureSeekerAdjustHandlers.push({ id: markerId, handler: handler });
