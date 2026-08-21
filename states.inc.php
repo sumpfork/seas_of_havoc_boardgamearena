@@ -53,7 +53,6 @@
 if (!defined("STATE_END_GAME")) {
     // ensure this block is only invoked once, since it is included multiple times
     define("STATE_GAME_SETUP", 1);
-    define("STATE_MY_SETUP", 2);
     define("STATE_ISLAND_TURN", 3);
     define("STATE_NEXT_PLAYER_ISLAND_PHASE", 4);
     define("STATE_CARD_PURCHASES", 5);
@@ -71,6 +70,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_END_GAME", 99);
 }
 
-// State machine is now defined via State classes in modules/php/States/.
-// The $machinestates array is left empty; the BGA framework discovers states from the State classes.
-$machinestates = [];
+// State machine is defined via State classes in modules/php/States/.
+// State 1 is overridden here to go directly to islandPhaseSetup (state 10) instead of the default state 2.
+$machinestates = [
+    STATE_GAME_SETUP => \Bga\GameFramework\GameStateBuilder::gameSetup(STATE_ISLAND_PHASE_SETUP)->build(),
+];

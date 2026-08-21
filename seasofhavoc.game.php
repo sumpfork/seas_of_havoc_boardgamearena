@@ -77,6 +77,7 @@ class SeasOfHavoc extends Table
             "pending_shipwreck_x" => 17,
             "pending_shipwreck_y" => 18,
             "pending_treasure_seeker_resume" => 19,
+            "setup_shipwrecks_adjusted" => 20,
             //    "my_first_global_variable" => 10,
             //    "my_second_global_variable" => 11,
             //      ...
@@ -149,19 +150,268 @@ class SeasOfHavoc extends Table
 
         /************ Start the game initialization *****/
 
-        // Init global values with their initial values
-        //self::setGameStateInitialValue( 'my_first_global_variable', 0 );
+        $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
+        $base_resources = array_fill_keys($this->resource_types, 1);
+        $base_resources["skiff"] = 3;
 
-        // Init game statistics
-        // (note: statistics used in this file must be defined in your stats.inc.php file)
-        //self::initStat( 'table', 'table_teststat1', 0 );    // Init a table statistics
-        //self::initStat( 'player', 'player_teststat1', 0 );  // Init a player statistics (for all players)
+        $this->dump("base resources", $base_resources);
+        $player_infos = $this->loadPlayersBasicInfos();
 
-        // TODO: setup the initial game situation here
+        $values = [];
+        foreach ($player_infos as $playerid => $player) {
+            $player_resources = $base_resources;
+
+            switch ($player["player_no"]) {
+                case 1:
+                    break;
+                case 2:
+                    $player_resources["sail"] += 1;
+                    break;
+                case 3:
+                    $player_resources["cannonball"] += 1;
+                    break;
+                case 4:
+                    $player_resources["sail"] += 1;
+                    $player_resources["cannonball"] += 1;
+                    break;
+                case 5:
+                    $player_resources["cannonball"] += 1;
+                    $player_resources["doubloon"] += 1;
+                    break;
+                default:
+                    throw new Exception("Unknonwn player number" . $player["player_no"]);
+            }
+            foreach ($player_resources as $resource_type => $resource_count) {
+                $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
+            }
+        }
+        $sql .= implode(",", $values);
+        self::DbQuery($sql);
+
+        // Assign first player token to a random player
+        $player_ids = array_keys($player_infos);
+        $random_first_player = $player_ids[array_rand($player_ids)];
+        self::DbQuery(
+            "INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')",
+        );
+
+        // Notify players who got the first player token
+        $this->notifyAllPlayers(
+            "tokenAcquired",
+            clienttranslate('${player_name} starts the game with the ${token_name}'),
+            [
+                "player_name" => $this->getPlayerNameById($random_first_player),
+                "token_name" => $this->token_names["first_player_token"],
+                "player_id" => $random_first_player,
+                "token_key" => "first_player_token",
+            ],
+        );
+
+        // Create other tokens without owners
+        foreach (["green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
+            self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES (NULL, '$token')");
+        }
+
+        $this->clearIslandSlots();
+
+        $player_infos = $this->getPlayerInfo();
+        uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
+
+        // Get all captain cards for random assignment
+        $captain_cards = array_filter(
+            $this->non_playable_cards,
+            fn($card) => isset($card["category"]) && $card["category"] == "captain",
+        );
+        $captain_keys = array_keys($captain_cards);
+        shuffle($captain_keys);
+
+        // Place seafeatures on the board based on player count
+        $num_players = count($player_infos);
+        $num_rocks = $num_players <= 3 ? 3 : 2;
+        $num_gusts = $num_players <= 3 ? 2 : 3;
+        $num_whirlpools = 1;
+        $num_shipwrecks = 2;
+
+        // Pick a random heading for all gusts (they all face the same direction)
+        $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
+        $gust_heading = $all_headings[array_rand($all_headings)];
+
+        // Place rocks
+        for ($i = 0; $i < $num_rocks; $i++) {
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "rock",
+                "arg" => strval($i),
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+
+        // Place gusts (all with the same random heading)
+        for ($i = 0; $i < $num_gusts; $i++) {
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "gust",
+                "arg" => strval($i),
+                "heading" => $gust_heading,
+            ]);
+        }
+
+        // Place whirlpools
+        for ($i = 0; $i < $num_whirlpools; $i++) {
+            $position = $this->findEmptyBoardPosition([
+                "player_ship",
+                "rock",
+                "gust",
+                "whirlpool",
+                "shipwreck",
+                "sea_monster_part",
+            ]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "whirlpool",
+                "arg" => strval($i),
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+
+        // Place shipwrecks
+        for ($i = 0; $i < $num_shipwrecks; $i++) {
+            $position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
+            $this->placeShipwreck(strval($i), $position["x"], $position["y"]);
+        }
+
+        // Create and shuffle the booty token deck
+        $booty_deck = [];
+        foreach ($this->booty_tokens as $token) {
+            $booty_deck[] = [
+                "type" => "booty",
+                "type_arg" => $token["image_id"],
+                "nbr" => 1,
+            ];
+        }
+        $this->cards->createCards($booty_deck, "booty_deck");
+        $this->cards->shuffle("booty_deck");
+
+        $forced_captains_for_testing = ["corsair", "merchant", "admiral"];
+        $player_index = 0;
+
+        foreach ($player_infos as $playerid => $player) {
+            // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
+            // Ships CAN start on gusts and whirlpools
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
+
+            // Find a safe random heading that doesn't face rocks or other obstacles
+            $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
+
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "player_ship",
+                "arg" => $playerid,
+                "heading" => $heading,
+            ]);
+
+            // TEMP HACK: force first players to specific captains for ability testing.
+            if (isset($forced_captains_for_testing[$player_index])) {
+                $captain_key = $forced_captains_for_testing[$player_index];
+                $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
+            } else {
+                $captain_key = array_pop($captain_keys);
+            }
+            $this->assignCaptainToPlayer($playerid, $captain_key);
+
+            // Assign ship upgrade cards matching player's ship
+            $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
+
+            // Get ship starting cards
+            $player_starting_cards = array_filter(
+                array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
+                function ($v) use ($player) {
+                    return $v["ship_name"] == $player["player_ship"];
+                },
+            );
+
+            // Get captain starting cards
+            $captain_starting_cards = array_filter(
+                array_filter($this->playable_cards, fn($x) => $x["category"] == "captain"),
+                function ($v) use ($captain_key) {
+                    return isset($v["captain_key"]) && $v["captain_key"] == $captain_key;
+                },
+            );
+
+            // Combine ship and captain starting cards
+            $all_starting_cards = array_merge($player_starting_cards, $captain_starting_cards);
+
+            $start_deck = [];
+            foreach ($all_starting_cards as $starting_card) {
+                $start_deck[] = [
+                    "type" => $starting_card["card_type"],
+                    "type_arg" => 0,
+                    "nbr" => $starting_card["count"],
+                ];
+            }
+            $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
+            $this->cards->shuffle($this->playerDeckName($playerid));
+
+            $player_index++;
+        }
+
+        $market_deck = [];
+        foreach (array_filter($this->playable_cards, fn($x) => $x["category"] == "market_card") as $market_card) {
+            $market_deck[] = [
+                "type" => $market_card["card_type"],
+                "type_arg" => 0,
+                "nbr" => $market_card["count"],
+            ];
+        }
+        $this->cards->createCards($market_deck, "market_deck");
+        $this->cards->shuffle("market_deck");
+        $this->cards->pickCardsForLocation(5, "market_deck", "market");
+
+        $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
+        $this->cards->createCards(
+            [
+                [
+                    "type" => $damage_card["card_type"],
+                    "type_arg" => 0,
+                    "nbr" => $this->calculateNumDamageCards(count($player_infos)),
+                ],
+            ],
+            "damage_deck",
+        );
+
+        // Debug: give each player a starting booty token
+        if (self::DEBUG_START_WITH_BOOTY) {
+            $player_ids = array_keys($player_infos);
+            // First player gets a token with a wild "choice" resource (image_id 3 = doubloon + choice)
+            // Other players get a regular token (image_id 6 = doubloon + cannonball)
+            $wild_image_id = 3;
+            $regular_image_id = 6;
+            foreach ($player_ids as $i => $pid) {
+                $target_image_id = $i === 0 ? $wild_image_id : $regular_image_id;
+                $card = self::getObjectFromDB(
+                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1",
+                );
+                if ($card) {
+                    $this->cards->moveCard($card["card_id"], "booty_player", $pid);
+                    $this->trace("DEBUG: Gave player $pid booty token image_id=$target_image_id");
+                }
+            }
+        }
 
         /************ End of the game initialization *****/
         $this->activeNextPlayer();
-        //$this->gamestate->nextState();
     }
 
     function playerDeckName($player_id)
@@ -644,6 +894,7 @@ class SeasOfHavoc extends Table
         }
 
         $this->setGameStateValue("setup_shipwreck_next_index", 0);
+        $this->setGameStateValue("setup_shipwrecks_adjusted", 1);
         return STATE_ISLAND_PHASE_SETUP;
     }
 
@@ -685,279 +936,15 @@ class SeasOfHavoc extends Table
         return true;
     }
 
-    function stMyGameSetup()
-    {
-        //throw new BgaSystemException("mysetup start");
-
-        //incredibly, it's impossible to log anything in the official game setup, so this is a second setup state
-        $this->mytrace("stMyGameSetup");
-        $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
-        $base_resources = array_fill_keys($this->resource_types, 1);
-        $base_resources["skiff"] = 3;
-
-        $this->dump("base resources", $base_resources);
-        $player_infos = $this->loadPlayersBasicInfos();
-
-        $values = [];
-        foreach ($player_infos as $playerid => $player) {
-            $player_resources = $base_resources;
-            $this->mytrace("player is " . $playerid);
-
-            switch ($player["player_no"]) {
-                case 1:
-                    break;
-                case 2:
-                    $player_resources["sail"] += 1;
-                    break;
-                case 3:
-                    $player_resources["cannonball"] += 1;
-                    break;
-                case 4:
-                    $player_resources["sail"] += 1;
-                    $player_resources["cannonball"] += 1;
-                    break;
-                case 5:
-                    $player_resources["cannonball"] += 1;
-                    $player_resources["doubloon"] += 1;
-                    break;
-                default:
-                    throw new Exception("Unknonwn player number" . $player["player_no"]);
-            }
-            foreach ($player_resources as $resource_type => $resource_count) {
-                $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
-            }
-        }
-        $sql .= implode(",", $values);
-        self::DbQuery($sql);
-
-        // Assign first player token to a random player
-        $player_ids = array_keys($player_infos);
-        $random_first_player = $player_ids[array_rand($player_ids)];
-        self::DbQuery(
-            "INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')",
-        );
-
-        // Notify players who got the first player token
-        $this->notifyAllPlayers(
-            "tokenAcquired",
-            clienttranslate('${player_name} starts the game with the ${token_name}'),
-            [
-                "player_name" => $this->getPlayerNameById($random_first_player),
-                "token_name" => $this->token_names["first_player_token"],
-                "player_id" => $random_first_player,
-                "token_key" => "first_player_token",
-            ],
-        );
-
-        // Create other tokens without owners
-        foreach (["green_flag", "tan_flag", "blue_flag", "red_flag"] as $token) {
-            self::DbQuery("INSERT INTO unique_tokens (player_id, token_key) VALUES (NULL, '$token')");
-        }
-
-        $this->clearIslandSlots();
-
-        $player_infos = $this->getPlayerInfo();
-        uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
-
-        // Get all captain cards for random assignment
-        $captain_cards = array_filter(
-            $this->non_playable_cards,
-            fn($card) => isset($card["category"]) && $card["category"] == "captain",
-        );
-        $captain_keys = array_keys($captain_cards);
-        shuffle($captain_keys);
-
-        // Place seafeatures on the board based on player count
-        $num_players = count($player_infos);
-        $num_rocks = $num_players <= 3 ? 3 : 2;
-        $num_gusts = $num_players <= 3 ? 2 : 3;
-        $num_whirlpools = 1;
-        $num_shipwrecks = 2;
-
-        // Pick a random heading for all gusts (they all face the same direction)
-        $all_headings = [Heading::NORTH, Heading::EAST, Heading::SOUTH, Heading::WEST];
-        $gust_heading = $all_headings[array_rand($all_headings)];
-
-        // Place rocks
-        for ($i = 0; $i < $num_rocks; $i++) {
-            $position = $this->findEmptyBoardPosition([
-                "player_ship",
-                "rock",
-                "gust",
-                "whirlpool",
-                "shipwreck",
-                "sea_monster_part",
-            ]);
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "rock",
-                "arg" => strval($i),
-                "heading" => Heading::NO_HEADING,
-            ]);
-        }
-
-        // Place gusts (all with the same random heading)
-        for ($i = 0; $i < $num_gusts; $i++) {
-            $position = $this->findEmptyBoardPosition([
-                "player_ship",
-                "rock",
-                "gust",
-                "whirlpool",
-                "shipwreck",
-                "sea_monster_part",
-            ]);
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "gust",
-                "arg" => strval($i),
-                "heading" => $gust_heading,
-            ]);
-        }
-
-        // Place whirlpools
-        for ($i = 0; $i < $num_whirlpools; $i++) {
-            $position = $this->findEmptyBoardPosition([
-                "player_ship",
-                "rock",
-                "gust",
-                "whirlpool",
-                "shipwreck",
-                "sea_monster_part",
-            ]);
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "whirlpool",
-                "arg" => strval($i),
-                "heading" => Heading::NO_HEADING,
-            ]);
-        }
-
-        // Place shipwrecks
-        for ($i = 0; $i < $num_shipwrecks; $i++) {
-            $position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
-            $this->placeShipwreck(strval($i), $position["x"], $position["y"]);
-        }
-
-        // Create and shuffle the booty token deck
-        $booty_deck = [];
-        foreach ($this->booty_tokens as $token) {
-            $booty_deck[] = [
-                "type" => "booty",
-                "type_arg" => $token["image_id"],
-                "nbr" => 1,
-            ];
-        }
-        $this->cards->createCards($booty_deck, "booty_deck");
-        $this->cards->shuffle("booty_deck");
-
-        $forced_captains_for_testing = ["corsair", "merchant", "admiral"];
-        $player_index = 0;
-
-        foreach ($player_infos as $playerid => $player) {
-            // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
-            // Ships CAN start on gusts and whirlpools
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
-
-            // Find a safe random heading that doesn't face rocks or other obstacles
-            $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
-
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "player_ship",
-                "arg" => $playerid,
-                "heading" => $heading,
-            ]);
-
-            // TEMP HACK: force first players to specific captains for ability testing.
-            if (isset($forced_captains_for_testing[$player_index])) {
-                $captain_key = $forced_captains_for_testing[$player_index];
-                $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
-            } else {
-                $captain_key = array_pop($captain_keys);
-            }
-            $this->assignCaptainToPlayer($playerid, $captain_key);
-
-            // Assign ship upgrade cards matching player's ship
-            $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
-
-            // Get ship starting cards
-            $player_starting_cards = array_filter(
-                array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
-                function ($v) use ($player) {
-                    return $v["ship_name"] == $player["player_ship"];
-                },
-            );
-
-            // Get captain starting cards
-            $captain_starting_cards = array_filter(
-                array_filter($this->playable_cards, fn($x) => $x["category"] == "captain"),
-                function ($v) use ($captain_key) {
-                    return isset($v["captain_key"]) && $v["captain_key"] == $captain_key;
-                },
-            );
-
-            // Combine ship and captain starting cards
-            $all_starting_cards = array_merge($player_starting_cards, $captain_starting_cards);
-
-            $start_deck = [];
-            foreach ($all_starting_cards as $starting_card) {
-                $start_deck[] = [
-                    "type" => $starting_card["card_type"],
-                    "type_arg" => 0,
-                    "nbr" => $starting_card["count"],
-                ];
-            }
-            $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
-            $this->cards->shuffle($this->playerDeckName($playerid));
-
-            $player_index++;
-        }
-
-        $market_deck = [];
-        foreach (array_filter($this->playable_cards, fn($x) => $x["category"] == "market_card") as $market_card) {
-            $market_deck[] = [
-                "type" => $market_card["card_type"],
-                "type_arg" => 0,
-                "nbr" => $market_card["count"],
-            ];
-        }
-        $this->cards->createCards($market_deck, "market_deck");
-        $this->cards->shuffle("market_deck");
-        $this->cards->pickCardsForLocation(5, "market_deck", "market");
-
-        $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
-        $this->cards->createCards(
-            [
-                [
-                    "type" => $damage_card["card_type"],
-                    "type_arg" => 0,
-                    "nbr" => $this->calculateNumDamageCards(count($player_infos)),
-                ],
-            ],
-            "damage_deck",
-        );
-
-        // Debug: give each player a starting booty token
-        if (self::DEBUG_START_WITH_BOOTY) {
-            $player_ids = array_keys($player_infos);
-            // First player gets a token with a wild "choice" resource (image_id 3 = doubloon + choice)
-            // Other players get a regular token (image_id 6 = doubloon + cannonball)
-            $wild_image_id = 3;
-            $regular_image_id = 6;
-            foreach ($player_ids as $i => $pid) {
-                $target_image_id = $i === 0 ? $wild_image_id : $regular_image_id;
-                $card = self::getObjectFromDB(
-                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1",
-                );
-                if ($card) {
-                    $this->cards->moveCard($card["card_id"], "booty_player", $pid);
-                    $this->trace("DEBUG: Gave player $pid booty token image_id=$target_image_id");
-                }
-            }
-        }
-
-        return $this->beginSetupShipwreckAdjustments();
-    }
-
     function stIslandPhaseSetup()
     {
         $this->mytrace("stIslandPhaseSetup");
+        if ((int) $this->getGameStateValue("setup_shipwrecks_adjusted") === 0) {
+            $result = $this->beginSetupShipwreckAdjustments();
+            if ($result === STATE_TREASURE_SEEKER_ADJUST) {
+                return "treasureSeekerSetup";
+            }
+        }
         $this->applyPirateQueenIslandPhaseStartAbilities();
 
         $player_infos = $this->getPlayerInfo();

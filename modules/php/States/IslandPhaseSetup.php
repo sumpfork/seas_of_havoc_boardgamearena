@@ -15,7 +15,7 @@ class IslandPhaseSetup extends GameState
             type: StateType::GAME,
             name: 'islandPhaseSetup',
             description: clienttranslate('Starting Island Phase'),
-            transitions: ['rebelDiscard' => 12, 'islandTurn' => 3],
+            transitions: ['rebelDiscard' => 12, 'islandTurn' => 3, 'treasureSeekerSetup' => 13],
         );
     }
 
