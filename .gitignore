@@ -16,3 +16,7 @@ Thumbs.db
 node_modules
 package.json
 package-lock.json
+
+.claude/
+.playwright-mcp/
+_ide_helper.php

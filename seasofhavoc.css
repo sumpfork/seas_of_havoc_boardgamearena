@@ -437,6 +437,42 @@
   width: 1px;
   height: 1px;
 }
+
+/* Treasure Seeker: valid shipwreck destination markers */
+.treasure_seeker_marker {
+  position: absolute;
+  width: 55px;
+  height: 55px;
+  margin-left: -27px;
+  margin-top: -27px;
+  border-radius: 50%;
+  background-color: rgba(232, 179, 53, 0.35);
+  border: 2px solid rgba(201, 140, 20, 0.9);
+  box-shadow:
+    0 0 8px rgba(232, 179, 53, 0.8),
+    inset 0 0 6px rgba(232, 179, 53, 0.4);
+  cursor: pointer;
+  z-index: 5;
+  animation: treasure-seeker-pulse 1.6s ease-in-out infinite;
+}
+.treasure_seeker_marker:hover {
+  background-color: rgba(232, 179, 53, 0.7);
+  box-shadow: 0 0 14px rgba(232, 179, 53, 1);
+}
+@keyframes treasure-seeker-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(232, 179, 53, 0.8), inset 0 0 6px rgba(232, 179, 53, 0.4); }
+  50%       { box-shadow: 0 0 16px rgba(232, 179, 53, 1),  inset 0 0 10px rgba(232, 179, 53, 0.6); }
+}
+
+/* Treasure Seeker: highlight on the current shipwreck */
+.treasure_seeker_shipwreck_highlight {
+  filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1)) drop-shadow(0 0 12px rgba(201, 140, 20, 0.8));
+  animation: treasure-seeker-shipwreck-pulse 1.6s ease-in-out infinite;
+}
+@keyframes treasure-seeker-shipwreck-pulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1))  drop-shadow(0 0 12px rgba(201, 140, 20, 0.8)); }
+  50%       { filter: drop-shadow(0 0 12px rgba(232, 179, 53, 1)) drop-shadow(0 0 20px rgba(201, 140, 20, 1)); }
+}
 #card_display_dialog {
   width: 350px;
   background-color: white;

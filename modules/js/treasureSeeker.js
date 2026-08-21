@@ -23,11 +23,10 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
       this._treasureSeekerAdjustHandlers = [];
 
       if (args.valid_positions) {
-        for (var i in args.valid_positions) {
-          var pos = args.valid_positions[i];
+        for (const pos of args.valid_positions) {
           var locId = "seaboardlocation_" + pos.x + "_" + pos.y;
           var markerId = "treasure_seeker_marker_" + pos.x + "_" + pos.y;
-          var marker = domConstruct.create(
+          domConstruct.create(
             "div",
             {
               id: markerId,
