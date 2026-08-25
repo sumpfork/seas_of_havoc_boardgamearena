@@ -497,6 +497,604 @@ $this->playable_cards = [
         "flag" => "green",
         "category" => "market_card",
     ],
+    // Green flag cards continued (image_ids 27-30)
+    [
+        "cost" => ["sail" => 1, "cannonball" => 2],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            [
+                "action" => "choice",
+                "choices" => [
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                        ],
+                        "name" => "forward",
+                    ],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 27,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]]],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 28,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]]],
+        ],
+        "image_id" => 29,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"], ["action" => "pivot_180"]]],
+        ],
+        "image_id" => 30,
+        "count" => 1,
+        "flag" => "green",
+        "category" => "market_card",
+    ],
+    // Blue flag cards (image_ids 31-43)
+    [
+        "cost" => ["cannonball" => 1],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
+        "image_id" => 31,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 2],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+            ]],
+        ],
+        "image_id" => 32,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 3],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+                ["action" => "3 x fire", "range" => 1, "cost" => ["cannonball" => 3]],
+            ]],
+        ],
+        "image_id" => 33,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]]],
+        ],
+        "image_id" => 34,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "doubloon" => 1],
+        "actions" => [
+            [
+                "action" => "choice",
+                "choices" => [
+                    ["action" => "left"],
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            [
+                                "action" => "choice",
+                                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
+                                "cost" => ["sail" => 1],
+                            ],
+                        ],
+                        "name" => "forward",
+                    ],
+                    ["action" => "right"],
+                ],
+            ],
+        ],
+        "image_id" => 35,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "forward", "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 36,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            [
+                "action" => "choice",
+                "choices" => [
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "left"]], "name" => "forward-left"],
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "forward"]], "name" => "forward-forward"],
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "right"]], "name" => "forward-right"],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 37,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 38,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]], "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 39,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 2],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            [
+                "action" => "choice",
+                "choices" => [
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                        ],
+                        "name" => "forward",
+                    ],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 40,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]]],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 41,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]]],
+        ],
+        "image_id" => 42,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"], ["action" => "pivot_180"]]],
+        ],
+        "image_id" => 43,
+        "count" => 1,
+        "flag" => "blue",
+        "category" => "market_card",
+    ],
+    // Tan flag cards (image_ids 44-56)
+    [
+        "cost" => ["cannonball" => 1],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
+        "image_id" => 44,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 2],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+            ]],
+        ],
+        "image_id" => 45,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 3],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+                ["action" => "3 x fire", "range" => 1, "cost" => ["cannonball" => 3]],
+            ]],
+        ],
+        "image_id" => 46,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]]],
+        ],
+        "image_id" => 47,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "doubloon" => 1],
+        "actions" => [
+            [
+                "action" => "choice",
+                "choices" => [
+                    ["action" => "left"],
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            [
+                                "action" => "choice",
+                                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
+                                "cost" => ["sail" => 1],
+                            ],
+                        ],
+                        "name" => "forward",
+                    ],
+                    ["action" => "right"],
+                ],
+            ],
+        ],
+        "image_id" => 48,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "forward", "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 49,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            [
+                "action" => "choice",
+                "choices" => [
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "left"]], "name" => "forward-left"],
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "forward"]], "name" => "forward-forward"],
+                    ["action" => "sequence", "actions" => [["action" => "forward"], ["action" => "right"]], "name" => "forward-right"],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 50,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 51,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]], "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 52,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 2],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            [
+                "action" => "choice",
+                "choices" => [
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                        ],
+                        "name" => "forward",
+                    ],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 53,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]]],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 54,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]]],
+        ],
+        "image_id" => 55,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"], ["action" => "pivot_180"]]],
+        ],
+        "image_id" => 56,
+        "count" => 1,
+        "flag" => "tan",
+        "category" => "market_card",
+    ],
+    // Red flag cards (image_ids 57-69)
+    [
+        "cost" => ["cannonball" => 1],
+        "actions" => [["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]],
+        "image_id" => 57,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 2],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+            ]],
+        ],
+        "image_id" => 58,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["cannonball" => 3],
+        "actions" => [
+            ["action" => "choice", "choices" => [
+                ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]],
+                ["action" => "3 x fire", "range" => 1, "cost" => ["cannonball" => 3]],
+            ]],
+        ],
+        "image_id" => 59,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]]],
+        ],
+        "image_id" => 60,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "doubloon" => 1],
+        "actions" => [
+            [
+                "action" => "choice",
+                "choices" => [
+                    ["action" => "left"],
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            [
+                                "action" => "choice",
+                                "choices" => [["action" => "left"], ["action" => "forward"], ["action" => "right"]],
+                                "cost" => ["sail" => 1],
+                            ],
+                        ],
+                        "name" => "forward",
+                    ],
+                    ["action" => "right"],
+                ],
+            ],
+        ],
+        "image_id" => 61,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "forward", "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 62,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "doubloon" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]], "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 63,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 64,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 2, "cannonball" => 1],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]], "cost" => ["sail" => 1]],
+        ],
+        "image_id" => 65,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 2],
+        "actions" => [
+            ["action" => "forward"],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+            [
+                "action" => "choice",
+                "choices" => [
+                    [
+                        "action" => "sequence",
+                        "actions" => [
+                            ["action" => "forward"],
+                            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+                        ],
+                        "name" => "forward",
+                    ],
+                ],
+                "cost" => ["sail" => 1],
+            ],
+        ],
+        "image_id" => 66,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["sail" => 1, "cannonball" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "left"], ["action" => "right"]]],
+            ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
+        "image_id" => 67,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"]]],
+        ],
+        "image_id" => 68,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
+    [
+        "cost" => ["doubloon" => 1],
+        "actions" => [
+            ["action" => "choice", "choices" => [["action" => "pivot_left"], ["action" => "pivot_right"], ["action" => "pivot_180"]]],
+        ],
+        "image_id" => 69,
+        "count" => 1,
+        "flag" => "red",
+        "category" => "market_card",
+    ],
     [
         "cost" => [],
         "actions" => [["action" => "captain ability", "ability" => "rally_the_flags"]],
