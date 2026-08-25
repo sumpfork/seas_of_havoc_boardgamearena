@@ -670,6 +670,8 @@ define([
       }
 
       this.seaboard = gamedatas.seaboard;
+      // Track what seafeature occupies each position so shipwrecks can show a badge
+      var seaboardFeatureAtPos = {};
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
@@ -688,6 +690,8 @@ define([
           case "rock":
           case "gust":
           case "whirlpool":
+            seaboardFeatureAtPos[target_id] = entry.type;
+            // fall through
           case "shipwreck":
             var seafeatureid = entry.type + "_" + entry.arg;
             var subs = {
@@ -699,6 +703,15 @@ define([
             this.placeOnObject(seafeatureid, target_id);
             if (entry.type === "gust") {
               domStyle.set(seafeatureid, "rotate", this.getHeadingDegrees(entry.heading) - 90 + "deg");
+            }
+            if (entry.type === "shipwreck" && seaboardFeatureAtPos[target_id]) {
+              $(seafeatureid).dataset.hiddenFeature = seaboardFeatureAtPos[target_id];
+              var badge = document.createElement("div");
+              badge.id = seafeatureid + "_badge";
+              badge.className = "seafeature_hidden_badge";
+              badge.dataset.hiddenFeature = seaboardFeatureAtPos[target_id];
+              $("seaboard").appendChild(badge);
+              this.placeOnObject(badge.id, target_id);
             }
             break;
         }

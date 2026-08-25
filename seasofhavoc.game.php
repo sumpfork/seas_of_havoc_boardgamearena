@@ -42,7 +42,6 @@ class SeasOfHavoc extends Table
     // Debug flag: give each player a booty token at game start (one with a wild resource)
     private const DEBUG_START_WITH_BOOTY = true;
 
-    private const TREASURE_SEEKER_RESUME_SETUP = 1;
     private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
     private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
@@ -72,18 +71,10 @@ class SeasOfHavoc extends Table
             "pending_trading_post_player" => 11,
             "pending_trading_post_slot" => 12,
             "corsair_occupied_placement_used" => 13,
-            "setup_shipwreck_next_index" => 15,
             "pending_shipwreck_arg" => 16,
             "pending_shipwreck_x" => 17,
             "pending_shipwreck_y" => 18,
             "pending_treasure_seeker_resume" => 19,
-            "setup_shipwrecks_adjusted" => 20,
-            //    "my_first_global_variable" => 10,
-            //    "my_second_global_variable" => 11,
-            //      ...
-            //    "my_first_game_variant" => 100,
-            //    "my_second_game_variant" => 101,
-            //      ...
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -305,7 +296,7 @@ class SeasOfHavoc extends Table
         $this->cards->createCards($booty_deck, "booty_deck");
         $this->cards->shuffle("booty_deck");
 
-        $forced_captains_for_testing = ["corsair", "merchant", "admiral"];
+        $forced_captains_for_testing = []; //["corsair", "merchant", "admiral"];
         $player_index = 0;
 
         foreach ($player_infos as $playerid => $player) {
@@ -846,8 +837,6 @@ class SeasOfHavoc extends Table
         $this->setGameStateValue("pending_treasure_seeker_resume", 0);
 
         switch ($resume) {
-            case self::TREASURE_SEEKER_RESUME_SETUP:
-                return $this->continueSetupShipwreckAdjustments();
             case self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE:
             case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
                 return STATE_NEXT_PLAYER_SEA_PHASE;
@@ -865,37 +854,6 @@ class SeasOfHavoc extends Table
         );
         usort($shipwrecks, fn($a, $b) => ((int) $a["arg"]) <=> ((int) $b["arg"]));
         return $shipwrecks;
-    }
-
-    private function beginSetupShipwreckAdjustments(): mixed
-    {
-        $this->setGameStateValue("setup_shipwreck_next_index", 0);
-        return $this->continueSetupShipwreckAdjustments();
-    }
-
-    private function continueSetupShipwreckAdjustments(): mixed
-    {
-        $shipwrecks = $this->getShipwrecksOnBoard();
-        $next_index = (int) $this->getGameStateValue("setup_shipwreck_next_index");
-
-        for ($i = $next_index; $i < count($shipwrecks); $i++) {
-            $shipwreck = $shipwrecks[$i];
-            if (
-                $this->tryBeginTreasureSeekerShipwreckAdjust(
-                    (string) $shipwreck["arg"],
-                    (int) $shipwreck["x"],
-                    (int) $shipwreck["y"],
-                    self::TREASURE_SEEKER_RESUME_SETUP,
-                )
-            ) {
-                $this->setGameStateValue("setup_shipwreck_next_index", $i + 1);
-                return STATE_TREASURE_SEEKER_ADJUST;
-            }
-        }
-
-        $this->setGameStateValue("setup_shipwreck_next_index", 0);
-        $this->setGameStateValue("setup_shipwrecks_adjusted", 1);
-        return STATE_ISLAND_PHASE_SETUP;
     }
 
     private function finalizeCorsairOccupiedPlacement(
@@ -939,12 +897,6 @@ class SeasOfHavoc extends Table
     function stIslandPhaseSetup()
     {
         $this->mytrace("stIslandPhaseSetup");
-        if ((int) $this->getGameStateValue("setup_shipwrecks_adjusted") === 0) {
-            $result = $this->beginSetupShipwreckAdjustments();
-            if ($result === STATE_TREASURE_SEEKER_ADJUST) {
-                return "treasureSeekerSetup";
-            }
-        }
         $this->applyPirateQueenIslandPhaseStartAbilities();
 
         $player_infos = $this->getPlayerInfo();

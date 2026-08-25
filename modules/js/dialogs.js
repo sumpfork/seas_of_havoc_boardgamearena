@@ -512,13 +512,18 @@ define([
       console.log("Setting up scrap card selection");
       console.log(args);
 
+      var overlay = document.createElement("div");
+      overlay.id = "card_dialog_overlay";
+      overlay.className = "card_dialog_overlay";
+      document.body.appendChild(overlay);
+
       var scrapDialog = this.format_block("jstpl_scrap_card_dialog", {});
       document.body.insertAdjacentHTML("beforeend", scrapDialog);
 
       this.scrapCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("scrap_card_selection_wrapper"), {
-        gap: "8px",
+        gap: "16px",
         center: true,
-        scrollStep: 152,
+        scrollStep: 160,
         buttonGap: "4px",
         scrollbarVisible: false,
         leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
@@ -581,14 +586,19 @@ define([
       console.log("Setting up discard card selection");
       console.log(args);
 
+      var overlay = document.createElement("div");
+      overlay.id = "card_dialog_overlay";
+      overlay.className = "card_dialog_overlay";
+      document.body.appendChild(overlay);
+
       var discardDialog = this.format_block("jstpl_discard_card_dialog", {});
       document.body.insertAdjacentHTML("beforeend", discardDialog);
       $("discard_card_dialog").querySelector("h3").innerHTML = _("Choose a card to discard (Rebel ability)");
 
       this.discardCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("discard_card_selection_wrapper"), {
-        gap: "8px",
+        gap: "16px",
         center: true,
-        scrollStep: 152,
+        scrollStep: 160,
         buttonGap: "4px",
         scrollbarVisible: false,
         leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
@@ -699,6 +709,9 @@ define([
       if ($("scrap_card_dialog")) {
         domConstruct.destroy("scrap_card_dialog");
       }
+      if ($("card_dialog_overlay")) {
+        domConstruct.destroy("card_dialog_overlay");
+      }
     },
 
     /**
@@ -712,6 +725,9 @@ define([
 
       if ($("discard_card_dialog")) {
         domConstruct.destroy("discard_card_dialog");
+      }
+      if ($("card_dialog_overlay")) {
+        domConstruct.destroy("card_dialog_overlay");
       }
     },
 

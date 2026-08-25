@@ -80,12 +80,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
         }
 
         case "scrapCard": {
-          this.setupScrapCardSelection(args.args);
+          if (this.isCurrentPlayerActive()) {
+            this.setupScrapCardSelection(args.args);
+          }
           break;
         }
 
         case "rebelDiscard": {
-          this.setupDiscardCardSelection(args.args);
+          if (this.isCurrentPlayerActive()) {
+            this.setupDiscardCardSelection(args.args);
+          }
           break;
         }
 

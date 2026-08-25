@@ -108,8 +108,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
             continue;
           }
 
-          // Clear any existing skiffs from this slot
-          query(".skiff", skiff_slot).forEach(domConstruct.destroy);
+          // Clear any existing skiffs and lingering flag tokens from this slot
+          query(".skiff, .flagish", skiff_slot).forEach(domConstruct.destroy);
 
           // Handle disabled slots
           if (slotData.disabled) {

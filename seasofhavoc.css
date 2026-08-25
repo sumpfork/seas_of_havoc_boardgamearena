@@ -337,6 +337,34 @@
   border-radius: 50%;
   background-position: 0px -189px;
 }
+/* Badge showing a hidden seafeature under this shipwreck */
+.seafeature[data-seafeature="shipwreck"][data-hidden-feature] {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 1px;
+}
+.seafeature_hidden_badge {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-image: url("img/booty_seafeatures.jpg");
+  background-repeat: no-repeat;
+  background-size: 96px 96px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  z-index: 10;
+  transform: translate(26px, 26px);
+  pointer-events: none;
+}
+.seafeature_hidden_badge[data-hidden-feature="whirlpool"] {
+  background-position: 0px 0px;
+}
+.seafeature_hidden_badge[data-hidden-feature="gust"] {
+  background-position: 0px -48px;
+}
+.seafeature_hidden_badge[data-hidden-feature="rock"] {
+  background-position: 0px -24px;
+}
 .seafeature[data-seafeature="gust"] {
   background-position: 0px -126px;
 }
@@ -571,42 +599,52 @@ a.disabled {
   /* height: 198px; */
 }
 
+/* Dim overlay behind the discard/scrap dialog */
+.card_dialog_overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+}
+
 /* Scrap / discard card selection dialog styles */
 .scrap_card_dialog {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: white;
-  border: 2px solid #333;
-  border-radius: 10px;
-  padding: 16px 20px;
+  background: #fdf6ec;
+  border: 2px solid #8b6914;
+  border-radius: 12px;
+  padding: 24px 28px 20px;
   z-index: 1000;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  min-width: 720px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  min-width: 780px;
   max-width: 92vw;
 }
 
 .scrap_card_dialog h3 {
-  margin-top: 0;
+  margin: 0 0 16px;
   text-align: center;
-  color: #333;
+  color: #5a3a00;
+  font-size: 1.15em;
+  letter-spacing: 0.02em;
 }
 
 .scrap_card_dialog .card_selection_wrapper {
-  margin: 12px 0;
-  min-height: 210px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 6px 4px;
-  background: #f9f9f9;
+  margin: 0 0 4px;
+  min-height: 220px;
+  border: 1px solid #d4b87a;
+  border-radius: 8px;
+  padding: 12px 8px;
+  background: #f5ead8;
 }
 
 .scrap_card_dialog .scrollable-stock {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 198px;
+  min-height: 200px;
 }
 
 .scrap_card_dialog .scrollable-stock-inner {
@@ -618,7 +656,7 @@ a.disabled {
 .scrap_dialog_buttons,
 .discard_dialog_buttons {
   text-align: center;
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .scrap_dialog_buttons .bgabutton,
@@ -626,23 +664,41 @@ a.disabled {
   margin: 0 10px;
 }
 
+/* Suppress BGA framework's yellow dashed selectable outline on cards in these dialogs */
+.scrap_card_dialog .bga-cards_selectable-card {
+  outline: none !important;
+  border: none !important;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.scrap_card_dialog .bga-cards_selectable-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.scrap_card_dialog .bga-cards_selected-card {
+  outline: 3px solid #2e9e3a !important;
+  border-radius: 5px;
+  transform: translateY(-6px);
+  box-shadow: 0 8px 20px rgba(46, 158, 58, 0.45);
+}
+
 /* Compact scroll arrows — override global bgabutton sizing */
 .scrap_card_dialog .card_dialog_scroll_btn {
-  width: 22px !important;
-  min-width: 22px !important;
-  height: 44px !important;
-  max-height: 44px !important;
-  font-size: 18px !important;
+  width: 26px !important;
+  min-width: 26px !important;
+  height: 52px !important;
+  max-height: 52px !important;
+  font-size: 20px !important;
   line-height: 1 !important;
   padding: 0 !important;
-  margin: 0 !important;
+  margin: 0 4px !important;
   flex-shrink: 0;
   align-self: center;
-  background: #e8e8e8 !important;
-  border: 1px solid #aaa !important;
-  border-radius: 4px !important;
+  background: #e4cfa0 !important;
+  border: 1px solid #b8943a !important;
+  border-radius: 6px !important;
   box-shadow: none !important;
-  color: #333 !important;
+  color: #5a3a00 !important;
 }
 
 /* Market and Scrap Pile Layout */
