@@ -1007,6 +1007,15 @@ class SeasOfHavoc extends Table
         $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
         $this->gamestate->changeActivePlayer($first_player_token_owner);
 
+        if ($this->getPlayerCaptain($first_player_token_owner) === "admiral") {
+            $this->playerGainResources($first_player_token_owner, ["doubloon" => 1]);
+            $this->notifyAllPlayers(
+                "log",
+                clienttranslate('${player_name}\'s Admiral ability: gains 1 doubloon for holding the first player token'),
+                ["player_name" => $this->getPlayerNameById($first_player_token_owner)],
+            );
+        }
+
         return "";
     }
 
