@@ -79,9 +79,6 @@ class SeasOfHavoc extends Table
 
         $this->cards = $this->deckFactory->createDeck("card");
         $this->cards->autoreshuffle = true;
-        $this->cards->autoreshuffle_custom = [
-            "player_deck" => "player_discard",
-        ];
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", $this);
 
@@ -1257,7 +1254,7 @@ class SeasOfHavoc extends Table
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $corsair_occupying_player_id, $disabled)",
         );
         $this->bga->notify->all("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
-            "player_name" => self::getActivePlayerName(),
+            "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "player_color" => $this->getPlayerColor($player_id),
             "slot_name" => $slot_name,
@@ -1275,7 +1272,7 @@ class SeasOfHavoc extends Table
             "skiffPlaced",
             clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'),
             [
-                "player_name" => self::getActivePlayerName(),
+                "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "player_color" => $this->getPlayerColor($player_id),
                 "slot_name" => $slot_name,
@@ -1473,8 +1470,7 @@ class SeasOfHavoc extends Table
     */
     public function getStateName()
     {
-        $state = $this->gamestate->state();
-        return $state["name"];
+        return $this->gamestate->getCurrentMainState();
     }
 
     function getPlayerColor(string $player_id)
@@ -2538,7 +2534,7 @@ class SeasOfHavoc extends Table
                                     "score",
                                     clienttranslate('${player_name} scored ${score_increment} infamy'),
                                     [
-                                        "player_name" => self::getActivePlayerName(),
+                                        "player_name" => $this->getPlayerNameById($player_id),
                                         "player_id" => $player_id,
                                         "player_score" => $new_score,
                                         "score_increment" => $score_increment,
@@ -2769,7 +2765,7 @@ class SeasOfHavoc extends Table
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
         $this->bga->notify->all("cardPlayed", $notification_message, [
-            "player_name" => self::getActivePlayerName(),
+            "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "moveChain" => $all_moves,
             "cost" => $outcome["cost"],
@@ -2779,7 +2775,7 @@ class SeasOfHavoc extends Table
         if ($booty_card != null) {
             $this->dump("booty collected", $booty_card);
             $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
-                "player_name" => self::getActivePlayerName(),
+                "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
             ]);
             $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
@@ -2873,7 +2869,7 @@ class SeasOfHavoc extends Table
             }
 
             $this->bga->notify->all("cardPlayed", $notification_message, [
-                "player_name" => self::getActivePlayerName(),
+                "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "moveChain" => $all_moves,
                 "cost" => $outcome["cost"],
@@ -2895,7 +2891,7 @@ class SeasOfHavoc extends Table
             }
 
             $this->bga->notify->all("cardPlayed", $notification_message, [
-                "player_name" => self::getActivePlayerName(),
+                "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "moveChain" => $seafeature_effects["moves"],
                 "cost" => [],
@@ -2905,7 +2901,7 @@ class SeasOfHavoc extends Table
 
         if ($booty_card != null) {
             $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
-                "player_name" => self::getActivePlayerName(),
+                "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
             ]);
             $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
@@ -3083,7 +3079,7 @@ class SeasOfHavoc extends Table
 
         // Notify players
         $this->bga->notify->all("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
-            "player_name" => self::getActivePlayerName(),
+            "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => intval($player_id),
             "card" => $card_for_notification,
             "original_location" => $original_location,
@@ -3179,7 +3175,7 @@ class SeasOfHavoc extends Table
             return;
         }
 
-        throw new feException("Zombie mode not supported at this game state: " . $statename);
+        throw new \Bga\GameFramework\SystemException("Zombie mode not supported at this game state: " . $statename);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////:
