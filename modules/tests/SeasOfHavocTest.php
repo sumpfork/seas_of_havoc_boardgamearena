@@ -18,10 +18,19 @@ class SeasOfHavocUT extends SeasOfHavoc
     {
         // Don't call parent constructor to avoid DB initialization
         include __DIR__ . "/../material.inc.php";
+        // material.inc.php sets $this->resource_types etc. on the child class's public
+        // property slots. The private SeasOfHavoc slots remain uninitialized, so we copy
+        // them via reflection so game methods (which use private scope) can access them.
+        foreach (["resource_types", "playable_cards", "non_playable_cards"] as $prop) {
+            $r = new ReflectionProperty(SeasOfHavoc::class, $prop);
+            $r->setValue($this, $this->$prop);
+        }
         $this->players = [
             1 => ["player_name" => "TestPlayer", "player_color" => "ff0000", "player_no" => 1],
             2 => ["player_name" => "OtherPlayer", "player_color" => "00ff00", "player_no" => 2],
         ];
+        $this->bga = new MockBGA();
+        $this->bga->notify = new CapturingMockNotify($this);
         $this->gamestate = new TestGamestateMachine();
         $this->gamestate->_setStates([
             2 => [
@@ -45,20 +54,77 @@ class SeasOfHavocUT extends SeasOfHavoc
     {
         return $this->resource_types;
     }
+
+    // In production, action methods are called through the state class wrapper which
+    // reads the return value and calls nextState(). In tests we call them directly,
+    // so we need to do that ourselves.
+    private function runAction(callable $action): mixed
+    {
+        $transition = $action();
+        if (is_string($transition) && $transition !== '') {
+            $this->gamestate->nextState($transition);
+        }
+        return $transition;
+    }
+
+    public function actPlaceSkiff(string $slotname, string $number): mixed
+    {
+        return $this->runAction(fn() => parent::actPlaceSkiff($slotname, $number));
+    }
+
+    public function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
+    {
+        return $this->runAction(fn() => parent::actResourcePickedInDialog($resource, $context, $number));
+    }
+
+    public function actTradingPostExchange(
+        array $resources_spent,
+        array $resources_gained,
+        string $slot_number,
+        ?int $use_booty_card_id = null,
+    ): mixed {
+        return $this->runAction(fn() => parent::actTradingPostExchange($resources_spent, $resources_gained, $slot_number, $use_booty_card_id));
+    }
+
+    public function actRebelDiscardCard(int $card_id): mixed
+    {
+        return $this->runAction(fn() => parent::actRebelDiscardCard($card_id));
+    }
+}
+
+if (!class_exists("CapturingMockNotify")) {
+    class CapturingMockNotify extends \Bga\GameFramework\Notify
+    {
+        private object $game;
+        /** @var callable|null */
+        private $onAll;
+
+        public function __construct(object $game, ?callable $onAll = null)
+        {
+            $this->game = $game;
+            $this->onAll = $onAll;
+        }
+
+        public function all(string $notifName, string|\Bga\GameFramework\NotificationMessage $message = '', array $args = []): void
+        {
+            $this->game->debugLastNotif = ["type" => $notifName, "message" => $message, "args" => $args];
+            if ($this->onAll !== null) {
+                ($this->onAll)($notifName, $message, $args);
+            }
+        }
+
+        public function player(int $playerId, string $notifName, string|\Bga\GameFramework\NotificationMessage $message = '', array $args = []): void
+        {
+            $this->game->debugLastNotif = array_merge(["type" => $notifName, "message" => $message, "player_id" => $playerId], $args);
+        }
+    }
 }
 
 if (!class_exists("MockBGA")) {
-    class MockBGA
+    class MockBGA extends \Bga\GameFramework\Bga
     {
-        public function dump($label, $data)
-        {
-            // Mock implementation - do nothing
-        }
-
-        public function trace($message)
-        {
-            // Mock implementation - do nothing
-        }
+        public function dump($label, $data) {}
+        public function trace($message) {}
     }
 }
 

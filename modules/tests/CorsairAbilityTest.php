@@ -136,19 +136,19 @@ final class CorsairAbilityTest extends TestCase {
     public function testCorsairCannotUseOccupiedPlacementTwiceInSameIslandPhase(): void {
         $this->game->actPlaceSkiff('shipyard', 'n1');
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actPlaceSkiff('blacksmith', 'n1');
     }
 
     public function testNonCorsairCannotPlaceOnOccupiedSpace(): void {
         $this->game->captain = 'merchant';
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actPlaceSkiff('shipyard', 'n1');
     }
 
     public function testCorsairCannotUseOccupiedPlacementOnNonResourceSpace(): void {
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actPlaceSkiff('market', 'n1');
     }
 }

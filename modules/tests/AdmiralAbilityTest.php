@@ -31,6 +31,13 @@ class AdmiralActionUT extends SeasOfHavocUT {
     public function __construct() {
         parent::__construct();
         $this->cards = new MockCardDeck();
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this, $this->cards);
+        $game = $this;
+        $this->bga->notify = new CapturingMockNotify($this, function(string $type, string $message, array $args) use ($game) {
+            if ($type === "log") {
+                $game->logNotifications[] = ["message" => $message, "args" => $args];
+            }
+        });
     }
 
     public function getActivePlayerId(): string {
@@ -54,15 +61,6 @@ class AdmiralActionUT extends SeasOfHavocUT {
             "amount" => $amount,
             "message" => $message,
         ];
-    }
-
-    public function notifyAllPlayers(string $notificationType, string $notificationLog, array $notificationArgs): void {
-        if ($notificationType === "log") {
-            $this->logNotifications[] = [
-                "message" => $notificationLog,
-                "args" => $notificationArgs,
-            ];
-        }
     }
 
     public function getPlayerNameById(int $player_id): string {

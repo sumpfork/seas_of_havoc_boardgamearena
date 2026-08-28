@@ -25,8 +25,6 @@ class RebelActionUT extends SeasOfHavocUT {
         ];
     }
 
-    public function notifyAllPlayers(string $notificationType, string $notificationLog, array $notificationArgs): void {}
-
     public function getPlayerNameById(int $player_id): string {
         return $this->players[$player_id]["player_name"] ?? "Player $player_id";
     }
@@ -131,7 +129,7 @@ final class RebelAbilityTest extends TestCase {
         ]);
         $this->game->gamestate->jumpToState(12);
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actRebelDiscardCard(42);
     }
 }

@@ -187,7 +187,7 @@ class SeasOfHavoc extends Table
         );
 
         // Notify players who got the first player token
-        $this->notifyAllPlayers(
+        $this->bga->notify->all(
             "tokenAcquired",
             clienttranslate('${player_name} starts the game with the ${token_name}'),
             [
@@ -472,7 +472,7 @@ class SeasOfHavoc extends Table
         }
 
         // Should never happen unless the board is completely full
-        throw new BgaSystemException(
+        throw new \Bga\GameFramework\SystemException(
             "Could not find an empty position on the board that doesn't collide with: " .
                 implode(", ", $collision_types),
         );
@@ -685,7 +685,7 @@ class SeasOfHavoc extends Table
         }
 
         $this->drawCards($rebel_id, 1);
-        $this->notifyAllPlayers(
+        $this->bga->notify->all(
             "log",
             clienttranslate('${player_name}\'s Rebel ability: draws 1 additional card'),
             [
@@ -707,7 +707,7 @@ class SeasOfHavoc extends Table
 
         if ($token_key === "first_player_token") {
             $this->drawCards($player_id);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "log",
                 clienttranslate(
                     '${player_name}\'s Admiral ability: draws a card for taking the first player token',
@@ -843,7 +843,7 @@ class SeasOfHavoc extends Table
             case self::TREASURE_SEEKER_RESUME_COLLISION:
                 return STATE_RESOLVE_COLLISION;
             default:
-                throw new BgaSystemException("Unknown treasure seeker resume value: $resume");
+                throw new \Bga\GameFramework\SystemException("Unknown treasure seeker resume value: $resume");
         }
     }
 
@@ -865,7 +865,7 @@ class SeasOfHavoc extends Table
         $this->playerGainResources($player_id, $this->sum_array_by_key($resources, ["skiff" => -1]));
         $this->occupyIslandSlotAsCorsairOverlay($player_id, $slot_name, $number);
         $this->setGameStateValue("corsair_occupied_placement_used", 1);
-        $this->notifyAllPlayers(
+        $this->bga->notify->all(
             "log",
             clienttranslate(
                 '${player_name} uses Corsair to place on occupied ${slot_name} and gains only resources shown there',
@@ -882,7 +882,7 @@ class SeasOfHavoc extends Table
     {
         $benefit = $this->corsairOccupiedPlacementBenefitForSlot($slot_name);
         if ($benefit === null) {
-            throw new BgaUserException(clienttranslate("Corsair can only use occupied spaces that show resources"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("Corsair can only use occupied spaces that show resources"));
         }
 
         if ((int) ($benefit["choice_count"] ?? 0) > 0) {
@@ -914,7 +914,7 @@ class SeasOfHavoc extends Table
         // Set the first player token holder as the active player for the island phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
-            throw new BgaSystemException("No player has the first player token - this should never happen");
+            throw new \Bga\GameFramework\SystemException("No player has the first player token - this should never happen");
         }
 
         if ($rebel_id !== null) {
@@ -1001,7 +1001,7 @@ class SeasOfHavoc extends Table
         // Set the first player token holder as the active player for the sea phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
-            throw new BgaSystemException("No player has the first player token - this should never happen");
+            throw new \Bga\GameFramework\SystemException("No player has the first player token - this should never happen");
         }
 
         $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
@@ -1009,7 +1009,7 @@ class SeasOfHavoc extends Table
 
         if ($this->getPlayerCaptain($first_player_token_owner) === "admiral") {
             $this->playerGainResources($first_player_token_owner, ["doubloon" => 1]);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "log",
                 clienttranslate('${player_name}\'s Admiral ability: gains 1 doubloon for holding the first player token'),
                 ["player_name" => $this->getPlayerNameById($first_player_token_owner)],
@@ -1256,7 +1256,7 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $corsair_occupying_player_id, $disabled)",
         );
-        $this->notifyAllPlayers("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
+        $this->bga->notify->all("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "player_color" => $this->getPlayerColor($player_id),
@@ -1271,7 +1271,7 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "UPDATE islandslots SET corsair_occupying_player_id = '$player_id' WHERE slot_key = '$slot_name' AND number = '$number'",
         );
-        $this->notifyAllPlayers(
+        $this->bga->notify->all(
             "skiffPlaced",
             clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'),
             [
@@ -1315,20 +1315,20 @@ class SeasOfHavoc extends Table
     {
         $pending = $this->getPendingTradingPostSelection();
         if ($pending === null) {
-            throw new BgaUserException(clienttranslate("You must place a skiff on the trading post first"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("You must place a skiff on the trading post first"));
         }
 
         if ((int) $pending["player_id"] !== $player_id || $pending["slot_number"] !== $slot_number) {
-            throw new BgaUserException(clienttranslate("This trading post exchange is no longer valid"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("This trading post exchange is no longer valid"));
         }
 
         $occupancies = $this->getIslandSlots();
         $slot_state = $occupancies["trading_post"][$slot_number] ?? null;
         if ($slot_state === null || $slot_state["disabled"]) {
-            throw new BgaUserException(clienttranslate("This trading post is not available"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("This trading post is not available"));
         }
         if ($slot_state["occupying_player_id"] !== null) {
-            throw new BgaUserException(clienttranslate("There is already a skiff on trading_post"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("There is already a skiff on trading_post"));
         }
     }
 
@@ -1346,7 +1346,7 @@ class SeasOfHavoc extends Table
 
         self::DbQuery("REPLACE INTO unique_tokens (player_id, token_key) VALUES ('$player_id', '$token_key')");
         $token_name = $this->token_names[$token_key];
-        $this->notifyAllPlayers("tokenAcquired", clienttranslate('${player_name} acquired the ${token_name}'), [
+        $this->bga->notify->all("tokenAcquired", clienttranslate('${player_name} acquired the ${token_name}'), [
             "player_name" => $this->getPlayerNameById($player_id),
             "token_name" => $token_name,
             "player_id" => $player_id,
@@ -1364,7 +1364,7 @@ class SeasOfHavoc extends Table
         if ($message === "") {
             $message = clienttranslate('${player_name} scored ${score_increment} infamy');
         }
-        $this->notifyAllPlayers("score", $message, [
+        $this->bga->notify->all("score", $message, [
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "player_score" => $new_score,
@@ -1613,11 +1613,11 @@ class SeasOfHavoc extends Table
                 $booty_card["location"] !== "booty_player" ||
                 (int) $booty_card["location_arg"] !== (int) $player_id
             ) {
-                throw new BgaUserException(clienttranslate("Invalid booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid booty token"));
             }
             $config = $this->getBootyTokenConfigByTypeArg((int) $booty_card["type_arg"]);
             if (!$config || empty($config["resources"])) {
-                throw new BgaUserException(clienttranslate("Invalid booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid booty token"));
             }
             $booty_resources = $this->resolveBootyResourcesForPayment($config["resources"], $cost, $booty_choice);
             // Reduce cost by booty (no refund: only subtract up to cost amount per resource)
@@ -1627,7 +1627,7 @@ class SeasOfHavoc extends Table
                 $remaining_cost[$res] = max(0, $need - $have_from_booty);
             }
             if (!$this->canPayFor($remaining_cost, $player_resources)) {
-                throw new BgaUserException(clienttranslate("You cannot afford this cost even with the booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("You cannot afford this cost even with the booty token"));
             }
             $this->pay($player_id, $remaining_cost);
             $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
@@ -1640,7 +1640,7 @@ class SeasOfHavoc extends Table
                 }
             }
             $booty_desc = implode(" + ", $booty_parts);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "bootyTokenUsed",
                 clienttranslate('${player_name} uses a booty token as ${booty_usage}'),
                 [
@@ -1661,7 +1661,7 @@ class SeasOfHavoc extends Table
     {
         $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
         if (!$this->canPayFor($cost, $player_resources)) {
-            throw new BgaUserException(clienttranslate("You cannot afford this action"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("You cannot afford this action"));
         }
         $cost = $this->makeCostNegative($cost);
         $this->playerGainResources($player_id, $cost);
@@ -1687,7 +1687,7 @@ class SeasOfHavoc extends Table
         self::DbQuery($sql);
         $msg = $this->formatResourceChangeMessage($resources);
         $log = $msg ? '${player_name} ${resource_change}' : "";
-        $this->notifyAllPlayers("resourcesChanged", $log, [
+        $this->bga->notify->all("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
             "resource_change" => $msg,
@@ -1705,7 +1705,7 @@ class SeasOfHavoc extends Table
         );
         $msg = $this->formatResourceChangeMessage([$resource_type => $diff]);
         $log = $msg ? '${player_name} ${resource_change}' : "";
-        $this->notifyAllPlayers("resourcesChanged", $log, [
+        $this->bga->notify->all("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
             "resource_change" => $msg,
@@ -1743,7 +1743,7 @@ class SeasOfHavoc extends Table
 
     function showResourceChoiceDialog(string $context, string $context_number)
     {
-        $this->notifyPlayer(self::getActivePlayerId(), "showResourceChoiceDialog", "", [
+        $this->bga->notify->player(self::getActivePlayerId(), "showResourceChoiceDialog", "", [
             "context" => $context,
             "context_number" => $context_number,
         ]);
@@ -1752,7 +1752,7 @@ class SeasOfHavoc extends Table
     function notifyDeckSizeChanged(string $player_id, string $message = "")
     {
         $deck_size = $this->cards->countCardInLocation($this->playerDeckName($player_id));
-        $this->notifyPlayer($player_id, "deckSizeChanged", $message, [
+        $this->bga->notify->player($player_id, "deckSizeChanged", $message, [
             "player_id" => $player_id,
             "deck_size" => $deck_size,
         ]);
@@ -1773,7 +1773,7 @@ class SeasOfHavoc extends Table
         $discard_count_after = $this->cards->countCardInLocation("player_discard", $player_id);
         if ($discard_count_before > 0 && $discard_count_after == 0) {
             $this->mytrace("drawCard - autoreshuffle detected, notifying player");
-            $this->notifyPlayer(
+            $this->bga->notify->player(
                 $player_id,
                 "deckReshuffled",
                 clienttranslate("Your discard pile was shuffled into your deck"),
@@ -1790,7 +1790,7 @@ class SeasOfHavoc extends Table
                     ? clienttranslate("You drew a card")
                     : clienttranslate('You drew ${num_cards} cards');
 
-            $this->notifyPlayer($player_id, "cardDrawn", $message, [
+            $this->bga->notify->player($player_id, "cardDrawn", $message, [
                 "player_id" => $player_id,
                 "cards" => $cards_drawn,
                 "num_cards" => count($cards_drawn),
@@ -1806,7 +1806,7 @@ class SeasOfHavoc extends Table
             $this->cards->shuffle($deck_name);
 
             // Notify that deck was reshuffled from discard
-            $this->notifyPlayer(
+            $this->bga->notify->player(
                 $player_id,
                 "deckReshuffled",
                 clienttranslate("Your discard pile was shuffled into your deck"),
@@ -1823,7 +1823,7 @@ class SeasOfHavoc extends Table
                         ? clienttranslate("You drew a card")
                         : clienttranslate('You drew ${num_cards} cards');
 
-                $this->notifyPlayer($player_id, "cardDrawn", $message, [
+                $this->bga->notify->player($player_id, "cardDrawn", $message, [
                     "player_id" => $player_id,
                     "cards" => $cards_drawn,
                     "num_cards" => count($cards_drawn),
@@ -1842,11 +1842,11 @@ class SeasOfHavoc extends Table
             // Validate that the card belongs to the player and is in their hand
             $card = $this->cards->getCard($card_id);
             if ($card == null) {
-                throw new BgaUserException(clienttranslate("Invalid card"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card"));
             }
 
             if ($card["location"] != "hand" || $card["location_arg"] != $player_id) {
-                throw new BgaUserException(clienttranslate("You can only discard cards from your hand"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("You can only discard cards from your hand"));
             }
 
             // Move card to player's discard pile
@@ -1860,7 +1860,7 @@ class SeasOfHavoc extends Table
                     ? clienttranslate('${player_name} discarded a card')
                     : clienttranslate('${player_name} discarded ${num_cards} cards');
 
-            $this->notifyAllPlayers("cardsDiscarded", $message, [
+            $this->bga->notify->all("cardsDiscarded", $message, [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "cards" => $cards_discarded,
@@ -1882,7 +1882,7 @@ class SeasOfHavoc extends Table
         $player_id = self::getActivePlayerId();
         $this->mytrace("placeSkiff: $player_id slotname: $slotname number: $number");
         if ($this->getPendingTradingPostSelection() !== null) {
-            throw new BgaUserException(
+            throw new \Bga\GameFramework\UserException(
                 clienttranslate("Finish the trading post exchange before placing another skiff"),
             );
         }
@@ -1893,7 +1893,7 @@ class SeasOfHavoc extends Table
 
         // Check if slot is disabled
         if ($occupancies[$slotname][$number]["disabled"]) {
-            throw new BgaUserException(clienttranslate("This slot is not available for the current number of players"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("This slot is not available for the current number of players"));
             return;
         }
 
@@ -1906,7 +1906,7 @@ class SeasOfHavoc extends Table
                 }
                 return null; // Dialog shown, waiting for actResourcePickedInDialog
             }
-            throw new BgaUserException(clienttranslate("There is already a skiff on this slot"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("There is already a skiff on this slot"));
         }
 
         switch ($slotname) {
@@ -1945,7 +1945,7 @@ class SeasOfHavoc extends Table
                 return "islandTurnDone";
             case "trading_post":
                 $this->setPendingTradingPostSelection((int) $player_id, $number);
-                $this->notifyPlayer($player_id, "showTradingPostDialog", "", [
+                $this->bga->notify->player($player_id, "showTradingPostDialog", "", [
                     "slot_number" => $number,
                 ]);
                 return null; // Dialog shown, waiting for actTradingPostExchange
@@ -1971,11 +1971,11 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
             default:
-                throw new BgaSystemException("bad skiff slot: $slotname");
+                throw new \Bga\GameFramework\SystemException("bad skiff slot: $slotname");
         }
     }
 
-    function actResourcePickedInDialog(string $resource, string $context, string $number): string
+    function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
     {
         $player_id = $this->getActivePlayerId();
         switch ($context) {
@@ -2012,7 +2012,7 @@ class SeasOfHavoc extends Table
                 $this->finalizeCorsairOccupiedPlacement($player_id, "green_flag", $number, [$resource => 1]);
                 return "islandTurnDone";
             default:
-                throw new BgaSystemException("bad context: $context");
+                throw new \Bga\GameFramework\SystemException("bad context: $context");
         }
     }
 
@@ -2021,7 +2021,7 @@ class SeasOfHavoc extends Table
         #[JsonParam] array $resources_gained,
         string $slot_number,
         ?int $use_booty_card_id = null,
-    ): string {
+    ): mixed {
         $player_id = self::getActivePlayerId();
         $valid_resources = ["sail", "cannonball", "doubloon"];
 
@@ -2029,22 +2029,22 @@ class SeasOfHavoc extends Table
 
         foreach ($resources_spent as $res) {
             if (!in_array($res, $valid_resources)) {
-                throw new BgaSystemException("Invalid resource type in resources_spent: $res");
+                throw new \Bga\GameFramework\SystemException("Invalid resource type in resources_spent: $res");
             }
         }
         foreach ($resources_gained as $res) {
             if (!in_array($res, $valid_resources)) {
-                throw new BgaSystemException("Invalid resource type in resources_gained: $res");
+                throw new \Bga\GameFramework\SystemException("Invalid resource type in resources_gained: $res");
             }
         }
 
         if ($use_booty_card_id !== null && $use_booty_card_id > 0) {
             // Booty trade: consume the token and gain 2 resources
             if (count($resources_spent) > 0) {
-                throw new BgaUserException(clienttranslate("Cannot spend resources when using a booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Cannot spend resources when using a booty token"));
             }
             if (count($resources_gained) !== 2) {
-                throw new BgaUserException(clienttranslate("Must gain exactly 2 resources when using a booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Must gain exactly 2 resources when using a booty token"));
             }
 
             $booty_card = $this->cards->getCard($use_booty_card_id);
@@ -2053,10 +2053,10 @@ class SeasOfHavoc extends Table
                 $booty_card["location"] !== "booty_player" ||
                 (int) $booty_card["location_arg"] !== (int) $player_id
             ) {
-                throw new BgaUserException(clienttranslate("Invalid booty token"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid booty token"));
             }
             $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "bootyTokenUsed",
                 clienttranslate('${player_name} uses a booty token at the trading post'),
                 [
@@ -2070,10 +2070,10 @@ class SeasOfHavoc extends Table
         } else {
             // Normal trade: spend 1-2 resources, gain the same number
             if (count($resources_spent) < 1 || count($resources_spent) > 2) {
-                throw new BgaUserException(clienttranslate("Must spend 1 or 2 resources"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Must spend 1 or 2 resources"));
             }
             if (count($resources_gained) !== count($resources_spent)) {
-                throw new BgaUserException(clienttranslate("Must gain the same number of resources as spent"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Must gain the same number of resources as spent"));
             }
 
             $spend_counts = [];
@@ -2083,7 +2083,7 @@ class SeasOfHavoc extends Table
             $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
             foreach ($spend_counts as $res => $count) {
                 if (($player_resources[$res] ?? 0) < $count) {
-                    throw new BgaUserException(clienttranslate("You don't have enough resources"));
+                    throw new \Bga\GameFramework\UserException(clienttranslate("You don't have enough resources"));
                 }
             }
 
@@ -2118,7 +2118,7 @@ class SeasOfHavoc extends Table
             "SELECT player_id FROM pending_purchases WHERE player_id = '$player_id' LIMIT 1",
         );
         if ($existing) {
-            throw new BgaUserException(clienttranslate("You have already completed your purchases"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("You have already completed your purchases"));
         }
 
         // Validate and store purchases in pending_purchases table
@@ -2128,21 +2128,21 @@ class SeasOfHavoc extends Table
             $use_booty_card_id = is_array($item) ? $item["use_booty_card_id"] ?? null : null;
             $doubloons_as_cannonballs = is_array($item) ? intval($item["doubloons_as_cannonballs"] ?? 0) : 0;
             if ($card_id === null) {
-                throw new BgaUserException(clienttranslate("Invalid card purchase"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card purchase"));
             }
             $card = $this->cards->getCard($card_id);
             if (!$card || $card["location"] != "market") {
-                throw new BgaUserException(clienttranslate("Invalid card purchase"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card purchase"));
             }
             // Validate Merchant substitution
             if ($doubloons_as_cannonballs > 0) {
                 if ($this->getPlayerCaptain($player_id) !== "merchant") {
-                    throw new BgaUserException(clienttranslate("Only the Merchant can spend doubloons as cannonballs"));
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can spend doubloons as cannonballs"));
                 }
                 $market_card = $this->playable_cards[$card["type"]];
                 $cannonball_cost = $market_card["cost"]["cannonball"] ?? 0;
                 if ($doubloons_as_cannonballs > $cannonball_cost) {
-                    throw new BgaUserException(
+                    throw new \Bga\GameFramework\UserException(
                         clienttranslate("Cannot substitute more doubloons than the cannonball cost"),
                     );
                 }
@@ -2225,7 +2225,7 @@ class SeasOfHavoc extends Table
         }
 
         // Notify all players about purchases
-        $this->notifyAllPlayers("cardsPurchased", clienttranslate("Card purchases completed"), [
+        $this->bga->notify->all("cardsPurchased", clienttranslate("Card purchases completed"), [
             "purchases" => $purchases_by_player,
             "purchased_card_ids" => $purchased_card_ids,
         ]);
@@ -2244,7 +2244,7 @@ class SeasOfHavoc extends Table
 
         // Notify all players about the updated market
         $updated_market = $this->cards->getCardsInLocation("market");
-        $this->notifyAllPlayers("marketUpdated", clienttranslate("Market has been refilled"), [
+        $this->bga->notify->all("marketUpdated", clienttranslate("Market has been refilled"), [
             "market" => $updated_market,
             "islandslots" => $this->getIslandSlots(),
         ]);
@@ -2276,7 +2276,7 @@ class SeasOfHavoc extends Table
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
                 break;
             default:
-                throw new BgaUserException(
+                throw new \Bga\GameFramework\UserException(
                     clienttranslate("Unknown action type") . ": " . $action_type->value,
                 );
         }
@@ -2321,7 +2321,7 @@ class SeasOfHavoc extends Table
         }
         if (empty($to_gain)) {
             $this->drawCards($player_id);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "log",
                 clienttranslate(
                     '${player_name}\'s Government Funding: draws a card (already owns all resource types)',
@@ -2330,7 +2330,7 @@ class SeasOfHavoc extends Table
             );
         } else {
             $this->playerGainResources($player_id, $to_gain);
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "log",
                 clienttranslate('${player_name}\'s Government Funding: gains 1 of each resource type not owned'),
                 ["player_name" => $this->getPlayerNameById($player_id)],
@@ -2361,7 +2361,7 @@ class SeasOfHavoc extends Table
         } else {
             $damage_card = reset($damage_cards);
             $this->cards->moveCard($damage_card["id"], "scrap");
-            $this->notifyAllPlayers(
+            $this->bga->notify->all(
                 "cardScrapped",
                 clienttranslate('${player_name}\'s Inspire: scrapped a damage card'),
                 [
@@ -2534,7 +2534,7 @@ class SeasOfHavoc extends Table
                                 $new_score = $this->getUniqueValueFromDB(
                                     "SELECT player_score from player WHERE player_id='" . $player_id . "'",
                                 );
-                                $this->notifyAllPlayers(
+                                $this->bga->notify->all(
                                     "score",
                                     clienttranslate('${player_name} scored ${score_increment} infamy'),
                                     [
@@ -2551,7 +2551,7 @@ class SeasOfHavoc extends Table
                                     $hit_player_id,
                                 );
 
-                                $this->notifyAllPlayers(
+                                $this->bga->notify->all(
                                     "damageReceived",
                                     clienttranslate('${player_name} receives a damage card'),
                                     [
@@ -2768,7 +2768,7 @@ class SeasOfHavoc extends Table
 
         $this->cards->moveCard($card_id, "player_discard", $player_id);
 
-        $this->notifyAllPlayers("cardPlayed", $notification_message, [
+        $this->bga->notify->all("cardPlayed", $notification_message, [
             "player_name" => self::getActivePlayerName(),
             "player_id" => $player_id,
             "moveChain" => $all_moves,
@@ -2778,11 +2778,11 @@ class SeasOfHavoc extends Table
 
         if ($booty_card != null) {
             $this->dump("booty collected", $booty_card);
-            $this->notifyAllPlayers("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+            $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
             ]);
-            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
+            $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
                 "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
                 "new_token" => $booty_card,
             ]);
@@ -2872,7 +2872,7 @@ class SeasOfHavoc extends Table
                 }
             }
 
-            $this->notifyAllPlayers("cardPlayed", $notification_message, [
+            $this->bga->notify->all("cardPlayed", $notification_message, [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
                 "moveChain" => $all_moves,
@@ -2894,7 +2894,7 @@ class SeasOfHavoc extends Table
                 $notification_message = clienttranslate('${player_name} is pushed by the gust');
             }
 
-            $this->notifyAllPlayers("cardPlayed", $notification_message, [
+            $this->bga->notify->all("cardPlayed", $notification_message, [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
                 "moveChain" => $seafeature_effects["moves"],
@@ -2904,11 +2904,11 @@ class SeasOfHavoc extends Table
         }
 
         if ($booty_card != null) {
-            $this->notifyAllPlayers("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+            $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
                 "player_name" => self::getActivePlayerName(),
                 "player_id" => $player_id,
             ]);
-            $this->notifyPlayer($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
+            $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
                 "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
                 "new_token" => $booty_card,
             ]);
@@ -2941,7 +2941,7 @@ class SeasOfHavoc extends Table
         $this->mytrace("argTreasureSeekerAdjust");
         $player_id = self::getActivePlayerId();
         if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
-            throw new BgaSystemException("Only the Treasure Seeker can adjust shipwreck placement");
+            throw new \Bga\GameFramework\SystemException("Only the Treasure Seeker can adjust shipwreck placement");
         }
 
         $x = (int) $this->getGameStateValue("pending_shipwreck_x");
@@ -2961,7 +2961,7 @@ class SeasOfHavoc extends Table
         $player_id = self::getActivePlayerId();
 
         if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
-            throw new BgaUserException(clienttranslate("Only the Treasure Seeker can use this action"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Treasure Seeker can use this action"));
         }
 
         $shipwreck_arg = (string) $this->getGameStateValue("pending_shipwreck_arg");
@@ -2976,11 +2976,11 @@ class SeasOfHavoc extends Table
             }
         }
         if (!$valid) {
-            throw new BgaUserException(clienttranslate("That is not a valid surrounding space for the shipwreck"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("That is not a valid surrounding space for the shipwreck"));
         }
 
         $event = $this->moveShipwreck($shipwreck_arg, $from_x, $from_y, $x, $y);
-        $this->notifyAllPlayers(
+        $this->bga->notify->all(
             "shipwreckAdjusted",
             clienttranslate('${player_name}\'s Treasure Seeker ability: moves the shipwreck'),
             [
@@ -2998,7 +2998,7 @@ class SeasOfHavoc extends Table
         $player_id = self::getActivePlayerId();
 
         if ($this->getPlayerCaptain($player_id) !== "treasure_seeker") {
-            throw new BgaUserException(clienttranslate("Only the Treasure Seeker can use this action"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Treasure Seeker can use this action"));
         }
 
         return $this->completeTreasureSeekerAdjust();
@@ -3020,14 +3020,14 @@ class SeasOfHavoc extends Table
         $player_id = self::getActivePlayerId();
 
         if ($this->getPlayerCaptain($player_id) !== "rebel") {
-            throw new BgaUserException(clienttranslate("Only the Rebel can use this action"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Rebel can use this action"));
         }
 
         $this->discardCards($player_id, [$card_id]);
 
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
         if ($first_player_token_owner === null) {
-            throw new BgaSystemException("No player has the first player token - this should never happen");
+            throw new \Bga\GameFramework\SystemException("No player has the first player token - this should never happen");
         }
 
         $this->gamestate->changeActivePlayer($first_player_token_owner);
@@ -3059,12 +3059,12 @@ class SeasOfHavoc extends Table
         // Validate that the card belongs to the player and is in hand or discard
         $card = $this->cards->getCard($card_id);
         if (!$card) {
-            throw new BgaUserException(clienttranslate("Invalid card"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card"));
         }
 
         $valid_locations = ["hand", "player_discard"];
         if (!in_array($card["location"], $valid_locations) || $card["location_arg"] != $player_id) {
-            throw new BgaUserException(clienttranslate("You can only scrap cards from your hand or discard pile"));
+            throw new \Bga\GameFramework\UserException(clienttranslate("You can only scrap cards from your hand or discard pile"));
         }
 
         // Store the original location before moving
@@ -3082,7 +3082,7 @@ class SeasOfHavoc extends Table
         ];
 
         // Notify players
-        $this->notifyAllPlayers("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
+        $this->bga->notify->all("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
             "player_name" => self::getActivePlayerName(),
             "player_id" => intval($player_id),
             "card" => $card_for_notification,

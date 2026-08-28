@@ -90,13 +90,13 @@ final class TradingPostTest extends TestCase
         $this->game->setGameStateValue("pending_trading_post_player", 1);
         $this->game->setGameStateValue("pending_trading_post_slot", 1);
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actPlaceSkiff("market", "n1");
     }
 
     public function testTradingPostExchangeRequiresPendingSelection(): void
     {
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actTradingPostExchange(["sail"], ["cannonball"], "n1");
     }
 
@@ -105,7 +105,7 @@ final class TradingPostTest extends TestCase
         $this->game->setGameStateValue("pending_trading_post_player", 1);
         $this->game->setGameStateValue("pending_trading_post_slot", 2);
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actTradingPostExchange(["sail"], ["cannonball"], "n1");
     }
 

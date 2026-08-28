@@ -90,7 +90,7 @@ class BootyPaymentUT extends SeasOfHavocUT
     public function pay($player_id, $cost)
     {
         if (!$this->canPayFor($cost, $this->mockPlayerResources)) {
-            throw new BgaUserException("You cannot afford this action");
+            throw new \Bga\GameFramework\UserException("You cannot afford this action");
         }
         $this->paidCosts[] = $cost;
         foreach ($cost as $res => $amount) {
@@ -361,7 +361,7 @@ final class BootyPaymentTest extends TestCase
     {
         $this->setupMockCards();
         $this->game->mockPlayerResources = ["sail" => 0];
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->payWithOptionalBooty(1, ["sail" => 1]);
     }
 
@@ -503,7 +503,7 @@ final class BootyPaymentTest extends TestCase
 
         // Cost: sail:3, cannonball:2. Booty covers sail:1, cannonball:1.
         // Remaining: sail:2, cannonball:1 — player has 0 of each.
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->payWithOptionalBooty(1, ["sail" => 3, "cannonball" => 2], 200);
     }
 
@@ -512,7 +512,7 @@ final class BootyPaymentTest extends TestCase
         $this->setupMockCards(); // empty deck
         $this->game->mockPlayerResources = ["sail" => 5];
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->payWithOptionalBooty(1, ["sail" => 1], 999);
     }
 
@@ -522,7 +522,7 @@ final class BootyPaymentTest extends TestCase
         $this->addBootyCard($deck, 201, 2, 2); // belongs to player 2
         $this->game->mockPlayerResources = ["sail" => 5];
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->payWithOptionalBooty(1, ["sail" => 1], 201);
     }
 
@@ -538,7 +538,7 @@ final class BootyPaymentTest extends TestCase
         ];
         $this->game->mockPlayerResources = ["sail" => 5];
 
-        $this->expectException(BgaUserException::class);
+        $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->payWithOptionalBooty(1, ["sail" => 1], 202);
     }
 
