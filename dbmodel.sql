@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS `pending_purchases` (
   `use_booty_card_id` int(10) unsigned DEFAULT NULL,
   `booty_choice` varchar(16) DEFAULT NULL,
   `doubloons_as_cannonballs` int(10) unsigned NOT NULL DEFAULT 0,
+  `doubloons_as_sails` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`player_id`, `card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

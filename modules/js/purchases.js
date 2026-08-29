@@ -199,65 +199,37 @@ define([
         return;
       }
 
-      // Merchant ability: ask how many doubloons to substitute for cannonballs
+      // Merchant ability: choose how many doubloons to substitute for cannonballs and/or sails
       var cannonballCost = card.cost.cannonball || 0;
-      if (this.player_captain === "merchant" && cannonballCost > 0) {
+      var sailCost = card.cost.sail || 0;
+      if (this.player_captain === "merchant" && (cannonballCost > 0 || sailCost > 0)) {
         var playerRes = this.getPlayerResources();
         var doubloonAvail = (playerRes.doubloon || 0) - (card.cost.doubloon || 0);
-        if (doubloonAvail > 0) {
-          var cannonballAvail = playerRes.cannonball || 0;
-          // Max substitution: limited by cannonball cost and available surplus doubloons
-          var maxSub = Math.min(cannonballCost, doubloonAvail);
-          // Min substitution: if not enough cannonballs, must substitute some
-          var minSub = Math.max(0, cannonballCost - cannonballAvail);
-
-          if (minSub < maxSub) {
-            // Player has a real choice — show dialog
-            this._pendingMerchantPurchase = {
-              slot_card: slot_card,
-              card: card,
-              slotnumber: slotnumber,
-              minSub: minSub,
-              maxSub: maxSub,
-            };
-            this.setClientState("client_merchantSubstitute", {
-              descriptionmyturn: _("How many doubloons to spend as cannonballs? (${min}-${max})")
-                .replace("${min}", minSub)
-                .replace("${max}", maxSub),
-            });
-            console.groupEnd();
-            return;
-          } else {
-            // No choice: must substitute exactly minSub (== maxSub)
-            this._pendingDoubloonsAsCannonballs = minSub;
+        var minCb = Math.max(0, cannonballCost - (playerRes.cannonball || 0));
+        var minSail = Math.max(0, sailCost - (playerRes.sail || 0));
+        var combinations = [];
+        for (var cb = minCb; cb <= cannonballCost; cb++) {
+          for (var sail = minSail; sail <= sailCost; sail++) {
+            if (cb + sail <= doubloonAvail) {
+              combinations.push({ cb: cb, sail: sail });
+            }
           }
         }
-      }
-
-      // Check if player has an unused booty token with resources that overlap this card's cost
-      var tokenRes = !this._bootyUsedForPurchase ? this.getMyBootyTokenRes() : null;
-      var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
-
-      if (bootyOverlap) {
-        var canAffordWithout = this.canPlayerAfford(card.cost, false);
-
-        if (!canAffordWithout) {
-          this._finalizePurchase(slot_card, card, slotnumber, true);
+        if (combinations.length > 1) {
+          this._pendingMerchantPurchase = { slot_card: slot_card, card: card, slotnumber: slotnumber, combinations: combinations };
+          this.setClientState("client_merchantSubstitute", {
+            descriptionmyturn: _("Choose how many doubloons to substitute (Merchant ability)"),
+          });
           console.groupEnd();
           return;
         }
-
-        // Can afford either way — ask the player via client state in the status bar
-        this._pendingPurchase = { slot_card: slot_card, card: card, slotnumber: slotnumber };
-        this.setClientState("client_bootyPurchaseConfirm", {
-          descriptionmyturn: _("Use your booty token to help pay for this card?"),
-        });
-        console.groupEnd();
-        return;
+        if (combinations.length === 1) {
+          this._pendingDoubloonsAsCannonballs = combinations[0].cb;
+          this._pendingDoubloonsAsSails = combinations[0].sail;
+        }
       }
 
-      // No booty applicable — purchase immediately
-      this._finalizePurchase(slot_card, card, slotnumber, false);
+      this.onClickPurchaseButton_afterMerchant(slot_card, card, slotnumber);
       console.groupEnd();
     },
 
@@ -267,13 +239,20 @@ define([
     _finalizePurchase: function (slot_card, card, slotnumber, useBooty) {
       var effectiveCost = Object.assign({}, card.cost);
 
-      // Apply Merchant doubloon-as-cannonball substitution
+      // Apply Merchant doubloon substitutions
       var doubloonsAsCannonballs = this._pendingDoubloonsAsCannonballs || 0;
       this._pendingDoubloonsAsCannonballs = 0;
       if (doubloonsAsCannonballs > 0) {
         effectiveCost.cannonball = (effectiveCost.cannonball || 0) - doubloonsAsCannonballs;
         effectiveCost.doubloon = (effectiveCost.doubloon || 0) + doubloonsAsCannonballs;
         if (effectiveCost.cannonball <= 0) delete effectiveCost.cannonball;
+      }
+      var doubloonsAsSails = this._pendingDoubloonsAsSails || 0;
+      this._pendingDoubloonsAsSails = 0;
+      if (doubloonsAsSails > 0) {
+        effectiveCost.sail = (effectiveCost.sail || 0) - doubloonsAsSails;
+        effectiveCost.doubloon = (effectiveCost.doubloon || 0) + doubloonsAsSails;
+        if (effectiveCost.sail <= 0) delete effectiveCost.sail;
       }
 
       if (useBooty) {
@@ -317,6 +296,7 @@ define([
         slot_card: { id: slot_card.id, type: slot_card.type },
         slotnumber: slotnumber,
         doubloons_as_cannonballs: doubloonsAsCannonballs,
+        doubloons_as_sails: doubloonsAsSails,
       };
       if (useBooty) {
         entry.use_booty_card_id = this.booty_tokens[0].id;
@@ -355,15 +335,15 @@ define([
       }
     },
 
-    onMerchantSubstituteChosen: function (amount) {
+    onMerchantSubstituteChosen: function (cb, sail) {
       var ctx = this._pendingMerchantPurchase;
       this._pendingMerchantPurchase = null;
-      this._pendingDoubloonsAsCannonballs = amount;
+      this._pendingDoubloonsAsCannonballs = cb;
+      this._pendingDoubloonsAsSails = sail;
       this._restoringFromBootyConfirm = true;
       this.restoreServerGameState();
       this._restoringFromBootyConfirm = false;
       if (ctx) {
-        // Continue to booty check / finalize
         this.onClickPurchaseButton_afterMerchant(ctx.slot_card, ctx.card, ctx.slotnumber);
       }
     },
@@ -371,6 +351,7 @@ define([
     onMerchantSubstituteCancel: function () {
       this._pendingMerchantPurchase = null;
       this._pendingDoubloonsAsCannonballs = 0;
+      this._pendingDoubloonsAsSails = 0;
       this._restoringFromBootyConfirm = true;
       this.restoreServerGameState();
       this._restoringFromBootyConfirm = false;
@@ -470,6 +451,7 @@ define([
       this.cards_purchased = [];
       this._bootyUsedForPurchase = false;
       this._pendingDoubloonsAsCannonballs = 0;
+      this._pendingDoubloonsAsSails = 0;
 
       query(".purchase_card_button").forEach(domConstruct.destroy);
       this.updateCardPurchaseButtons(true);

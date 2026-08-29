@@ -168,17 +168,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           case "client_merchantSubstitute":
             var ctx = this._pendingMerchantPurchase;
             if (ctx) {
-              for (var i = ctx.minSub; i <= ctx.maxSub; i++) {
-                (function (amount, self) {
-                  self.statusBar.addActionButton(
-                    "" + amount + " doubloon" + (amount !== 1 ? "s" : ""),
-                    function () {
-                      self.onMerchantSubstituteChosen(amount);
-                    },
-                    { classes: amount === 0 ? "bgabutton_gray" : "bgabutton_green" },
-                  );
-                })(i, this);
-              }
+              var self = this;
+              ctx.combinations.forEach(function (combo) {
+                var parts = [];
+                if (combo.cb > 0) parts.push(combo.cb + (combo.cb === 1 ? " doubloon → cannonball" : " doubloons → cannonballs"));
+                if (combo.sail > 0) parts.push(combo.sail + (combo.sail === 1 ? " doubloon → sail" : " doubloons → sails"));
+                var label = parts.length > 0 ? parts.join(", ") : _("No substitution");
+                var isNone = combo.cb === 0 && combo.sail === 0;
+                self.statusBar.addActionButton(label, function () {
+                  self.onMerchantSubstituteChosen(combo.cb, combo.sail);
+                }, { classes: isNone ? "bgabutton_gray" : "bgabutton_green" });
+              });
               this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
                 classes: "bgabutton_red",
               });

@@ -2123,6 +2123,7 @@ class SeasOfHavoc extends Table
             $card_id = is_array($item) ? $item["card_id"] ?? null : $item;
             $use_booty_card_id = is_array($item) ? $item["use_booty_card_id"] ?? null : null;
             $doubloons_as_cannonballs = is_array($item) ? intval($item["doubloons_as_cannonballs"] ?? 0) : 0;
+            $doubloons_as_sails = is_array($item) ? intval($item["doubloons_as_sails"] ?? 0) : 0;
             if ($card_id === null) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card purchase"));
             }
@@ -2131,15 +2132,19 @@ class SeasOfHavoc extends Table
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card purchase"));
             }
             // Validate Merchant substitution
-            if ($doubloons_as_cannonballs > 0) {
+            if ($doubloons_as_cannonballs > 0 || $doubloons_as_sails > 0) {
                 if ($this->getPlayerCaptain($player_id) !== "merchant") {
-                    throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can spend doubloons as cannonballs"));
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can spend doubloons as other resources"));
                 }
                 $market_card = $this->playable_cards[$card["type"]];
-                $cannonball_cost = $market_card["cost"]["cannonball"] ?? 0;
-                if ($doubloons_as_cannonballs > $cannonball_cost) {
+                if ($doubloons_as_cannonballs > ($market_card["cost"]["cannonball"] ?? 0)) {
                     throw new \Bga\GameFramework\UserException(
                         clienttranslate("Cannot substitute more doubloons than the cannonball cost"),
+                    );
+                }
+                if ($doubloons_as_sails > ($market_card["cost"]["sail"] ?? 0)) {
+                    throw new \Bga\GameFramework\UserException(
+                        clienttranslate("Cannot substitute more doubloons than the sail cost"),
                     );
                 }
             }
@@ -2148,9 +2153,9 @@ class SeasOfHavoc extends Table
                 $use_sql = "'" . intval($use_booty_card_id) . "'";
             }
             self::DbQuery(
-                "INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id, doubloons_as_cannonballs) VALUES ('$player_id', '" .
+                "INSERT INTO pending_purchases (player_id, card_id, use_booty_card_id, doubloons_as_cannonballs, doubloons_as_sails) VALUES ('$player_id', '" .
                     intval($card_id) .
-                    "', $use_sql, $doubloons_as_cannonballs)",
+                    "', $use_sql, $doubloons_as_cannonballs, $doubloons_as_sails)",
             );
         }
 
@@ -2170,7 +2175,7 @@ class SeasOfHavoc extends Table
 
         // Get all pending purchases (including optional booty usage and Merchant substitution)
         $pending = self::getObjectListFromDB(
-            "SELECT player_id, card_id, use_booty_card_id, doubloons_as_cannonballs FROM pending_purchases",
+            "SELECT player_id, card_id, use_booty_card_id, doubloons_as_cannonballs, doubloons_as_sails FROM pending_purchases",
         );
 
         // Group by player for notification
@@ -2196,13 +2201,21 @@ class SeasOfHavoc extends Table
             $market_card = $this->playable_cards[$card["type"]];
             $cost = $market_card["cost"];
 
-            // Merchant ability: shift cannonball cost to doubloon cost
+            // Merchant ability: shift cannonball/sail cost to doubloon cost
             $doubloons_as_cannonballs = intval($purchase["doubloons_as_cannonballs"] ?? 0);
             if ($doubloons_as_cannonballs > 0) {
                 $cost["cannonball"] = ($cost["cannonball"] ?? 0) - $doubloons_as_cannonballs;
                 $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_cannonballs;
                 if ($cost["cannonball"] <= 0) {
                     unset($cost["cannonball"]);
+                }
+            }
+            $doubloons_as_sails = intval($purchase["doubloons_as_sails"] ?? 0);
+            if ($doubloons_as_sails > 0) {
+                $cost["sail"] = ($cost["sail"] ?? 0) - $doubloons_as_sails;
+                $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_sails;
+                if ($cost["sail"] <= 0) {
+                    unset($cost["sail"]);
                 }
             }
 
