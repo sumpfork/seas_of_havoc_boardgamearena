@@ -46,6 +46,9 @@ class SeasOfHavoc extends Table
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
     private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
 
+    private const EXTORTION_GREEN_FLAG = 1;
+    private const EXTORTION_RED_FLAG = 2;
+
     private SeaBoard $seaboard;
     private $cards;
     private array $playable_cards;
@@ -75,6 +78,7 @@ class SeasOfHavoc extends Table
             "pending_shipwreck_x" => 17,
             "pending_shipwreck_y" => 18,
             "pending_treasure_seeker_resume" => 19,
+            "extortion_pending_flags" => 20,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -2007,6 +2011,19 @@ class SeasOfHavoc extends Table
             case "corsair_occupied_green_flag":
                 $this->finalizeCorsairOccupiedPlacement($player_id, "green_flag", $number, [$resource => 1]);
                 return "islandTurnDone";
+            case "extortion_green_flag":
+                $pending = (int) $this->getGameStateValue("extortion_pending_flags");
+                $this->playerGainResources($player_id, [$resource => 1]);
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Flag)'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                    "resource" => $resource,
+                ]);
+                $pending &= ~self::EXTORTION_GREEN_FLAG;
+                $this->setGameStateValue("extortion_pending_flags", $pending);
+                if ($pending === 0) {
+                    return STATE_NEXT_PLAYER_SEA_PHASE;
+                }
+                return null; // Red flag still pending, stay in Extortion state
             default:
                 throw new \Bga\GameFramework\SystemException("bad context: $context");
         }
@@ -2308,6 +2325,10 @@ class SeasOfHavoc extends Table
                 return $this->processGovernmentFunding($player_id);
             case "inspire":
                 return $this->processInspire($player_id);
+            case "rally_the_flags":
+                return $this->processRallyTheFlags($player_id);
+            case "extortion":
+                return $this->processExtortion($player_id);
             default:
                 return [
                     "action_chain" => [],
@@ -2392,6 +2413,166 @@ class SeasOfHavoc extends Table
             "shipwreck_event" => null,
             "booty_card" => null,
         ];
+    }
+
+    // --- Rally the Flags ---
+
+    protected function getRallyTheFlagsOptions(string $player_id): array
+    {
+        $flag_keys = $this->flagTokenKeys();
+        $tokens = $this->getUniqueTokens();
+        $available = [];
+
+        foreach ($flag_keys as $fk) {
+            if (!isset($tokens[$fk]) || $tokens[$fk] === null) {
+                $available[] = $fk;
+            }
+        }
+
+        $ship = $this->seaboard->findObject("player_ship", $player_id);
+        if ($ship) {
+            foreach ($this->seaboard->getSurroundingPositions($ship["x"], $ship["y"]) as $pos) {
+                foreach ($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["player_ship"]) as $obj) {
+                    $other_id = $obj["arg"];
+                    foreach ($flag_keys as $fk) {
+                        if (isset($tokens[$fk]) && $tokens[$fk] == $other_id) {
+                            $available[] = $fk;
+                        }
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($available));
+    }
+
+    function processRallyTheFlags(string $player_id): mixed
+    {
+        if (empty($this->getRallyTheFlagsOptions($player_id))) {
+            return ["action_chain" => [], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null];
+        }
+        return STATE_RALLY_THE_FLAGS;
+    }
+
+    function argRallyTheFlagsChooseFlag(): array
+    {
+        return ["available_flags" => $this->getRallyTheFlagsOptions(self::getActivePlayerId())];
+    }
+
+    function actRallyTheFlagsChooseFlag(string $flag_key): mixed
+    {
+        $player_id = self::getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "pirate_queen") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Pirate Queen can use this action"));
+        }
+        if (!in_array($flag_key, $this->getRallyTheFlagsOptions($player_id))) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("That flag is not available to take"));
+        }
+
+        $this->acquireToken($player_id, $flag_key);
+
+        $flag_counts = $this->getPlayerFlagCounts();
+        $my_flags = $flag_counts[$player_id] ?? 0;
+        $others = array_filter($flag_counts, fn($id) => $id != $player_id, ARRAY_FILTER_USE_KEY);
+        if ($my_flags > 0 && $my_flags > (empty($others) ? 0 : max($others))) {
+            $this->scoreInfamy(
+                $player_id,
+                1,
+                clienttranslate('${player_name}\'s Rally the Flags: gains 1 infamy for controlling the most flags'),
+            );
+        }
+
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    // --- Extortion ---
+
+    function processExtortion(string $player_id): mixed
+    {
+        $tokens = $this->getUniqueTokens();
+        $pending = 0;
+
+        if (isset($tokens["tan_flag"]) && $tokens["tan_flag"] == $player_id) {
+            $this->drawCards($player_id, 1);
+            $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Flag)'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+            ]);
+        }
+        if (isset($tokens["blue_flag"]) && $tokens["blue_flag"] == $player_id) {
+            $this->grantExtraTurn($player_id, "island");
+            $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Flag)'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+            ]);
+        }
+        if (isset($tokens["green_flag"]) && $tokens["green_flag"] == $player_id) {
+            $pending |= self::EXTORTION_GREEN_FLAG;
+        }
+        if (isset($tokens["red_flag"]) && $tokens["red_flag"] == $player_id) {
+            $pending |= self::EXTORTION_RED_FLAG;
+        }
+
+        if ($pending === 0) {
+            return STATE_NEXT_PLAYER_SEA_PHASE;
+        }
+        $this->setGameStateValue("extortion_pending_flags", $pending);
+        if ($pending & self::EXTORTION_GREEN_FLAG) {
+            $this->showResourceChoiceDialog("extortion_green_flag", "0");
+        }
+        return STATE_EXTORTION;
+    }
+
+    function argExtortion(): array
+    {
+        $pending = (int) $this->getGameStateValue("extortion_pending_flags");
+        $player_id = self::getActivePlayerId();
+        $result = [
+            "pending_green" => (bool) ($pending & self::EXTORTION_GREEN_FLAG),
+            "pending_red" => (bool) ($pending & self::EXTORTION_RED_FLAG),
+        ];
+        if ($pending & self::EXTORTION_RED_FLAG) {
+            $result["available_cards"] = array_merge(
+                array_values($this->cards->getPlayerHand($player_id)),
+                array_values($this->cards->getCardsInLocation("player_discard", $player_id)),
+            );
+        }
+        return $result;
+    }
+
+    function actExtortionScrapCard(int $card_id): mixed
+    {
+        $player_id = self::getActivePlayerId();
+        $pending = (int) $this->getGameStateValue("extortion_pending_flags");
+        if (!($pending & self::EXTORTION_RED_FLAG)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("No Red Flag effect is pending"));
+        }
+        $card = $this->cards->getCard($card_id);
+        if (!$card) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card"));
+        }
+        if (!in_array($card["location"], ["hand", "player_discard"]) || $card["location_arg"] != $player_id) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("You can only scrap cards from your hand or discard pile"));
+        }
+        $original_location = $card["location"];
+        $this->cards->moveCard($card_id, "scrap");
+        $this->bga->notify->all("cardScrapped", clienttranslate('${player_name}\'s Extortion: scrapped a card (Red Flag)'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => intval($player_id),
+            "card" => ["id" => intval($card["id"]), "type" => intval($card["type"]), "location" => $card["location"], "location_arg" => intval($card["location_arg"])],
+            "original_location" => $original_location,
+        ]);
+        $this->setGameStateValue("extortion_pending_flags", 0);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipExtortion(): mixed
+    {
+        $this->setGameStateValue("extortion_pending_flags", 0);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipRallyTheFlags(): mixed
+    {
+        return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     function merge_results(

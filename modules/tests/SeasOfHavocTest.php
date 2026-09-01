@@ -3,6 +3,32 @@
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/../../seasofhavoc.game.php";
+require_once __DIR__ . "/../../states.inc.php";
+
+if (!class_exists("MockCardDeck")) {
+    class MockCardDeck {
+        public array $cards = [];
+        public array $locations = [];
+        public array $moveCardCalls = [];
+
+        public function getCard(int $card_id): ?array {
+            return $this->cards[$card_id] ?? null;
+        }
+
+        public function getCardsInLocation(string $location, $location_arg = null): array {
+            $key = $location . ($location_arg !== null ? "_$location_arg" : "");
+            return $this->locations[$key] ?? [];
+        }
+
+        public function getPlayerHand(string $player_id): array {
+            return $this->getCardsInLocation("hand", $player_id);
+        }
+
+        public function moveCard(int $card_id, string $location): void {
+            $this->moveCardCalls[] = ["card_id" => $card_id, "location" => $location];
+        }
+    }
+}
 
 class TestGamestateMachine extends \Bga\GameFramework\GamestateMachine {}
 
@@ -89,6 +115,16 @@ class SeasOfHavocUT extends SeasOfHavoc
     public function actRebelDiscardCard(int $card_id): mixed
     {
         return $this->runAction(fn() => parent::actRebelDiscardCard($card_id));
+    }
+
+    public function actRallyTheFlagsChooseFlag(string $flag_key): mixed
+    {
+        return $this->runAction(fn() => parent::actRallyTheFlagsChooseFlag($flag_key));
+    }
+
+    public function actExtortionScrapCard(int $card_id): mixed
+    {
+        return $this->runAction(fn() => parent::actExtortionScrapCard($card_id));
     }
 }
 

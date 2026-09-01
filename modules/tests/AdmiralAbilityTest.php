@@ -4,20 +4,6 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
 
-class MockCardDeck {
-    public array $locations = [];
-    public array $moveCardCalls = [];
-
-    public function getCardsInLocation(string $location, $location_arg = null): array {
-        $key = $location . ($location_arg !== null ? "_$location_arg" : "");
-        return $this->locations[$key] ?? [];
-    }
-
-    public function moveCard(int $card_id, string $location): void {
-        $this->moveCardCalls[] = ["card_id" => $card_id, "location" => $location];
-    }
-}
-
 class AdmiralActionUT extends SeasOfHavocUT {
     public array $mockCaptains = [];
     public array $drawCalls = [];

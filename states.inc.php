@@ -67,6 +67,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_SCRAP_CARD", 11);
     define("STATE_REBEL_DISCARD", 12);
     define("STATE_TREASURE_SEEKER_ADJUST", 13);
+    define("STATE_RALLY_THE_FLAGS", 14);
+    define("STATE_EXTORTION", 15);
     define("STATE_END_GAME", 99);
 }
 
