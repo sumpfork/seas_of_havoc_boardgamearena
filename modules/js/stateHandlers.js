@@ -98,6 +98,28 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
+        case "rallyTheFlagsChooseFlag": {
+          break;
+        }
+
+        case "extortion": {
+          if (this.isCurrentPlayerActive()) {
+            var extortionArgs = args.args || {};
+            if (extortionArgs.pending_red && !extortionArgs.pending_green) {
+              this.setupScrapCardSelection(extortionArgs);
+            }
+          }
+          break;
+        }
+
+        case "barter": {
+          break;
+        }
+
+        case "timelyTrading": {
+          break;
+        }
+
         case "resolveCollision": {
           break;
         }
@@ -118,6 +140,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
         case "client_tradingPostSpend":
         case "client_tradingPostGain":
           this.cleanupTradingPostUi();
+          break;
+
+        case "extortion":
+          this.cleanupScrapCardSelection();
           break;
 
         case "scrapCard":
@@ -261,6 +287,92 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               { classes: "bgabutton_resource" },
             );
             break;
+
+          case "rallyTheFlagsChooseFlag": {
+            var flagNames = { green_flag: _("Green Flag"), tan_flag: _("Tan Flag"), blue_flag: _("Blue Flag"), red_flag: _("Red Flag") };
+            var availableFlags = (args.available_flags || []);
+            var self = this;
+            availableFlags.forEach(function (flagKey) {
+              self.statusBar.addActionButton(
+                _("Take") + " " + (flagNames[flagKey] || flagKey),
+                function () { self.bgaPerformAction("actRallyTheFlagsChooseFlag", { flag_key: flagKey }); },
+                { classes: "bgabutton_green" },
+              );
+            });
+            break;
+          }
+
+          case "extortion": {
+            var extortionArgs2 = args || {};
+            if (extortionArgs2.pending_red && !extortionArgs2.pending_green) {
+              this.statusBar.addActionButton(_("Scrap a Card (Red Flag)"), function () {}, {
+                classes: "bgabutton_gray disabled",
+              });
+            }
+            break;
+          }
+
+          case "barter": {
+            var barterArgs = args || {};
+            var resources = barterArgs.resources || {};
+            var infamy = barterArgs.infamy || 0;
+            var rates = [["sail", 1], ["cannonball", 2], ["doubloon", 3]];
+            var barterSelf = this;
+            rates.forEach(function (pair) {
+              var res = pair[0], amount = pair[1];
+              if ((resources[res] || 0) > 0) {
+                barterSelf.statusBar.addActionButton(
+                  "1 " + _(res) + " → " + amount + " " + _("infamy"),
+                  function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "resource_to_infamy" }); },
+                  { classes: "bgabutton_green" },
+                );
+              }
+              if (infamy >= amount) {
+                barterSelf.statusBar.addActionButton(
+                  amount + " " + _("infamy") + " → 1 " + _(res),
+                  function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
+                  { classes: "bgabutton_green" },
+                );
+              }
+            });
+            this.statusBar.addActionButton(_("Skip (No Exchange)"), function () {
+              barterSelf.bgaPerformAction("actSkipBarter", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+          }
+
+          case "timelyTrading": {
+            var ttArgs = args || {};
+            var ttMarket = ttArgs.market || [];
+            var ttResources = ttArgs.resources || {};
+            var ttSelf = this;
+            this.statusBar.addActionButton(
+              _("Gain 2 Doubloons"),
+              function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
+              { classes: "bgabutton_green" },
+            );
+            var ttMarketArr = Array.isArray(ttMarket) ? ttMarket : Object.values(ttMarket);
+            ttMarketArr.forEach(function (card) {
+              var cardDef = ttSelf.playable_cards ? ttSelf.playable_cards[card.type] : null;
+              if (!cardDef) return;
+              var cost = cardDef.cost || {};
+              var canAfford = ttSelf.canPlayerAfford(cost, false, false);
+              var costStr = Object.entries(cost).map(function (e) { return e[1] + " " + e[0]; }).join(", ");
+              var label = _("Buy") + (costStr ? " (" + costStr + ")" : "");
+              ttSelf.statusBar.addActionButton(
+                label,
+                function () {
+                  ttSelf.bgaPerformAction("actTimelyTradingPurchaseCard", {
+                    card_id: card.id,
+                    doubloons_as_cannonballs: 0,
+                    doubloons_as_sails: 0,
+                  });
+                },
+                { classes: canAfford ? "bgabutton_green" : "bgabutton_gray" },
+              );
+            });
+            break;
+          }
 
           case "treasureSeekerAdjust":
             this.statusBar.addActionButton(_("Keep current location"), this.onSkipTreasureSeekerAdjust.bind(this), {

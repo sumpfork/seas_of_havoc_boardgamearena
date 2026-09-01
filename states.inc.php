@@ -69,6 +69,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_TREASURE_SEEKER_ADJUST", 13);
     define("STATE_RALLY_THE_FLAGS", 14);
     define("STATE_EXTORTION", 15);
+    define("STATE_BARTER", 16);
+    define("STATE_TIMELY_TRADING", 17);
     define("STATE_END_GAME", 99);
 }
 

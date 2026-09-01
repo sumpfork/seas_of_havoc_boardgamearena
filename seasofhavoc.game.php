@@ -2329,6 +2329,10 @@ class SeasOfHavoc extends Table
                 return $this->processRallyTheFlags($player_id);
             case "extortion":
                 return $this->processExtortion($player_id);
+            case "barter":
+                return $this->processBarter($player_id);
+            case "timely_trading":
+                return $this->processTimelyTrading($player_id);
             default:
                 return [
                     "action_chain" => [],
@@ -2571,6 +2575,153 @@ class SeasOfHavoc extends Table
     }
 
     function actSkipRallyTheFlags(): mixed
+    {
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    // --- Barter ---
+
+    private const BARTER_RATES = ["sail" => 1, "cannonball" => 2, "doubloon" => 3];
+
+    protected function getPlayerInfamy(string $player_id): int
+    {
+        return (int) $this->getUniqueValueFromDB("SELECT player_score FROM player WHERE player_id='$player_id'");
+    }
+
+    function processBarter(string $player_id): mixed
+    {
+        return STATE_BARTER;
+    }
+
+    function argBarter(): array
+    {
+        $player_id = $this->getActivePlayerId();
+        $resources = $this->getGameResourcesHierarchical((int) $player_id)[$player_id];
+        $infamy = $this->getPlayerInfamy($player_id);
+        return ["resources" => $resources, "infamy" => $infamy];
+    }
+
+    function actBarterExchange(string $resource, string $direction): mixed
+    {
+        $player_id = $this->getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "merchant") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can use Barter"));
+        }
+        if (!isset(self::BARTER_RATES[$resource])) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid resource for Barter"));
+        }
+        $infamy_amount = self::BARTER_RATES[$resource];
+        if ($direction === "resource_to_infamy") {
+            $this->pay((int) $player_id, [$resource => 1]);
+            $this->scoreInfamy($player_id, $infamy_amount,
+                clienttranslate('${player_name}\'s Barter: gains ${score_increment} infamy'),
+            );
+        } elseif ($direction === "infamy_to_resource") {
+            $current_infamy = $this->getPlayerInfamy($player_id);
+            if ($current_infamy < $infamy_amount) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Not enough infamy for this exchange"));
+            }
+            $this->scoreInfamy($player_id, -$infamy_amount,
+                clienttranslate('${player_name}\'s Barter: spends infamy'),
+            );
+            $this->playerGainResources($player_id, [$resource => 1]);
+        } else {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid direction for Barter"));
+        }
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipBarter(): mixed
+    {
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    // --- Timely Trading ---
+
+    function processTimelyTrading(string $player_id): mixed
+    {
+        return STATE_TIMELY_TRADING;
+    }
+
+    function argTimelyTrading(): array
+    {
+        $player_id = $this->getActivePlayerId();
+        $market = array_values($this->cards->getCardsInLocation("market"));
+        $resources = $this->getGameResourcesHierarchical((int) $player_id)[$player_id];
+        return ["market" => $market, "resources" => $resources];
+    }
+
+    function actTimelyTradingGainDoubloons(): mixed
+    {
+        $player_id = $this->getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "merchant") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can use Timely Trading"));
+        }
+        $this->playerGainResources($player_id, ["doubloon" => 2]);
+        $this->bga->notify->all("log", clienttranslate('${player_name}\'s Timely Trading: gains 2 doubloons'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+        ]);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actTimelyTradingPurchaseCard(
+        int $card_id,
+        int $doubloons_as_cannonballs = 0,
+        int $doubloons_as_sails = 0,
+    ): mixed {
+        $player_id = $this->getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "merchant") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can use Timely Trading"));
+        }
+        $card = $this->cards->getCard($card_id);
+        if (!$card || $card["location"] !== "market") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card"));
+        }
+        $market_card = $this->playable_cards[$card["type"]];
+        $cost = $market_card["cost"] ?? [];
+
+        if ($doubloons_as_cannonballs > 0) {
+            if ($doubloons_as_cannonballs > ($cost["cannonball"] ?? 0)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Cannot substitute more doubloons than the cannonball cost"));
+            }
+            $cost["cannonball"] = ($cost["cannonball"] ?? 0) - $doubloons_as_cannonballs;
+            if ($cost["cannonball"] <= 0) {
+                unset($cost["cannonball"]);
+            }
+            $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_cannonballs;
+        }
+        if ($doubloons_as_sails > 0) {
+            if ($doubloons_as_sails > ($cost["sail"] ?? 0)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Cannot substitute more doubloons than the sail cost"));
+            }
+            $cost["sail"] = ($cost["sail"] ?? 0) - $doubloons_as_sails;
+            if ($cost["sail"] <= 0) {
+                unset($cost["sail"]);
+            }
+            $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_sails;
+        }
+
+        $this->pay((int) $player_id, $cost);
+        $this->cards->moveCard($card_id, "hand", $player_id);
+
+        $num_market_cards = $this->cards->countCardInLocation("market");
+        if ($num_market_cards < 5) {
+            $this->cards->pickCardsForLocation(5 - $num_market_cards, "market_deck", "market");
+        }
+        $updated_market = $this->cards->getCardsInLocation("market");
+
+        $this->bga->notify->all("cardsPurchased", clienttranslate('${player_name}\'s Timely Trading: purchases a card'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "purchases" => [$player_id => [$card_id]],
+            "purchased_card_ids" => [$card_id],
+        ]);
+        $this->bga->notify->all("marketUpdated", clienttranslate("Market updated"), [
+            "market" => $updated_market,
+        ]);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipTimelyTrading(): mixed
     {
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }

@@ -737,10 +737,10 @@ define([
     confirmScrapCard: function (cardId) {
       console.log("Confirming scrap of card:", cardId);
 
-      if (this.checkAction("actScrapCard")) {
-        this.bgaPerformAction("actScrapCard", {
-          card_id: cardId,
-        });
+      if (this.checkAction("actExtortionScrapCard")) {
+        this.bgaPerformAction("actExtortionScrapCard", { card_id: cardId });
+      } else if (this.checkAction("actScrapCard")) {
+        this.bgaPerformAction("actScrapCard", { card_id: cardId });
       }
     },
 

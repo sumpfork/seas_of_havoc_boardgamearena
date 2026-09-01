@@ -24,9 +24,22 @@ if (!class_exists("MockCardDeck")) {
             return $this->getCardsInLocation("hand", $player_id);
         }
 
-        public function moveCard(int $card_id, string $location): void {
+        public function moveCard(int $card_id, string $location, $location_arg = null): void {
             $this->moveCardCalls[] = ["card_id" => $card_id, "location" => $location];
+            if (isset($this->cards[$card_id])) {
+                $this->cards[$card_id]["location"] = $location;
+                if ($location_arg !== null) {
+                    $this->cards[$card_id]["location_arg"] = $location_arg;
+                }
+            }
         }
+
+        public function countCardInLocation(string $location, $location_arg = null): int {
+            $key = $location . ($location_arg !== null ? "_$location_arg" : "");
+            return count($this->locations[$key] ?? []);
+        }
+
+        public function pickCardsForLocation(int $count, string $from, string $to): void {}
     }
 }
 
