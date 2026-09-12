@@ -79,6 +79,8 @@ class SeasOfHavoc extends Table
             "pending_shipwreck_y" => 18,
             "pending_treasure_seeker_resume" => 19,
             "extortion_pending_flags" => 20,
+            "hunt_the_bounty_target" => 21,
+            "pending_captain_card" => 22,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -1007,6 +1009,8 @@ class SeasOfHavoc extends Table
 
         $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
         $this->gamestate->changeActivePlayer($first_player_token_owner);
+
+        $this->setGameStateValue("hunt_the_bounty_target", 0);
 
         if ($this->getPlayerCaptain($first_player_token_owner) === "admiral") {
             $this->playerGainResources($first_player_token_owner, ["doubloon" => 1]);
@@ -2333,14 +2337,176 @@ class SeasOfHavoc extends Table
                 return $this->processBarter($player_id);
             case "timely_trading":
                 return $this->processTimelyTrading($player_id);
+            case "boarding_party":
+                return $this->processBoardingParty($player_id);
+            case "hunt_the_bounty":
+                return $this->processHuntTheBounty($player_id);
+            case "retaliation":
+            case "improvisation":
+            case "spyglass":
+            case "unearth_riches":
+                return $this->beginCaptainCard($player_id, $ability);
             default:
-                return [
-                    "action_chain" => [],
-                    "collision_occurred" => false,
-                    "shipwreck_event" => null,
-                    "booty_card" => null,
-                ];
+                throw new \Bga\GameFramework\SystemException("Unknown captain ability: $ability");
         }
+    }
+
+    protected function captainCardOptions(string $player_id, string $ability): array
+    {
+        $discard = $this->cards->getCardsInLocation("player_discard", $player_id);
+        if ($ability === "retaliation") {
+            return array_values(array_filter(
+                array_merge($this->cards->getCardsInLocation("hand", $player_id), $discard),
+                fn($c) => $this->playable_cards[$c["type"]]["category"] === "damage",
+            ));
+        }
+        if ($ability === "improvisation") {
+            return array_values(array_filter($discard, function ($c) {
+                $definition = $this->playable_cards[$c["type"]];
+                // All starting ship cards are sailing, pivot, or firing cards.
+                return $definition["category"] === "starting_card" ||
+                    !empty(array_intersect($definition["type"] ?? [], ["sailing", "pivot", "firing"]));
+            }));
+        }
+        return array_values($this->cards->getCardsInLocation(
+            $ability === "spyglass" ? "spyglass" : "captain_reward", $player_id,
+        ));
+    }
+
+    protected function beginCaptainCard(string $player_id, string $ability): array|int
+    {
+        $empty = ["action_chain" => [], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null];
+        if ($ability === "retaliation" || $ability === "improvisation") {
+            if (empty($this->captainCardOptions($player_id, $ability))) {
+                if ($ability === "improvisation") {
+                    $this->drawCards($player_id);
+                }
+                return $empty;
+            }
+        } elseif ($ability === "spyglass") {
+            $deck = $this->playerDeckName($player_id);
+            $cards = $this->cards->pickCardsForLocation(3, $deck, "spyglass", (int) $player_id, true) ?? [];
+            if (count($cards) < 3 && $this->cards->countCardInLocation("player_discard", $player_id) > 0) {
+                $this->cards->moveAllCardsInLocation("player_discard", $deck, $player_id);
+                $this->cards->shuffle($deck);
+                $this->bga->notify->player((int) $player_id, "deckReshuffled", "", [
+                    "player_id" => $player_id, "deck_size" => $this->cards->countCardInLocation($deck),
+                ]);
+                $this->cards->pickCardsForLocation(3 - count($cards), $deck, "spyglass", (int) $player_id, true);
+            }
+            if (empty($this->captainCardOptions($player_id, $ability))) {
+                return $empty;
+            }
+        } else {
+            $ship = $this->seaboard->findObject("player_ship", $player_id);
+            if ($ship === null) {
+                throw new \Bga\GameFramework\SystemException("Treasure Seeker ship is missing");
+            }
+            $rock = false;
+            foreach ($this->seaboard->getSurroundingPositions($ship["x"], $ship["y"]) as $pos) {
+                $rock = $rock || !empty($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["rock"]));
+            }
+            if (!$rock) {
+                return $empty;
+            }
+            $token = $this->drawBootyToken((int) $player_id);
+            if ($token === null) {
+                return $empty; // The supply and its discard can both be exhausted by held tokens.
+            }
+            $this->cards->moveCard($token["id"], "captain_reward", (int) $player_id);
+            $this->bga->notify->all("log", clienttranslate('${player_name} reveals a shipwreck token for Unearth Riches'), [
+                "player_name" => $this->getPlayerNameById((int) $player_id), "token" => $token,
+                "resources" => $this->getBootyTokenConfigByTypeArg((int) $token["type_arg"])["resources"],
+            ]);
+        }
+        return STATE_CAPTAIN_CARD;
+    }
+
+    function argCaptainCard(): array
+    {
+        $player_id = $this->getActivePlayerId();
+        $card = $this->cards->getCard((int) $this->getGameStateValue("pending_captain_card"));
+        if (!$card || $card["location"] !== "player_discard" || $card["location_arg"] != $player_id) {
+            throw new \Bga\GameFramework\SystemException("Pending captain card is missing from the active player's discard");
+        }
+        $ability = $this->playable_cards[$card["type"]]["actions"][0]["ability"];
+        $options = $this->captainCardOptions($player_id, $ability);
+        $private = ["available_cards" => $options];
+        if ($ability === "unearth_riches") {
+            $private["resources"] = $this->getBootyTokenConfigByTypeArg((int) $options[0]["type_arg"])["resources"];
+        }
+        return ["ability" => $ability, "_private" => [$player_id => $private]];
+    }
+
+    function actResolveCaptainCard(array $choices, array $decisions = [], ?int $use_booty_card_id = null): mixed
+    {
+        $player_id = $this->getActivePlayerId();
+        $args = $this->argCaptainCard();
+        $ability = $args["ability"];
+        $options = $args["_private"][$player_id]["available_cards"];
+        $by_id = array_column($options, null, "id");
+        $actions = [];
+        if ($ability === "retaliation" || $ability === "improvisation") {
+            $selected = $choices["card_id"] ?? null;
+            if (!is_int($selected) || !isset($by_id[$selected])) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Choose an available card"));
+            }
+            $chosen = $by_id[$selected];
+            if ($ability === "retaliation") {
+                $fire = $choices["fire"] ?? null;
+                if (!in_array($fire, ["fire left", "fire right", "skip"], true)) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a firing side or skip firing"));
+                }
+                $this->cards->moveCard($selected, "scrap");
+                $this->bga->notify->all("cardScrapped", clienttranslate('${player_name} scraps a damage card for Retaliation'), [
+                    "player_name" => $this->getPlayerNameById((int) $player_id), "player_id" => (int) $player_id,
+                    "card" => $chosen, "original_location" => $chosen["location"],
+                ]);
+                if ($fire !== "skip") {
+                    $actions = [["action" => "fire", "range" => 3]];
+                    $decisions = [$fire];
+                }
+            } else {
+                $actions = $this->playable_cards[$chosen["type"]]["actions"];
+            }
+        } elseif ($ability === "spyglass") {
+            // The first id is kept; remaining ids are ordered topmost first.
+            $order = $choices["order"] ?? [];
+            if (!is_array($order) || count($order) !== count($by_id) ||
+                array_filter($order, fn($id) => !is_int($id) || !isset($by_id[$id])) ||
+                count(array_unique($order)) !== count($order)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Choose one card to keep and order all remaining cards"));
+            }
+            $kept = $by_id[array_shift($order)];
+            $this->cards->moveCard($kept["id"], "hand", (int) $player_id);
+            foreach (array_reverse($order) as $id) {
+                $this->cards->insertCardOnExtremePosition($id, $this->playerDeckName($player_id), true);
+            }
+            $kept["location"] = "hand";
+            $kept["location_arg"] = (int) $player_id;
+            $this->bga->notify->player((int) $player_id, "cardDrawn", clienttranslate("You keep a card from Spyglass"), [
+                "player_id" => $player_id, "cards" => [$kept], "num_cards" => 1,
+                "deck_size" => $this->cards->countCardInLocation($this->playerDeckName($player_id)),
+            ]);
+        } elseif ($ability === "unearth_riches") {
+            $resources = $args["_private"][$player_id]["resources"];
+            if (isset($resources["choice"])) {
+                $resource = $choices["resource"] ?? null;
+                if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+                }
+                $resources[$resource] = ($resources[$resource] ?? 0) + $resources["choice"];
+                unset($resources["choice"]);
+            }
+            $this->playerGainResources($player_id, $resources);
+            $this->cards->moveCard($options[0]["id"], "booty_discard");
+        } else {
+            throw new \Bga\GameFramework\SystemException("Unexpected pending captain ability: $ability");
+        }
+        $card_id = (int) $this->getGameStateValue("pending_captain_card");
+        $card = $this->cards->getCard($card_id);
+        $this->setGameStateValue("pending_captain_card", 0);
+        return $this->resolvePlayedCard((int) $card["type"], $card_id, $decisions, $use_booty_card_id, $actions);
     }
 
     function processGovernmentFunding(string $player_id): array
@@ -2726,6 +2892,158 @@ class SeasOfHavoc extends Table
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
+    // --- Corsair: Boarding Party ---
+
+    function processBoardingParty(string $player_id): mixed
+    {
+        $targets = $this->getBoardingPartyTargets($player_id);
+        if (empty($targets)) {
+            return [
+                "action_chain" => [],
+                "collision_occurred" => false,
+                "shipwreck_event" => null,
+                "booty_card" => null,
+            ];
+        }
+        return STATE_BOARDING_PARTY;
+    }
+
+    protected function getBoardingPartyTargets(string $player_id): array
+    {
+        $ship = $this->seaboard->findObject("player_ship", $player_id);
+        if (!$ship) return [];
+        $targets = [];
+        foreach ($this->seaboard->getSurroundingPositions($ship["x"], $ship["y"]) as $pos) {
+            foreach ($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["player_ship"]) as $obj) {
+                $other_id = (string) $obj["arg"];
+                if ($other_id === $player_id) continue;
+                $resources = $this->getGameResourcesHierarchical((int) $other_id)[$other_id] ?? [];
+                $stealable = array_filter(
+                    array_intersect_key($resources, array_flip(["sail", "cannonball", "doubloon"])),
+                    fn($v) => $v > 0,
+                );
+                $booty_count = $this->cards->countCardInLocation("booty_player", $other_id);
+                if (!empty($stealable) || $booty_count > 0) {
+                    $targets[] = [
+                        "player_id" => $other_id,
+                        "resources" => $stealable,
+                        "booty_token_count" => $booty_count,
+                    ];
+                }
+            }
+        }
+        return $targets;
+    }
+
+    function argBoardingParty(): array
+    {
+        $player_id = $this->getActivePlayerId();
+        return ["targets" => $this->getBoardingPartyTargets($player_id)];
+    }
+
+    function actBoardingPartySteal(string $target_player_id, string $item): mixed
+    {
+        $player_id = $this->getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "corsair") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Corsair can use Boarding Party"));
+        }
+        $targets = $this->getBoardingPartyTargets($player_id);
+        $valid_ids = array_column($targets, "player_id");
+        if (!in_array($target_player_id, $valid_ids)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid target for Boarding Party"));
+        }
+        if ($item === "booty_token") {
+            $booty_cards = $this->cards->getCardsInLocation("booty_player", $target_player_id);
+            if (empty($booty_cards)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Target has no booty tokens"));
+            }
+            $card = reset($booty_cards);
+            $this->cards->moveCard((int) $card["id"], "booty_player", $player_id);
+        } else {
+            if (!in_array($item, ["sail", "cannonball", "doubloon"])) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Invalid resource for Boarding Party"));
+            }
+            $target_resources = $this->getGameResourcesHierarchical((int) $target_player_id)[$target_player_id] ?? [];
+            if (($target_resources[$item] ?? 0) === 0) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Target does not have that resource"));
+            }
+            $this->playerGainResources($target_player_id, [$item => -1]);
+            $this->playerGainResources($player_id, [$item => 1]);
+        }
+        $this->scoreInfamy($player_id, 1, clienttranslate('${player_name}\'s Boarding Party: gains 1 infamy'));
+        $this->bga->notify->all("log",
+            clienttranslate('${player_name} uses Boarding Party and steals from ${target_name}'),
+            [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "target_name" => $this->getPlayerNameById((int) $target_player_id),
+            ],
+        );
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipBoardingParty(): mixed
+    {
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    // --- Corsair: Hunt the Bounty ---
+
+    function processHuntTheBounty(string $player_id): mixed
+    {
+        return STATE_HUNT_THE_BOUNTY;
+    }
+
+    protected function getHuntTheBountyTargets(string $player_id): array
+    {
+        $targets = [];
+        foreach ($this->loadPlayersBasicInfos() as $other_id => $_) {
+            if ((string) $other_id !== $player_id) {
+                $targets[] = (string) $other_id;
+            }
+        }
+        return $targets;
+    }
+
+    function argHuntTheBounty(): array
+    {
+        $player_id = $this->getActivePlayerId();
+        $target_ids = $this->getHuntTheBountyTargets($player_id);
+        $targets = [];
+        foreach ($target_ids as $tid) {
+            $targets[] = [
+                "player_id" => $tid,
+                "player_name" => $this->getPlayerNameById((int) $tid),
+            ];
+        }
+        return ["targets" => $targets];
+    }
+
+    function actHuntTheBountyChooseTarget(string $target_player_id): mixed
+    {
+        $player_id = $this->getActivePlayerId();
+        if ($this->getPlayerCaptain($player_id) !== "corsair") {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Only the Corsair can use Hunt the Bounty"));
+        }
+        $valid_ids = $this->getHuntTheBountyTargets($player_id);
+        if (!in_array($target_player_id, $valid_ids)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid target for Hunt the Bounty"));
+        }
+        $this->setGameStateValue("hunt_the_bounty_target", (int) $target_player_id);
+        $this->bga->notify->all("log",
+            clienttranslate('${player_name} declares ${target_name} as their Hunt the Bounty target'),
+            [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "target_name" => $this->getPlayerNameById((int) $target_player_id),
+            ],
+        );
+        return STATE_SEA_TURN;
+    }
+
+    function actSkipHuntTheBounty(): mixed
+    {
+        return STATE_SEA_TURN;
+    }
+
     function merge_results(
         array $result,
         $cost,
@@ -2901,6 +3219,12 @@ class SeasOfHavoc extends Table
                                         "damage_card" => $damage_card,
                                     ],
                                 );
+                                $bounty_target = (int) $this->getGameStateValue("hunt_the_bounty_target");
+                                if ($bounty_target !== 0 && (int) $hit_player_id === $bounty_target &&
+                                    $this->getPlayerCaptain($player_id) === "corsair") {
+                                    $this->scoreInfamy($player_id, 1,
+                                        clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 infamy'));
+                                }
                             }
                         }
                     }
@@ -2922,6 +3246,16 @@ class SeasOfHavoc extends Table
                     break;
                 case PrimitiveCardPlayAction::CAPTAIN_ABILITY:
                     $result = $this->processCaptainAbility($action["ability"]);
+                    if (is_int($result)) {
+                        return [
+                            "cost" => $total_cost,
+                            "action_chain" => $to_send,
+                            "collision_occurred" => false,
+                            "shipwreck_event" => null,
+                            "booty_card" => null,
+                            "captain_state" => $result,
+                        ];
+                    }
                     $this->merge_results(
                         $result,
                         $cost,
@@ -3033,6 +3367,16 @@ class SeasOfHavoc extends Table
 
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null)
     {
+        $held = $this->cards->getCard($card_id);
+        if (!$held || $held["location"] !== "hand" || $held["location_arg"] != $this->getActivePlayerId() ||
+            (int) $held["type"] !== $card_type) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card from your hand"));
+        }
+        return $this->resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id);
+    }
+
+    protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null)
+    {
         $this->dump("card_type", $card_type);
         $this->dump("decisions", $decisions);
         $card = $this->playable_cards[$card_type];
@@ -3055,7 +3399,23 @@ class SeasOfHavoc extends Table
             $shipwreck_event = null;
             $booty_card = null;
         } else {
-            $outcome = $this->processCardActions($card["actions"], $decisions);
+            $outcome = $this->processCardActions($actions ?? $card["actions"], $decisions);
+
+            if (isset($outcome["captain_state"])) {
+                if ($outcome["captain_state"] === STATE_CAPTAIN_CARD) {
+                    $this->setGameStateValue("pending_captain_card", $card_id);
+                }
+                $this->cards->moveCard($card_id, "player_discard", $player_id);
+                $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} has played a card'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                    "player_id" => $player_id,
+                    "moveChain" => [],
+                    "cost" => [],
+                    "shipwreck_event" => null,
+                ]);
+                return $outcome["captain_state"];
+            }
+
             $this->dump("final card play outcome", $outcome);
 
             // Pay the total cost from all actions (optionally using booty token)

@@ -28,17 +28,19 @@ define([
         this.cardDisplayStock = null;
       }
       this.dep_tree = null;
+      this._captainCopyId = null;
       domConstruct.destroy("card_display_dialog");
     },
 
     /**
      * Show card play dialog with choices
      */
-    showCardPlayDialog: function (card, card_id) {
+    showCardPlayDialog: function (card, card_id, captainCopyId = null) {
       var bga = this;
 
       // Clean up previous dialog properly
       this.cleanupCardPlayDialog();
+      this._captainCopyId = captainCopyId;
 
       var dlg = this.format_block("jstpl_card_play_dialog");
       domConstruct.place(dlg, "myhand_wrap", "first");
@@ -89,6 +91,7 @@ define([
               card: card,
               card_id: card_id,
               decisions: decisionSummary,
+              captainCopyId: this._captainCopyId,
             };
             this.setClientState("client_bootyPlayConfirm", {
               descriptionmyturn: _("Use your booty token to help pay for this card?"),
@@ -108,6 +111,10 @@ define([
         "click",
         lang.hitch(this, (event) => {
           console.groupCollapsed("pass card button clicked");
+          if (this._captainCopyId !== null) {
+            this.cleanupCardPlayDialog();
+            return;
+          }
           console.log("pass card button clicked");
           event.preventDefault();
           console.log("card ");
@@ -163,13 +170,23 @@ define([
       this._showHideCardPlayControls(this.dep_tree);
       console.groupEnd();
       this._updatePlayCardButton();
+      if (captainCopyId !== null) {
+        query(".pass_card_button").forEach(node => { node.textContent = _("Cancel copy"); });
+      }
       this.cardPlayDialogShown = true;
     },
 
     /**
      * Send the actPlayCard action to the server and update local UI.
      */
-    _sendPlayCard: function (card, card_id, decisions, useBooty) {
+    _sendPlayCard: function (card, card_id, decisions, useBooty, captainCopyId = this._captainCopyId) {
+      if (captainCopyId != null) {
+        const params = { choices: JSON.stringify({ card_id: captainCopyId }), decisions: JSON.stringify(decisions) };
+        if (useBooty && this.booty_tokens.length > 0) params.use_booty_card_id = this.booty_tokens[0].id;
+        this.bgaPerformAction("actResolveCaptainCard", params);
+        this.cleanupCardPlayDialog();
+        return;
+      }
       var params = {
         card_type: card.card_type,
         card_id: card_id,
@@ -208,7 +225,7 @@ define([
       this._pendingPlayCard = null;
       this.restoreServerGameState();
       if (ctx) {
-        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, true);
+        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, true, ctx.captainCopyId);
       }
     },
 
@@ -217,7 +234,7 @@ define([
       this._pendingPlayCard = null;
       this.restoreServerGameState();
       if (ctx) {
-        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, false);
+        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, false, ctx.captainCopyId);
       }
     },
 
@@ -508,6 +525,69 @@ define([
     /**
      * Set up scrap card selection dialog
      */
+    setupCaptainCardSelection: function (args) {
+      this.cleanupCaptainCardSelection();
+      const ability = args.ability;
+      const data = args._private;
+      const cards = data.available_cards;
+      const panel = domConstruct.create("div", { id: "captain_card_choices" }, "myhand_wrap", "first");
+      const title = domConstruct.create("p", {}, panel);
+      const buttons = domConstruct.create("div", {}, panel);
+      const send = (choices) => this.bgaPerformAction("actResolveCaptainCard", {
+        choices: JSON.stringify(choices), decisions: JSON.stringify([]),
+      });
+      const button = (label, action) => {
+        const node = domConstruct.create("button", { type: "button", className: "bgabutton bgabutton_blue", textContent: label }, buttons);
+        on(node, "click", action);
+      };
+      if (ability === "unearth_riches") {
+        title.textContent = _("Unearth Riches — gain:") + " " + Object.entries(data.resources).map(([r, n]) => n + " " + r).join(", ");
+        if (data.resources.choice) {
+          ["sail", "cannonball", "doubloon"].forEach(r => button(_(r), () => send({ resource: r })));
+        } else {
+          button(_("Gain rewards"), () => send({}));
+        }
+        return;
+      }
+      title.textContent = ability === "spyglass" ? _("Spyglass: choose the card to keep, then the remaining cards in top-to-bottom deck order.") :
+        ability === "retaliation" ? _("Retaliation: choose damage from your hand or discard pile.") : _("Improvisation: choose a card to copy.");
+      const stockNode = domConstruct.create("div", {}, panel);
+      this.captainChoiceStock = new BgaCards.LineStock(this.cardsManager, stockNode, { center: false });
+      // Use display ids so these previews do not remove cards from the hand/discard stocks.
+      const byId = new Map(cards.map(c => [20000 + Number(c.id), c]));
+      this.captainChoiceStock.setSelectionMode("single");
+      this.captainChoiceStock.addCards(cards.map(c => ({ id: 20000 + Number(c.id), type: c.type })));
+      const order = [];
+      this.captainChoiceStock.onCardClick = (preview) => {
+        const card = byId.get(Number(preview.id));
+        domConstruct.empty(buttons);
+        if (ability === "spyglass") {
+          order.push(Number(card.id));
+          this.captainChoiceStock.removeCard(preview);
+          title.textContent = order.length === 1 ? _("Card kept. Choose the next card for the top of your deck.") : _("Choose the next card below it.");
+          if (order.length === cards.length) {
+            title.textContent = _("Ready: keep the first card and return the others in the selected order.");
+            button(_("Confirm"), () => send({ order: order }));
+          }
+          button(_("Start over"), () => this.setupCaptainCardSelection(args));
+        } else if (ability === "retaliation") {
+          title.textContent = card.location === "hand" ? _("Scrap the selected damage card from your hand:") : _("Scrap the selected damage card from your discard pile:");
+          [[_("Fire left (free, range 3)"), "fire left"], [_("Fire right (free, range 3)"), "fire right"], [_("Scrap without firing"), "skip"]].forEach(([label, fire]) =>
+            button(label, () => send({ card_id: Number(card.id), fire: fire })));
+        } else {
+          this.showCardPlayDialog(this.playable_cards[card.type], Number(card.id), Number(card.id));
+        }
+      };
+    },
+
+    cleanupCaptainCardSelection: function () {
+      if (this.captainChoiceStock) {
+        this.captainChoiceStock.removeAll();
+        this.captainChoiceStock = null;
+      }
+      domConstruct.destroy("captain_card_choices");
+    },
+
     setupScrapCardSelection: function (args) {
       console.log("Setting up scrap card selection");
       console.log(args);

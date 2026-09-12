@@ -20,3 +20,4 @@ package-lock.json
 .claude/
 .playwright-mcp/
 _ide_helper.php
+img_sources/

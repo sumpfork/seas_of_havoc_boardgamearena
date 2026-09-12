@@ -79,6 +79,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
+        case "captainCard": {
+          if (this.isCurrentPlayerActive()) this.setupCaptainCardSelection(args.args);
+          break;
+        }
+
         case "scrapCard": {
           if (this.isCurrentPlayerActive()) {
             this.setupScrapCardSelection(args.args);
@@ -120,6 +125,14 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
+        case "boardingParty": {
+          break;
+        }
+
+        case "huntTheBounty": {
+          break;
+        }
+
         case "resolveCollision": {
           break;
         }
@@ -144,6 +157,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
         case "extortion":
           this.cleanupScrapCardSelection();
+          break;
+
+        case "captainCard":
+          this.cleanupCaptainCardSelection();
+          this.cleanupCardPlayDialog();
           break;
 
         case "scrapCard":
@@ -371,6 +389,54 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 { classes: canAfford ? "bgabutton_green" : "bgabutton_gray" },
               );
             });
+            break;
+          }
+
+          case "boardingParty": {
+            var bpArgs = args || {};
+            var bpTargets = bpArgs.targets || [];
+            var bpSelf = this;
+            bpTargets.forEach(function (target) {
+              var tid = target.player_id;
+              var tname = target.player_name || tid;
+              var res = target.resources || {};
+              ["sail", "cannonball", "doubloon"].forEach(function (r) {
+                if ((res[r] || 0) > 0) {
+                  bpSelf.statusBar.addActionButton(
+                    _("Steal") + " 1 " + _(r) + " " + _("from") + " " + tname,
+                    function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: r }); },
+                    { classes: "bgabutton_green" },
+                  );
+                }
+              });
+              if ((target.booty_token_count || 0) > 0) {
+                bpSelf.statusBar.addActionButton(
+                  _("Steal booty token from") + " " + tname,
+                  function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: "booty_token" }); },
+                  { classes: "bgabutton_green" },
+                );
+              }
+            });
+            this.statusBar.addActionButton(_("Skip (No Steal)"), function () {
+              bpSelf.bgaPerformAction("actSkipBoardingParty", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+          }
+
+          case "huntTheBounty": {
+            var htbArgs = args || {};
+            var htbTargets = htbArgs.targets || [];
+            var htbSelf = this;
+            htbTargets.forEach(function (target) {
+              htbSelf.statusBar.addActionButton(
+                _("Target") + " " + (target.player_name || target.player_id),
+                function () { htbSelf.bgaPerformAction("actHuntTheBountyChooseTarget", { target_player_id: target.player_id }); },
+                { classes: "bgabutton_green" },
+              );
+            });
+            this.statusBar.addActionButton(_("Skip (No Target)"), function () {
+              htbSelf.bgaPerformAction("actSkipHuntTheBounty", {});
+            }, { classes: "bgabutton_gray" });
             break;
           }
 
