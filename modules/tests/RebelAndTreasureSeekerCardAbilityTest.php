@@ -3,7 +3,7 @@
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/SeasOfHavocTest.php';
 
-class RemainingCaptainUT extends SeasOfHavocUT
+class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
 {
     public Deck $deck;
     public array $draws = [];
@@ -48,10 +48,10 @@ class RemainingCaptainUT extends SeasOfHavocUT
     }
 }
 
-final class RemainingCaptainCardAbilityTest extends TestCase
+final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
 {
-    private RemainingCaptainUT $game;
-    protected function setUp(): void { $this->game = new RemainingCaptainUT(); }
+    private RebelAndTreasureSeekerCardUT $game;
+    protected function setUp(): void { $this->game = new RebelAndTreasureSeekerCardUT(); }
 
     public function testRetaliationScrapsHandDamageAndUsesFreeRangeThreeShot(): void {
         $id = $this->game->addCard(0, 'hand');
