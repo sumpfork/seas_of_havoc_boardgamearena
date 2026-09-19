@@ -68,6 +68,7 @@ class SeasOfHavoc extends Table
             "extortion_pending_flags" => 20,
             "hunt_the_bounty_target" => 21,
             "pending_captain_card" => 22,
+            "island_scraps_remaining" => 23,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -1950,10 +1951,16 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
             case "red_flag":
+                $this->setGameStateValue("island_scraps_remaining", 1);
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 // Transition to scrap card state instead of completing turn
+                return "scrapCard";
+            case "deep_cove":
+                $this->setGameStateValue("island_scraps_remaining", 2);
+                $this->playerGainResources($player_id, ["skiff" => -1]);
+                $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "scrapCard";
             case "blue_flag":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
@@ -3786,6 +3793,18 @@ class SeasOfHavoc extends Table
             "original_location" => $original_location,
         ]);
 
+        $cost = $this->playable_cards[$card["type"]]["cost"] ?? [];
+        if ($cost) {
+            $this->playerGainResources($player_id, $cost);
+        }
+        $remaining = max(0, (int) $this->getGameStateValue("island_scraps_remaining") - 1);
+        $this->setGameStateValue("island_scraps_remaining", $remaining);
+        return $remaining > 0 ? "scrapAgain" : "cardScrapped";
+    }
+
+    function actSkipIslandScrap(): string
+    {
+        $this->setGameStateValue("island_scraps_remaining", 0);
         return "cardScrapped";
     }
 

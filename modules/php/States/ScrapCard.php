@@ -17,7 +17,7 @@ class ScrapCard extends GameState
             name: 'scrapCard',
             description: clienttranslate('${actplayer} must scrap a card'),
             descriptionMyTurn: clienttranslate('${you} must scrap a card from your hand or discard pile'),
-            transitions: ['cardScrapped' => 4],
+            transitions: ['cardScrapped' => 4, 'scrapAgain' => 11],
         );
     }
 
@@ -29,6 +29,12 @@ class ScrapCard extends GameState
     public function zombie(int $playerId): mixed
     {
         return 'cardScrapped';
+    }
+
+    #[PossibleAction]
+    public function actSkipIslandScrap(): mixed
+    {
+        return $this->game->actSkipIslandScrap();
     }
 
     #[PossibleAction]

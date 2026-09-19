@@ -656,6 +656,9 @@ define([
 
       on($("cancel_scrap_button"), "click", (event) => {
         event.preventDefault();
+        if (this.checkAction("actSkipIslandScrap", true)) {
+          this.bgaPerformAction("actSkipIslandScrap", {});
+        }
         this.cleanupScrapCardSelection();
       });
     },
