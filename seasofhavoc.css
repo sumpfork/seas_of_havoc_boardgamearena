@@ -332,7 +332,7 @@
   background-image: url("img/booty_seafeatures.jpg");
   background-repeat: no-repeat;
   background-size: 252px 252px;
-  position: relative;
+  position: absolute;
   z-index: 1;
   mask-image: radial-gradient(#333 40%, #00000000 60%);
 }
@@ -440,7 +440,7 @@
   height: 45.5px;
   background-image: url("img/bga_ships.png");
   background-size: 60px;
-  position: relative;
+  position: absolute;
   z-index: 2;
 }
 .player_ship[data-shipname="Galleon"] {
@@ -504,6 +504,18 @@
   0%, 100% { filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1))  drop-shadow(0 0 12px rgba(201, 140, 20, 0.8)); }
   50%       { filter: drop-shadow(0 0 12px rgba(232, 179, 53, 1)) drop-shadow(0 0 20px rgba(201, 140, 20, 1)); }
 }
+.card-zoom-dialog {
+  border: 0;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.card-zoom-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+.card-zoom-dialog > button {
+  margin: 12px 0 0;
+}
 #card_display_dialog {
   width: 350px;
   background-color: white;
@@ -533,22 +545,12 @@
   display: inline;
   margin-right: 10px;
 }
-#play_card_button {
-  left: 60%;
-  top: 5px;
-  position: relative;
-  width: fit-content;
-  height: fit-content;
-  justify-self: center;
-}
+#play_card_button,
 #pass_card_button {
-  left: 60%;
-  top: 5px;
-  position: relative;
   width: fit-content;
   height: fit-content;
-  justify-self: center;
-  margin-top: 10px;
+  place-self: center;
+  margin: 0;
 }
 .purchase_card_button {
   display: block;

@@ -157,6 +157,25 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame(2, $this->game->seaEffects);
     }
 
+    public function testFiringVariantsLogCountDirectionAndRangeEvenOnAMiss(): void {
+        $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['resolveCannonFire'])->getMock();
+        $board->expects($this->exactly(3))->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
+        (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+        foreach (['fire', '2 x fire', '3 x fire'] as $index => $action) {
+            $direction = $index === 1 ? 'right' : 'left';
+            $this->game->processCardActions([['action' => $action, 'range' => 3 - $index]], ['fire ' . $direction]);
+            $log = $this->game->debugLastNotif;
+            $this->assertSame('log', $log['type']);
+            $this->assertStringContainsString('fires ${cannon_count}', $log['message']);
+            $this->assertSame($index + 1, $log['args']['cannon_count']);
+            $this->assertSame($direction, $log['args']['direction']);
+            $this->assertSame(3 - $index, $log['args']['range']);
+        }
+        $lastLog = $this->game->debugLastNotif;
+        $this->game->processCardActions([['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]]], ['skip']);
+        $this->assertSame($lastLog, $this->game->debugLastNotif);
+    }
+
     public function testEveryMaterialActionUsesACanonicalValue(): void {
         $check = function (array $actions) use (&$check): void {
             foreach ($actions as $action) {

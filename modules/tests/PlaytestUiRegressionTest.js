@@ -109,8 +109,8 @@ const dialogs = loadModule("dialogs.js");
 let scrapAction;
 dialogs.confirmScrapCard.call({
   checkAction(name, silent) {
-    if (name === "actExtortionScrapCard") {
-      assert.equal(silent, true, "Probing Extortion must not show an error during ordinary scrap");
+    if (name !== "actScrapCard") {
+      assert.equal(silent, true, "Probing other scrap actions must not show an error during ordinary scrap");
       return false;
     }
     return true;
@@ -118,6 +118,36 @@ dialogs.confirmScrapCard.call({
   bgaPerformAction(name) { scrapAction = name; },
 }, 30);
 assert.equal(scrapAction, "actScrapCard");
+for (const flag of ["green", "tan", "blue", "red"]) {
+  buttons.length = 0;
+  handlers.onUpdateActionButtons.call(iconGame, "cardFlag", { flag });
+  assert.equal(buttons.length, flag === "green" ? 4 : flag === "red" ? 1 : 2);
+  if (flag === "green") {
+    assert.match(buttons[0].label, /aria-label="sail"/);
+    buttons[0].callback();
+    assert.equal(action.name, "actResolveCardFlag");
+    assert.equal(action.args.resource, "sail");
+  } else if (flag !== "red") {
+    buttons[0].callback();
+    assert.equal(action.name, "actResolveCardFlag");
+  }
+  buttons.at(-1).callback();
+  assert.equal(action.name, "actSkipCardFlag");
+}
+dialogs.confirmScrapCard.call({
+  checkAction: name => name === "actResolveCardFlag",
+  bgaPerformAction(name, args) { action = { name, args }; },
+}, 42);
+assert.equal(action.name, "actResolveCardFlag");
+assert.equal(action.args.card_id, 42);
+const privateScraps = { available_cards: [{ id: 42, type: 19 }] };
+let shownScraps;
+handlers.onEnteringState.call({
+  updateHandSelectionMode() {},
+  isCurrentPlayerActive: () => true,
+  setupScrapCardSelection: args => { shownScraps = args; },
+}, "cardFlag", { args: { flag: "red", _private: privateScraps } });
+assert.equal(shownScraps, privateScraps, "Red flag must use only the active player's private scrap choices");
 let gameMethods;
 const templates = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../seasofhavoc.js"), "utf8"), {
@@ -143,3 +173,11 @@ assert.doesNotMatch(logArgs.resource_change, /\bid=/, "Repeated log icons must n
 assert.match(logArgs.booty_usage, /log_resource cannonball/);
 assert.match(formatBlock("jstpl_skiff", { id: "board-skiff", player_color: "ff0000" }), /fill:#ff0000/);
 console.log("Playtest UI regressions passed");
+
+const treasureSeeker = loadModule("treasureSeeker.js");
+let relocationCleaned = false;
+treasureSeeker.setupTreasureSeekerAdjust.call({
+  cleanupTreasureSeekerAdjust() { relocationCleaned = true; },
+  isCurrentPlayerActive() { return false; },
+}, { shipwreck_arg: '0', valid_positions: [{ x: 1, y: 1 }] });
+assert.equal(relocationCleaned, true, "Inactive players clear old relocation controls without creating new ones");

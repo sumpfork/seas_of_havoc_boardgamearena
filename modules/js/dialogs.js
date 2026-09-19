@@ -658,6 +658,8 @@ define([
         event.preventDefault();
         if (this.checkAction("actSkipIslandScrap", true)) {
           this.bgaPerformAction("actSkipIslandScrap", {});
+        } else if (this.checkAction("actSkipCardFlag", true)) {
+          this.bgaPerformAction("actSkipCardFlag", {});
         }
         this.cleanupScrapCardSelection();
       });
@@ -821,7 +823,9 @@ define([
     confirmScrapCard: function (cardId) {
       console.log("Confirming scrap of card:", cardId);
 
-      if (this.checkAction("actExtortionScrapCard", true)) {
+      if (this.checkAction("actResolveCardFlag", true)) {
+        this.bgaPerformAction("actResolveCardFlag", { card_id: cardId });
+      } else if (this.checkAction("actExtortionScrapCard", true)) {
         this.bgaPerformAction("actExtortionScrapCard", { card_id: cardId });
       } else if (this.checkAction("actScrapCard")) {
         this.bgaPerformAction("actScrapCard", { card_id: cardId });

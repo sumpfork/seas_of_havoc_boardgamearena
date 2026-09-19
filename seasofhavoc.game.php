@@ -69,6 +69,8 @@ class SeasOfHavoc extends Table
             "hunt_the_bounty_target" => 21,
             "pending_captain_card" => 22,
             "island_scraps_remaining" => 23,
+            "pending_card_flag_type" => 24,
+            "pending_treasure_seeker_player" => 25,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -795,6 +797,7 @@ class SeasOfHavoc extends Table
         $this->setGameStateValue("pending_shipwreck_x", $x);
         $this->setGameStateValue("pending_shipwreck_y", $y);
         $this->setGameStateValue("pending_treasure_seeker_resume", $resume);
+        $this->setGameStateValue("pending_treasure_seeker_player", (int) $this->getActivePlayerId());
 
         $this->gamestate->changeActivePlayer((int) $treasure_seeker_id);
         // Note: jumpToState is removed - callers return the TreasureSeekerAdjust state class to trigger the transition
@@ -822,6 +825,8 @@ class SeasOfHavoc extends Table
     private function completeTreasureSeekerAdjust(): mixed
     {
         $resume = (int) $this->getGameStateValue("pending_treasure_seeker_resume");
+        $this->gamestate->changeActivePlayer((int) $this->getGameStateValue("pending_treasure_seeker_player"));
+        $this->setGameStateValue("pending_treasure_seeker_player", 0);
         $this->setGameStateValue("pending_shipwreck_arg", 0);
         $this->setGameStateValue("pending_shipwreck_x", 0);
         $this->setGameStateValue("pending_shipwreck_y", 0);
@@ -1012,8 +1017,16 @@ class SeasOfHavoc extends Table
         return "";
     }
 
-    function stNextPlayerSeaPhase(): string
+    function stNextPlayerSeaPhase(): mixed
     {
+        $type = (int) $this->getGameStateValue("pending_card_flag_type");
+        if ($type !== 0) {
+            $flag = $this->playable_cards[$type]["flag"];
+            if ($this->getTokenOwner($flag . "_flag") == $this->getActivePlayerId()) {
+                return STATE_CARD_FLAG;
+            }
+            $this->setGameStateValue("pending_card_flag_type", 0);
+        }
         $current_player = $this->getActivePlayerId();
         $active_player = $this->activeNextPlayer();
         $num_cards = $this->cards->countCardInLocation("hand", $active_player);
@@ -1713,14 +1726,16 @@ class SeasOfHavoc extends Table
     {
         $gains = [];
         $losses = [];
+        $parts = [];
         foreach ($resources as $type => $amount) {
-            if ($amount > 0) {
+            if ($type === "skiff" && $amount != 0) {
+                $parts[] = ($amount > 0 ? "retrieves " : "places ") . abs($amount) . " [skiff]";
+            } elseif ($amount > 0) {
                 $gains[] = "$amount [$type]";
             } elseif ($amount < 0) {
                 $losses[] = abs($amount) . " [$type]";
             }
         }
-        $parts = [];
         if (!empty($losses)) {
             $parts[] = "pays " . implode(" ", $losses);
         }
@@ -2454,11 +2469,7 @@ class SeasOfHavoc extends Table
                 if (!in_array($fire, ["fire left", "fire right", "skip"], true)) {
                     throw new \Bga\GameFramework\UserException(clienttranslate("Choose a firing side or skip firing"));
                 }
-                $this->cards->moveCard($selected, "scrap");
-                $this->bga->notify->all("cardScrapped", clienttranslate('${player_name} scraps a damage card for Retaliation'), [
-                    "player_name" => $this->getPlayerNameById((int) $player_id), "player_id" => (int) $player_id,
-                    "card" => $chosen, "original_location" => $chosen["location"],
-                ]);
+                $this->scrapCardAndRefund($selected, $player_id);
                 if ($fire !== "skip") {
                     $actions = [["action" => "fire", "range" => 3]];
                     $decisions = [$fire];
@@ -2503,7 +2514,11 @@ class SeasOfHavoc extends Table
         $card_id = (int) $this->getGameStateValue("pending_captain_card");
         $card = $this->cards->getCard($card_id);
         $this->setGameStateValue("pending_captain_card", 0);
-        return $this->resolvePlayedCard((int) $card["type"], $card_id, $decisions, $use_booty_card_id, $actions);
+        $result = $this->resolvePlayedCard((int) $card["type"], $card_id, $decisions, $use_booty_card_id, $actions);
+        if ($ability === "improvisation") {
+            $this->setGameStateValue("pending_card_flag_type", isset($this->playable_cards[$chosen["type"]]["flag"]) ? (int) $chosen["type"] : 0);
+        }
+        return $result;
     }
 
     function processGovernmentFunding(string $player_id): array
@@ -2557,22 +2572,7 @@ class SeasOfHavoc extends Table
             $this->drawCards($player_id);
         } else {
             $damage_card = reset($damage_cards);
-            $this->cards->moveCard($damage_card["id"], "scrap");
-            $this->bga->notify->all(
-                "cardScrapped",
-                clienttranslate('${player_name}\'s Inspire: scrapped a damage card'),
-                [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                    "player_id" => intval($player_id),
-                    "card" => [
-                        "id" => intval($damage_card["id"]),
-                        "type" => intval($damage_card["type"]),
-                        "location" => "player_discard",
-                        "location_arg" => intval($player_id),
-                    ],
-                    "original_location" => "player_discard",
-                ],
-            );
+            $this->scrapCardAndRefund((int) $damage_card["id"], $player_id);
         }
         return [
             "action_chain" => [],
@@ -2709,21 +2709,7 @@ class SeasOfHavoc extends Table
         if (!($pending & self::EXTORTION_RED_FLAG)) {
             throw new \Bga\GameFramework\UserException(clienttranslate("No Red Flag effect is pending"));
         }
-        $card = $this->cards->getCard($card_id);
-        if (!$card) {
-            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid card"));
-        }
-        if (!in_array($card["location"], ["hand", "player_discard"]) || $card["location_arg"] != $player_id) {
-            throw new \Bga\GameFramework\UserException(clienttranslate("You can only scrap cards from your hand or discard pile"));
-        }
-        $original_location = $card["location"];
-        $this->cards->moveCard($card_id, "scrap");
-        $this->bga->notify->all("cardScrapped", clienttranslate('${player_name}\'s Extortion: scrapped a card (Red Flag)'), [
-            "player_name" => $this->getPlayerNameById($player_id),
-            "player_id" => intval($player_id),
-            "card" => ["id" => intval($card["id"]), "type" => intval($card["type"]), "location" => $card["location"], "location_arg" => intval($card["location_arg"])],
-            "original_location" => $original_location,
-        ]);
+        $this->scrapCardAndRefund($card_id, $player_id);
         $this->setGameStateValue("extortion_pending_flags", 0);
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
@@ -3168,6 +3154,21 @@ class SeasOfHavoc extends Table
                     $decision = array_shift($decisions);
                     $this->trace("decision: $decision");
                     $player_id = $this->getActivePlayerId();
+                    $cannon_count = match ($typed_action) {
+                        PrimitiveCardPlayAction::FIRE2 => 2,
+                        PrimitiveCardPlayAction::FIRE3 => 3,
+                        default => 1,
+                    };
+                    $this->bga->notify->all("log", $cannon_count === 1
+                        ? clienttranslate('${player_name} fires ${cannon_count} cannon to the ${direction} (range ${range})')
+                        : clienttranslate('${player_name} fires ${cannon_count} cannons to the ${direction} (range ${range})'), [
+                        "player_name" => $this->getPlayerNameById($player_id),
+                        "player_id" => $player_id,
+                        "cannon_count" => $cannon_count,
+                        "direction" => $decision === "fire left" ? clienttranslate("left") : clienttranslate("right"),
+                        "range" => $action["range"],
+                        "i18n" => ["direction"],
+                    ]);
                     $outcome = $this->seaboard->resolveCannonFire(
                         $player_id,
                         $decision == "fire left" ? Turn::LEFT : Turn::RIGHT,
@@ -3380,6 +3381,7 @@ class SeasOfHavoc extends Table
 
     protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null)
     {
+        $this->setGameStateValue("pending_card_flag_type", isset($this->playable_cards[$card_type]["flag"]) ? $card_type : 0);
         $this->dump("card_type", $card_type);
         $this->dump("decisions", $decisions);
         $card = $this->playable_cards[$card_type];
@@ -3738,6 +3740,58 @@ class SeasOfHavoc extends Table
         return "cardDiscarded";
     }
 
+    function argCardFlag(): array
+    {
+        $type = (int) $this->getGameStateValue("pending_card_flag_type");
+        $flag = $this->playable_cards[$type]["flag"] ?? null;
+        $player_id = $this->getActivePlayerId();
+        if ($flag === null || $this->getTokenOwner($flag . "_flag") != $player_id) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("You do not own the matching flag for this card"));
+        }
+        $args = ["flag" => $flag];
+        if ($flag === "red") {
+            $args["_private"][$player_id] = $this->argScrapCard();
+        }
+        return $args;
+    }
+
+    function actResolveCardFlag(string $resource = '', ?int $card_id = null): int
+    {
+        $flag = $this->argCardFlag()["flag"];
+        $player_id = $this->getActivePlayerId();
+        switch ($flag) {
+            case "green":
+                if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+                }
+                $this->playerGainResources($player_id, [$resource => 1]);
+                break;
+            case "tan":
+                $this->drawCards($player_id);
+                break;
+            case "red":
+                if ($card_id === null) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card to scrap"));
+                }
+                $this->scrapCardAndRefund($card_id, $player_id);
+                break;
+            case "blue":
+                break;
+            default:
+                throw new \Bga\GameFramework\SystemException("Unknown card flag: $flag");
+        }
+        $this->setGameStateValue("pending_card_flag_type", 0);
+        return $flag === "blue" && $this->cards->countCardInLocation("hand", $player_id) > 0
+            ? STATE_SEA_TURN : STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actSkipCardFlag(): int
+    {
+        $this->argCardFlag();
+        $this->setGameStateValue("pending_card_flag_type", 0);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
     function argScrapCard()
     {
         $this->mytrace("argScrapCard");
@@ -3755,10 +3809,8 @@ class SeasOfHavoc extends Table
         ];
     }
 
-    function actScrapCard(int $card_id)
+    function scrapCardAndRefund(int $card_id, string $player_id): void
     {
-        $this->mytrace("actScrapCard: card_id=$card_id");
-        $player_id = self::getActivePlayerId();
 
         // Validate that the card belongs to the player and is in hand or discard
         $card = $this->cards->getCard($card_id);
@@ -3797,6 +3849,11 @@ class SeasOfHavoc extends Table
         if ($cost) {
             $this->playerGainResources($player_id, $cost);
         }
+    }
+
+    function actScrapCard(int $card_id)
+    {
+        $this->scrapCardAndRefund($card_id, self::getActivePlayerId());
         $remaining = max(0, (int) $this->getGameStateValue("island_scraps_remaining") - 1);
         $this->setGameStateValue("island_scraps_remaining", $remaining);
         return $remaining > 0 ? "scrapAgain" : "cardScrapped";

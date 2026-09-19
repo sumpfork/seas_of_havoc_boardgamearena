@@ -14,6 +14,7 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
       console.log("Setting up treasure seeker adjust");
       console.log(args);
       this.cleanupTreasureSeekerAdjust();
+      if (!this.isCurrentPlayerActive()) return;
 
       var shipwreckId = "shipwreck_" + args.shipwreck_arg;
       if ($(shipwreckId)) {

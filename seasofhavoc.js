@@ -369,6 +369,7 @@ define([
         },
         setupFrontDiv: (card, div) => {
           this.setupHelper(card, div);
+          this.setupCardPreview(div);
         },
         setupBackDiv: (card, div) => {
           this.setupHelper(card, div);
@@ -389,6 +390,7 @@ define([
         },
         setupFrontDiv: (card, div) => {
           this.setupNonPlayableCardHelper(card, div);
+          this.setupCardPreview(div);
         },
         setupBackDiv: (card, div) => {
           this.setupNonPlayableCardHelper(card, div);

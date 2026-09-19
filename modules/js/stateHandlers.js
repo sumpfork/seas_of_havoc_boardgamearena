@@ -84,6 +84,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
+        case "cardFlag": {
+          if (this.isCurrentPlayerActive() && args.args.flag === "red") {
+            this.setupScrapCardSelection(args.args._private);
+          }
+          break;
+        }
+
         case "scrapCard": {
           if (this.isCurrentPlayerActive()) {
             this.setupScrapCardSelection(args.args);
@@ -164,6 +171,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           this.cleanupCardPlayDialog();
           break;
 
+        case "cardFlag":
         case "scrapCard":
           this.cleanupScrapCardSelection();
           break;
@@ -199,6 +207,23 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
+          case "cardFlag":
+            if (args.flag === "green") {
+              ["sail", "cannonball", "doubloon"].forEach(resource => {
+                this.statusBar.addActionButton(this.resourceIcon(resource), () => {
+                  this.bgaPerformAction("actResolveCardFlag", { resource });
+                }, { classes: "bgabutton_resource" });
+              });
+            } else if (args.flag === "tan" || args.flag === "blue") {
+              this.statusBar.addActionButton(args.flag === "tan" ? _("Draw a card") : _("Take another turn"), () => {
+                this.bgaPerformAction("actResolveCardFlag", {});
+              });
+            }
+            this.statusBar.addActionButton(_("Skip flag action"), () => {
+              this.bgaPerformAction("actSkipCardFlag", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+
           case "cardPurchases":
           case "cardPurchasesPrivate":
           case "cardPurchasesMaking":

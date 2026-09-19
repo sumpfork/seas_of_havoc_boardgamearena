@@ -202,12 +202,13 @@ final class AdmiralAbilityTest extends TestCase {
         $this->assertSame([], $this->game->cards->moveCardCalls);
     }
 
-    public function testInspireScrapesDamageCardWhenDiscardHasDamageCard(): void {
+    public function testInspireScrapsDamageCardWhenDiscardHasDamageCard(): void {
         $damage_type = $this->damageCardType();
         $this->game->cards->locations["player_discard_1"] = [
             ["id" => 99, "type" => $damage_type, "location" => "player_discard", "location_arg" => "1"],
         ];
 
+        $this->game->cards->cards = array_column($this->game->cards->locations["player_discard_1"], null, "id");
         $this->game->processInspire("1");
 
         $this->assertSame([], $this->game->infamyAwards);
@@ -222,6 +223,7 @@ final class AdmiralAbilityTest extends TestCase {
             ["id" => 100, "type" => $damage_type, "location" => "player_discard", "location_arg" => "1"],
         ];
 
+        $this->game->cards->cards = array_column($this->game->cards->locations["player_discard_1"], null, "id");
         $this->game->processInspire("1");
 
         $this->assertCount(1, $this->game->cards->moveCardCalls);

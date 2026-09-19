@@ -200,6 +200,16 @@ final class SeasOfHavocTest extends TestCase
 
     // Resource calculation tests
 
+    public function testSkiffLogsDescribePlacementAndRetrieval(): void
+    {
+        $format = new ReflectionMethod(SeasOfHavoc::class, "formatResourceChangeMessage");
+        $this->assertSame("places 1 [skiff]", $format->invoke($this->game, ["skiff" => -1]));
+        $this->assertSame("retrieves 3 [skiff]", $format->invoke($this->game, ["skiff" => 3]));
+        $this->assertSame("places 1 [skiff], pays 2 [sail], gains 1 [doubloon]",
+            $format->invoke($this->game, ["skiff" => -1, "sail" => -2, "doubloon" => 1]));
+        $this->assertSame("", $format->invoke($this->game, ["skiff" => 0]));
+    }
+
     public function testSumArrayByKey(): void
     {
         // Test summing two arrays by key
