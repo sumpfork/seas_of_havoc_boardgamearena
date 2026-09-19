@@ -157,6 +157,48 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame(2, $this->game->seaEffects);
     }
 
+    public function testEveryMaterialActionUsesACanonicalValue(): void {
+        $check = function (array $actions) use (&$check): void {
+            foreach ($actions as $action) {
+                $this->assertNotNull(PrimitiveCardPlayAction::tryFrom($action['action']));
+                $check($action['actions'] ?? []);
+                $check($action['choices'] ?? []);
+            }
+        };
+        foreach ($this->game->playable_cards as $card) $check($card['actions']);
+    }
+
+    public function testStartingAndMarketPivotsExecuteDirectlyAndThroughImprovisation(): void {
+        $turns = ['pivot left' => Turn::LEFT, 'pivot right' => Turn::RIGHT, 'pivot 180' => Turn::AROUND];
+        $cases = [];
+        foreach ($this->game->playable_cards as $type => $card) {
+            foreach ($card['actions'] as $action) {
+                foreach ($action['choices'] ?? [] as $choice) {
+                    if (isset($turns[$choice['action']])) $cases[] = [$type, $choice['action'], $turns[$choice['action']]];
+                }
+            }
+        }
+        $this->assertNotEmpty($cases);
+        foreach ($cases as [$type, $decision, $turn]) {
+            $this->game = new RebelAndTreasureSeekerCardUT();
+            $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['turnObject'])->getMock();
+            $board->expects($this->exactly(2))->method('turnObject')->with('player_ship', '1', $turn)
+                ->willReturn(['type' => 'turn']);
+            (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+            $this->game->processCardActions($this->game->playable_cards[$type]['actions'], [$decision]);
+            $this->game->runEngine = true;
+            $id = $this->game->addCard($type, 'player_discard');
+            $this->game->start('improvisation');
+            $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $id], [$decision]));
+            $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+        }
+    }
+
+    public function testInvalidPivotChoiceIsRejected(): void {
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->processCardActions($this->game->playable_cards[12]['actions'], ['pivot_right']);
+    }
+
     public function testSpyglassThroughPlayActionDoesNotRevealOrReshuffleItself(): void {
         $this->game->runEngine = true;
         $kept = $this->game->addCard(1, 'player_deck_1');

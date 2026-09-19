@@ -262,6 +262,9 @@
 .resource.log_resource.cannonball {
   background-position: 0px 0px;
 }
+.resource.log_skiff {
+  background-image: none;
+}
 .resource.log_resource.sail {
   background-position: -18px 0px;
 }
@@ -571,7 +574,7 @@ a.disabled {
 }
 #mycards {
   display: grid;
-  grid-template-columns: 200px 1fr 200px;
+  grid-template-columns: 180px minmax(0, 1fr) 180px;
 }
 #myship {
   display: grid;
@@ -758,6 +761,8 @@ a.disabled {
 }
 
 #myhand_wrap {
+  min-width: 0;
+  padding-top: 24px;
   text-align: center;
 }
 
@@ -820,4 +825,14 @@ a.disabled {
   opacity: 0.35;
   cursor: default;
   pointer-events: none;
+}
+
+@media (max-width: 1000px) {
+  #mycards {
+    grid-template-columns: 1fr 1fr;
+  }
+  #myhand_wrap {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
 }

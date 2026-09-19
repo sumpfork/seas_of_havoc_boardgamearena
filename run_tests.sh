@@ -1,4 +1,7 @@
 #!/bin/bash
+set -e
+
+node modules/tests/PlaytestUiRegressionTest.js
 
 # Set the environment variable for BGA stubs
 export APP_GAMEMODULE_PATH="/Users/pgorniak/src/p/bga-sharedcode/misc/"

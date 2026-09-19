@@ -87,7 +87,7 @@ define([
         var disabledClass = count < 1 ? " disabled" : "";
         html += '<a class="bgabutton bgabutton_resource trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="1" data-phase="spend">'
-          + '<div class="resource ' + res + '"></div></a>';
+          + this.resourceIcon(res) + '</a>';
       }
       html += '</div>';
 
@@ -100,7 +100,7 @@ define([
         var disabledClass = count < 1 ? " disabled" : "";
         html += '<a class="bgabutton bgabutton_resource trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="2" data-phase="spend">'
-          + '<div class="resource ' + res + '"></div></a>';
+          + this.resourceIcon(res) + '</a>';
       }
       html += '<a class="bgabutton bgabutton_gray trading-resource-btn" '
         + 'data-resource="skip" data-row="2" data-phase="spend">Skip</a>';
@@ -142,7 +142,7 @@ define([
           var res = TRADEABLE_RESOURCES[i];
           html += '<a class="bgabutton bgabutton_resource trading-resource-btn'
             + '" data-resource="' + res + '" data-row="' + row + '" data-phase="gain">'
-            + '<div class="resource ' + res + '"></div></a>';
+            + this.resourceIcon(res) + '</a>';
         }
         html += '</div>';
       }

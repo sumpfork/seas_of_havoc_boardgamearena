@@ -11,6 +11,13 @@ define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "d
   query,
 ) {
   return {
+    resourceIcon: function (resource) {
+      const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
+      if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);
+      const label = names[resource].replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+      return '<span class="resource log_resource ' + resource + '" data-resource="' + resource + '" role="img" aria-label="' + label + '" title="' + label + '"></span>';
+    },
+
     /**
      * Find an object on the seaboard by type and arg
      */

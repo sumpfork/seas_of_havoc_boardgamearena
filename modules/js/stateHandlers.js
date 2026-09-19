@@ -215,8 +215,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               var self = this;
               ctx.combinations.forEach(function (combo) {
                 var parts = [];
-                if (combo.cb > 0) parts.push(combo.cb + (combo.cb === 1 ? " doubloon → cannonball" : " doubloons → cannonballs"));
-                if (combo.sail > 0) parts.push(combo.sail + (combo.sail === 1 ? " doubloon → sail" : " doubloons → sails"));
+                if (combo.cb > 0) parts.push(combo.cb + " " + self.resourceIcon("doubloon") + " → " + combo.cb + " " + self.resourceIcon("cannonball"));
+                if (combo.sail > 0) parts.push(combo.sail + " " + self.resourceIcon("doubloon") + " → " + combo.sail + " " + self.resourceIcon("sail"));
                 var label = parts.length > 0 ? parts.join(", ") : _("No substitution");
                 var isNone = combo.cb === 0 && combo.sail === 0;
                 self.statusBar.addActionButton(label, function () {
@@ -272,17 +272,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "client_resourceDialog":
             this.statusBar.addActionButton(
-              _("<div class='resource sail' data-resource='sail'></div>"),
+              this.resourceIcon("sail"),
               this.onResourceButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
             this.statusBar.addActionButton(
-              _("<div class='resource cannonball' data-resource='cannonball'></div>"),
+              this.resourceIcon("cannonball"),
               this.onResourceButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
             this.statusBar.addActionButton(
-              _("<div class='resource doubloon' data-resource='doubloon'></div>"),
+              this.resourceIcon("doubloon"),
               this.onResourceButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
@@ -290,17 +290,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "resolveCollision":
             this.statusBar.addActionButton(
-              "<div class='resource pivot_left' data-pivot='pivot left'></div>",
+              "<div class='resource pivot_left' role='img' aria-label='Pivot left' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource nope' data-pivot='no pivot'></div>",
+              "<div class='resource nope' role='img' aria-label='Do not pivot' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource pivot_right' data-pivot='pivot right'></div>",
+              "<div class='resource pivot_right' role='img' aria-label='Pivot right' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
               { classes: "bgabutton_resource" },
             );
@@ -322,7 +322,15 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "extortion": {
             var extortionArgs2 = args || {};
-            if (extortionArgs2.pending_red && !extortionArgs2.pending_green) {
+            if (extortionArgs2.pending_green) {
+              ["sail", "cannonball", "doubloon"].forEach(resource => {
+                this.statusBar.addActionButton(this.resourceIcon(resource), () => {
+                  this.bgaPerformAction("actResourcePickedInDialog", {
+                    resource, context: "extortion_green_flag", number: "0",
+                  });
+                }, { classes: "bgabutton_resource" });
+              });
+            } else if (extortionArgs2.pending_red) {
               this.statusBar.addActionButton(_("Scrap a Card (Red Flag)"), function () {}, {
                 classes: "bgabutton_gray disabled",
               });
@@ -340,14 +348,14 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               var res = pair[0], amount = pair[1];
               if ((resources[res] || 0) > 0) {
                 barterSelf.statusBar.addActionButton(
-                  "1 " + _(res) + " → " + amount + " " + _("infamy"),
+                  "1 " + barterSelf.resourceIcon(res) + " → " + amount + " " + barterSelf.resourceIcon("infamy"),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "resource_to_infamy" }); },
                   { classes: "bgabutton_green" },
                 );
               }
               if (infamy >= amount) {
                 barterSelf.statusBar.addActionButton(
-                  amount + " " + _("infamy") + " → 1 " + _(res),
+                  amount + " " + barterSelf.resourceIcon("infamy") + " → 1 " + barterSelf.resourceIcon(res),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
                   { classes: "bgabutton_green" },
                 );
@@ -365,7 +373,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             var ttResources = ttArgs.resources || {};
             var ttSelf = this;
             this.statusBar.addActionButton(
-              _("Gain 2 Doubloons"),
+              _("Gain") + " 2 " + this.resourceIcon("doubloon"),
               function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
               { classes: "bgabutton_green" },
             );
@@ -375,7 +383,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               if (!cardDef) return;
               var cost = cardDef.cost || {};
               var canAfford = ttSelf.canPlayerAfford(cost, false, false);
-              var costStr = Object.entries(cost).map(function (e) { return e[1] + " " + e[0]; }).join(", ");
+              var costStr = Object.entries(cost).map(function (e) { return e[1] + " " + ttSelf.resourceIcon(e[0]); }).join(", ");
               var label = _("Buy") + (costStr ? " (" + costStr + ")" : "");
               ttSelf.statusBar.addActionButton(
                 label,
@@ -398,12 +406,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             var bpSelf = this;
             bpTargets.forEach(function (target) {
               var tid = target.player_id;
-              var tname = target.player_name || tid;
+              var tname = bpSelf.gamedatas.players[tid].name;
               var res = target.resources || {};
               ["sail", "cannonball", "doubloon"].forEach(function (r) {
                 if ((res[r] || 0) > 0) {
                   bpSelf.statusBar.addActionButton(
-                    _("Steal") + " 1 " + _(r) + " " + _("from") + " " + tname,
+                    _("Steal") + " 1 " + bpSelf.resourceIcon(r) + " " + _("from") + " " + tname,
                     function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: r }); },
                     { classes: "bgabutton_green" },
                   );

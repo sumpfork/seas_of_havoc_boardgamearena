@@ -22,20 +22,7 @@ require_once "modules/SeaBoard.php";
 use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\Table;
 
-enum PrimitiveCardPlayAction: string
-{
-    case FORWARD = "forward";
-    case PIVOT_LEFT = "pivot left";
-    case PIVOT_RIGHT = "pivot right";
-    case LEFT = "left";
-    case RIGHT = "right";
-    case FIRE = "fire";
-    case FIRE2 = "2 x fire";
-    case FIRE3 = "3 x fire3";
-    case SEQUENCE = "sequence";
-    case CHOICE = "choice";
-    case CAPTAIN_ABILITY = "captain ability";
-}
+require_once __DIR__ . "/modules/PrimitiveCardPlayAction.php";
 
 class SeasOfHavoc extends Table
 {
@@ -2027,7 +2014,7 @@ class SeasOfHavoc extends Table
                 if ($pending === 0) {
                     return STATE_NEXT_PLAYER_SEA_PHASE;
                 }
-                return null; // Red flag still pending, stay in Extortion state
+                return STATE_EXTORTION; // Re-enter to render the remaining red-flag selection.
             default:
                 throw new \Bga\GameFramework\SystemException("bad context: $context");
         }
@@ -2301,6 +2288,9 @@ class SeasOfHavoc extends Table
                 break;
             case PrimitiveCardPlayAction::PIVOT_LEFT:
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::LEFT);
+                break;
+            case PrimitiveCardPlayAction::PIVOT_AROUND:
+                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::AROUND);
                 break;
             case PrimitiveCardPlayAction::PIVOT_RIGHT:
                 $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
@@ -2685,9 +2675,6 @@ class SeasOfHavoc extends Table
             return STATE_NEXT_PLAYER_SEA_PHASE;
         }
         $this->setGameStateValue("extortion_pending_flags", $pending);
-        if ($pending & self::EXTORTION_GREEN_FLAG) {
-            $this->showResourceChoiceDialog("extortion_green_flag", "0");
-        }
         return STATE_EXTORTION;
     }
 
@@ -2883,6 +2870,12 @@ class SeasOfHavoc extends Table
         ]);
         $this->bga->notify->all("marketUpdated", clienttranslate("Market updated"), [
             "market" => $updated_market,
+        ]);
+        $card["location"] = "hand";
+        $card["location_arg"] = (int) $player_id;
+        $this->bga->notify->player((int) $player_id, "cardDrawn", "", [
+            "player_id" => $player_id, "cards" => [$card], "num_cards" => 1,
+            "deck_size" => $this->cards->countCardInLocation($this->playerDeckName($player_id)),
         ]);
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
@@ -3108,7 +3101,10 @@ class SeasOfHavoc extends Table
                     $decision = array_shift($decisions);
                     $choices = $action["choices"];
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
-                    $decision_index = array_search($decision, $choice_names);
+                    $decision_index = array_search($decision, $choice_names, true);
+                    if ($decision_index === false) {
+                        throw new \Bga\GameFramework\UserException("Invalid card action choice: " . $decision);
+                    }
                     $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
                     $this->merge_results(
                         $result,

@@ -177,7 +177,7 @@ final class MerchantCardAbilityTest extends TestCase {
         $this->game->actTimelyTradingGainDoubloons();
     }
 
-    public function testActTimelyTradingPurchaseCard(): void {
+    public function testTimelyTradingPurchaseAddsCardToHandAndNotifiesBuyer(): void {
         $cost = $this->firstMarketCardCost;
         $this->game->getMockCards()->cards[42] = [
             "id" => 42, "type" => $this->firstMarketCardType, "location" => "market", "location_arg" => "0",
@@ -188,6 +188,10 @@ final class MerchantCardAbilityTest extends TestCase {
 
         $this->assertSame([["card_id" => 42, "location" => "hand"]], $this->game->getMockCards()->moveCardCalls);
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
+        $this->assertSame("cardDrawn", $this->game->debugLastNotif["type"]);
+        $this->assertEquals(1, $this->game->debugLastNotif["player_id"]);
+        $this->assertSame(42, $this->game->debugLastNotif["cards"][0]["id"]);
+        $this->assertSame("hand", $this->game->debugLastNotif["cards"][0]["location"]);
     }
 
     public function testActTimelyTradingPurchaseCardRejectsNonMarket(): void {

@@ -536,14 +536,15 @@ define([
       const send = (choices) => this.bgaPerformAction("actResolveCaptainCard", {
         choices: JSON.stringify(choices), decisions: JSON.stringify([]),
       });
-      const button = (label, action) => {
+      const button = (label, action, icon = null) => {
         const node = domConstruct.create("button", { type: "button", className: "bgabutton bgabutton_blue", textContent: label }, buttons);
+        if (icon) node.innerHTML = this.resourceIcon(icon);
         on(node, "click", action);
       };
       if (ability === "unearth_riches") {
         title.textContent = _("Unearth Riches — gain:") + " " + Object.entries(data.resources).map(([r, n]) => n + " " + r).join(", ");
         if (data.resources.choice) {
-          ["sail", "cannonball", "doubloon"].forEach(r => button(_(r), () => send({ resource: r })));
+          ["sail", "cannonball", "doubloon"].forEach(r => button(_(r), () => send({ resource: r }), r));
         } else {
           button(_("Gain rewards"), () => send({}));
         }
@@ -817,7 +818,7 @@ define([
     confirmScrapCard: function (cardId) {
       console.log("Confirming scrap of card:", cardId);
 
-      if (this.checkAction("actExtortionScrapCard")) {
+      if (this.checkAction("actExtortionScrapCard", true)) {
         this.bgaPerformAction("actExtortionScrapCard", { card_id: cardId });
       } else if (this.checkAction("actScrapCard")) {
         this.bgaPerformAction("actScrapCard", { card_id: cardId });

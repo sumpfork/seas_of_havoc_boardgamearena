@@ -206,7 +206,7 @@ final class PirateQueenCardAbilityTest extends TestCase {
 
         $this->assertSame(STATE_EXTORTION, $result);
         $this->assertSame(
-            [["context" => "extortion_green_flag", "number" => "0"]],
+            [],
             $this->game->showResourceCalls,
         );
     }
@@ -289,7 +289,7 @@ final class PirateQueenCardAbilityTest extends TestCase {
         $result = $this->game->actResourcePickedInDialog("cannonball", "extortion_green_flag", "0");
 
         $this->assertSame([["cannonball" => 1]], $this->game->resourceGainCalls);
-        $this->assertNull($result);
+        $this->assertSame(STATE_EXTORTION, $result);
         $this->assertSame(2, $this->game->getGameStateValue("extortion_pending_flags"));
     }
 }
