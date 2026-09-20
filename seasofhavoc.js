@@ -677,8 +677,18 @@ define([
       }
 
       this.seaboard = gamedatas.seaboard;
-      // Track what seafeature occupies each position so shipwrecks can show a badge
-      var seaboardFeatureAtPos = {};
+      // Pre-scan for positions where a shipwreck coexists with a rock/gust/whirlpool, so both
+      // icons can be shrunk into opposite corners instead of stacking on top of each other.
+      var shipwreckAtPos = {};
+      var otherFeatureAtPos = {};
+      for (const entry of gamedatas.seaboard) {
+        var pos_id = "seaboardlocation_" + entry.x + "_" + entry.y;
+        if (entry.type === "shipwreck") {
+          shipwreckAtPos[pos_id] = true;
+        } else if (entry.type === "rock" || entry.type === "gust" || entry.type === "whirlpool") {
+          otherFeatureAtPos[pos_id] = true;
+        }
+      }
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
@@ -697,8 +707,6 @@ define([
           case "rock":
           case "gust":
           case "whirlpool":
-            seaboardFeatureAtPos[target_id] = entry.type;
-            // fall through
           case "shipwreck":
             var seafeatureid = entry.type + "_" + entry.arg;
             var subs = {
@@ -708,17 +716,23 @@ define([
             var seafeature = this.format_block("jstpl_seafeature", subs);
             domConstruct.place(seafeature, "seaboard");
             this.placeOnObject(seafeatureid, target_id);
+            var isPairedShipwreck = entry.type === "shipwreck" && otherFeatureAtPos[target_id];
+            var isPairedPartner = entry.type !== "shipwreck" && shipwreckAtPos[target_id];
             if (entry.type === "gust") {
-              domStyle.set(seafeatureid, "rotate", this.getHeadingDegrees(entry.heading) - 90 + "deg");
+              var gustDeg = this.getHeadingDegrees(entry.heading) - 90;
+              if (isPairedPartner) {
+                // The individual "rotate" CSS property is applied before "transform", which would
+                // rotate our corner-shift offset too. Combine everything into one transform instead.
+                $(seafeatureid).classList.add("seafeature_hidden_partner");
+                domStyle.set(seafeatureid, "transform", `translate(-9.45px, 9.45px) scale(0.7) rotate(${gustDeg}deg)`);
+              } else {
+                domStyle.set(seafeatureid, "rotate", gustDeg + "deg");
+              }
             }
-            if (entry.type === "shipwreck" && seaboardFeatureAtPos[target_id]) {
-              $(seafeatureid).dataset.hiddenFeature = seaboardFeatureAtPos[target_id];
-              var badge = document.createElement("div");
-              badge.id = seafeatureid + "_badge";
-              badge.className = "seafeature_hidden_badge";
-              badge.dataset.hiddenFeature = seaboardFeatureAtPos[target_id];
-              $("seaboard").appendChild(badge);
-              this.placeOnObject(badge.id, target_id);
+            if (isPairedShipwreck) {
+              $(seafeatureid).classList.add("seafeature_paired_shipwreck");
+            } else if (isPairedPartner && entry.type !== "gust") {
+              $(seafeatureid).classList.add("seafeature_hidden_partner");
             }
             break;
         }

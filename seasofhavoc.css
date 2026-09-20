@@ -351,33 +351,15 @@
   border-radius: 50%;
   background-position: 0px -189px;
 }
-/* Badge showing a hidden seafeature under this shipwreck */
-.seafeature[data-seafeature="shipwreck"][data-hidden-feature] {
-  outline: 2px solid rgba(255, 255, 255, 0.7);
-  outline-offset: 1px;
+/* When a shipwreck sits atop a rock/gust/whirlpool, shrink both to 70% and
+   split them into opposite corners of the space instead of stacking them. */
+.seafeature_paired_shipwreck {
+  transform: translate(9.45px, -9.45px) scale(0.7);
+  z-index: 2;
 }
-.seafeature_hidden_badge {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background-image: url("img/booty_seafeatures.jpg");
-  background-repeat: no-repeat;
-  background-size: 96px 96px;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  z-index: 10;
-  transform: translate(26px, 26px);
-  pointer-events: none;
-}
-.seafeature_hidden_badge[data-hidden-feature="whirlpool"] {
-  background-position: 0px 0px;
-}
-.seafeature_hidden_badge[data-hidden-feature="gust"] {
-  background-position: 0px -48px;
-}
-.seafeature_hidden_badge[data-hidden-feature="rock"] {
-  background-position: 0px -24px;
+.seafeature_hidden_partner {
+  transform: translate(-9.45px, 9.45px) scale(0.7);
+  z-index: 1;
 }
 .seafeature[data-seafeature="gust"] {
   background-position: 0px -126px;
