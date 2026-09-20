@@ -324,6 +324,7 @@ define([
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;
       this.player_captain = gamedatas.player_captain;
+      this.player_ship_upgrades = gamedatas.player_ship_upgrades || [];
       this.corsairOccupiedPlacementAvailable = !!gamedatas.corsair_occupied_placement_available;
       this.corsairOccupiedSlotNames = gamedatas.corsair_occupied_slot_names || [];
 
@@ -389,11 +390,11 @@ define([
           div.classList.add("seasofhavoc-card", "non-playable-card");
         },
         setupFrontDiv: (card, div) => {
-          this.setupNonPlayableCardHelper(card, div);
+          this.setupNonPlayableCardHelper(card, div, "front");
           this.setupCardPreview(div);
         },
         setupBackDiv: (card, div) => {
-          this.setupNonPlayableCardHelper(card, div);
+          this.setupNonPlayableCardHelper(card, div, "back");
         },
         isCardVisible: (card) => {
           return true;
@@ -760,6 +761,11 @@ define([
 
       if (slotElement.classList.contains("occupied_blocked")) {
         console.log("skiff slot is occupied and not available");
+        return;
+      }
+
+      if (slotElement.classList.contains("workshop_unavailable")) {
+        console.log("no affordable ship upgrade to activate at the workshop");
         return;
       }
 

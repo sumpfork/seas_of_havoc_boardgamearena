@@ -162,6 +162,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           this.cleanupTradingPostUi();
           break;
 
+        case "client_workshopChooseUpgrade":
+          this.clientStateVars.workshop_upgrades = null;
+          this.clientStateVars.workshop_slot_number = null;
+          break;
+
         case "extortion":
           this.cleanupScrapCardSelection();
           break;
@@ -294,6 +299,23 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           case "client_tradingPostGain":
             this.buildTradingPostGainUI();
             break;
+
+          case "client_workshopChooseUpgrade": {
+            var upgrades = this.clientStateVars.workshop_upgrades || [];
+            var self2 = this;
+            upgrades.forEach(function (upgrade) {
+              var costParts = Object.entries(upgrade.cost || {}).map(function ([resource, amount]) {
+                return amount + " " + self2.resourceIcon(resource);
+              });
+              var label = (upgrade.upgrade_key + " (" + costParts.join(" ") + ")");
+              var affordable = self2.canPlayerAfford(upgrade.cost, false, false);
+              self2.statusBar.addActionButton(label, function () {
+                if (!affordable) return;
+                self2.bgaPerformAction("actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key });
+              }, { classes: affordable ? "bgabutton_green" : "bgabutton_gray disabled" });
+            });
+            break;
+          }
 
           case "client_resourceDialog":
             this.statusBar.addActionButton(

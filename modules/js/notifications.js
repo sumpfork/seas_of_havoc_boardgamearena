@@ -62,6 +62,36 @@ define([
     },
 
     /**
+     * Workshop upgrade-choice dialog notification
+     */
+    notif_showWorkshopDialog: function (args) {
+      console.groupCollapsed("show workshop dialog");
+      console.log("slot_number:", args.slot_number, "upgrades:", args.upgrades);
+      this.clientStateVars.workshop_slot_number = args.slot_number;
+      this.clientStateVars.workshop_upgrades = args.upgrades;
+      this.setClientState("client_workshopChooseUpgrade", {
+        descriptionmyturn: _("${you} must choose a ship upgrade to activate"),
+      });
+      console.groupEnd();
+    },
+
+    /**
+     * Ship upgrade activated notification: flips the upgrade card on the activating player's board
+     */
+    notif_shipUpgradeActivated: function (args) {
+      console.log("notify: ship upgrade activated", args);
+      if (args.player_id == this.player_id) {
+        this.updateUpgradeCardVisual({ id: `upgrade-${args.upgrade_key}`, isActivated: true });
+        (this.player_ship_upgrades || []).forEach((upgrade) => {
+          if (upgrade.upgrade_key === args.upgrade_key) {
+            upgrade.is_activated = 1;
+          }
+        });
+        this.refreshSkiffSlotPlaceability();
+      }
+    },
+
+    /**
      * Resources changed notification
      */
     notif_resourcesChanged: function (args) {
@@ -73,6 +103,7 @@ define([
 
       this.resources = args.resources;
       this.updateResources(args.resources);
+      this.refreshSkiffSlotPlaceability();
       console.groupEnd();
     },
 

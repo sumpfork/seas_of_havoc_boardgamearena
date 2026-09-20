@@ -71,6 +71,8 @@ class SeasOfHavoc extends Table
             "island_scraps_remaining" => 23,
             "pending_card_flag_type" => 24,
             "pending_treasure_seeker_player" => 25,
+            "pending_workshop_player" => 26,
+            "pending_workshop_slot" => 27,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -573,6 +575,13 @@ class SeasOfHavoc extends Table
     {
         $sql = "SELECT upgrade_key, is_activated FROM player_ship_upgrades WHERE player_id = '$player_id'";
         return self::getObjectListFromDb($sql);
+    }
+
+    function markShipUpgradeActivated(string $player_id, string $upgrade_key): void
+    {
+        self::DbQuery(
+            "UPDATE player_ship_upgrades SET is_activated = 1 WHERE player_id = '$player_id' AND upgrade_key = '$upgrade_key'",
+        );
     }
 
     private function corsairOccupiedPlacementBenefits(): array
@@ -1101,6 +1110,11 @@ class SeasOfHavoc extends Table
         if ($pending_trading_post !== null && (int) $pending_trading_post["player_id"] === (int) $current_player_id) {
             $result["pending_trading_post_slot"] = $pending_trading_post["slot_number"];
         }
+        $pending_workshop = $this->getPendingWorkshopSelection();
+        $result["pending_workshop_slot"] = null;
+        if ($pending_workshop !== null && (int) $pending_workshop["player_id"] === (int) $current_player_id) {
+            $result["pending_workshop_slot"] = $pending_workshop["slot_number"];
+        }
         $result["playable_cards"] = $this->playable_cards;
 
         // Send the full, unmodified market to all players
@@ -1289,6 +1303,100 @@ class SeasOfHavoc extends Table
                 "is_corsair_overlay" => true,
             ],
         );
+    }
+
+    private function setPendingWorkshopSelection(?int $player_id, ?string $slot_number): void
+    {
+        $slot_value = 0;
+        if ($slot_number !== null) {
+            $slot_value = (int) ltrim($slot_number, "n");
+        }
+
+        $this->setGameStateValue("pending_workshop_player", $player_id ?? 0);
+        $this->setGameStateValue("pending_workshop_slot", $slot_value);
+    }
+
+    private function getPendingWorkshopSelection(): ?array
+    {
+        $player_id = (int) $this->getGameStateValue("pending_workshop_player");
+        $slot_value = (int) $this->getGameStateValue("pending_workshop_slot");
+
+        if ($player_id <= 0 || $slot_value <= 0) {
+            return null;
+        }
+
+        return [
+            "player_id" => $player_id,
+            "slot_number" => "n" . $slot_value,
+        ];
+    }
+
+    private function assertPendingWorkshopSelection(int $player_id): array
+    {
+        $pending = $this->getPendingWorkshopSelection();
+        if ($pending === null || (int) $pending["player_id"] !== $player_id) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("You must place a skiff on the workshop first"));
+        }
+        return $pending;
+    }
+
+    function actActivateShipUpgrade(string $upgrade_key): mixed
+    {
+        $player_id = self::getActivePlayerId();
+        $pending = $this->assertPendingWorkshopSelection((int) $player_id);
+
+        $upgrade = null;
+        foreach ($this->getPlayerShipUpgrades($player_id) as $candidate) {
+            if ($candidate["upgrade_key"] === $upgrade_key) {
+                $upgrade = $candidate;
+                break;
+            }
+        }
+        if ($upgrade === null || $upgrade["is_activated"]) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Invalid ship upgrade selection"));
+        }
+
+        $card = $this->non_playable_cards[$upgrade_key];
+        $this->pay($player_id, $card["cost"] ?? []);
+        $this->playerGainResources($player_id, ["skiff" => -1]);
+
+        $this->markShipUpgradeActivated($player_id, $upgrade_key);
+        $this->occupyIslandSlot($player_id, "workshop", $pending["slot_number"]);
+        $this->setPendingWorkshopSelection(null, null);
+
+        $this->bga->notify->all("shipUpgradeActivated", clienttranslate('${player_name} activates a ship upgrade'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => $player_id,
+            "upgrade_key" => $upgrade_key,
+            "infamy" => $card["infamy"] ?? 0,
+        ]);
+
+        return "islandTurnDone";
+    }
+
+    /**
+     * Sums infamy from all activated ship upgrades and scores it per player.
+     * Not yet called anywhere: no end-of-game state exists in this codebase yet
+     * (STATE_END_GAME is never transitioned to). Wire this in once end-of-game logic is built.
+     */
+    function awardShipUpgradeEndgameInfamy(): void
+    {
+        foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
+            $infamy_total = 0;
+            foreach ($this->getPlayerShipUpgrades($player_id) as $upgrade) {
+                if (!$upgrade["is_activated"]) {
+                    continue;
+                }
+                $infamy_total += $this->non_playable_cards[$upgrade["upgrade_key"]]["infamy"] ?? 0;
+            }
+            if ($infamy_total > 0) {
+                $this->scoreInfamy(
+                    (string) $player_id,
+                    $infamy_total,
+                    clienttranslate('${player_name} scores ${score_increment} infamy from ship upgrades'),
+                );
+            }
+        }
     }
 
     private function setPendingTradingPostSelection(?int $player_id, ?string $slot_number): void
@@ -1983,6 +2091,38 @@ class SeasOfHavoc extends Table
                 $this->grantExtraTurn($player_id, "island");
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
+            case "workshop":
+                $inactive_upgrades = array_values(
+                    array_filter($this->getPlayerShipUpgrades($player_id), fn($upgrade) => !$upgrade["is_activated"]),
+                );
+                $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
+                $affordable_upgrades = array_values(
+                    array_filter(
+                        $inactive_upgrades,
+                        fn($upgrade) => $this->canPayFor(
+                            $this->non_playable_cards[$upgrade["upgrade_key"]]["cost"] ?? [],
+                            $player_resources,
+                        ),
+                    ),
+                );
+                if (empty($affordable_upgrades)) {
+                    throw new \Bga\GameFramework\UserException(
+                        clienttranslate("You have no ship upgrade you can afford to activate"),
+                    );
+                }
+                $this->setPendingWorkshopSelection((int) $player_id, $number);
+                $this->bga->notify->player($player_id, "showWorkshopDialog", "", [
+                    "slot_number" => $number,
+                    "upgrades" => array_map(
+                        fn($upgrade) => [
+                            "upgrade_key" => $upgrade["upgrade_key"],
+                            "cost" => $this->non_playable_cards[$upgrade["upgrade_key"]]["cost"] ?? [],
+                            "infamy" => $this->non_playable_cards[$upgrade["upgrade_key"]]["infamy"] ?? 0,
+                        ],
+                        $affordable_upgrades,
+                    ),
+                ]);
+                return null; // Dialog shown, waiting for actActivateShipUpgrade
             default:
                 throw new \Bga\GameFramework\SystemException("bad skiff slot: $slotname");
         }

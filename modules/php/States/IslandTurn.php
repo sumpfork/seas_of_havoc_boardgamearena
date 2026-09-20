@@ -48,4 +48,10 @@ class IslandTurn extends GameState
     ): mixed {
         return $this->game->actTradingPostExchange($resources_spent, $resources_gained, $slot_number, $use_booty_card_id);
     }
+
+    #[PossibleAction]
+    public function actActivateShipUpgrade(string $upgrade_key): mixed
+    {
+        return $this->game->actActivateShipUpgrade($upgrade_key);
+    }
 }

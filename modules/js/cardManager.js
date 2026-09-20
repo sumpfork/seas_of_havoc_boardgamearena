@@ -62,10 +62,15 @@ define(["dojo/dom-style"], function (domStyle) {
     /**
      * Setup helper for non-playable cards (captain, ship upgrades)
      */
-    setupNonPlayableCardHelper: function (card, div) {
+    setupNonPlayableCardHelper: function (card, div, side) {
       let image_id = null;
-      if (card.cardKey && this.non_playable_cards && this.non_playable_cards[card.cardKey]) {
-        const cardData = this.non_playable_cards[card.cardKey];
+      const cardData = card.cardKey && this.non_playable_cards ? this.non_playable_cards[card.cardKey] : null;
+
+      if (side === "back" && cardData && cardData.category === "ship_upgrade") {
+        // Ship upgrade cards flip to their activated (upgraded) side, stored 2 sprites after the front.
+        image_id = cardData.image_id + 2;
+        div.classList.add("non-playable-card-back");
+      } else if (cardData) {
         image_id = cardData.image_id;
         div.classList.add("non-playable-card-front");
       } else if (this.non_playable_cards && this.non_playable_cards.card_back) {
@@ -81,6 +86,8 @@ define(["dojo/dom-style"], function (domStyle) {
           card.id +
           " with cardKey " +
           card.cardKey +
+          " side " +
+          side +
           " and image id " +
           image_id,
       );

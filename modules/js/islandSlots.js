@@ -61,6 +61,25 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
       return !this.canCurrentPlayerUseCorsairOnSlot(slotName, slotData);
     },
 
+    /**
+     * The workshop only has an effect if the player owns an unactivated upgrade they can afford.
+     */
+    shouldBlockWorkshopSlot: function (slotName) {
+      if (slotName !== "workshop") {
+        return false;
+      }
+      var upgrades = this.player_ship_upgrades || [];
+      var inactiveUpgrades = upgrades.filter((upgrade) => upgrade.is_activated != 1);
+      if (inactiveUpgrades.length === 0) {
+        return true;
+      }
+      var nonPlayableCards = this.non_playable_cards || {};
+      return !inactiveUpgrades.some((upgrade) => {
+        var card = nonPlayableCards[upgrade.upgrade_key] || {};
+        return this.canPlayerAfford(card.cost, false, false);
+      });
+    },
+
     refreshSkiffSlotPlaceability: function () {
       if (this.islandSlots && this.players) {
         this.updateIslandSlots(this.islandSlots, this.players);
@@ -129,6 +148,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"],
             domClass.add(skiff_slot_id, "occupied_blocked");
           } else {
             domClass.remove(skiff_slot_id, "occupied_blocked");
+          }
+
+          if (this.shouldBlockWorkshopSlot(slot)) {
+            domClass.add(skiff_slot_id, "workshop_unavailable");
+          } else {
+            domClass.remove(skiff_slot_id, "workshop_unavailable");
           }
 
           var primaryOccupantId = slotData.occupying_player_id;
