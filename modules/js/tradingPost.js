@@ -314,8 +314,7 @@ define([
       if (state.useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
         previousBootyTokens = JSON.parse(JSON.stringify(this.booty_tokens));
         params.use_booty_card_id = this.booty_tokens[0].id;
-        this.booty_tokens = [];
-        this.updateMyBootyToken();
+        this.consumeBootyToken(params.use_booty_card_id);
       }
 
       this._tradingPostState = null;

@@ -294,8 +294,17 @@ class SeaBoard
         return ["type" => "turn", "old_heading" => $old_heading, "new_heading" => $new_heading];
     }
 
-    public function resolveCannonFire(string $player_id, Turn $direction, int $distance, array $collision_types)
-    {
+    /**
+     * @param int $from_distance start checking this many spaces beyond the ship, so that a shot
+     *                           which travels through what it hit (heavy guns) can be continued.
+     */
+    public function resolveCannonFire(
+        string $player_id,
+        Turn $direction,
+        int $distance,
+        array $collision_types,
+        int $from_distance = 0,
+    ) {
         $this->syncFromDB();
         $object_info = $this->findObject("player_ship", $player_id);
         $ship_heading = $object_info["object"]["heading"];
@@ -316,6 +325,11 @@ class SeaBoard
         );
         for ($d = 1; $d <= $distance; $d++) {
             $movement_result = $this->computeForwardMovement($x, $y, $fire_heading);
+            if ($d <= $from_distance) {
+                $x = $movement_result["new_x"];
+                $y = $movement_result["new_y"];
+                continue;
+            }
             $x = $movement_result["new_x"];
             $y = $movement_result["new_y"];
             $this->bga->trace("checking " . $x . " " . $y . " while firing");
@@ -326,6 +340,7 @@ class SeaBoard
                     "type" => "fire_hit",
                     "hit_x" => $x,
                     "hit_y" => $y,
+                    "hit_distance" => $d,
                     "hit_objects" => $collided,
                     "fire_heading" => $fire_heading,
                 ];

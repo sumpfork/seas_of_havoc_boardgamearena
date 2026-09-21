@@ -69,18 +69,21 @@ $this->non_playable_cards = [
     "player_aid_front" => ["image_id" => 7, "category" => "player_aid"],
     "player_aid_back" => ["image_id" => 8, "category" => "player_aid"],
     "war_junk_rockets" => [
+        "name" => clienttranslate("Rockets"),
         "image_id" => 9,
         "category" => "ship_upgrade",
         "ship_name" => "War Junk",
         "cost" => ["cannonball" => 2, "doubloon" => 1],
     ],
     "war_junk_bulwark" => [
+        "name" => clienttranslate("Watertight Bulkheads"),
         "image_id" => 10,
         "category" => "ship_upgrade",
         "ship_name" => "War Junk",
         "cost" => ["sail" => 1, "doubloon" => 1],
     ],
     "xebec_lateen_rigging" => [
+        "name" => clienttranslate("Lateen Rigging"),
         "image_id" => 13,
         "category" => "ship_upgrade",
         "ship_name" => "Xebec",
@@ -88,6 +91,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "xebec_swift_hull" => [
+        "name" => clienttranslate("Swift Hull"),
         "image_id" => 14,
         "category" => "ship_upgrade",
         "ship_name" => "Xebec",
@@ -95,6 +99,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "sloop_of_war_chain_shot" => [
+        "name" => clienttranslate("Chain Shot"),
         "image_id" => 17,
         "category" => "ship_upgrade",
         "ship_name" => "Sloop of War",
@@ -102,6 +107,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "sloop_of_war_nimble_hull" => [
+        "name" => clienttranslate("Nimble Hull"),
         "image_id" => 18,
         "category" => "ship_upgrade",
         "ship_name" => "Sloop of War",
@@ -109,6 +115,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "brig_extra_rations" => [
+        "name" => clienttranslate("Extra Rations"),
         "image_id" => 21,
         "category" => "ship_upgrade",
         "ship_name" => "Brig",
@@ -116,6 +123,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "brig_carronade" => [
+        "name" => clienttranslate("Carronade"),
         "image_id" => 22,
         "category" => "ship_upgrade",
         "ship_name" => "Brig",
@@ -123,6 +131,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "ship_of_the_line_double_gun_crews" => [
+        "name" => clienttranslate("Double Gun Crews"),
         "image_id" => 25,
         "category" => "ship_upgrade",
         "ship_name" => "Ship-of-the-Line",
@@ -130,6 +139,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "ship_of_the_line_heavy_guns" => [
+        "name" => clienttranslate("Heavy Guns"),
         "image_id" => 26,
         "category" => "ship_upgrade",
         "ship_name" => "Ship-of-the-Line",
@@ -137,6 +147,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "galleon_bow_and_stern_chasers" => [
+        "name" => clienttranslate("Bow and Stern Chasers"),
         "image_id" => 29,
         "category" => "ship_upgrade",
         "ship_name" => "Galleon",
@@ -144,6 +155,7 @@ $this->non_playable_cards = [
         "infamy" => 3,
     ],
     "galleon_treasure_hold" => [
+        "name" => clienttranslate("Treasure Hold"),
         "image_id" => 30,
         "category" => "ship_upgrade",
         "ship_name" => "Galleon",

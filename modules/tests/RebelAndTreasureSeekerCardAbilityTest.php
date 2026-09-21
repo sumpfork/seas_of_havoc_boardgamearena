@@ -35,6 +35,11 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
         return $this->runEngine ? parent::resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id, $actions) : 'seaTurnDone';
     }
     public function addCard(int $type, string $location, int $arg = 1): int {
+        if ($location === 'player_discard') {
+            // Discards are per-player ordered piles now; $arg names the player, not the position.
+            $location = $this->playerDiscardName($arg);
+            $arg = $this->deck->countCardInLocation($location) + 1;
+        }
         $this->deck->createCards([['type' => $type, 'type_arg' => 0, 'nbr' => 1]], $location, $arg);
         return max(array_keys($this->deck->getCardsInLocation($location, $arg)));
     }
@@ -42,7 +47,7 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
         $type = array_key_first(array_filter($this->playable_cards, fn($c) => ($c['actions'][0]['ability'] ?? null) === $ability));
         $id = $this->addCard($type, 'hand');
         $result = $this->processCaptainAbility($ability);
-        $this->deck->moveCard($id, 'player_discard', 1);
+        $this->discardCardToPlayer($id, 1);
         $this->setGameStateValue('pending_captain_card', $id);
         return $result;
     }
@@ -88,7 +93,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
             $this->assertSame(STATE_CAPTAIN_CARD, $this->game->start('improvisation'));
             $this->game->actResolveCaptainCard(['card_id' => $id], ['skip']);
             $this->assertSame($this->game->playable_cards[$type]['actions'], $this->game->resolved['actions']);
-            $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+            $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
             $this->assertNotSame($id, $this->game->resolved['card_id']);
         }
     }
@@ -121,7 +126,8 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->game->start('spyglass');
         $options = $this->game->argCaptainCard()['_private'][1]['available_cards'];
         $this->assertEqualsCanonicalizing([$top, $discard], array_column($options, 'id'));
-        $this->assertSame(2, $this->game->deck->getCard($other)['location_arg']);
+        // the other player's discard is a separate pile and stays put
+        $this->assertSame('player_discard_2', $this->game->deck->getCard($other)['location']);
         $this->game->actResolveCaptainCard(['order' => [$top, $discard]]);
         $this->assertSame($discard, $this->game->deck->getCardOnTop('player_deck_1')['id']);
     }
@@ -159,11 +165,12 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
 
     public function testFiringVariantsLogCountDirectionAndRangeEvenOnAMiss(): void {
         $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['resolveCannonFire'])->getMock();
-        $board->expects($this->exactly(3))->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
+        // 1 + 2 + 3 shots: "Fire 2 cannon" really fires two cannonballs.
+        $board->expects($this->exactly(6))->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
         foreach (['fire', '2 x fire', '3 x fire'] as $index => $action) {
             $direction = $index === 1 ? 'right' : 'left';
-            $this->game->processCardActions([['action' => $action, 'range' => 3 - $index]], ['fire ' . $direction]);
+            $this->game->processCardActions([['action' => $action, 'range' => 3 - $index]], [$action . ' ' . $direction]);
             $log = $this->game->debugLastNotif;
             $this->assertSame('log', $log['type']);
             $this->assertStringContainsString('fires ${cannon_count}', $log['message']);
@@ -209,7 +216,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
             $id = $this->game->addCard($type, 'player_discard');
             $this->game->start('improvisation');
             $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $id], [$decision]));
-            $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+            $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
         }
     }
 
@@ -228,7 +235,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame([$kept], array_column($this->game->argCaptainCard()['_private'][1]['available_cards'], 'id'));
         $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['order' => [$kept]]));
         $this->assertSame(1, $this->game->seaEffects);
-        $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+        $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
     }
 
     public function testPlayRejectsForgedCaptainCardType(): void {

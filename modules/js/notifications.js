@@ -92,6 +92,14 @@ define([
     },
 
     /**
+     * The current player's card actions changed (a ship upgrade unlocked or used up an option).
+     */
+    notif_playableCardsUpdated: function (args) {
+      this.playable_cards = args.playable_cards;
+      this.gamedatas.playable_cards = args.playable_cards;
+    },
+
+    /**
      * Resources changed notification
      */
     notif_resourcesChanged: function (args) {
@@ -401,12 +409,17 @@ define([
             console.log(this.seaboard);
             break;
           }
+          case "explosion": {
+            this.animateExplosionAt(move.hit_x, move.hit_y);
+            break;
+          }
           case "fire_hit": {
-            let cannon_fire = this.format_block("jstpl_cannon_fire", {});
+            // Unique ids: one card play can now fire several shots, each with its own animation.
+            let fireId = "cannonfire_" + this._nextEffectId();
+            let cannon_fire = this.format_block("jstpl_cannon_fire", { id: fireId });
             let rotation = this.getHeadingDegrees(move.fire_heading);
             console.log("fire rotation " + rotation);
             domConstruct.place(cannon_fire, shipid);
-            domStyle.set("cannonfire", "rotate", rotation + "deg");
             let offset = null;
             var NORTH = 1,
               SOUTH = 3,
@@ -427,34 +440,21 @@ define([
                 break;
             }
             console.log(offset);
-            domStyle.set("cannonfire", "rotate", rotation + "deg");
-            domStyle.set("cannonfire", offset[0], offset[1], rotation + "deg");
-            let explosion = this.format_block("jstpl_explosion", {});
-            let target_id = "seaboardlocation_" + move.hit_x + "_" + move.hit_y;
-            domConstruct.place(explosion, target_id);
-            domStyle.set("explosion", "opacity", "0");
-            domStyle.set("cannonfire", "opacity", 0);
+            domStyle.set(fireId, "rotate", rotation + "deg");
+            domStyle.set(fireId, offset[0], offset[1], rotation + "deg");
+            domStyle.set(fireId, "opacity", 0);
             fx.chain([
-              baseFX.fadeIn({ node: "cannonfire", duration: 100 }),
+              baseFX.fadeIn({ node: fireId, duration: 100 }),
               baseFX.fadeOut({
-                node: "cannonfire",
+                node: fireId,
                 duration: 100,
                 delay: 1000,
                 onEnd: function () {
-                  domConstruct.destroy("cannonfire");
+                  domConstruct.destroy(fireId);
                 },
               }),
             ]).play();
-            fx.chain([
-              baseFX.fadeIn({ node: "explosion", delay: 100 }),
-              baseFX.fadeOut({
-                node: "explosion",
-                delay: 1000,
-                onEnd: function () {
-                  domConstruct.destroy("explosion");
-                },
-              }),
-            ]).play();
+            this.animateExplosionAt(move.hit_x, move.hit_y);
             break;
           }
         }

@@ -36,7 +36,7 @@ final class CardFlagActionTest extends TestCase
 
     public function testPassedCardOffersItsMatchingFlagBeforeChangingPlayers(): void {
         $id = $this->game->playFlag('green');
-        $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+        $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
         $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());
         $this->assertSame('green', $this->game->argCardFlag()['flag']);
         $this->assertSame([], $this->game->gains);
@@ -107,7 +107,7 @@ final class CardFlagActionTest extends TestCase
         foreach (['green', 'tan', 'red', 'blue'] as $flag) {
             $id = $this->game->playFlag($flag);
             $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actSkipCardFlag());
-            $this->assertSame('player_discard', $this->game->deck->getCard($id)['location']);
+            $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
             $this->assertSame(0, $this->game->getGameStateValue('pending_card_flag_type'));
         }
         $this->assertSame([], $this->game->gains);

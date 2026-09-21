@@ -75,6 +75,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_HUNT_THE_BOUNTY", 19);
     define("STATE_CAPTAIN_CARD", 20);
     define("STATE_CARD_FLAG", 21);
+    define("STATE_SWIFT_HULL", 22);
     define("STATE_END_GAME", 99);
 }
 

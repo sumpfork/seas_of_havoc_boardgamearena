@@ -74,7 +74,7 @@ define([
           var decisionSummary = makeDecisionSummary(this.dep_tree);
           var totalCost = this._computeTotalPlayCost(this.dep_tree);
 
-          var tokenRes = this.getMyBootyTokenRes();
+          var tokenRes = this.getMyBootyTokenRes(totalCost);
           var hasOverlap = this.bootyOverlapsCost(tokenRes, totalCost);
 
           if (hasOverlap) {
@@ -182,7 +182,9 @@ define([
     _sendPlayCard: function (card, card_id, decisions, useBooty, captainCopyId = this._captainCopyId) {
       if (captainCopyId != null) {
         const params = { choices: JSON.stringify({ card_id: captainCopyId }), decisions: JSON.stringify(decisions) };
-        if (useBooty && this.booty_tokens.length > 0) params.use_booty_card_id = this.booty_tokens[0].id;
+        if (useBooty && this.booty_tokens.length > 0) {
+          params.use_booty_card_id = this.getMyBootyTokenId(this._computeTotalPlayCost(this.dep_tree));
+        }
         this.bgaPerformAction("actResolveCaptainCard", params);
         this.cleanupCardPlayDialog();
         return;
@@ -193,9 +195,9 @@ define([
         decisions: JSON.stringify(decisions),
       };
       if (useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
-        params.use_booty_card_id = this.booty_tokens[0].id;
         var totalCost = this._computeTotalPlayCost(this.dep_tree);
-        var tokenRes = this.getMyBootyTokenRes();
+        params.use_booty_card_id = this.getMyBootyTokenId(totalCost);
+        var tokenRes = this.getMyBootyTokenRes(totalCost);
         if (tokenRes && totalCost) {
           var bootyResolved = this.resolveBootyResources(tokenRes, totalCost);
           var effectiveCost = this.computeEffectiveCost(totalCost, bootyResolved);
@@ -203,8 +205,7 @@ define([
           if (msg) this.showMessage(msg, "info");
           this.playerSpendResources(effectiveCost);
         }
-        this.booty_tokens = [];
-        this.updateMyBootyToken();
+        this.consumeBootyToken(params.use_booty_card_id);
       }
       this.bgaPerformAction("actPlayCard", params);
       this.cleanupCardPlayDialog();
@@ -272,7 +273,9 @@ define([
                 id: id,
                 children: children,
               };
-              if (typeof option.cost !== "undefined") {
+              // Only carry the option's own cost when it has no children: a fire option's cost is
+              // re-declared on the shot rows it generates, and counting it here too doubles it.
+              if (typeof option.cost !== "undefined" && children.size === 0) {
                 entry.cost = option.cost;
               }
               if (typeof action.cost !== "undefined") {
@@ -308,19 +311,30 @@ define([
 
           default: {
             let choice_names = [];
+            let choice_costs = [];
             let choice_name = action.name || action.action;
-            if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
-              choice_names.push(choice_name + " left");
-              choice_names.push(choice_name + " right");
+            if (action.variants) {
+              // Ship upgrades turn a fire action into a list of shot types, each with its own
+              // range, cost and firing sides. Names must match ShipUpgrades::parseFireDecision.
+              for (const variant of action.variants) {
+                for (const side of variant.sides) {
+                  choice_names.push(variant.name + " " + side);
+                  choice_costs.push(variant.cost);
+                }
+              }
+            } else if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
+              choice_names.push(choice_name + " left", choice_name + " right");
+              choice_costs.push(action.cost, action.cost);
             } else {
               choice_names.push(choice_name);
+              choice_costs.push(action.cost);
             }
             if (typeof action.cost !== "undefined") {
               choice_names.push("skip");
+              choice_costs.push(undefined);
             }
             if (choice_names.length > 1) {
               var tree_choices = [];
-              let parent_cost = action.cost;
               for (let i = 0; i < choice_names.length; i++) {
                 var to_push = {
                   name: choice_names[i],
@@ -328,7 +342,7 @@ define([
                   children: new Map(),
                 };
                 if (choice_names[i] != "skip") {
-                  to_push["cost"] = parent_cost;
+                  to_push["cost"] = choice_costs[i];
                 }
                 tree_choices.push(to_push);
               }

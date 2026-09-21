@@ -22,6 +22,13 @@ class IslandTurn extends GameState
         );
     }
 
+    public function getArgs(): array
+    {
+        return [
+            'can_use_extra_rations' => $this->game->canUseExtraRations($this->game->getActivePlayerId()),
+        ];
+    }
+
     #[PossibleAction]
     public function actPlaceSkiff(string $slotname, string $number): mixed
     {
@@ -53,5 +60,11 @@ class IslandTurn extends GameState
     public function actActivateShipUpgrade(string $upgrade_key): mixed
     {
         return $this->game->actActivateShipUpgrade($upgrade_key);
+    }
+
+    #[PossibleAction]
+    public function actExtraRations(): mixed
+    {
+        return $this->game->actExtraRations();
     }
 }

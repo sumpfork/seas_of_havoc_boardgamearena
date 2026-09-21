@@ -3,13 +3,15 @@
  * Helper functions for resource management and game state utilities
  */
 
-define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"], function (
-  dom,
-  domClass,
-  domConstruct,
-  domStyle,
-  query,
-) {
+define([
+  "dojo/dom",
+  "dojo/dom-class",
+  "dojo/dom-construct",
+  "dojo/dom-style",
+  "dojo/query",
+  "dojo/_base/fx",
+  "dojo/fx",
+], function (dom, domClass, domConstruct, domStyle, query, baseFX, fx) {
   return {
     resourceIcon: function (resource) {
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
@@ -109,7 +111,15 @@ define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "d
       console.log("[booty] typeArg:", typeArg, "tokens:", tokens);
       domConstruct.empty(mySlot);
       domClass.remove(mySlot, "has-token");
-      if (typeArg !== undefined) {
+      if (tokens.length > 1) {
+        // Galleon Treasure Hold: the hold can carry two tokens, so show them all.
+        tokens.forEach((token) => {
+          const node = this.createBootyTokenNode(false, token.type_arg);
+          this.setBootyTokenImageForSlot(node, token.type_arg);
+          domConstruct.place(node, mySlot);
+        });
+        domClass.add(mySlot, "has-token");
+      } else if (typeArg !== undefined) {
         const node = this.createBootyTokenNode(false, typeArg);
         this.setBootyTokenImageForSlot(node, typeArg);
         domConstruct.place(node, mySlot);
@@ -131,6 +141,32 @@ define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "d
       const node = this.createBootyTokenNode(true, null);
       domConstruct.place(node, slot);
       domClass.add(slot, "has-token");
+    },
+
+    _nextEffectId: function () {
+      this._effectCounter = (this._effectCounter || 0) + 1;
+      return this._effectCounter;
+    },
+
+    /** Flash an explosion on a board square (cannon hits, rocket blasts). */
+    animateExplosionAt: function (x, y) {
+      const targetId = "seaboardlocation_" + x + "_" + y;
+      if (!dom.byId(targetId)) {
+        return;
+      }
+      const id = "explosion_" + this._nextEffectId();
+      domConstruct.place(this.format_block("jstpl_explosion", { id: id }), targetId);
+      domStyle.set(id, "opacity", "0");
+      fx.chain([
+        baseFX.fadeIn({ node: id, delay: 100 }),
+        baseFX.fadeOut({
+          node: id,
+          delay: 1000,
+          onEnd: function () {
+            domConstruct.destroy(id);
+          },
+        }),
+      ]).play();
     },
 
     animateBootyTokenPickup: function (event, playerId) {
@@ -338,7 +374,7 @@ define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "d
       if (affordable) return true;
       if (!includeBooty) return false;
       // Check if booty token could cover the gap
-      var tokenRes = this.getMyBootyTokenRes();
+      var tokenRes = this.getMyBootyTokenRes(resource_cost);
       if (tokenRes && this.bootyOverlapsCost(tokenRes, resource_cost)) {
         var bootyResolved = this.resolveBootyResources(tokenRes, resource_cost);
         var reducedCost = this.computeEffectiveCost(resource_cost, bootyResolved);
@@ -397,9 +433,50 @@ define(["dojo/dom", "dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "d
     /**
      * Get the current player's booty token resources, or null if none.
      */
-    getMyBootyTokenRes: function () {
-      if (!this.booty_tokens || this.booty_tokens.length === 0) return null;
-      return (this.gamedatas.booty_token_resources || {})[this.booty_tokens[0].type_arg] || null;
+    getMyBootyTokenRes: function (cost) {
+      var token = this.pickBootyTokenForCost(cost);
+      if (!token) return null;
+      return (this.gamedatas.booty_token_resources || {})[token.type_arg] || null;
+    },
+
+    /**
+     * With the Galleon's Treasure Hold a player can hold two tokens; spend the one that covers
+     * the most of the cost (ties go to the cheaper token, so the better one stays in the hold).
+     */
+    pickBootyTokenForCost: function (cost) {
+      var tokens = this.booty_tokens || [];
+      if (tokens.length === 0) return null;
+      if (tokens.length === 1 || !cost) return tokens[0];
+      var self = this;
+      var score = function (token) {
+        var res = (self.gamedatas.booty_token_resources || {})[token.type_arg] || {};
+        var resolved = self.resolveBootyResources(res, cost);
+        var covered = 0;
+        for (var key in cost) {
+          covered += Math.min(resolved[key] || 0, cost[key]);
+        }
+        // Prefer more coverage, then the token with less total value left unused.
+        var total = 0;
+        for (var r in res) total += res[r];
+        return covered * 100 - total;
+      };
+      return tokens.slice().sort(function (a, b) {
+        return score(b) - score(a);
+      })[0];
+    },
+
+    /** Drop one spent token from the local hold (the hold may carry two). */
+    consumeBootyToken: function (tokenId) {
+      this.booty_tokens = (this.booty_tokens || []).filter(function (t) {
+        return String(t.id) !== String(tokenId);
+      });
+      this.lastBootyTokenTypeArg = this.booty_tokens.length === 1 ? this.booty_tokens[0].type_arg : undefined;
+      this.updateMyBootyToken();
+    },
+
+    getMyBootyTokenId: function (cost) {
+      var token = this.pickBootyTokenForCost(cost);
+      return token ? token.id : null;
     },
 
     /**

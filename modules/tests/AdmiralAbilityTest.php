@@ -179,7 +179,7 @@ final class AdmiralAbilityTest extends TestCase {
 
     public function testInspireGainsInfamyAndDrawsCardWhenDiscardHasNoDamageCards(): void {
         $this->game->cards->locations["player_discard_1"] = [
-            ["id" => 10, "type" => 5, "location" => "player_discard", "location_arg" => "1"],
+            ["id" => 10, "type" => 5, "location" => "player_discard_1", "location_arg" => 1],
         ];
 
         $this->game->processInspire("1");
@@ -205,7 +205,7 @@ final class AdmiralAbilityTest extends TestCase {
     public function testInspireScrapsDamageCardWhenDiscardHasDamageCard(): void {
         $damage_type = $this->damageCardType();
         $this->game->cards->locations["player_discard_1"] = [
-            ["id" => 99, "type" => $damage_type, "location" => "player_discard", "location_arg" => "1"],
+            ["id" => 99, "type" => $damage_type, "location" => "player_discard_1", "location_arg" => 1],
         ];
 
         $this->game->cards->cards = array_column($this->game->cards->locations["player_discard_1"], null, "id");
@@ -219,8 +219,8 @@ final class AdmiralAbilityTest extends TestCase {
     public function testInspireScrapsOnlyOneDamageCardWhenMultipleExist(): void {
         $damage_type = $this->damageCardType();
         $this->game->cards->locations["player_discard_1"] = [
-            ["id" => 99, "type" => $damage_type, "location" => "player_discard", "location_arg" => "1"],
-            ["id" => 100, "type" => $damage_type, "location" => "player_discard", "location_arg" => "1"],
+            ["id" => 99, "type" => $damage_type, "location" => "player_discard_1", "location_arg" => 1],
+            ["id" => 100, "type" => $damage_type, "location" => "player_discard_1", "location_arg" => 1],
         ];
 
         $this->game->cards->cards = array_column($this->game->cards->locations["player_discard_1"], null, "id");

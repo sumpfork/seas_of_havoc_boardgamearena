@@ -409,6 +409,13 @@
   background-size: 200px 200px;
   opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
 }
+/* Galleon Treasure Hold: two tokens fit in the hold, stacked with a slight offset */
+.booty-token-slot .booty-token + .booty-token {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  box-shadow: -2px 0 3px rgba(0, 0, 0, 0.5);
+}
 .booty-token-slot .booty-token-back {
   background-position: 0px -150px;
 }
@@ -558,10 +565,10 @@
 a.disabled {
   pointer-events: none;
 }
-#cannonfire {
+.cannonfire {
   position: relative;
 }
-#explosion {
+.explosion {
   position: relative;
   left: -32px;
   top: -32px;

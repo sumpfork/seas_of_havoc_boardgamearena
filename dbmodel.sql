@@ -114,3 +114,10 @@ CREATE TABLE IF NOT EXISTS `pending_purchases` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ALTER TABLE pending_purchases ADD CONSTRAINT fk_pending_purchases_player_id FOREIGN KEY (player_id) REFERENCES player(player_id);
+
+-- Once-per-phase ship upgrade uses, cleared at the start of the relevant phase.
+CREATE TABLE IF NOT EXISTS `upgrade_uses` (
+  `player_id` int(10) unsigned NOT NULL,
+  `upgrade_key` varchar(64) NOT NULL,
+  PRIMARY KEY (`player_id`, `upgrade_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

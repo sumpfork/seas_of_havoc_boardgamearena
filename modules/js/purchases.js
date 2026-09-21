@@ -256,7 +256,7 @@ define([
       }
 
       if (useBooty) {
-        var tokenRes = this.getMyBootyTokenRes();
+        var tokenRes = this.getMyBootyTokenRes(effectiveCost);
         if (tokenRes) {
           var bootyResolved = this.resolveBootyResources(tokenRes, effectiveCost);
           effectiveCost = this.computeEffectiveCost(effectiveCost, bootyResolved);
@@ -299,10 +299,9 @@ define([
         doubloons_as_sails: doubloonsAsSails,
       };
       if (useBooty) {
-        entry.use_booty_card_id = this.booty_tokens[0].id;
+        entry.use_booty_card_id = this.getMyBootyTokenId(card.cost);
         this._bootyUsedForPurchase = true;
-        this.booty_tokens = [];
-        this.updateMyBootyToken();
+        this.consumeBootyToken(entry.use_booty_card_id);
       }
       this.cards_purchased.push(entry);
 
@@ -363,7 +362,7 @@ define([
      */
     onClickPurchaseButton_afterMerchant: function (slot_card, card, slotnumber) {
       // Check if player has an unused booty token with resources that overlap this card's cost
-      var tokenRes = !this._bootyUsedForPurchase ? this.getMyBootyTokenRes() : null;
+      var tokenRes = !this._bootyUsedForPurchase ? this.getMyBootyTokenRes(card.cost) : null;
       var bootyOverlap = this.bootyOverlapsCost(tokenRes, card.cost);
 
       if (bootyOverlap) {

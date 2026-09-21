@@ -15,9 +15,35 @@ if (!class_exists("MockCardDeck")) {
             return $this->cards[$card_id] ?? null;
         }
 
-        public function getCardsInLocation(string $location, $location_arg = null): array {
+        public function getCardsInLocation(string $location, $location_arg = null, ?string $order_by = null): array {
             $key = $location . ($location_arg !== null ? "_$location_arg" : "");
-            return $this->locations[$key] ?? [];
+            $cards = $this->locations[$key] ?? [];
+            if ($order_by !== null) {
+                usort($cards, fn($a, $b) => $a[$order_by] <=> $b[$order_by]);
+            }
+            return $cards;
+        }
+
+        public function getCardOnTop(string $location): ?array {
+            $cards = $this->getCardsInLocation($location, null, "location_arg");
+            return empty($cards) ? null : end($cards);
+        }
+
+        public function insertCardOnExtremePosition(int $card_id, string $location, bool $bOnTop): void {
+            $cards = $this->getCardsInLocation($location);
+            $args = array_map(fn($c) => (int) $c["location_arg"], $cards);
+            $extreme = empty($args) ? 0 : ($bOnTop ? max($args) : min($args));
+            $this->moveCard($card_id, $location, $bOnTop ? $extreme + 1 : $extreme - 1);
+        }
+
+        public function pickCardForLocation(string $from, string $to, $location_arg = 0): ?array {
+            $cards = $this->getCardsInLocation($from);
+            if (empty($cards)) {
+                return null;
+            }
+            $card = reset($cards);
+            $this->moveCard((int) $card["id"], $to, $location_arg);
+            return $this->cards[(int) $card["id"]] ?? $card;
         }
 
         public function getPlayerHand(string $player_id): array {

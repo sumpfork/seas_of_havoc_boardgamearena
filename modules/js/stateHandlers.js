@@ -229,6 +229,29 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             }, { classes: "bgabutton_gray" });
             break;
 
+          case "swiftHull": {
+            this.statusBar.addActionButton(
+              _("Pay 1") + " " + this.resourceIcon("sail") + " " + _("to play another card"),
+              () => { this.bgaPerformAction("actUseSwiftHull", {}); },
+              { classes: "bgabutton_green" },
+            );
+            this.statusBar.addActionButton(_("End turn"), () => {
+              this.bgaPerformAction("actSkipSwiftHull", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+          }
+
+          case "islandTurn": {
+            if (args && args.can_use_extra_rations) {
+              this.statusBar.addActionButton(
+                _("Extra Rations") + ": " + _("pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
+                () => { this.bgaPerformAction("actExtraRations", {}); },
+                { classes: "bgabutton_green" },
+              );
+            }
+            break;
+          }
+
           case "cardPurchases":
           case "cardPurchasesPrivate":
           case "cardPurchasesMaking":
@@ -307,7 +330,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               var costParts = Object.entries(upgrade.cost || {}).map(function ([resource, amount]) {
                 return amount + " " + self2.resourceIcon(resource);
               });
-              var label = (upgrade.upgrade_key + " (" + costParts.join(" ") + ")");
+              var label = _(upgrade.name) + " (" + costParts.join(" ") + ")";
               var affordable = self2.canPlayerAfford(upgrade.cost, false, false);
               self2.statusBar.addActionButton(label, function () {
                 if (!affordable) return;
