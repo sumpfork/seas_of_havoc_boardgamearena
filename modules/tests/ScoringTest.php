@@ -22,7 +22,7 @@ class CapturingPlayerCounter extends \Bga\GameFramework\Components\Counters\Stub
 /**
  * Infamy is the BGA player score. Every other test stubs scoreInfamy out at the seam, so this is
  * the only place the real implementation runs — it exists to keep scoring on the framework counter
- * rather than raw UPDATEs against player_score.
+ * rather than raw UPDATEs against the score column.
  */
 class ScoringUT extends SeasOfHavocUT
 {

@@ -110,7 +110,7 @@ final class RebelAbilityTest extends TestCase {
             $this->game->discardCalls,
         );
         $this->assertSame("2", $this->game->gamestate->getActivePlayerId());
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
     public function testNonRebelCannotUseRebelDiscardAction(): void {

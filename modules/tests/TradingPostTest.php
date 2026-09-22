@@ -124,6 +124,6 @@ final class TradingPostTest extends TestCase
         $this->assertCount(1, $this->game->occupiedSlots);
         $this->assertSame("trading_post", $this->game->occupiedSlots[0]["slot_name"]);
         $this->assertSame("n1", $this->game->occupiedSlots[0]["slot_number"]);
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 }

@@ -84,12 +84,12 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->mockIslandSlots['shipyard']['n1']['occupying_player_id']);
         $this->assertSame(1, $this->game->mockIslandSlots['shipyard']['n1']['corsair_occupying_player_id']);
         $this->assertSame(1, $this->game->getGameStateValue('corsair_occupied_placement_used'));
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
     public function testCorsairCanPlaceOnOccupiedBankAndGainShownResourcesOnly(): void {
         $this->game->actPlaceSkiff('bank', 'n1');
-        $this->assertSame(2, $this->game->gamestate->state_id());
+        $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
         $this->game->actResourcePickedInDialog('sail', 'corsair_occupied_bank', 'n1');
@@ -100,12 +100,12 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->mockIslandSlots['bank']['n1']['occupying_player_id']);
         $this->assertSame(1, $this->game->mockIslandSlots['bank']['n1']['corsair_occupying_player_id']);
         $this->assertSame(1, $this->game->getGameStateValue('corsair_occupied_placement_used'));
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
     public function testCorsairCanPlaceOnOccupiedCapitolAndOnlyGainChosenResource(): void {
         $this->game->actPlaceSkiff('capitol', 'n1');
-        $this->assertSame(2, $this->game->gamestate->state_id());
+        $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
         $this->game->actResourcePickedInDialog('cannonball', 'corsair_occupied_capitol', 'n1');
@@ -115,12 +115,12 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->mockIslandSlots['capitol']['n1']['occupying_player_id']);
         $this->assertSame(1, $this->game->mockIslandSlots['capitol']['n1']['corsair_occupying_player_id']);
         $this->assertSame(1, $this->game->getGameStateValue('corsair_occupied_placement_used'));
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
     public function testCorsairCanPlaceOnOccupiedGreenFlagAndOnlyGainChosenResource(): void {
         $this->game->actPlaceSkiff('green_flag', 'n1');
-        $this->assertSame(2, $this->game->gamestate->state_id());
+        $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
         $this->game->actResourcePickedInDialog('doubloon', 'corsair_occupied_green_flag', 'n1');
@@ -130,7 +130,7 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->mockIslandSlots['green_flag']['n1']['occupying_player_id']);
         $this->assertSame(1, $this->game->mockIslandSlots['green_flag']['n1']['corsair_occupying_player_id']);
         $this->assertSame(1, $this->game->getGameStateValue('corsair_occupied_placement_used'));
-        $this->assertSame(3, $this->game->gamestate->state_id());
+        $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
     public function testCorsairCannotUseOccupiedPlacementTwiceInSameIslandPhase(): void {

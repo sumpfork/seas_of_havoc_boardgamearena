@@ -89,12 +89,6 @@ class SeasOfHavoc extends Table
         }
     }
 
-    protected function getGameName()
-    {
-        // Used for translations and stuff. Please do not modify.
-        return "seasofhavoc";
-    }
-
     /*
         setupNewGame:
         
@@ -414,6 +408,8 @@ class SeasOfHavoc extends Table
 
         /************ End of the game initialization *****/
         $this->activeNextPlayer();
+
+        return STATE_ISLAND_PHASE_SETUP;
     }
 
     function playerDeckName($player_id)
@@ -1734,7 +1730,7 @@ class SeasOfHavoc extends Table
 
     /**
      * Infamy is the player score. The framework counter owns the DB write and the notification
-     * that refreshes the score on the front end, so do not touch player_score directly.
+     * that refreshes the score on the front end, so do not touch the score column directly.
      */
     function scoreInfamy(string $player_id, int $amount, string $message = "")
     {
