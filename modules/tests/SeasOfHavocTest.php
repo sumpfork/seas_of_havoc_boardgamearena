@@ -203,6 +203,13 @@ if (!class_exists("CapturingMockNotify")) {
 if (!class_exists("MockBGA")) {
     class MockBGA extends \Bga\GameFramework\Bga
     {
+        public function __construct()
+        {
+            // The Bga stub declares these typed properties but never initialises them, so any code
+            // reaching the framework score counters would fatal before the test could assert.
+            $this->playerScore = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
+            $this->playerScoreAux = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
+        }
         public function dump($label, $data) {}
         public function trace($message) {}
     }

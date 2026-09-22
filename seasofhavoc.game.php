@@ -147,6 +147,9 @@ class SeasOfHavoc extends Table
         //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
+        // Infamy is tracked by the framework's player_score counter.
+        $this->bga->playerScore->initDb(array_map('intval', array_keys($players)));
+
         /************ Start the game initialization *****/
 
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
@@ -1411,16 +1414,14 @@ class SeasOfHavoc extends Table
 
     function getPlayerInfo(?int $player_id = null)
     {
-        static $player_info = null;
-        if ($player_info === null) {
-            $sql = "SELECT player_id, player_no, player_name, player_score, player_score_aux, player_ship, player_color
+        // Deliberately uncached: this carries player_score, and the previous static cache both
+        // went stale after scoring and ignored $player_id (caching one row for every later call).
+        $sql = "SELECT player_id, player_no, player_name, player_score, player_score_aux, player_ship, player_color
                 FROM player";
-            if ($player_id !== null) {
-                $sql .= " WHERE player_id = $player_id";
-            }
-            $player_info = $this->getCollectionFromDB($sql);
+        if ($player_id !== null) {
+            $sql .= " WHERE player_id = $player_id";
         }
-        return $player_info;
+        return $this->getCollectionFromDB($sql);
     }
 
     function subindexArray($arr_arr, $top_key)
@@ -1731,19 +1732,24 @@ class SeasOfHavoc extends Table
         $this->applyAdmiralTokenTakenAbilities($player_id, $token_key, $taken_from_another_player);
     }
 
+    /**
+     * Infamy is the player score. The framework counter owns the DB write and the notification
+     * that refreshes the score on the front end, so do not touch player_score directly.
+     */
     function scoreInfamy(string $player_id, int $amount, string $message = "")
     {
-        $this->DbQuery("UPDATE player SET player_score=player_score+$amount WHERE player_id='$player_id'");
-        $new_score = $this->getUniqueValueFromDB("SELECT player_score FROM player WHERE player_id='$player_id'");
         if ($message === "") {
             $message = clienttranslate('${player_name} scored ${score_increment} infamy');
         }
-        $this->bga->notify->all("score", $message, [
-            "player_name" => $this->getPlayerNameById($player_id),
-            "player_id" => $player_id,
-            "player_score" => $new_score,
-            "score_increment" => $amount,
-        ]);
+        $this->bga->playerScore->inc(
+            (int) $player_id,
+            $amount,
+            new \Bga\GameFramework\NotificationMessage($message, [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+                "score_increment" => $amount,
+            ]),
+        );
     }
 
     function grantExtraTurn(string $player_id, string $phase)
@@ -3103,7 +3109,7 @@ class SeasOfHavoc extends Table
 
     protected function getPlayerInfamy(string $player_id): int
     {
-        return (int) $this->getUniqueValueFromDB("SELECT player_score FROM player WHERE player_id='$player_id'");
+        return $this->bga->playerScore->get((int) $player_id);
     }
 
     function processBarter(string $player_id): mixed
