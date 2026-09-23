@@ -1,0 +1,40 @@
+{
+    "game_name": "Seas of Havoc",
+    "publisher": "Rock Manor Games",
+    "publisher_website": "https:\/\/rockmanorgames.com\/",
+    "publisher_bgg_id": 32996,
+    "bgg_id": 343525,
+    "players": [
+        2,
+        3,
+        4,
+        5
+    ],
+    "suggest_player_number": null,
+    "not_recommend_player_number": null,
+    "estimated_duration": 60,
+    "fast_additional_time": 30,
+    "medium_additional_time": 40,
+    "slow_additional_time": 50,
+    "tie_breaker_description": "",
+    "losers_not_ranked": false,
+    "solo_mode_ranked": false,
+    "is_coop": 0,
+    "language_dependency": true,
+    "exception_on_warning": true,
+    "player_colors": {
+        "Xebec": "3E8956",
+        "Ship-of-the-Line": "C9364B",
+        "Galleon": "27578F",
+        "Sloop of War": "8E55A1",
+        "War Junk": "F4AA23",
+        "Brig": "57C2B9"
+    },
+    "favorite_colors_support": false,
+    "disable_player_order_swap_on_rematch": false,
+    "game_interface_width": {
+        "min": 740,
+        "autoscale": true,
+        "max": null
+    }
+}
