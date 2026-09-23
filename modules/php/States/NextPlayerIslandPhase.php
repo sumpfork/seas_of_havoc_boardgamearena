@@ -11,11 +11,11 @@ class NextPlayerIslandPhase extends GameState
     {
         parent::__construct(
             $game,
-            id: 4,
+            id: STATE_NEXT_PLAYER_ISLAND_PHASE,
             type: StateType::GAME,
             name: 'nextPlayerIslandPhase',
             description: '',
-            transitions: ['islandPhaseDone' => 5, 'nextPlayer' => 3],
+            transitions: ['islandPhaseDone' => STATE_CARD_PURCHASES, 'nextPlayer' => STATE_ISLAND_TURN],
         );
     }
 

@@ -12,7 +12,7 @@ class HuntTheBounty extends GameState
     {
         parent::__construct(
             $game,
-            id: 19,
+            id: STATE_HUNT_THE_BOUNTY,
             type: StateType::ACTIVE_PLAYER,
             name: 'huntTheBounty',
             description: clienttranslate('${actplayer} must declare a Hunt the Bounty target'),

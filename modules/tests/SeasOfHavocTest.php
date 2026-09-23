@@ -3,7 +3,6 @@
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/../../seasofhavoc.game.php";
-require_once __DIR__ . "/../../states.inc.php";
 
 if (!class_exists("MockCardDeck")) {
     class MockCardDeck {

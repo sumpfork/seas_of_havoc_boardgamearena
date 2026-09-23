@@ -12,7 +12,7 @@ class TreasureSeekerAdjust extends GameState
     {
         parent::__construct(
             $game,
-            id: 13,
+            id: STATE_TREASURE_SEEKER_ADJUST,
             type: StateType::ACTIVE_PLAYER,
             name: 'treasureSeekerAdjust',
             description: clienttranslate('${actplayer} may adjust the shipwreck location'),

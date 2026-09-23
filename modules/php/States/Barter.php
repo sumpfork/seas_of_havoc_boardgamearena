@@ -12,7 +12,7 @@ class Barter extends GameState
     {
         parent::__construct(
             $game,
-            id: 16,
+            id: STATE_BARTER,
             type: StateType::ACTIVE_PLAYER,
             name: 'barter',
             description: clienttranslate('${actplayer} must resolve their Barter ability'),

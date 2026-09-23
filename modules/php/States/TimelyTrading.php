@@ -12,7 +12,7 @@ class TimelyTrading extends GameState
     {
         parent::__construct(
             $game,
-            id: 17,
+            id: STATE_TIMELY_TRADING,
             type: StateType::ACTIVE_PLAYER,
             name: 'timelyTrading',
             description: clienttranslate('${actplayer} must resolve their Timely Trading ability'),

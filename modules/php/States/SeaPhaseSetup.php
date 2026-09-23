@@ -11,11 +11,11 @@ class SeaPhaseSetup extends GameState
     {
         parent::__construct(
             $game,
-            id: 6,
+            id: STATE_SEA_PHASE_SETUP,
             type: StateType::GAME,
             name: 'seaPhaseSetup',
             description: clienttranslate('Starting Sea Phase'),
-            transitions: ['' => 7],
+            transitions: ['' => STATE_SEA_TURN],
         );
     }
 

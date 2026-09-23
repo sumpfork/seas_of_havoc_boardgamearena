@@ -13,12 +13,12 @@ class IslandTurn extends GameState
     {
         parent::__construct(
             $game,
-            id: 3,
+            id: STATE_ISLAND_TURN,
             type: StateType::ACTIVE_PLAYER,
             name: 'islandTurn',
             description: clienttranslate('${actplayer} must place a skiff'),
             descriptionMyTurn: clienttranslate('${you} must place a skiff'),
-            transitions: ['islandTurnDone' => 4, 'scrapCard' => 11],
+            transitions: ['islandTurnDone' => STATE_NEXT_PLAYER_ISLAND_PHASE, 'scrapCard' => STATE_SCRAP_CARD],
         );
     }
 

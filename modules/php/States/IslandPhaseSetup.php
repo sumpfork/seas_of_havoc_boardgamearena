@@ -11,11 +11,11 @@ class IslandPhaseSetup extends GameState
     {
         parent::__construct(
             $game,
-            id: 10,
+            id: STATE_ISLAND_PHASE_SETUP,
             type: StateType::GAME,
             name: 'islandPhaseSetup',
             description: clienttranslate('Starting Island Phase'),
-            transitions: ['rebelDiscard' => 12, 'islandTurn' => 3],
+            transitions: ['rebelDiscard' => STATE_REBEL_DISCARD, 'islandTurn' => STATE_ISLAND_TURN],
         );
     }
 

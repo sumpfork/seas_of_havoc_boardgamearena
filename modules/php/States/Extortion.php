@@ -12,7 +12,7 @@ class Extortion extends GameState
     {
         parent::__construct(
             $game,
-            id: 15,
+            id: STATE_EXTORTION,
             type: StateType::ACTIVE_PLAYER,
             name: 'extortion',
             description: clienttranslate('${actplayer} must resolve their Extortion ability'),

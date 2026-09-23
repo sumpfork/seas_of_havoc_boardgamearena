@@ -12,7 +12,7 @@ class RallyTheFlags extends GameState
     {
         parent::__construct(
             $game,
-            id: 14,
+            id: STATE_RALLY_THE_FLAGS,
             type: StateType::ACTIVE_PLAYER,
             name: 'rallyTheFlagsChooseFlag',
             description: clienttranslate('${actplayer} must choose a flag to take'),

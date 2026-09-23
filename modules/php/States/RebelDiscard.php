@@ -12,12 +12,12 @@ class RebelDiscard extends GameState
     {
         parent::__construct(
             $game,
-            id: 12,
+            id: STATE_REBEL_DISCARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'rebelDiscard',
             description: clienttranslate('${actplayer} must discard a card'),
             descriptionMyTurn: clienttranslate('${you} must discard a card (Rebel ability)'),
-            transitions: ['cardDiscarded' => 3],
+            transitions: ['cardDiscarded' => STATE_ISLAND_TURN],
         );
     }
 

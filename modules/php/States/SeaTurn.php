@@ -13,12 +13,12 @@ class SeaTurn extends GameState
     {
         parent::__construct(
             $game,
-            id: 7,
+            id: STATE_SEA_TURN,
             type: StateType::ACTIVE_PLAYER,
             name: 'seaTurn',
             description: clienttranslate('${actplayer} must play a card'),
             descriptionMyTurn: clienttranslate('${you} must play a card'),
-            transitions: ['seaTurnDone' => 8, 'collisionOccurred' => 9],
+            transitions: ['seaTurnDone' => STATE_NEXT_PLAYER_SEA_PHASE, 'collisionOccurred' => STATE_RESOLVE_COLLISION],
         );
     }
 

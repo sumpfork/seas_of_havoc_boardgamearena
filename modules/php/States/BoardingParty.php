@@ -12,7 +12,7 @@ class BoardingParty extends GameState
     {
         parent::__construct(
             $game,
-            id: 18,
+            id: STATE_BOARDING_PARTY,
             type: StateType::ACTIVE_PLAYER,
             name: 'boardingParty',
             description: clienttranslate('${actplayer} must resolve their Boarding Party ability'),

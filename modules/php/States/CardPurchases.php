@@ -13,12 +13,12 @@ class CardPurchases extends GameState
     {
         parent::__construct(
             $game,
-            id: 5,
+            id: STATE_CARD_PURCHASES,
             type: StateType::MULTIPLE_ACTIVE_PLAYER,
             name: 'cardPurchases',
             description: clienttranslate('Players may purchase cards'),
             descriptionMyTurn: clienttranslate('You may purchase cards'),
-            transitions: ['cardPurchasesDone' => 53],
+            transitions: ['cardPurchasesDone' => STATE_COMMIT_PURCHASES_PRIVATE],
             initialPrivate: 51,
         );
     }

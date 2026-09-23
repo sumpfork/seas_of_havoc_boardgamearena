@@ -12,12 +12,12 @@ class ScrapCard extends GameState
     {
         parent::__construct(
             $game,
-            id: 11,
+            id: STATE_SCRAP_CARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'scrapCard',
             description: clienttranslate('${actplayer} must scrap a card'),
             descriptionMyTurn: clienttranslate('${you} must scrap a card from your hand or discard pile'),
-            transitions: ['cardScrapped' => 4, 'scrapAgain' => 11],
+            transitions: ['cardScrapped' => STATE_NEXT_PLAYER_ISLAND_PHASE, 'scrapAgain' => STATE_SCRAP_CARD],
         );
     }
 

@@ -12,14 +12,14 @@ class ResolveCollision extends GameState
     {
         parent::__construct(
             $game,
-            id: 9,
+            id: STATE_RESOLVE_COLLISION,
             type: StateType::ACTIVE_PLAYER,
             name: 'resolveCollision',
             description: clienttranslate('${actplayer} must resolve a collision'),
             descriptionMyTurn: clienttranslate('${you} must resolve a collision'),
             transitions: [
-                'collisionResolved' => 8,
-                'collisionOccurred' => 9,
+                'collisionResolved' => STATE_NEXT_PLAYER_SEA_PHASE,
+                'collisionOccurred' => STATE_RESOLVE_COLLISION,
             ],
         );
     }

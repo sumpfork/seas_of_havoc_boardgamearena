@@ -25,6 +25,35 @@ use Bga\GameFramework\Table;
 require_once __DIR__ . "/modules/PrimitiveCardPlayAction.php";
 require_once __DIR__ . "/modules/ShipUpgrades.php";
 
+// State ids (state machine itself is defined by the classes in modules/php/States/).
+if (!defined("STATE_END_GAME")) {
+    // ensure this block is only invoked once, since it is included multiple times
+    define("STATE_ISLAND_TURN", 3);
+    define("STATE_NEXT_PLAYER_ISLAND_PHASE", 4);
+    define("STATE_CARD_PURCHASES", 5);
+    define("STATE_CARD_PURCHASES_PRIVATE", 51);
+    define("STATE_CARD_PURCHASES_COMPLETED_PRIVATE", 52);
+    define("STATE_COMMIT_PURCHASES_PRIVATE", 53);
+    define("STATE_SEA_PHASE_SETUP", 6);
+    define("STATE_SEA_TURN", 7);
+    define("STATE_NEXT_PLAYER_SEA_PHASE", 8);
+    define("STATE_RESOLVE_COLLISION", 9);
+    define("STATE_ISLAND_PHASE_SETUP", 10);
+    define("STATE_SCRAP_CARD", 11);
+    define("STATE_REBEL_DISCARD", 12);
+    define("STATE_TREASURE_SEEKER_ADJUST", 13);
+    define("STATE_RALLY_THE_FLAGS", 14);
+    define("STATE_EXTORTION", 15);
+    define("STATE_BARTER", 16);
+    define("STATE_TIMELY_TRADING", 17);
+    define("STATE_BOARDING_PARTY", 18);
+    define("STATE_HUNT_THE_BOUNTY", 19);
+    define("STATE_CAPTAIN_CARD", 20);
+    define("STATE_CARD_FLAG", 21);
+    define("STATE_SWIFT_HULL", 22);
+    define("STATE_END_GAME", 99);
+}
+
 class SeasOfHavoc extends Table
 {
     // Debug flag: give each player a booty token at game start (one with a wild resource)
@@ -1366,7 +1395,7 @@ class SeasOfHavoc extends Table
         100 (= the game is finished or almost finished).
     
         This method is called each time we are in a game state with the "updateGameProgression" property set to true 
-        (see states.inc.php)
+        (see modules/php/States/)
     */
     function getGameProgression()
     {
@@ -4446,7 +4475,7 @@ class SeasOfHavoc extends Table
     ////////////
 
     /*
-        Here, you can create methods defined as "game state arguments" (see "args" property in states.inc.php).
+        Here, you can create methods defined as "game state arguments" (see "args" property of the State classes).
         These methods function is to return some additional information that is specific to the current
         game state.
     */
@@ -4473,7 +4502,7 @@ class SeasOfHavoc extends Table
     ////////////
 
     /*
-        Here, you can create methods defined as "game state actions" (see "action" property in states.inc.php).
+        Here, you can create methods defined as "game state actions" (see "action" property of the State classes).
         The action method of state X is called everytime the current game state is set to X.
     */
 

@@ -11,7 +11,7 @@ class CardPurchasesCompletedPrivate extends GameState
     {
         parent::__construct(
             $game,
-            id: 52,
+            id: STATE_CARD_PURCHASES_COMPLETED_PRIVATE,
             type: StateType::PRIVATE,
             name: 'cardPurchasesCompleted',
             description: clienttranslate('Waiting for other players to complete their purchases'),

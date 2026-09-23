@@ -12,7 +12,7 @@ class SwiftHull extends GameState
     {
         parent::__construct(
             $game,
-            id: 22,
+            id: STATE_SWIFT_HULL,
             type: StateType::ACTIVE_PLAYER,
             name: 'swiftHull',
             description: clienttranslate('${actplayer} may use Swift Hull to play another card'),

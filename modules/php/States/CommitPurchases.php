@@ -11,11 +11,11 @@ class CommitPurchases extends GameState
     {
         parent::__construct(
             $game,
-            id: 53,
+            id: STATE_COMMIT_PURCHASES_PRIVATE,
             type: StateType::GAME,
             name: 'commitPurchases',
             description: clienttranslate('Processing card purchases'),
-            transitions: ['' => 6],
+            transitions: ['' => STATE_SEA_PHASE_SETUP],
         );
     }
 
