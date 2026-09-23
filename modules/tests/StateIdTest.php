@@ -6,33 +6,32 @@ require_once __DIR__ . "/../../seasofhavoc.game.php";
 
 class StateIdTest extends TestCase
 {
-    /** Two states sharing an id silently breaks the state machine, so keep the defines unique. */
+    /** Two states sharing an id silently breaks the state machine, so keep the STATE_* defines unique. */
     public function testStateConstantValuesAreUnique(): void
     {
-        preg_match_all(
-            '/define\("(STATE_\w+)", (\d+)\)/',
-            file_get_contents(__DIR__ . "/../../seasofhavoc.game.php"),
-            $m
-        );
-        $this->assertNotEmpty($m[1]);
-        $byValue = [];
-        foreach ($m[1] as $i => $name) {
-            $byValue[$m[2][$i]][] = $name;
+        $states = [];
+        foreach (get_defined_constants() as $name => $value) {
+            if (str_starts_with($name, "STATE_")) {
+                $states[$value][] = $name;
+            }
         }
-        foreach ($byValue as $value => $names) {
+        $this->assertNotEmpty($states);
+        foreach ($states as $value => $names) {
             $this->assertCount(1, $names, "State id $value used by: " . implode(", ", $names));
         }
     }
 
-    /** Each state class must claim a distinct id, and use a constant rather than a bare number. */
+    /** ... and no two state classes may claim the same id either. */
     public function testStateClassesClaimDistinctIds(): void
     {
+        $game = new SeasOfHavocUT();
         $seen = [];
         foreach (glob(__DIR__ . "/../php/States/*.php") as $file) {
-            $this->assertSame(1, preg_match('/id: (\S+?),/', file_get_contents($file), $m), "No id: in $file");
-            $this->assertStringStartsWith("STATE_", $m[1], "$file uses a bare state id");
-            $this->assertArrayNotHasKey($m[1], $seen, "$m[1] claimed by both " . ($seen[$m[1]] ?? '') . " and $file");
-            $seen[$m[1]] = $file;
+            require_once $file;
+            $class = "Bga\\Games\\SeasOfHavoc\\States\\" . basename($file, ".php");
+            $id = (new $class($game))->id;
+            $this->assertArrayNotHasKey($id, $seen, "id $id claimed by both " . ($seen[$id] ?? "") . " and $class");
+            $seen[$id] = $class;
         }
         $this->assertCount(23, $seen);
     }
