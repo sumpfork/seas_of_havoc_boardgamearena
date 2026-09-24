@@ -517,33 +517,99 @@
   margin: 12px 0 0;
 }
 #card_display_dialog {
-  width: 350px;
-  background-color: white;
-  height: 250px;
+  width: max-content;
+  min-width: 360px;
+  max-width: 560px;
+  background: #fdf6ec;
+  border: 2px solid #8b6914;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 12px;
   margin-top: -200px;
   z-index: 20;
   position: absolute;
   display: grid;
-  grid-template-columns: 150px 200px;
-  grid-template-rows: 200px 50px;
+  grid-template-columns: 150px minmax(190px, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 10px;
+  align-items: start;
 }
 #card_choices {
-  font-size: 18px;
-  padding-top: 10px;
-  padding-bottom: 10px;
   display: flex;
   flex-direction: column;
+  max-height: 210px;
+  overflow-y: auto;
+  color: #5a3a00;
+  font-size: 14px;
 }
 .card-sides {
   width: 144px;
   height: 198px;
 }
-.card_choice_radio_container {
-  display: inline;
+.card_choices_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 0;
 }
-.card_choice_row_num {
-  display: inline;
-  margin-right: 10px;
+.card_choices_row + .card_choices_row {
+  border-top: 1px dashed #d4b87a;
+}
+.card_choice_radio_container {
+  display: contents;
+}
+/* The radio itself stays in the DOM (and keyboard focusable) - the label is the visible chip. */
+.card_choice_radio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+.card_choice_chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid #d4b87a;
+  border-radius: 8px;
+  background: #f5ead8;
+  cursor: pointer;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.card_choice_chip:hover {
+  background: #efe0c4;
+}
+.card_choice_radio:checked + .card_choice_chip {
+  background: rgba(232, 179, 53, 0.55);
+  border-color: #8b6914;
+  font-weight: 600;
+}
+.card_choice_radio:focus-visible + .card_choice_chip {
+  outline: 2px solid #8b6914;
+  outline-offset: 1px;
+}
+.card_choice_radio:disabled + .card_choice_chip {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #f5ead8;
+}
+.chip_glyph {
+  font-size: 16px;
+  line-height: 1;
+}
+.chip_range {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.chip_cost {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 5px;
+  border-left: 1px solid #d4b87a;
 }
 #play_card_button,
 #pass_card_button {

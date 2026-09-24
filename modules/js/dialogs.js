@@ -312,6 +312,7 @@ define([
           default: {
             let choice_names = [];
             let choice_costs = [];
+            let choice_ranges = [];
             let choice_name = action.name || action.action;
             if (action.variants) {
               // Ship upgrades turn a fire action into a list of shot types, each with its own
@@ -320,18 +321,22 @@ define([
                 for (const side of variant.sides) {
                   choice_names.push(variant.name + " " + side);
                   choice_costs.push(variant.cost);
+                  choice_ranges.push(variant.range);
                 }
               }
             } else if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
               choice_names.push(choice_name + " left", choice_name + " right");
               choice_costs.push(action.cost, action.cost);
+              choice_ranges.push(action.range, action.range);
             } else {
               choice_names.push(choice_name);
               choice_costs.push(action.cost);
+              choice_ranges.push(action.range);
             }
             if (typeof action.cost !== "undefined") {
               choice_names.push("skip");
               choice_costs.push(undefined);
+              choice_ranges.push(undefined);
             }
             if (choice_names.length > 1) {
               var tree_choices = [];
@@ -343,6 +348,7 @@ define([
                 };
                 if (choice_names[i] != "skip") {
                   to_push["cost"] = choice_costs[i];
+                  to_push["range"] = choice_ranges[i];
                 }
                 tree_choices.push(to_push);
               }
@@ -360,35 +366,71 @@ define([
     },
 
     /**
-     * Render card choice rows HTML
+     * Icon glyph for a choice, derived from its name. Firing options end in the side they fire to,
+     * maneuvers are named after the move. Anything unrecognised simply gets no glyph.
      * @private
      */
-    _renderCardChoiceRows: function (tree, row_number) {
+    _choiceGlyph: function (name) {
+      var sides = { left: "\u25C0", right: "\u25B6", fore: "\u25B2", aft: "\u25BC" };
+      var moves = {
+        forward: "\u2191",
+        left: "\u21B0",
+        right: "\u21B1",
+        "pivot left": "\u21BA",
+        "pivot right": "\u21BB",
+        "pivot 180": "\u21BB",
+        "scrap self": "\u2715",
+        skip: "\u2715",
+      };
+      if (Object.hasOwn(moves, name)) return moves[name];
+      var side = name.split(" ").pop();
+      return Object.hasOwn(sides, side) ? sides[side] : "";
+    },
+
+    /**
+     * Chip contents for one choice: glyph, name, range and cost.
+     * @private
+     */
+    _choiceLabelHtml: function (option) {
+      var glyph = this._choiceGlyph(option.name);
+      var parts = [];
+      if (glyph) parts.push('<span class="chip_glyph">' + glyph + "</span>");
+      parts.push('<span class="chip_text">' + (option.name === "skip" ? _("don\u2019t") : _(option.name)) + "</span>");
+      if (option.range) parts.push('<span class="chip_range">' + _("range") + " " + option.range + "</span>");
+      var cost = option.cost || {};
+      var costHtml = Object.keys(cost)
+        .filter(r => cost[r] > 0)
+        .map(r => cost[r] + this.resourceIcon(r))
+        .join("");
+      if (costHtml) parts.push('<span class="chip_cost">' + costHtml + "</span>");
+      return parts.join("");
+    },
+
+    /**
+     * Render card choice rows HTML. Rows come back in tree order, each immediately followed by the
+     * rows its options unlock - the display order players read top to bottom.
+     * @private
+     */
+    _renderCardChoiceRows: function (tree) {
       var bga = this;
       var rendered_choices = [];
-      row_number = row_number || 1;
 
       tree.forEach((options, choice_id) => {
         var rendered_options = [];
-        console.log(options);
+        var child_rows = [];
         for (var option of options) {
-          console.log("rendering option " + option.name);
           rendered_options.push(
             bga.format_block("jstpl_card_choice_radio", {
               id: option.id,
               name: choice_id,
               value: option.name,
-              label: option.name,
+              label: bga._choiceLabelHtml(option),
             }),
           );
-          rendered_choices = rendered_choices.concat(this._renderCardChoiceRows(option.children, row_number + 1));
+          child_rows = child_rows.concat(this._renderCardChoiceRows(option.children));
         }
-        var choice_html = bga.format_block("jstpl_card_choices_row", {
-          row_number: row_number + ".",
-          card_choices: rendered_options.join("\n"),
-        });
-        rendered_choices.unshift(choice_html);
-        row_number++;
+        rendered_choices.push(bga.format_block("jstpl_card_choices_row", { card_choices: rendered_options.join("\n") }));
+        rendered_choices = rendered_choices.concat(child_rows);
       });
 
       return rendered_choices;
@@ -449,7 +491,7 @@ define([
             domStyle.set(checkbox.parentNode.parentNode, "display", "none");
             this._showHideCardPlayControls(option.children, true, totalCost);
           } else {
-            domStyle.set(checkbox.parentNode.parentNode, "display", "inline-block");
+            domStyle.set(checkbox.parentNode.parentNode, "display", "");
             if (typeof option.cost !== "undefined" && option.cost) {
               console.log("option cost:");
               console.log(option.cost);

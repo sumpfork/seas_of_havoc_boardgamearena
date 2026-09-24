@@ -181,3 +181,39 @@ treasureSeeker.setupTreasureSeekerAdjust.call({
   isCurrentPlayerActive() { return false; },
 }, { shipwreck_arg: '0', valid_positions: [{ x: 1, y: 1 }] });
 assert.equal(relocationCleaned, true, "Inactive players clear old relocation controls without creating new ones");
+
+// Card play dialog: rows must render in tree order, each followed by the rows its options unlock.
+const dialogGame = {
+  resourceIcon: utils.resourceIcon,
+  format_block: (name, args) => Object.entries(args).reduce((html, [k, v]) => html.split("${" + k + "}").join(v),
+    name === "jstpl_card_choices_row" ? '<div class="card_choices_row">${card_choices}</div>'
+      : '<input id="${id}" name="${name}" value="${value}"/><label>${label}</label>'),
+  _makeCardDependencyTree: dialogs._makeCardDependencyTree,
+  _renderCardChoiceRows: dialogs._renderCardChoiceRows,
+  _choiceLabelHtml: dialogs._choiceLabelHtml,
+  _choiceGlyph: dialogs._choiceGlyph,
+};
+const renderRows = actions =>
+  dialogGame._renderCardChoiceRows(dialogGame._makeCardDependencyTree.call(dialogGame, actions));
+
+const twoFires = renderRows([
+  { action: "fire", range: 3, cost: { cannonball: 1 } },
+  { action: "fire", range: 2, cost: { cannonball: 1 } },
+]);
+assert.equal(twoFires.length, 2);
+assert.ok(twoFires[0].includes("card_choice_0_option_0"), "sibling rows must keep tree order");
+assert.ok(twoFires[1].includes("card_choice_1_option_0"));
+
+// Market card 58: one choice, each branch unlocking its own side/skip row.
+const choiceRows = renderRows([
+  { action: "choice", choices: [
+    { action: "fire", range: 3, cost: { cannonball: 1 } },
+    { action: "2 x fire", range: 2, cost: { cannonball: 2 } },
+  ] },
+]);
+assert.equal(choiceRows.length, 3);
+assert.ok(choiceRows[0].includes('value="2 x fire"'), "the choice itself comes first");
+assert.ok(choiceRows[1].includes('value="fire left"'), "then the rows its first option unlocks");
+assert.ok(choiceRows[2].includes('value="2 x fire right"'));
+assert.ok(choiceRows[2].includes("range 2") && choiceRows[2].includes('data-resource="cannonball"'),
+  "chips must show range and cost");
