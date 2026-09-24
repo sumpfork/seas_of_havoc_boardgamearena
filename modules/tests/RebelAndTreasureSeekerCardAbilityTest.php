@@ -183,6 +183,19 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame($lastLog, $this->game->debugLastNotif);
     }
 
+    public function testCostNestedInsideAChoiceIsStillCharged(): void {
+        $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['resolveCannonFire'])->getMock();
+        $board->expects($this->exactly(2))->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
+        (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+        $result = $this->game->processCardActions([
+            ['action' => 'choice', 'choices' => [
+                ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]],
+                ['action' => '2 x fire', 'range' => 2, 'cost' => ['cannonball' => 2]],
+            ]],
+        ], ['2 x fire', '2 x fire left']);
+        $this->assertSame(['cannonball' => 2], $result['cost']);
+    }
+
     public function testEveryMaterialActionUsesACanonicalValue(): void {
         $check = function (array $actions) use (&$check): void {
             foreach ($actions as $action) {

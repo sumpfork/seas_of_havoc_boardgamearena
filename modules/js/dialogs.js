@@ -78,7 +78,7 @@ define([
           var hasOverlap = this.bootyOverlapsCost(tokenRes, totalCost);
 
           if (hasOverlap) {
-            var canAffordWithout = this.canPlayerAfford(totalCost, false);
+            var canAffordWithout = this.canPlayerAfford(totalCost, false, false);
 
             if (!canAffordWithout) {
               this._sendPlayCard(card, card_id, decisionSummary, true);
@@ -458,7 +458,8 @@ define([
               var adjustedCost = bga.addResources(option.cost, totalCost);
               console.log("adjusted cost:");
               console.log(adjustedCost);
-              if (bga.canPlayerAfford(adjustedCost)) {
+              // Merchant doubloon substitution is a market-purchase rule only; the server will not honour it here.
+              if (bga.canPlayerAfford(adjustedCost, true, false)) {
                 attr.remove(checkbox, "disabled");
               } else {
                 attr.set(checkbox, "disabled", "true");

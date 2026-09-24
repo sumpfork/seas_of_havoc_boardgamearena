@@ -3668,7 +3668,9 @@ class SeasOfHavoc extends Table
         ?array &$shipwreck_event,
         ?array &$booty_card,
     ) {
-        $total_cost = $this->sum_array_by_key($total_cost, $cost);
+        // Nested calls (choice/sequence/left/right) accumulate their own costs; without adding
+        // $result["cost"] here, anything paid for inside a choice or sequence was free.
+        $total_cost = $this->sum_array_by_key($total_cost, $cost, $result["cost"] ?? []);
         if (array_key_exists("collision_occurred", $result)) {
             $collision_occurred = $collision_occurred || $result["collision_occurred"];
         }
