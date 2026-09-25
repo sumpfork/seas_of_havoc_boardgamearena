@@ -487,6 +487,7 @@ define([
       if (player_id == this.player_id) {
         this.playerDiscard.addCard(damage_card.type, damage_card.id);
       }
+      this.updateDamageDeckCount(args.damage_deck_size);
     },
 
     /**
@@ -534,11 +535,7 @@ define([
         return;
       }
 
-      if (original_location === "hand" && player_id == this.player_id) {
-        this._removeCardFromSelectionOrPile(card, original_location, player_id, this.scrapCardSelection);
-      } else if (original_location === "player_discard" && player_id == this.player_id) {
-        this._removeCardFromSelectionOrPile(card, original_location, player_id, this.scrapCardSelection);
-      }
+      this._removeCardFromSelectionOrPile(card, original_location, player_id);
 
       this.scrapPile.addCard({
         id: card.id,
@@ -561,7 +558,7 @@ define([
 
       if (player_id == this.player_id) {
         cards.forEach((card) => {
-          this._removeCardFromSelectionOrPile(card, "hand", player_id, this.discardCardSelection);
+          this._removeCardFromSelectionOrPile(card, "hand", player_id);
           this.playerDiscard.addCard({
             id: card.id,
             type: card.type,

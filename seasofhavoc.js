@@ -180,6 +180,10 @@ define([
                     <h3>Scrap Pile</h3>
                     <div id="scrap"></div>
                 </div>
+                <div class="damage-area">
+                    <h3>Damage</h3>
+                    <div id="damage_deck"></div>
+                </div>
             </div>
         </div>
 
@@ -214,8 +218,6 @@ define([
         </div>
         </div>
 
-        <div id="damage_deck">
-        </div>
       `;
 
       this.bga.gameArea.getElement().insertAdjacentHTML("beforeend", html);
@@ -224,8 +226,10 @@ define([
       window.jstpl_card_play_dialog = `<div id="card_display_dialog">
                           <div id="card_display"></div>
                           <div id="card_choices"></div>
-                          <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">Play Card</div>
-                          <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">Pass</div>
+                          <div id="card_play_buttons">
+                            <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">${_("Pass whole card")}</div>
+                            <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">${_("Play card")}</div>
+                          </div>
                           </div>`;
 
       window.jstpl_resources_playerboard = `
@@ -433,6 +437,22 @@ define([
       // Set selection mode to single
       this.playerHand.setSelectionMode("single");
 
+      // Shared pile: the game ends when it empties, so the count is the table's clock. Every damage
+      // card is the same card, so the pile shows its face - a back would only hide what it is.
+      const damageCardType = Number(
+        Object.keys(gamedatas.playable_cards).find(
+          (type) => gamedatas.playable_cards[type].category === "damage",
+        ),
+      );
+      this.damageDeck = new BgaCards.Deck(this.cardsManager, $("damage_deck"), {
+        cardNumber: parseInt(gamedatas.damage_deck_size, 10),
+        fakeCardGenerator: (deckId) => ({ id: deckId, type: damageCardType }),
+        counter: {
+          position: "center",
+          extraClasses: "text-shadow",
+        },
+      });
+
       this.playerDiscard = new BgaCards.AllVisibleDeck(this.cardsManager, $("mydiscard"), {
         shift: "8px",
         counter: {
@@ -446,6 +466,9 @@ define([
           hideWhenEmpty: true,
         },
       });
+
+      this.bindPileViewer($("mydiscard"), _("My Discard"), () => this.playerDiscard);
+      this.bindPileViewer($("scrap"), _("Scrap Pile"), () => this.scrapPile);
 
       // Create SlotStock for market
       this.market = new BgaCards.SlotStock(this.cardsManager, $("market"), {

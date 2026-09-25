@@ -192,6 +192,7 @@ const dialogGame = {
   _renderCardChoiceRows: dialogs._renderCardChoiceRows,
   _choiceLabelHtml: dialogs._choiceLabelHtml,
   _choiceGlyph: dialogs._choiceGlyph,
+  _hoistCardPassOption: dialogs._hoistCardPassOption,
 };
 const renderRows = actions =>
   dialogGame._renderCardChoiceRows(dialogGame._makeCardDependencyTree.call(dialogGame, actions));
@@ -217,3 +218,81 @@ assert.ok(choiceRows[1].includes('value="fire left"'), "then the rows its first 
 assert.ok(choiceRows[2].includes('value="2 x fire right"'));
 assert.ok(choiceRows[2].includes("range 2") && choiceRows[2].includes('data-resource="cannonball"'),
   "chips must show range and cost");
+
+// A card that only does optional things is passable from its options line; the redundant per-branch
+// "skip" chips go away. A card with a mandatory action keeps them - there, skipping is not passing.
+const passRows = actions => {
+  const tree = dialogGame._makeCardDependencyTree.call(dialogGame, actions);
+  const hoisted = dialogGame._hoistCardPassOption(actions, tree);
+  return { hoisted, rows: dialogGame._renderCardChoiceRows(tree) };
+};
+const optional = passRows([
+  { action: "choice", choices: [
+    { action: "fire", range: 3, cost: { cannonball: 1 } },
+    { action: "2 x fire", range: 2, cost: { cannonball: 2 } },
+  ] },
+]);
+assert.equal(optional.hoisted, true);
+assert.ok(optional.rows[0].includes('value="pass"'), "an all-optional card passes from its first row");
+assert.ok(!optional.rows.join("").includes('value="skip"'), "no per-branch skips duplicating the pass");
+const mandatory = passRows([
+  { action: "forward" },
+  { action: "fire", range: 3, cost: { cannonball: 1 } },
+]);
+assert.equal(mandatory.hoisted, false);
+assert.ok(mandatory.rows[0].includes('value="skip"'), "skipping the fire still sails the card's move");
+assert.ok(!mandatory.rows.join("").includes('value="pass"'));
+
+// Selection dialogs show previews under display ids: the real cards must stay in the hand, or the
+// stock books a card it never receives the element for and the dialog renders empty.
+const added = [];
+const previews = dialogs._addPreviewCards.call({}, { addCard: c => added.push(c) }, {
+  11: { id: "11", type: "77", location: "hand" },
+  12: { id: "12", type: "11", location: "player_discard" },
+}, card => card.location === "hand");
+assert.equal(added.length, 1, "filtered cards are skipped");
+assert.equal(added[0].id, 30011, "stocks get a display id, never the real one");
+assert.equal(added[0].type, "77");
+assert.equal(previews.get(30011).id, "11", "display id maps back to the real card");
+assert.equal(previews.size, 1);
+
+// Clicking a pile opens the bounded viewer, and must beat the top card's own zoom handler.
+let opened = null;
+let stopped = false;
+const pileEl = { listeners: {}, setAttribute() {}, addEventListener(type, fn, capture) { this.listeners[type] = { fn, capture }; } };
+dialogs.bindPileViewer.call({ showPileDialog: (title, cards) => { opened = { title, cards }; } },
+  pileEl, "My Discard", () => ({ getCards: () => [{ id: "7", type: "3" }] }));
+assert.equal(pileEl.listeners.click.capture, true, "capture phase, or the card zoom wins the click");
+pileEl.listeners.click.fn({ stopPropagation: () => { stopped = true; }, preventDefault() {} });
+assert.equal(stopped, true);
+assert.deepEqual(opened.cards.map(c => c.id), ["7"]);
+assert.equal(opened.title, "My Discard");
+
+// Booty is offered only when it helps: spent outright when the cost is otherwise unaffordable,
+// asked about when either way works, skipped when the token cannot cover any of the cost.
+const bootyCalls = [];
+const bootyGame = {
+  getMyBootyTokenRes: () => ({ sail: 1 }),
+  bootyOverlapsCost: (tokenRes, cost) => Object.keys(cost).some(r => tokenRes[r] > 0),
+  canPlayerAfford: () => true,
+  setClientState: (state, args) => bootyCalls.push({ state, args }),
+  _sendWithOptionalBooty: dialogs._sendWithOptionalBooty,
+  _resolveBootyChoice: dialogs._resolveBootyChoice,
+  restoreServerGameState() {},
+};
+let sent = null;
+bootyGame._sendWithOptionalBooty.call(bootyGame, { cannonball: 1 }, useBooty => { sent = useBooty; }, "q");
+assert.equal(sent, false, "a token that covers none of the cost must not trigger the prompt");
+assert.equal(bootyCalls.length, 0);
+
+sent = null;
+bootyGame._sendWithOptionalBooty.call(bootyGame, { sail: 1 }, useBooty => { sent = useBooty; }, "q");
+assert.equal(sent, null, "affordable either way: ask first");
+assert.equal(bootyCalls[0].state, "client_bootyPlayConfirm");
+bootyGame._resolveBootyChoice.call(bootyGame, true);
+assert.equal(sent, true, "answering yes sends with the booty token");
+
+sent = null;
+bootyGame.canPlayerAfford = () => false;
+bootyGame._sendWithOptionalBooty.call(bootyGame, { sail: 1 }, useBooty => { sent = useBooty; }, "q");
+assert.equal(sent, true, "unaffordable without booty: spend it without asking");

@@ -43,7 +43,9 @@ define([
       this._captainCopyId = captainCopyId;
 
       var dlg = this.format_block("jstpl_card_play_dialog");
-      domConstruct.place(dlg, "myhand_wrap", "first");
+      // On the body, like the scrap dialog: the game area can be zoomed/transformed, which would
+      // otherwise turn the panel's fixed positioning into positioning against that transform.
+      domConstruct.place(dlg, document.body);
 
       var makeDecisionSummary = function (tree, decisionSummary) {
         if (typeof decisionSummary === "undefined") {
@@ -73,35 +75,13 @@ define([
           event.preventDefault();
           var decisionSummary = makeDecisionSummary(this.dep_tree);
           var totalCost = this._computeTotalPlayCost(this.dep_tree);
+          var captainCopyId = this._captainCopyId;
 
-          var tokenRes = this.getMyBootyTokenRes(totalCost);
-          var hasOverlap = this.bootyOverlapsCost(tokenRes, totalCost);
-
-          if (hasOverlap) {
-            var canAffordWithout = this.canPlayerAfford(totalCost, false, false);
-
-            if (!canAffordWithout) {
-              this._sendPlayCard(card, card_id, decisionSummary, true);
-              console.groupEnd();
-              return;
-            }
-
-            // Can afford either way — ask the player via status bar buttons
-            this._pendingPlayCard = {
-              card: card,
-              card_id: card_id,
-              decisions: decisionSummary,
-              captainCopyId: this._captainCopyId,
-            };
-            this.setClientState("client_bootyPlayConfirm", {
-              descriptionmyturn: _("Use your booty token to help pay for this card?"),
-            });
-            console.groupEnd();
-            return;
-          }
-
-          // No booty applicable — play immediately
-          this._sendPlayCard(card, card_id, decisionSummary, false);
+          this._sendWithOptionalBooty(
+            totalCost,
+            (useBooty) => this._sendPlayCard(card, card_id, decisionSummary, useBooty, captainCopyId),
+            _("Use your booty token to help pay for this card?"),
+          );
           console.groupEnd();
         }),
       );
@@ -147,6 +127,7 @@ define([
 
       // Build card dependency tree
       this.dep_tree = this._makeCardDependencyTree(card.actions);
+      var hasPassOption = this._hoistCardPassOption(card.actions, this.dep_tree);
       console.log(this.dep_tree);
 
       // Render choice rows
@@ -172,6 +153,9 @@ define([
       this._updatePlayCardButton();
       if (captainCopyId !== null) {
         query(".pass_card_button").forEach(node => { node.textContent = _("Cancel copy"); });
+      } else if (hasPassOption) {
+        // Passing is already offered as an option on the first row - two buttons for one outcome.
+        query(".pass_card_button").forEach(node => { domStyle.set(node, "display", "none"); });
       }
       this.cardPlayDialogShown = true;
     },
@@ -221,27 +205,62 @@ define([
     /**
      * Called from onUpdateActionButtons for client_bootyPlayConfirm state.
      */
-    onBootyPlayYes: function () {
-      var ctx = this._pendingPlayCard;
-      this._pendingPlayCard = null;
-      this.restoreServerGameState();
-      if (ctx) {
-        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, true, ctx.captainCopyId);
+    /**
+     * Spend a booty token on a cost when it helps: pay with it outright if the player cannot afford
+     * the cost otherwise, ask when either way works, and stay out of the way when it does not apply.
+     * `send(useBooty)` performs the action.
+     */
+    _sendWithOptionalBooty: function (cost, send, question) {
+      var tokenRes = this.getMyBootyTokenRes(cost);
+      if (!tokenRes || !this.bootyOverlapsCost(tokenRes, cost)) {
+        send(false);
+        return;
       }
+      if (!this.canPlayerAfford(cost, false, false)) {
+        send(true);
+        return;
+      }
+      this._pendingBootySend = send;
+      this.setClientState("client_bootyPlayConfirm", { descriptionmyturn: question });
+    },
+
+    _resolveBootyChoice: function (useBooty) {
+      var send = this._pendingBootySend;
+      this._pendingBootySend = null;
+      this.restoreServerGameState();
+      if (send) {
+        send(useBooty);
+      }
+    },
+
+    onBootyPlayYes: function () {
+      this._resolveBootyChoice(true);
     },
 
     onBootyPlayNo: function () {
-      var ctx = this._pendingPlayCard;
-      this._pendingPlayCard = null;
-      this.restoreServerGameState();
-      if (ctx) {
-        this._sendPlayCard(ctx.card, ctx.card_id, ctx.decisions, false, ctx.captainCopyId);
-      }
+      this._resolveBootyChoice(false);
     },
 
     onBootyPlayCancel: function () {
-      this._pendingPlayCard = null;
+      this._pendingBootySend = null;
       this.restoreServerGameState();
+    },
+
+    /**
+     * A collision ends the maneuver, but the cannon at the next ship outline may still be fired.
+     */
+    fireAfterCollision: function (shot) {
+      this._sendWithOptionalBooty(
+        shot.cost || {},
+        (useBooty) => {
+          var params = { decision: shot.name };
+          if (useBooty) {
+            params.use_booty_card_id = this.getMyBootyTokenId(shot.cost);
+          }
+          this.bgaPerformAction("actPostCollisionFire", params);
+        },
+        _("Use your booty token to help pay for this shot?"),
+      );
     },
 
     /**
@@ -366,6 +385,29 @@ define([
     },
 
     /**
+     * A card whose only action is optional can be played for no effect at all, so its auto-generated
+     * "skip" rows all mean the same thing: pass. Replace them with a single "pass" option on the
+     * first row, which sends the same decision as the pass button. Cards that also do something
+     * mandatory keep their per-action "skip" - there, skipping is not passing.
+     * @private
+     */
+    _hoistCardPassOption: function (actions, tree) {
+      var optional = a => Object.hasOwn(a, "cost") ||
+        (a.action === "choice" && a.choices.every(c => Object.hasOwn(c, "cost")));
+      if (actions.length !== 1 || !optional(actions[0])) {
+        return false;
+      }
+      var stripSkips = t => t.forEach((options, key) => {
+        t.set(key, options.filter(o => o.name !== "skip"));
+        options.forEach(o => stripSkips(o.children));
+      });
+      stripSkips(tree);
+      var firstRow = tree.get(tree.keys().next().value);
+      firstRow.push({ name: "pass", id: "card_choice_pass", children: new Map() });
+      return true;
+    },
+
+    /**
      * Icon glyph for a choice, derived from its name. Firing options end in the side they fire to,
      * maneuvers are named after the move. Anything unrecognised simply gets no glyph.
      * @private
@@ -381,6 +423,7 @@ define([
         "pivot 180": "\u21BB",
         "scrap self": "\u2715",
         skip: "\u2715",
+        pass: "\u2715",
       };
       if (Object.hasOwn(moves, name)) return moves[name];
       var side = name.split(" ").pop();
@@ -670,20 +713,11 @@ define([
 
       this.scrapCardSelection.setSelectionMode("single");
 
-      if (args.available_cards) {
-        for (var i in args.available_cards) {
-          var card = args.available_cards[i];
-          this.scrapCardSelection.addCard({
-            id: card.id,
-            type: card.type,
-            location: card.location,
-          });
-        }
-      }
+      this.scrapPreviewCards = this._addPreviewCards(this.scrapCardSelection, args.available_cards);
 
       this.scrapCardSelection.onSelectionChange = (selection, lastChange) => {
         if (selection.length > 0) {
-          var selectedCard = selection[0];
+          var selectedCard = this.scrapPreviewCards.get(Number(selection[0].id));
           console.log("Card selected for scrapping:", selectedCard);
 
           if (!$("confirm_scrap_button")) {
@@ -750,19 +784,11 @@ define([
 
       this.discardCardSelection.setSelectionMode("single");
 
-      if (args.available_cards) {
-        for (var i in args.available_cards) {
-          var card = args.available_cards[i];
-          if (card.location !== "hand") {
-            continue;
-          }
-          this.discardCardSelection.addCard({
-            id: card.id,
-            type: card.type,
-            location: card.location,
-          });
-        }
-      }
+      this.discardPreviewCards = this._addPreviewCards(
+        this.discardCardSelection,
+        args.available_cards,
+        card => card.location === "hand",
+      );
 
       domClass.add("confirm_discard_button", "disabled");
       domClass.add("confirm_discard_button", "bgabutton_gray");
@@ -771,8 +797,9 @@ define([
 
       this.discardCardSelection.onSelectionChange = (selection, lastChange) => {
         if (selection.length > 0) {
-          this.rebelDiscardSelectedCardId = selection[0].id;
-          console.log("Card selected for discard:", selection[0]);
+          var selectedCard = this.discardPreviewCards.get(Number(selection[0].id));
+          this.rebelDiscardSelectedCardId = selectedCard.id;
+          console.log("Card selected for discard:", selectedCard);
           domClass.remove("confirm_discard_button", "disabled");
           domClass.add("confirm_discard_button", "bgabutton_green");
           domClass.remove("confirm_discard_button", "bgabutton_gray");
@@ -793,46 +820,118 @@ define([
     },
 
     /**
-     * Return cards still held in a dialog selection stock to their normal piles.
-     * @private
+     * Open a pile (discard, scrap) in a read-only dialog when it is clicked. The pile itself is an
+     * AllVisibleDeck, whose expanded layout is (card height + shift) x card count tall - past a
+     * handful of cards that runs off the bottom of the screen and over everything under it.
      */
-    _restoreSelectionStockCards: function (selectionStock) {
-      if (!selectionStock) {
-        return;
-      }
-
-      const cards = [...selectionStock.getCards()];
-      cards.forEach((card) => {
-        selectionStock.removeCard({ id: card.id });
-        if (card.location === "player_discard") {
-          this.playerDiscard.addCard({
-            id: card.id,
-            type: card.type,
-            location: "player_discard",
-          });
-        } else {
-          this.playerHand.addCard({
-            id: card.id,
-            type: card.type,
-            location: "hand",
-          });
+    bindPileViewer: function (element, title, getStock) {
+      element.tabIndex = 0;
+      element.setAttribute("role", "button");
+      element.setAttribute("aria-label", title);
+      const open = (event) => {
+        // Capture phase: the top card's own click handler would otherwise zoom just that card.
+        event.stopPropagation();
+        event.preventDefault();
+        this.showPileDialog(title, getStock().getCards());
+      };
+      element.addEventListener("click", open, true);
+      element.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          open(event);
         }
       });
-
-      selectionStock.remove();
     },
 
     /**
-     * Remove a card from a dialog selection stock if present, otherwise from the normal pile.
-     * @private
+     * Read-only view of a pile. Shows previews, so the real cards stay in the pile.
      */
-    _removeCardFromSelectionOrPile: function (card, originalLocation, playerId, selectionStock) {
-      if (playerId != this.player_id) {
+    showPileDialog: function (title, cards) {
+      this.cleanupPileDialog();
+      if (!cards.length) {
         return;
       }
 
-      if (selectionStock && selectionStock.contains(card)) {
-        selectionStock.removeCard({ id: card.id });
+      const overlay = domConstruct.create(
+        "div", { id: "card_dialog_overlay", className: "card_dialog_overlay" }, document.body,
+      );
+      const dialog = domConstruct.create(
+        "div", { id: "pile_view_dialog", className: "scrap_card_dialog" }, document.body,
+      );
+      domConstruct.create("h3", { textContent: title + " (" + cards.length + ")" }, dialog);
+      const wrapper = domConstruct.create(
+        "div", { id: "pile_view_wrapper", className: "card_selection_wrapper" }, dialog,
+      );
+      const buttons = domConstruct.create("div", { className: "scrap_dialog_buttons" }, dialog);
+      const close = domConstruct.create(
+        "a", { href: "#", className: "bgabutton bgabutton_gray", textContent: _("Close") }, buttons,
+      );
+
+      this.pileViewStock = new BgaCards.ScrollableStock(this.cardsManager, wrapper, {
+        gap: "16px",
+        center: true,
+        scrollStep: 160,
+        buttonGap: "4px",
+        scrollbarVisible: false,
+        leftButton: { html: "\u2039", classes: ["card_dialog_scroll_btn"] },
+        rightButton: { html: "\u203A", classes: ["card_dialog_scroll_btn"] },
+      });
+      this._addPreviewCards(this.pileViewStock, cards);
+
+      on(close, "click", (event) => {
+        event.preventDefault();
+        this.cleanupPileDialog();
+      });
+      on(overlay, "click", () => this.cleanupPileDialog());
+    },
+
+    cleanupPileDialog: function () {
+      this._destroySelectionStock(this.pileViewStock);
+      this.pileViewStock = null;
+      if ($("pile_view_dialog")) {
+        domConstruct.destroy("pile_view_dialog");
+      }
+      if ($("card_dialog_overlay")) {
+        domConstruct.destroy("card_dialog_overlay");
+      }
+    },
+
+    /**
+     * Fill a dialog selection stock with previews of the given cards, keyed by display id so the
+     * real cards stay in the hand and discard piles. Moving the real ones instead makes the stock
+     * race the hand's own layout - the card is booked into the dialog while its element stays
+     * behind, which is how this dialog came up empty. Returns display id -> real card.
+     * @private
+     */
+    _addPreviewCards: function (selectionStock, cards, filter) {
+      const previews = new Map();
+      Object.values(cards || {}).forEach((card) => {
+        if (filter && !filter(card)) {
+          return;
+        }
+        const previewId = 30000 + Number(card.id);
+        previews.set(previewId, card);
+        selectionStock.addCard({ id: previewId, type: card.type });
+      });
+      return previews;
+    },
+
+    /**
+     * Drop a dialog selection stock and the preview cards it holds.
+     * @private
+     */
+    _destroySelectionStock: function (selectionStock) {
+      if (selectionStock) {
+        selectionStock.removeAll();
+        selectionStock.remove();
+      }
+    },
+
+    /**
+     * Remove one of my cards from the pile it was played from.
+     * @private
+     */
+    _removeCardFromSelectionOrPile: function (card, originalLocation, playerId) {
+      if (playerId != this.player_id) {
         return;
       }
 
@@ -846,8 +945,9 @@ define([
     cleanupScrapCardSelection: function () {
       console.log("Cleaning up scrap card selection");
 
-      this._restoreSelectionStockCards(this.scrapCardSelection);
+      this._destroySelectionStock(this.scrapCardSelection);
       this.scrapCardSelection = null;
+      this.scrapPreviewCards = null;
 
       if ($("scrap_card_dialog")) {
         domConstruct.destroy("scrap_card_dialog");
@@ -863,8 +963,9 @@ define([
     cleanupDiscardCardSelection: function () {
       console.log("Cleaning up discard card selection");
 
-      this._restoreSelectionStockCards(this.discardCardSelection);
+      this._destroySelectionStock(this.discardCardSelection);
       this.discardCardSelection = null;
+      this.discardPreviewCards = null;
 
       if ($("discard_card_dialog")) {
         domConstruct.destroy("discard_card_dialog");

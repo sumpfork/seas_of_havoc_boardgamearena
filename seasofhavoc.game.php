@@ -51,6 +51,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_CAPTAIN_CARD", 20);
     define("STATE_CARD_FLAG", 21);
     define("STATE_SWIFT_HULL", 22);
+    define("STATE_BOOTY_DISCARD", 23);
+    define("STATE_POST_COLLISION_FIRE", 24);
     define("STATE_END_GAME", 99);
 }
 
@@ -106,6 +108,7 @@ class SeasOfHavoc extends Table
             "pending_workshop_player" => 26,
             "pending_workshop_slot" => 27,
             "swift_hull_card_type" => 28,
+            "booty_discard_return_state" => 29,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -573,7 +576,8 @@ class SeasOfHavoc extends Table
         return $players_with_booty;
     }
 
-    private function drawBootyToken(int $player_id): ?array
+    /** $location lets callers that only reveal a token (Unearth Riches) keep it out of the hold. */
+    private function drawBootyToken(int $player_id, string $location = "booty_player"): ?array
     {
         $remaining = $this->cards->countCardInLocation("booty_deck");
         if ($remaining == 0) {
@@ -588,34 +592,77 @@ class SeasOfHavoc extends Table
             $this->cards->shuffle("booty_deck");
             $this->trace("Booty deck refilled from discard and shuffled");
         }
-        $card = $this->cards->pickCardForLocation("booty_deck", "booty_player", $player_id);
+        $card = $this->cards->pickCardForLocation("booty_deck", $location, $player_id);
         $this->dump("drawBootyToken picked", $card);
-        $this->enforceBootyCapacity($player_id);
         return $card;
     }
 
     /**
-     * A hold takes 1 booty token, or 2 with the Galleon's Treasure Hold upgrade.
-     * ponytail: the rules let the player choose which token to drop; the least valuable one is
-     * dropped for them instead. Add a choice state if the pick ever matters.
+     * A hold takes 1 booty token, or 2 with the Galleon's Treasure Hold upgrade. A player who picks
+     * up more than fits chooses which to drop, so this returns the state that asks them rather than
+     * dropping one for them. Checked where a turn hands back to the state machine, because pickups
+     * happen deep inside card resolution.
      */
-    private function enforceBootyCapacity(int $player_id): void
+    private function bootyOverflowState(int $return_state): ?int
     {
-        $capacity = $this->bootyCapacity($player_id);
+        $player_id = (int) $this->getActivePlayerId();
+        if (count($this->getBootyTokensForPlayer($player_id)) <= $this->bootyCapacity($player_id)) {
+            return null;
+        }
+        $this->setGameStateValue("booty_discard_return_state", $return_state);
+        return STATE_BOOTY_DISCARD;
+    }
+
+    private function discardBootyToken(int $player_id, int $card_id): void
+    {
+        $this->cards->moveCard($card_id, "booty_discard");
+        $this->bga->notify->all(
+            "log",
+            clienttranslate('${player_name} has no room in their hold and discards a booty token'),
+            ["player_name" => $this->getPlayerNameById($player_id), "player_id" => $player_id],
+        );
+        $this->bga->notify->player($player_id, "bootyTokenUsed", "", [
+            "player_id" => $player_id,
+            "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+        ]);
+    }
+
+    /** The held tokens are secret, so the choice is offered privately. */
+    function argBootyDiscard(): array
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        $tokens = array_map(
+            fn($token) => [
+                "id" => (int) $token["id"],
+                "image_id" => (int) $token["type_arg"],
+                "resources" => $this->getBootyTokenConfigByTypeArg((int) $token["type_arg"])["resources"] ?? [],
+            ],
+            $this->getBootyTokensForPlayer($player_id),
+        );
+        return ["_private" => [$player_id => ["booty_tokens" => $tokens]]];
+    }
+
+    function actDiscardBootyToken(int $card_id): mixed
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        $held = array_map(fn($token) => (int) $token["id"], $this->getBootyTokensForPlayer($player_id));
+        if (!in_array($card_id, $held, true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a booty token from your hold"));
+        }
+        $this->discardBootyToken($player_id, $card_id);
+        $return_state = (int) $this->getGameStateValue("booty_discard_return_state");
+        // A hold can overflow by more than one, so keep asking until it fits.
+        return $this->bootyOverflowState($return_state) ?? $return_state;
+    }
+
+    /** Zombie/timeout fallback: drop the least valuable token so the game can continue. */
+    function discardLeastValuableBootyToken(int $player_id): void
+    {
         $held = $this->getBootyTokensForPlayer($player_id);
-        while (count($held) > $capacity) {
-            usort($held, fn($a, $b) => $this->bootyTokenValue($a) <=> $this->bootyTokenValue($b));
+        usort($held, fn($a, $b) => $this->bootyTokenValue($a) <=> $this->bootyTokenValue($b));
+        while (count($held) > $this->bootyCapacity($player_id)) {
             $dropped = array_shift($held);
-            $this->cards->moveCard((int) $dropped["id"], "booty_discard");
-            $this->bga->notify->all(
-                "log",
-                clienttranslate('${player_name} has no room in their hold and discards a booty token'),
-                ["player_name" => $this->getPlayerNameById($player_id), "player_id" => $player_id],
-            );
-            $this->bga->notify->player($player_id, "bootyTokenUsed", "", [
-                "player_id" => $player_id,
-                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-            ]);
+            $this->discardBootyToken($player_id, (int) $dropped["id"]);
         }
     }
 
@@ -1080,8 +1127,9 @@ class SeasOfHavoc extends Table
 
         switch ($resume) {
             case self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE:
-            case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
                 return STATE_NEXT_PLAYER_SEA_PHASE;
+            case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
+                return $this->postCollisionFireState() ?? STATE_NEXT_PLAYER_SEA_PHASE;
             case self::TREASURE_SEEKER_RESUME_COLLISION:
                 return STATE_RESOLVE_COLLISION;
             default:
@@ -1178,6 +1226,11 @@ class SeasOfHavoc extends Table
     {
         $this->mytrace("stNextPlayerIslandPhase");
 
+        $overflow = $this->bootyOverflowState(STATE_NEXT_PLAYER_ISLAND_PHASE);
+        if ($overflow !== null) {
+            return $overflow;
+        }
+
         $resources = $this->getGameResourcesHierarchical();
         $this->dump("fetched resources:", $resources);
 
@@ -1267,6 +1320,10 @@ class SeasOfHavoc extends Table
 
     function stNextPlayerSeaPhase(): mixed
     {
+        $overflow = $this->bootyOverflowState(STATE_NEXT_PLAYER_SEA_PHASE);
+        if ($overflow !== null) {
+            return $overflow;
+        }
         $type = (int) $this->getGameStateValue("pending_card_flag_type");
         if ($type !== 0) {
             $flag = $this->playable_cards[$type]["flag"];
@@ -1379,6 +1436,7 @@ class SeasOfHavoc extends Table
         $result["non_playable_cards"] = $this->non_playable_cards;
 
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));
+        $result["damage_deck_size"] = $this->cards->countCardInLocation("damage_deck");
         $result["player_captain"] = $this->getPlayerCaptain($current_player_id);
         $result["corsair_occupied_placement_available"] = $this->canUseCorsairOccupiedPlacement($current_player_id);
         $result["corsair_occupied_slot_names"] = $this->corsairOccupiedPlacementSlotNames();
@@ -2824,11 +2882,10 @@ class SeasOfHavoc extends Table
             if (!$rock) {
                 return $empty;
             }
-            $token = $this->drawBootyToken((int) $player_id);
+            $token = $this->drawBootyToken((int) $player_id, "captain_reward");
             if ($token === null) {
                 return $empty; // The supply and its discard can both be exhausted by held tokens.
             }
-            $this->cards->moveCard($token["id"], "captain_reward", (int) $player_id);
             $this->bga->notify->all("log", clienttranslate('${player_name} reveals a shipwreck token for Unearth Riches'), [
                 "player_name" => $this->getPlayerNameById((int) $player_id), "token" => $token,
                 "resources" => $this->getBootyTokenConfigByTypeArg((int) $token["type_arg"])["resources"],
@@ -3348,7 +3405,6 @@ class SeasOfHavoc extends Table
             }
             $card = reset($booty_cards);
             $this->cards->moveCard((int) $card["id"], "booty_player", $player_id);
-            $this->enforceBootyCapacity((int) $player_id);
         } else {
             if (!in_array($item, ["sail", "cannonball", "doubloon"])) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid resource for Boarding Party"));
@@ -3637,6 +3693,8 @@ class SeasOfHavoc extends Table
             "player_name" => self::getPlayerNameById($hit_player_id),
             "player_id" => $hit_player_id,
             "damage_card" => $damage_card,
+            // The damage deck running out ends the game, so its size is public information.
+            "damage_deck_size" => $this->cards->countCardInLocation("damage_deck"),
         ]);
 
         if ($bulkheads) {
@@ -3843,17 +3901,14 @@ class SeasOfHavoc extends Table
                     break;
             }
             if ($collision_occurred) {
+                // "After resolving the collision, Cannon fire depicted at the next ship outline may
+                // be resolved." Nested calls record their own next action first; the outer level
+                // overwrites it, so what survives is the next outline on the card itself.
                 $player_id = $this->getActivePlayerId();
                 if ($i + 1 < count($actions)) {
-                    $next_action = $actions[$i + 1]["action"];
-                    if ($next_action instanceof \PrimitiveCardPlayAction) {
-                        $next_action = $next_action->value;
-                    }
-                    $this->DbQuery(
-                        "REPLACE INTO next_action_on_card (player_id, next_action) VALUES ($player_id, '$next_action')",
-                    );
+                    $this->setNextActionOnCard((int) $player_id, $actions[$i + 1]);
                 } else {
-                    $this->DBQuery("DELETE FROM next_action_on_card WHERE player_id = $player_id");
+                    $this->clearNextActionOnCard((int) $player_id);
                 }
                 break;
             }
@@ -3865,6 +3920,91 @@ class SeasOfHavoc extends Table
             "shipwreck_event" => $shipwreck_event,
             "booty_card" => $booty_card,
         ];
+    }
+
+    /** Actions are kept whole (range, cost, upgrade variants), so they are stored as JSON. */
+    protected function setNextActionOnCard(int $player_id, array $action): void
+    {
+        if ($action["action"] instanceof \PrimitiveCardPlayAction) {
+            $action["action"] = $action["action"]->value;
+        }
+        $json = json_encode($action);
+        $this->DbQuery(
+            "REPLACE INTO next_action_on_card (player_id, next_action) VALUES ($player_id, '" .
+                addslashes($json) .
+                "')",
+        );
+    }
+
+    protected function clearNextActionOnCard(int $player_id): void
+    {
+        $this->DbQuery("DELETE FROM next_action_on_card WHERE player_id = $player_id");
+    }
+
+    protected function readNextActionOnCard(int $player_id): ?string
+    {
+        return self::getUniqueValueFromDB(
+            "SELECT next_action FROM next_action_on_card WHERE player_id = $player_id",
+        ) ?: null;
+    }
+
+    /** The action at the next ship outline, but only when it is cannon fire - nothing else resumes. */
+    private function getPendingFireAction(int $player_id): ?array
+    {
+        $json = $this->readNextActionOnCard($player_id);
+        if (!$json) {
+            return null;
+        }
+        $action = json_decode($json, true);
+        $fire = [
+            PrimitiveCardPlayAction::FIRE->value,
+            PrimitiveCardPlayAction::FIRE2->value,
+            PrimitiveCardPlayAction::FIRE3->value,
+        ];
+        return is_array($action) && in_array($action["action"] ?? null, $fire, true) ? $action : null;
+    }
+
+    /** Called where a resolved collision would otherwise end the turn. */
+    private function postCollisionFireState(): ?int
+    {
+        return $this->getPendingFireAction((int) $this->getActivePlayerId()) === null
+            ? null
+            : STATE_POST_COLLISION_FIRE;
+    }
+
+    function argPostCollisionFire(): array
+    {
+        $action = $this->getPendingFireAction((int) $this->getActivePlayerId());
+        if ($action === null) {
+            throw new \Bga\GameFramework\SystemException("No firing action is pending after the collision");
+        }
+        return ["action" => $action];
+    }
+
+    function actPostCollisionFire(string $decision, ?int $use_booty_card_id = null): mixed
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        $action = $this->getPendingFireAction($player_id);
+        if ($action === null) {
+            throw new \Bga\GameFramework\SystemException("No firing action is pending after the collision");
+        }
+        $this->clearNextActionOnCard($player_id);
+
+        // processCardActions understands "skip" for a costed action, so declining runs the same path.
+        $outcome = $this->processCardActions([$action], [$decision]);
+        if (!empty($outcome["cost"])) {
+            $this->payWithOptionalBooty($player_id, $outcome["cost"], $use_booty_card_id);
+        }
+        if (!empty($outcome["action_chain"])) {
+            $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} fires after the collision'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+                "moveChain" => $outcome["action_chain"],
+                "cost" => $outcome["cost"],
+                "shipwreck_event" => null,
+            ]);
+        }
+        return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     function applyWhirlpoolRotation($player_id)
@@ -4150,7 +4290,6 @@ class SeasOfHavoc extends Table
                 "cost" => $outcome["cost"],
                 "shipwreck_event" => $shipwreck_event,
             ]);
-            //TODO: check if player can fire due to interrupted maneuver ending in firing action
         } elseif (!empty($seafeature_effects["moves"])) {
             // No pivot, but we still need to notify about seafeature effects
             $notification_message = clienttranslate('${player_name} resolves collision');
@@ -4204,7 +4343,10 @@ class SeasOfHavoc extends Table
         // If gust push caused another collision, stay in collision resolution state
         // Note: Seafeature effects are only applied once per card play, so this can only happen
         // when resolving a collision from the initial card play (gust push after collision resolution)
-        return $seafeature_collision ? "collisionOccurred" : "collisionResolved";
+        if ($seafeature_collision) {
+            return "collisionOccurred";
+        }
+        return $this->postCollisionFireState() ?? "collisionResolved";
     }
 
     function argTreasureSeekerAdjust()

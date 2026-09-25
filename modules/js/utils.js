@@ -279,6 +279,13 @@ define([
     },
 
     /**
+     * Damage deck: shared, and the game ends when it runs out, so everyone sees the count.
+     */
+    updateDamageDeckCount: function (deckSize) {
+      this.damageDeck.setCardNumber(parseInt(deckSize, 10));
+    },
+
+    /**
      * Get current player's resources as an object
      */
     getPlayerResources: function () {

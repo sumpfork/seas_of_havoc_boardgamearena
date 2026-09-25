@@ -385,7 +385,7 @@
 }
 .booty-token-pickup {
   position: absolute;
-  z-index: 1000;
+  z-index: 870;
 }
 .booty-token-slot {
   border-radius: 50%;
@@ -517,31 +517,54 @@
   margin: 12px 0 0;
 }
 #card_display_dialog {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 890;
   width: max-content;
-  min-width: 360px;
-  max-width: 560px;
+  min-width: 380px;
+  max-width: min(620px, 94vw);
   background: #fdf6ec;
   border: 2px solid #8b6914;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  padding: 12px;
-  margin-top: -200px;
-  z-index: 20;
-  position: absolute;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  padding: 12px 14px;
   display: grid;
   grid-template-columns: 150px minmax(190px, 1fr);
-  grid-template-rows: auto auto;
-  column-gap: 12px;
+  grid-template-areas:
+    "card choices"
+    "card buttons";
+  column-gap: 14px;
   row-gap: 10px;
   align-items: start;
 }
+#card_display {
+  grid-area: card;
+}
+#card_display [data-side="front"] {
+  cursor: zoom-in;
+}
 #card_choices {
+  grid-area: choices;
   display: flex;
   flex-direction: column;
-  max-height: 210px;
+  max-height: min(210px, 34vh);
   overflow-y: auto;
   color: #5a3a00;
   font-size: 14px;
+}
+#card_play_buttons {
+  grid-area: buttons;
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  gap: 8px;
+  align-self: end;
+}
+#card_play_buttons .bgabutton {
+  margin: 0;
+  white-space: nowrap;
 }
 .card-sides {
   width: 144px;
@@ -611,13 +634,6 @@
   padding-left: 5px;
   border-left: 1px solid #d4b87a;
 }
-#play_card_button,
-#pass_card_button {
-  width: fit-content;
-  height: fit-content;
-  place-self: center;
-  margin: 0;
-}
 .purchase_card_button {
   display: block;
   position: absolute;
@@ -675,7 +691,8 @@ a.disabled {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  z-index: 999;
+  /* Under 900: BGA's own dialogs live at 950 and must stay on top. */
+  z-index: 880;
 }
 
 /* Scrap / discard card selection dialog styles */
@@ -688,7 +705,7 @@ a.disabled {
   border: 2px solid #8b6914;
   border-radius: 12px;
   padding: 24px 28px 20px;
-  z-index: 1000;
+  z-index: 890;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   min-width: 780px;
   max-width: 92vw;
@@ -797,7 +814,12 @@ a.disabled {
   margin-left: auto; /* Force to the right */
 }
 
-.scrap-area h3 {
+.damage-area {
+  margin-left: 20px;
+}
+
+.scrap-area h3,
+.damage-area h3 {
   text-align: left;
   margin-bottom: 10px;
 }
@@ -808,7 +830,8 @@ a.disabled {
   text-align: center;
 }
 
-#scrap {
+#scrap,
+#damage_deck {
   min-height: 200px;
   border: 1px solid #ddd;
   border-radius: 5px;
@@ -826,6 +849,27 @@ a.disabled {
   border-radius: 5px;
   padding: 10px;
   background: rgba(128, 128, 128, 0.2);
+}
+
+/* Piles open in a bounded dialog on click. The library also fans them out on hover, to
+   (card height + shift) x card count - off the screen and over the page. Pin them shut. */
+#mydiscard.all-visible-deck:hover,
+#mydiscard.all-visible-deck:active,
+#scrap.all-visible-deck:hover,
+#scrap.all-visible-deck:active {
+  height: calc(var(--height) + (var(--tile-count) - 1) * var(--vertical-shift));
+  width: calc(var(--width) + (var(--tile-count) - 1) * var(--horizontal-shift));
+}
+#mydiscard.all-visible-deck:hover > .bga-cards_card,
+#mydiscard.all-visible-deck:active > .bga-cards_card,
+#scrap.all-visible-deck:hover > .bga-cards_card,
+#scrap.all-visible-deck:active > .bga-cards_card {
+  top: calc(var(--vertical-shift) * var(--order));
+  left: calc(var(--horizontal-shift) * var(--order));
+}
+#mydiscard,
+#scrap {
+  cursor: pointer;
 }
 
 #myhand_wrap {

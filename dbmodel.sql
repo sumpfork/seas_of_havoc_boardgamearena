@@ -81,7 +81,8 @@ CREATE TABLE IF NOT EXISTS `sea` (
 
 CREATE TABLE IF NOT EXISTS `next_action_on_card` (
   `player_id` int(10) unsigned NOT NULL,
-  `next_action` varchar(32) NOT NULL,
+  -- JSON of the action at the next ship outline, kept whole so its range/cost/variants survive.
+  `next_action` text NOT NULL,
   PRIMARY KEY (`player_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

@@ -229,6 +229,50 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             }, { classes: "bgabutton_gray" });
             break;
 
+          case "postCollisionFire": {
+            // The collision ended the maneuver, but the outline after it still shows a cannon.
+            const fireAction = args.action || {};
+            const shots = [];
+            if (fireAction.variants) {
+              fireAction.variants.forEach((variant) => variant.sides.forEach((side) => shots.push(
+                { name: variant.name + " " + side, cost: variant.cost, range: variant.range },
+              )));
+            } else {
+              ["left", "right"].forEach((side) => shots.push(
+                { name: fireAction.action + " " + side, cost: fireAction.cost, range: fireAction.range },
+              ));
+            }
+            shots.forEach((shot) => {
+              if (!this.canPlayerAfford(shot.cost, true, false)) {
+                return;
+              }
+              this.statusBar.addActionButton(
+                this._choiceLabelHtml(shot),
+                () => { this.fireAfterCollision(shot); },
+              );
+            });
+            this.statusBar.addActionButton(
+              _("Don't fire"),
+              () => { this.bgaPerformAction("actPostCollisionFire", { decision: "skip" }); },
+              { classes: "bgabutton_gray" },
+            );
+            break;
+          }
+
+          case "bootyDiscard": {
+            // Token values are secret, so the choice is private: show the player their own art.
+            ((args._private || {}).booty_tokens || []).forEach((token) => {
+              const node = this.createBootyTokenNode(false, token.image_id);
+              this.setBootyTokenImageForSlot(node, token.image_id);
+              this.statusBar.addActionButton(
+                _("Discard") + " " + node.outerHTML,
+                () => { this.bgaPerformAction("actDiscardBootyToken", { card_id: token.id }); },
+                { classes: "bgabutton_resource" },
+              );
+            });
+            break;
+          }
+
           case "swiftHull": {
             this.statusBar.addActionButton(
               _("Pay 1") + " " + this.resourceIcon("sail") + " " + _("to play another card"),

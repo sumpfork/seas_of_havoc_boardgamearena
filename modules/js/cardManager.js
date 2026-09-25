@@ -19,7 +19,7 @@ define(["dojo/dom-style"], function (domStyle) {
       });
       face.addEventListener('click', event => {
         // Selectable stocks own clicks for playing, scrapping, and discarding.
-        if (face.closest('.bga-cards_selectable-stock, #card_display_dialog') ||
+        if (face.closest('.bga-cards_selectable-stock') ||
             face.classList.contains('non-playable-card-back') ||
             !face.closest('.seasofhavoc-card[data-side="front"]')) return;
         event.stopPropagation();
