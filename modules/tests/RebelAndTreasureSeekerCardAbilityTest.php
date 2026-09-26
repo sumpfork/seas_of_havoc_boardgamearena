@@ -72,6 +72,28 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame(['fire left'], $this->game->resolved['decisions']);
     }
 
+    /** Damage cards are all the same card, so Retaliation does not ask which one to scrap. */
+    public function testRetaliationPicksTheDamageCardItself(): void {
+        $id = $this->game->addCard(0, 'hand');
+        $this->game->start('retaliation');
+
+        $this->game->actResolveCaptainCard(['fire' => 'fire right']);
+
+        $this->assertSame('scrap', $this->game->deck->getCard($id)['location']);
+        $this->assertSame(['fire right'], $this->game->resolved['decisions']);
+    }
+
+    public function testRetaliationPrefersTheDamageCardInHand(): void {
+        $inDiscard = $this->game->addCard(0, 'player_discard');
+        $inHand = $this->game->addCard(0, 'hand');
+        $this->game->start('retaliation');
+
+        $this->game->actResolveCaptainCard(['fire' => 'skip']);
+
+        $this->assertSame('scrap', $this->game->deck->getCard($inHand)['location']);
+        $this->assertSame('player_discard_1', $this->game->deck->getCard($inDiscard)['location']);
+    }
+
     public function testRetaliationCanScrapDiscardDamageWithoutFiring(): void {
         $id = $this->game->addCard(0, 'player_discard');
         $this->game->start('retaliation');

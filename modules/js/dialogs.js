@@ -669,8 +669,15 @@ define([
         }
         return;
       }
+      if (ability === "retaliation") {
+        // Every damage card is identical, so there is nothing to pick between: go straight to the shot.
+        title.textContent = _("Retaliation: scrap a damage card, then you may fire.");
+        [[_("Fire left (free, range 3)"), "fire left"], [_("Fire right (free, range 3)"), "fire right"],
+          [_("Scrap without firing"), "skip"]].forEach(([label, fire]) => button(label, () => send({ fire: fire })));
+        return;
+      }
       title.textContent = ability === "spyglass" ? _("Spyglass: choose the card to keep, then the remaining cards in top-to-bottom deck order.") :
-        ability === "retaliation" ? _("Retaliation: choose damage from your hand or discard pile.") : _("Improvisation: choose a card to copy.");
+        _("Improvisation: choose a card to copy.");
       const stockNode = domConstruct.create("div", {}, panel);
       this.captainChoiceStock = new BgaCards.LineStock(this.cardsManager, stockNode, { center: false });
       // Use display ids so these previews do not remove cards from the hand/discard stocks.
@@ -690,10 +697,6 @@ define([
             button(_("Confirm"), () => send({ order: order }));
           }
           button(_("Start over"), () => this.setupCaptainCardSelection(args));
-        } else if (ability === "retaliation") {
-          title.textContent = card.location === "hand" ? _("Scrap the selected damage card from your hand:") : _("Scrap the selected damage card from your discard pile:");
-          [[_("Fire left (free, range 3)"), "fire left"], [_("Fire right (free, range 3)"), "fire right"], [_("Scrap without firing"), "skip"]].forEach(([label, fire]) =>
-            button(label, () => send({ card_id: Number(card.id), fire: fire })));
         } else {
           this.showCardPlayDialog(this.playable_cards[card.type], Number(card.id), Number(card.id));
         }

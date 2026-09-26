@@ -1274,13 +1274,33 @@ class SeasOfHavoc extends Table
         return "nextPlayer";
     }
 
+    /** Players who put a skiff on a Market card, and so have something to buy. */
+    private function getMarketClaimants(): array
+    {
+        $claimants = [];
+        foreach ($this->getIslandSlots()["market"] ?? [] as $slot) {
+            if ($slot["occupying_player_id"] !== null) {
+                $claimants[(int) $slot["occupying_player_id"]] = true;
+            }
+        }
+        return array_keys($claimants);
+    }
+
     function stCardPurchases()
     {
         // Clear any pending purchases from previous round
         self::DbQuery("DELETE FROM pending_purchases");
-        $this->gamestate->setAllPlayersMultiactive();
 
-        // Initialize all players to the "making purchases" private state
+        // Nobody else has anything to decide here, so only the claimants are made active. With no
+        // claimants at all the phase passes straight through.
+        $claimants = $this->getMarketClaimants();
+        if (empty($claimants)) {
+            $this->gamestate->setPlayersMultiactive([], "cardPurchasesDone", true);
+            return;
+        }
+        $this->gamestate->setPlayersMultiactive($claimants, "cardPurchasesDone", true);
+
+        // Initialize the claimants to the "making purchases" private state
         $this->gamestate->initializePrivateStateForAllActivePlayers();
     }
 
@@ -2953,6 +2973,11 @@ class SeasOfHavoc extends Table
         $actions = [];
         if ($ability === "retaliation" || $ability === "improvisation") {
             $selected = $choices["card_id"] ?? null;
+            // Retaliation only ever offers damage cards, and every damage card is the same card,
+            // so there is nothing to choose between them: take the first, from the hand if any.
+            if ($ability === "retaliation" && $selected === null) {
+                $selected = (int) $options[0]["id"];
+            }
             if (!is_int($selected) || !isset($by_id[$selected])) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Choose an available card"));
             }
