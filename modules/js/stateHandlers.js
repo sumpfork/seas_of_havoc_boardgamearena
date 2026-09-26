@@ -98,9 +98,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
         }
 
-        case "rebelDiscard": {
+        case "rebelDiscard":
+        case "collisionDiscard": {
           if (this.isCurrentPlayerActive()) {
-            this.setupDiscardCardSelection(args.args);
+            this.setupDiscardCardSelection(args.args, stateName === "collisionDiscard"
+              ? _("Choose a card to discard (collision penalty)")
+              : _("Choose a card to discard (Rebel ability)"));
           }
           break;
         }
@@ -115,12 +118,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
         }
 
         case "extortion": {
-          if (this.isCurrentPlayerActive()) {
-            var extortionArgs = args.args || {};
-            if (extortionArgs.pending_red && !extortionArgs.pending_green) {
-              this.setupScrapCardSelection(extortionArgs);
-            }
-          }
+          this._extortionArgs = args.args || {};
           break;
         }
 
@@ -147,6 +145,23 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
         case "dummmy":
           break;
       }
+    },
+
+    /**
+     * Extortion: green and red need a second choice, tan and blue resolve straight away.
+     */
+    onExtortionFlagChosen: function (flag, args) {
+      if (flag === "green") {
+        this.setClientState("client_extortionGreenResource", {
+          descriptionmyturn: _("${you} must choose a resource (Green Flag)"),
+        });
+        return;
+      }
+      if (flag === "red") {
+        this.setupScrapCardSelection(args);
+        return;
+      }
+      this.bgaPerformAction("actExtortionUseFlag", { flag });
     },
 
     /**
@@ -182,6 +197,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           break;
 
         case "rebelDiscard":
+        case "collisionDiscard":
           this.cleanupDiscardCardSelection();
           break;
 
@@ -435,20 +451,34 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           }
 
           case "extortion": {
+            // "Use the action of each flag you control in any order" - one button per flag left.
             var extortionArgs2 = args || {};
-            if (extortionArgs2.pending_green) {
-              ["sail", "cannonball", "doubloon"].forEach(resource => {
-                this.statusBar.addActionButton(this.resourceIcon(resource), () => {
-                  this.bgaPerformAction("actResourcePickedInDialog", {
-                    resource, context: "extortion_green_flag", number: "0",
-                  });
-                }, { classes: "bgabutton_resource" });
+            var extortionNames = {
+              green: _("Green Flag: gain a resource"),
+              tan: _("Tan Flag: draw a card"),
+              blue: _("Blue Flag: extra island turn"),
+              red: _("Red Flag: scrap a card"),
+            };
+            (extortionArgs2.pending_flags || []).forEach((flag) => {
+              this.statusBar.addActionButton(extortionNames[flag] || flag, () => {
+                this.onExtortionFlagChosen(flag, extortionArgs2);
               });
-            } else if (extortionArgs2.pending_red) {
-              this.statusBar.addActionButton(_("Scrap a Card (Red Flag)"), function () {}, {
-                classes: "bgabutton_gray disabled",
-              });
-            }
+            });
+            this.statusBar.addActionButton(_("Skip the rest"), () => {
+              this.bgaPerformAction("actSkipExtortion", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+          }
+
+          case "client_extortionGreenResource": {
+            ["sail", "cannonball", "doubloon"].forEach((resource) => {
+              this.statusBar.addActionButton(this.resourceIcon(resource), () => {
+                this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource });
+              }, { classes: "bgabutton_resource" });
+            });
+            this.statusBar.addActionButton(_("Back"), () => { this.restoreServerGameState(); }, {
+              classes: "bgabutton_gray",
+            });
             break;
           }
 

@@ -32,9 +32,9 @@ class Extortion extends GameState
     }
 
     #[PossibleAction]
-    public function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
+    public function actExtortionUseFlag(string $flag, string $resource = ''): mixed
     {
-        return $this->game->actResourcePickedInDialog($resource, $context, $number);
+        return $this->game->actExtortionUseFlag($flag, $resource);
     }
 
     #[PossibleAction]

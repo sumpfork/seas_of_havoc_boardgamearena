@@ -11,6 +11,14 @@ class PostCollisionFireUT extends SeasOfHavocUT
     public ?string $stored = null;
     public array $paid = [];
     public array $bootyUsed = [];
+    public array $damaged = [];
+    public array $infamy = [];
+
+    public function dealDamageCard(string $hit_player_id): void { $this->damaged[] = $hit_player_id; }
+    public function scoreInfamy(string $player_id, int $amount, string $message = ""): void
+    {
+        $this->infamy[] = [$player_id, $amount];
+    }
 
     // The framework's DbQuery/getUniqueValueFromDB are final static, so the wrappers are the seam.
     protected function setNextActionOnCard(int $player_id, array $action): void
@@ -39,6 +47,23 @@ class PostCollisionFireUT extends SeasOfHavocUT
         $this->bootyUsed[] = $use_booty_card_id;
     }
 
+    public function callCollisionPenaltyState(): int
+    {
+        return (new ReflectionMethod(SeasOfHavoc::class, 'collisionPenaltyState'))->invoke($this);
+    }
+
+    public function setHandSize(int $count): void
+    {
+        $deck = new class ($count) {
+            public function __construct(private int $count) {}
+            public function countCardInLocation(string $location, $location_arg = null): int
+            {
+                return $location === 'hand' ? $this->count : 0;
+            }
+        };
+        (new ReflectionProperty(SeasOfHavoc::class, 'cards'))->setValue($this, $deck);
+    }
+
     public function useCollidingBoard(): void
     {
         $board = $this->createMock(SeaBoard::class);
@@ -52,6 +77,8 @@ final class PostCollisionFireTest extends TestCase
 
     private const FIRE = ['action' => 'fire', 'range' => 3, 'cost' => ['cannonball' => 1]];
 
+    private array $colliders = [['type' => 'rock', 'arg' => 0]];
+
     protected function setUp(): void
     {
         $this->game = new PostCollisionFireUT();
@@ -62,7 +89,9 @@ final class PostCollisionFireTest extends TestCase
     {
         $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()
             ->onlyMethods(['moveObjectForward', 'resolveCannonFire'])->getMock();
-        $board->method('moveObjectForward')->willReturn(['type' => 'collision']);
+        $board->method('moveObjectForward')->willReturn(
+            ['type' => 'collision', 'colliders' => $this->colliders],
+        );
         $board->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
     }
@@ -114,6 +143,36 @@ final class PostCollisionFireTest extends TestCase
 
         $this->game->actPostCollisionFire('fire left', 42);
         $this->assertSame([42], $this->game->bootyUsed, 'the chosen booty token pays for the shot');
+    }
+
+    /** "The player that initiated the collision discards a card (if their hand is empty, they do not)." */
+    public function testCollisionCostsTheCollidingPlayerACard(): void
+    {
+        $this->game->setHandSize(3);
+        $this->assertSame(STATE_COLLISION_DISCARD, $this->game->callCollisionPenaltyState());
+    }
+
+    public function testCollisionWithAnEmptyHandSkipsTheDiscard(): void
+    {
+        $this->game->setHandSize(0);
+        $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->callCollisionPenaltyState());
+    }
+
+    public function testHittingARockDamagesTheCollidingPlayer(): void
+    {
+        $this->collidingBoard();
+        $this->game->processCardActions([['action' => 'forward']], []);
+        $this->assertSame(['1'], $this->game->damaged);
+        $this->assertSame([], $this->game->infamy, 'no infamy for hitting scenery');
+    }
+
+    public function testRammingScoresInfamyAndDamagesTheRammedShip(): void
+    {
+        $this->colliders = [['type' => 'player_ship', 'arg' => '2']];
+        $this->collidingBoard();
+        $this->game->processCardActions([['action' => 'forward']], []);
+        $this->assertSame([['1', 1]], $this->game->infamy, 'the rammer scores 1 infamy');
+        $this->assertSame(['2'], $this->game->damaged, 'the rammed ship takes the damage card');
     }
 
     public function testDecliningTheShotCostsNothing(): void

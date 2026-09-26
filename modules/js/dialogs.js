@@ -19,6 +19,10 @@ define([
      * Clean up card play dialog
      */
     cleanupCardPlayDialog: function () {
+      if (this._closeCardPlayDialogOnOutsideClick) {
+        document.removeEventListener("click", this._closeCardPlayDialogOnOutsideClick);
+        this._closeCardPlayDialogOnOutsideClick = null;
+      }
       if (this.cardDisplayStock) {
         try {
           this.cardDisplayStock.removeAll();
@@ -46,6 +50,21 @@ define([
       // On the body, like the scrap dialog: the game area can be zoomed/transformed, which would
       // otherwise turn the panel's fixed positioning into positioning against that transform.
       domConstruct.place(dlg, document.body);
+
+      // Clicking away drops the card back: nothing has been sent to the server yet. The hand is
+      // excluded so picking a different card just swaps dialogs, and the action buttons because the
+      // booty prompt is answered from the status bar while this dialog is still up.
+      this._closeCardPlayDialogOnOutsideClick = (event) => {
+        if (event.target.closest("#card_display_dialog, #myhand, #captain_card_choices, .card-zoom-dialog, .bgabutton")) {
+          return;
+        }
+        if (this._pendingBootySend) {
+          return;
+        }
+        this.cleanupCardPlayDialog();
+        this.playerHand.unselectAll();
+      };
+      document.addEventListener("click", this._closeCardPlayDialogOnOutsideClick);
 
       var makeDecisionSummary = function (tree, decisionSummary) {
         if (typeof decisionSummary === "undefined") {
@@ -759,7 +778,7 @@ define([
     /**
      * Set up discard card selection dialog (Rebel ability)
      */
-    setupDiscardCardSelection: function (args) {
+    setupDiscardCardSelection: function (args, title) {
       console.log("Setting up discard card selection");
       console.log(args);
 
@@ -770,7 +789,7 @@ define([
 
       var discardDialog = this.format_block("jstpl_discard_card_dialog", {});
       document.body.insertAdjacentHTML("beforeend", discardDialog);
-      $("discard_card_dialog").querySelector("h3").innerHTML = _("Choose a card to discard (Rebel ability)");
+      $("discard_card_dialog").querySelector("h3").innerHTML = title || _("Choose a card to discard (Rebel ability)");
 
       this.discardCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("discard_card_selection_wrapper"), {
         gap: "16px",
@@ -991,15 +1010,15 @@ define([
     },
 
     /**
-     * Confirm discard card action (Rebel ability)
+     * Confirm discard card action (Rebel ability, or the collision penalty).
      */
     confirmDiscardCard: function (cardId) {
       console.log("Confirming discard of card:", cardId);
 
-      if (this.checkAction("actRebelDiscardCard")) {
-        this.bgaPerformAction("actRebelDiscardCard", {
-          card_id: cardId,
-        });
+      if (this.checkAction("actCollisionDiscardCard", true)) {
+        this.bgaPerformAction("actCollisionDiscardCard", { card_id: cardId });
+      } else if (this.checkAction("actRebelDiscardCard")) {
+        this.bgaPerformAction("actRebelDiscardCard", { card_id: cardId });
       }
     },
   };

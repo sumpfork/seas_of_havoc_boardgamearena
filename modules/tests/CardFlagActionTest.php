@@ -126,9 +126,13 @@ final class CardFlagActionTest extends TestCase
 
     public function testCollisionResolvesBeforeCardFlagIsOffered(): void {
         $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['moveObjectForward'])->getMock();
-        $board->method('moveObjectForward')->willReturn(['type' => 'collision']);
+        $board->method('moveObjectForward')->willReturn(
+            ['type' => 'collision', 'colliders' => [['type' => 'rock', 'arg' => 0]]],
+        );
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
-        $this->assertSame('collisionOccurred', $this->game->playFlagActions('green', [['action' => 'forward']]));
+        // Empty hand, so the collision penalty discard is skipped and the collision resolves directly.
+        $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->playFlagActions('green', [['action' => 'forward']]));
+        $this->assertSame(['1'], $this->game->damaged, 'hitting a rock damages the colliding player');
         $this->assertSame([], $this->game->gains);
         $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
         $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());

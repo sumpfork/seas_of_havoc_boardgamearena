@@ -21,7 +21,12 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
         (new ReflectionProperty(SeasOfHavoc::class, 'booty_tokens'))->setValue($this, $this->booty_tokens);
     }
 
+    public array $damaged = [];
+    public array $infamy = [];
+
     public function drawCards(string $player_id, int $num_cards = 1) { $this->draws[] = $num_cards; }
+    public function dealDamageCard(string $hit_player_id): void { $this->damaged[] = $hit_player_id; }
+    public function scoreInfamy(string $player_id, int $amount, string $message = "") { $this->infamy[] = [$player_id, $amount]; }
     public function playerGainResources($player_id, $resources) { $this->gains[] = $resources; }
     public function getActivePlayerId(): string { return '1'; }
     public function getPlayerNameById(int $player_id): string { return 'Player'; }
@@ -194,6 +199,25 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
             ]],
         ], ['2 x fire', '2 x fire left']);
         $this->assertSame(['cannonball' => 2], $result['cost']);
+    }
+
+    /** Final scoring reads these: market cards add infamy, damage subtracts, the rest score none. */
+    public function testEveryCardCarriesItsPrintedInfamy(): void {
+        $seen = [];
+        foreach ($this->game->playable_cards as $card) {
+            $infamy = $card['infamy'] ?? 0;
+            $seen[$card['category']][] = $infamy;
+            if ($card['category'] === 'market_card') {
+                $this->assertContains($infamy, [1, 2, 3], "market card {$card['image_id']} must show 1-3 skulls");
+            } elseif ($card['category'] === 'damage') {
+                $this->assertSame(-1, $infamy);
+            } else {
+                $this->assertSame(0, $infamy, "{$card['category']} cards carry no skull banner");
+            }
+        }
+        $this->assertCount(52, $seen['market_card']);
+        $this->assertCount(18, $seen['starting_card']);
+        $this->assertCount(12, $seen['captain']);
     }
 
     public function testEveryMaterialActionUsesACanonicalValue(): void {

@@ -53,6 +53,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_SWIFT_HULL", 22);
     define("STATE_BOOTY_DISCARD", 23);
     define("STATE_POST_COLLISION_FIRE", 24);
+    define("STATE_COLLISION_DISCARD", 25);
+    define("STATE_FINAL_SCORING", 26);
     define("STATE_END_GAME", 99);
 }
 
@@ -67,8 +69,7 @@ class SeasOfHavoc extends Table
 
     public const NIMBLE_HULL_CHOICE = "nimble hull: maneuver twice";
 
-    private const EXTORTION_GREEN_FLAG = 1;
-    private const EXTORTION_RED_FLAG = 2;
+    private const EXTORTION_FLAG_BITS = ["green" => 1, "red" => 2, "tan" => 4, "blue" => 8];
 
     private SeaBoard $seaboard;
     private $cards;
@@ -1131,7 +1132,7 @@ class SeasOfHavoc extends Table
             case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
                 return $this->postCollisionFireState() ?? STATE_NEXT_PLAYER_SEA_PHASE;
             case self::TREASURE_SEEKER_RESUME_COLLISION:
-                return STATE_RESOLVE_COLLISION;
+                return $this->collisionPenaltyState();
             default:
                 throw new \Bga\GameFramework\SystemException("Unknown treasure seeker resume value: $resume");
         }
@@ -1353,7 +1354,10 @@ class SeasOfHavoc extends Table
         }
         $this->trace("final num cards: $num_cards");
         if ($num_cards == 0) {
-            return "seaPhaseDone";
+            // "The game ends at the end of a Sea Phase when the Damage deck is empty."
+            return $this->cards->countCardInLocation("damage_deck") === 0
+                ? STATE_FINAL_SCORING
+                : "seaPhaseDone";
         }
         $this->giveExtraTime($active_player);
         return "nextPlayer";
@@ -1718,11 +1722,7 @@ class SeasOfHavoc extends Table
         return "islandTurnDone";
     }
 
-    /**
-     * Sums infamy from all activated ship upgrades and scores it per player.
-     * Not yet called anywhere: no end-of-game state exists in this codebase yet
-     * (STATE_END_GAME is never transitioned to). Wire this in once end-of-game logic is built.
-     */
+    /** Sums infamy from all activated ship upgrades and scores it per player, at final scoring. */
     function awardShipUpgradeEndgameInfamy(): void
     {
         foreach ($this->loadPlayersBasicInfos() as $player_id => $_) {
@@ -1741,6 +1741,51 @@ class SeasOfHavoc extends Table
                 );
             }
         }
+    }
+
+    /** Everything a player still owns at the end: their deck, their hand and their discard pile. */
+    private function getPlayerOwnedCards(string $player_id): array
+    {
+        return array_merge(
+            array_values($this->cards->getCardsInLocation($this->playerDeckName($player_id))),
+            array_values($this->cards->getCardsInLocation("hand", $player_id)),
+            array_values($this->cards->getCardsInLocation($this->playerDiscardName($player_id))),
+        );
+    }
+
+    /**
+     * "Players add the Infamy scored on their active upgrades and acquired Market cards (deck, hand,
+     * and discard pile) to their total. Damage cards reduce Infamy and purchased cards add to it."
+     */
+    function stFinalScoring(): mixed
+    {
+        $this->awardShipUpgradeEndgameInfamy();
+
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $player_id) {
+            $infamy = 0;
+            $damage = 0;
+            foreach ($this->getPlayerOwnedCards((string) $player_id) as $card) {
+                $definition = $this->playable_cards[(int) $card["type"]];
+                $infamy += $definition["infamy"] ?? 0;
+                if (($definition["category"] ?? "") === "damage") {
+                    $damage++;
+                }
+            }
+            if ($infamy !== 0) {
+                $this->scoreInfamy(
+                    (string) $player_id,
+                    $infamy,
+                    clienttranslate('${player_name} scores ${score_increment} infamy from their cards'),
+                );
+            }
+            // "In the case of a tie, the player with the most resources wins. If there is still a
+            // tie, the player with the least Damage wins." BGA compares a single tiebreak number,
+            // so the two are packed: resources dominate, fewer damage cards break the remainder.
+            $resources = array_sum($this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? []);
+            $this->bga->playerScoreAux->set((int) $player_id, $resources * 100 + max(0, 99 - $damage));
+        }
+
+        return STATE_END_GAME;
     }
 
     private function setPendingTradingPostSelection(?int $player_id, ?string $slot_number): void
@@ -2485,19 +2530,6 @@ class SeasOfHavoc extends Table
             case "corsair_occupied_green_flag":
                 $this->finalizeCorsairOccupiedPlacement($player_id, "green_flag", $number, [$resource => 1]);
                 return "islandTurnDone";
-            case "extortion_green_flag":
-                $pending = (int) $this->getGameStateValue("extortion_pending_flags");
-                $this->playerGainResources($player_id, [$resource => 1]);
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Flag)'), [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                    "resource" => $resource,
-                ]);
-                $pending &= ~self::EXTORTION_GREEN_FLAG;
-                $this->setGameStateValue("extortion_pending_flags", $pending);
-                if ($pending === 0) {
-                    return STATE_NEXT_PLAYER_SEA_PHASE;
-                }
-                return STATE_EXTORTION; // Re-enter to render the remaining red-flag selection.
             default:
                 throw new \Bga\GameFramework\SystemException("bad context: $context");
         }
@@ -2763,6 +2795,7 @@ class SeasOfHavoc extends Table
                 $outcome[] = $result;
                 if ($result["type"] == "collision") {
                     $collision_occurred = true;
+                    $this->applyCollisionPenalty((string) $player_id, $result["colliders"]);
                 } else {
                     $pickup = $this->collectShipwrecksAtPlayer($player_id);
                     $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
@@ -3114,28 +3147,15 @@ class SeasOfHavoc extends Table
 
     // --- Extortion ---
 
+    /** "Use the action of each flag you control in any order." The player picks the order. */
     function processExtortion(string $player_id): mixed
     {
         $tokens = $this->getUniqueTokens();
         $pending = 0;
-
-        if (isset($tokens["tan_flag"]) && $tokens["tan_flag"] == $player_id) {
-            $this->drawCards($player_id, 1);
-            $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Flag)'), [
-                "player_name" => $this->getPlayerNameById($player_id),
-            ]);
-        }
-        if (isset($tokens["blue_flag"]) && $tokens["blue_flag"] == $player_id) {
-            $this->grantExtraTurn($player_id, "island");
-            $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Flag)'), [
-                "player_name" => $this->getPlayerNameById($player_id),
-            ]);
-        }
-        if (isset($tokens["green_flag"]) && $tokens["green_flag"] == $player_id) {
-            $pending |= self::EXTORTION_GREEN_FLAG;
-        }
-        if (isset($tokens["red_flag"]) && $tokens["red_flag"] == $player_id) {
-            $pending |= self::EXTORTION_RED_FLAG;
+        foreach (self::EXTORTION_FLAG_BITS as $flag => $bit) {
+            if (isset($tokens[$flag . "_flag"]) && $tokens[$flag . "_flag"] == $player_id) {
+                $pending |= $bit;
+            }
         }
 
         if ($pending === 0) {
@@ -3150,10 +3170,12 @@ class SeasOfHavoc extends Table
         $pending = (int) $this->getGameStateValue("extortion_pending_flags");
         $player_id = self::getActivePlayerId();
         $result = [
-            "pending_green" => (bool) ($pending & self::EXTORTION_GREEN_FLAG),
-            "pending_red" => (bool) ($pending & self::EXTORTION_RED_FLAG),
+            "pending_flags" => array_values(array_filter(
+                array_keys(self::EXTORTION_FLAG_BITS),
+                fn($flag) => (bool) ($pending & self::EXTORTION_FLAG_BITS[$flag]),
+            )),
         ];
-        if ($pending & self::EXTORTION_RED_FLAG) {
+        if ($pending & self::EXTORTION_FLAG_BITS["red"]) {
             $result["available_cards"] = array_merge(
                 array_values($this->cards->getPlayerHand($player_id)),
                 array_values($this->normalizeCardLocations($this->getPlayerDiscard($player_id))),
@@ -3162,16 +3184,62 @@ class SeasOfHavoc extends Table
         return $result;
     }
 
+    /** Resolve one of the pending flags, chosen by the player; the rest stay pending. */
+    function actExtortionUseFlag(string $flag, string $resource = ""): mixed
+    {
+        $player_id = self::getActivePlayerId();
+        $this->requirePendingExtortionFlag($flag);
+        switch ($flag) {
+            case "green":
+                if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+                }
+                $this->playerGainResources($player_id, [$resource => 1]);
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Flag)'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                    "resource" => $resource,
+                ]);
+                break;
+            case "tan":
+                $this->drawCards($player_id, 1);
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Flag)'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                ]);
+                break;
+            case "blue":
+                $this->grantExtraTurn($player_id, "island");
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Flag)'), [
+                    "player_name" => $this->getPlayerNameById($player_id),
+                ]);
+                break;
+            default:
+                throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card to scrap for the Red Flag"));
+        }
+        return $this->clearExtortionFlag($flag);
+    }
+
     function actExtortionScrapCard(int $card_id): mixed
     {
         $player_id = self::getActivePlayerId();
-        $pending = (int) $this->getGameStateValue("extortion_pending_flags");
-        if (!($pending & self::EXTORTION_RED_FLAG)) {
-            throw new \Bga\GameFramework\UserException(clienttranslate("No Red Flag effect is pending"));
-        }
+        $this->requirePendingExtortionFlag("red");
         $this->scrapCardAndRefund($card_id, $player_id);
-        $this->setGameStateValue("extortion_pending_flags", 0);
-        return STATE_NEXT_PLAYER_SEA_PHASE;
+        return $this->clearExtortionFlag("red");
+    }
+
+    private function requirePendingExtortionFlag(string $flag): void
+    {
+        $bit = self::EXTORTION_FLAG_BITS[$flag] ?? 0;
+        if (!$bit || !((int) $this->getGameStateValue("extortion_pending_flags") & $bit)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("You do not have that flag effect pending"));
+        }
+    }
+
+    /** Back to the choice for whatever is left, or on with the sea phase. */
+    private function clearExtortionFlag(string $flag): mixed
+    {
+        $pending = (int) $this->getGameStateValue("extortion_pending_flags") & ~self::EXTORTION_FLAG_BITS[$flag];
+        $this->setGameStateValue("extortion_pending_flags", $pending);
+        return $pending === 0 ? STATE_NEXT_PLAYER_SEA_PHASE : STATE_EXTORTION;
     }
 
     function actSkipExtortion(): mixed
@@ -3685,7 +3753,9 @@ class SeasOfHavoc extends Table
             $this->playerDiscardName($hit_player_id),
         );
         if (!$damage_card) {
-            return; // damage deck exhausted
+            // "Players complete that Sea Phase using extra damage cards from the scrap pile or the
+            // box as needed." The deck itself stays empty - that is what ends the game.
+            $damage_card = $this->takeSpareDamageCard($hit_player_id);
         }
         // pickCardForLocation drops the card in at position 0; put it on top of the pile.
         $this->discardCardToPlayer((int) $damage_card["id"], $hit_player_id);
@@ -3715,6 +3785,43 @@ class SeasOfHavoc extends Table
                 ],
             );
         }
+    }
+
+    /**
+     * "Collision with Rocks: The colliding player places a Damage Card into their discard pile.
+     *  Collision other Ships (Ramming): The colliding player scores 1 infamy, the rammed ship
+     *  places a Damage card into their discard pile."
+     * Gust pushes count as collisions the ship caused, so they score ramming hits too.
+     */
+    private function applyCollisionPenalty(string $player_id, array $colliders): void
+    {
+        foreach ($colliders as $collider) {
+            if ($collider["type"] === "player_ship") {
+                $this->scoreInfamy(
+                    $player_id,
+                    1,
+                    clienttranslate('${player_name} rams another ship and scores ${score_increment} infamy'),
+                );
+                $this->dealDamageCard((string) $collider["arg"]);
+            } elseif ($collider["type"] === "rock") {
+                $this->dealDamageCard($player_id);
+            }
+        }
+    }
+
+    /** A damage card from the scrap pile, or a fresh one from "the box" if the scrap has none. */
+    private function takeSpareDamageCard(string $hit_player_id): array
+    {
+        $discard = $this->playerDiscardName($hit_player_id);
+        foreach ($this->cards->getCardsInLocation("scrap") as $card) {
+            if ((int) $card["type"] === $this->damageCardType()) {
+                $this->cards->moveCard((int) $card["id"], $discard);
+                return $this->cards->getCard((int) $card["id"]);
+            }
+        }
+        $this->cards->createCards([["type" => $this->damageCardType(), "type_arg" => 0, "nbr" => 1]], $discard);
+        $created = $this->cards->getCardsInLocation($discard);
+        return end($created);
     }
 
     function merge_results(
@@ -4053,6 +4160,9 @@ class SeasOfHavoc extends Table
         if ($gust_result["result"] !== null) {
             $seafeature_moves[] = $gust_result["result"];
             $collision = $gust_result["collision"];
+            if ($collision) {
+                $this->applyCollisionPenalty((string) $player_id, $gust_result["result"]["colliders"]);
+            }
             if ($gust_result["result"]["type"] != "collision") {
                 $pickup = $this->collectShipwrecksAtPlayer($player_id);
                 $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
@@ -4208,7 +4318,32 @@ class SeasOfHavoc extends Table
             return STATE_TREASURE_SEEKER_ADJUST;
         }
 
-        return $outcome["collision_occurred"] || $seafeature_collision ? "collisionOccurred" : "seaTurnDone";
+        return $outcome["collision_occurred"] || $seafeature_collision
+            ? $this->collisionPenaltyState()
+            : "seaTurnDone";
+    }
+
+    /**
+     * "The player that initiated the collision discards a card (if their hand is empty, they do not
+     * discard)." Gust-pushed collisions count: the rules resolve them as if the ship caused them.
+     */
+    private function collisionPenaltyState(): int
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        return $this->cards->countCardInLocation("hand", $player_id) > 0
+            ? STATE_COLLISION_DISCARD
+            : STATE_RESOLVE_COLLISION;
+    }
+
+    function argCollisionDiscard(): array
+    {
+        return ["available_cards" => $this->cards->getPlayerHand((string) $this->getActivePlayerId())];
+    }
+
+    function actCollisionDiscardCard(int $card_id): mixed
+    {
+        $this->discardCards((string) $this->getActivePlayerId(), [$card_id]);
+        return "cardDiscarded";
     }
 
     function stResolveCollision()
@@ -4233,8 +4368,23 @@ class SeasOfHavoc extends Table
         $this->mytrace("actPivotPickedInDialog");
         $player_id = $this->getActivePlayerId();
 
-        // Apply seafeature effects (whirlpool rotation and gust push) after collision resolution
-        // But only if they haven't been attempted yet (seafeature effects are only applied once per card play)
+        // The pivot is part of resolving the collision; whirlpools and gusts resolve after it, like
+        // after any card. Doing it the other way round still produced the right final heading for a
+        // rotation, but each move carried headings from the opposite order to the one the client
+        // animates them in, so the ship was drawn facing the wrong way until the next reload.
+        $pivot_outcome = ["action_chain" => [], "cost" => [], "shipwreck_event" => null, "booty_card" => null];
+        if ($direction != "no pivot") {
+            $typed_action = PrimitiveCardPlayAction::from($direction);
+            $pivot_outcome = $this->processCardActions([["action" => $typed_action]], []);
+            $this->dump("final pivot outcome", $pivot_outcome);
+
+            // Pay the cost for pivot actions (pivots are free, but just in case)
+            if (!empty($pivot_outcome["cost"])) {
+                $this->payWithOptionalBooty($player_id, $pivot_outcome["cost"]);
+            }
+        }
+
+        // Only apply seafeature effects if they haven't been attempted yet (once per card play)
         $seafeature_effects = ["moves" => [], "collision" => false];
         $seafeature_collision = false;
         $shipwreck_event = null;
@@ -4250,14 +4400,7 @@ class SeasOfHavoc extends Table
         }
 
         if ($direction != "no pivot") {
-            $typed_action = PrimitiveCardPlayAction::from($direction);
-            $outcome = $this->processCardActions([["action" => $typed_action]], []);
-            $this->dump("final pivot outcome", $outcome);
-
-            // Pay the cost for pivot actions (pivots are free, but just in case)
-            if (!empty($outcome["cost"])) {
-                $this->payWithOptionalBooty($player_id, $outcome["cost"]);
-            }
+            $outcome = $pivot_outcome;
 
             // Combine pivot moves with seafeature moves for sequential animation
             $all_moves = array_merge($outcome["action_chain"], $seafeature_effects["moves"]);
@@ -4344,7 +4487,7 @@ class SeasOfHavoc extends Table
         // Note: Seafeature effects are only applied once per card play, so this can only happen
         // when resolving a collision from the initial card play (gust push after collision resolution)
         if ($seafeature_collision) {
-            return "collisionOccurred";
+            return $this->collisionPenaltyState();
         }
         return $this->postCollisionFireState() ?? "collisionResolved";
     }

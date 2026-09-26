@@ -183,20 +183,53 @@ final class PirateQueenCardAbilityTest extends TestCase {
 
     // --- Extortion ---
 
-    public function testExtortionTanFlagDrawsCard(): void {
+    public function testExtortionTanFlagDrawsCardWhenThePlayerPicksIt(): void {
         $this->game->mockUniqueTokens = ["tan_flag" => "1"];
 
-        $this->game->processExtortion("1");
+        $this->assertSame(STATE_EXTORTION, $this->game->processExtortion("1"));
+        $this->assertSame([], $this->game->drawCalls, 'nothing resolves until the player chooses');
 
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actExtortionUseFlag("tan"));
         $this->assertSame([["player_id" => "1", "num_cards" => 1]], $this->game->drawCalls);
     }
 
-    public function testExtortionBlueFlagGrantsExtraTurn(): void {
+    public function testExtortionBlueFlagGrantsExtraTurnWhenThePlayerPicksIt(): void {
         $this->game->mockUniqueTokens = ["blue_flag" => "1"];
 
+        $this->assertSame(STATE_EXTORTION, $this->game->processExtortion("1"));
+        $this->assertSame([], $this->game->extraTurns);
+
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actExtortionUseFlag("blue"));
+        $this->assertSame([["player_id" => "1", "phase" => "island"]], $this->game->extraTurns);
+    }
+
+    /** The card says "in any order", so the player picks which pending flag resolves next. */
+    public function testExtortionResolvesFlagsInThePlayersChosenOrder(): void {
+        $this->game->mockUniqueTokens = ["tan_flag" => "1", "green_flag" => "1", "red_flag" => "1"];
+        $this->game->processExtortion("1");
+        $this->assertSame(["green", "red", "tan"], $this->game->argExtortion()["pending_flags"]);
+
+        // Red first, then green, then tan - an order the old fixed sequence could not produce.
+        $this->game->getMockCards()->cards[42] = [
+            "id" => 42, "type" => 1, "location" => "hand", "location_arg" => "1",
+        ];
+        $this->assertSame(STATE_EXTORTION, $this->game->actExtortionScrapCard(42));
+        $this->assertSame(["green", "tan"], $this->game->argExtortion()["pending_flags"]);
+
+        $this->assertSame(STATE_EXTORTION, $this->game->actExtortionUseFlag("green", "sail"));
+        // The scrap refunded a resource too, so check the gain the green flag just added.
+        $this->assertSame(["sail" => 1], end($this->game->resourceGainCalls));
+        $this->assertSame(["tan"], $this->game->argExtortion()["pending_flags"]);
+
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actExtortionUseFlag("tan"));
+    }
+
+    public function testExtortionRejectsAFlagThePlayerDoesNotHavePending(): void {
+        $this->game->mockUniqueTokens = ["tan_flag" => "1"];
         $this->game->processExtortion("1");
 
-        $this->assertSame([["player_id" => "1", "phase" => "island"]], $this->game->extraTurns);
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actExtortionUseFlag("blue");
     }
 
     public function testExtortionGreenFlagReturnsPendingState(): void {
@@ -230,13 +263,11 @@ final class PirateQueenCardAbilityTest extends TestCase {
         $this->assertSame([], $this->game->extraTurns);
     }
 
-    public function testExtortionTanAndGreenBothApply(): void {
+    public function testExtortionOffersEveryFlagThePlayerControls(): void {
         $this->game->mockUniqueTokens = ["tan_flag" => "1", "green_flag" => "1"];
 
-        $result = $this->game->processExtortion("1");
-
-        $this->assertSame([["player_id" => "1", "num_cards" => 1]], $this->game->drawCalls);
-        $this->assertSame(STATE_EXTORTION, $result);
+        $this->assertSame(STATE_EXTORTION, $this->game->processExtortion("1"));
+        $this->assertSame(["green", "tan"], $this->game->argExtortion()["pending_flags"]);
     }
 
     public function testExtortionDoesNotApplyFlagsOwnedByOtherPlayers(): void {
@@ -267,6 +298,18 @@ final class PirateQueenCardAbilityTest extends TestCase {
         $this->assertSame(0, $this->game->getGameStateValue("extortion_pending_flags"));
     }
 
+    public function testScrappingForTheRedFlagKeepsTheOtherFlagsPending(): void {
+        $this->game->setGameStateValue("extortion_pending_flags", 3); // green | red
+        $this->game->getMockCards()->cards[42] = [
+            "id" => 42, "type" => 1, "location" => "hand", "location_arg" => "1",
+        ];
+
+        $result = $this->game->actExtortionScrapCard(42);
+
+        $this->assertSame(STATE_EXTORTION, $result);
+        $this->assertSame(1, $this->game->getGameStateValue("extortion_pending_flags"), 'green survives');
+    }
+
     public function testActExtortionScrapCardRejectsWhenNoPending(): void {
         $this->game->setGameStateValue("extortion_pending_flags", 0);
 
@@ -274,22 +317,19 @@ final class PirateQueenCardAbilityTest extends TestCase {
         $this->game->actExtortionScrapCard(42);
     }
 
-    public function testExtortionGreenResourcePickedClearsAndAdvances(): void {
-        $this->game->setGameStateValue("extortion_pending_flags", 1); // EXTORTION_GREEN_FLAG
+    public function testExtortionGreenFlagNeedsAResource(): void {
+        $this->game->setGameStateValue("extortion_pending_flags", 1); // green
 
-        $result = $this->game->actResourcePickedInDialog("sail", "extortion_green_flag", "0");
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actExtortionUseFlag("green");
+    }
+
+    public function testExtortionGreenFlagGainsTheChosenResource(): void {
+        $this->game->setGameStateValue("extortion_pending_flags", 1); // green
+
+        $result = $this->game->actExtortionUseFlag("green", "sail");
 
         $this->assertSame([["sail" => 1]], $this->game->resourceGainCalls);
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
-    }
-
-    public function testExtortionGreenResourcePickedStaysWhenRedPending(): void {
-        $this->game->setGameStateValue("extortion_pending_flags", 3); // GREEN=1 | RED=2
-
-        $result = $this->game->actResourcePickedInDialog("cannonball", "extortion_green_flag", "0");
-
-        $this->assertSame([["cannonball" => 1]], $this->game->resourceGainCalls);
-        $this->assertSame(STATE_EXTORTION, $result);
-        $this->assertSame(2, $this->game->getGameStateValue("extortion_pending_flags"));
     }
 }

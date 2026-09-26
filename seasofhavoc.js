@@ -426,11 +426,12 @@ define([
       const deckSize = parseInt(gamedatas.deck_size, 10);
 
       // Create the deck
+      // All four piles use the library's default counter (a round chip below the pile) so they
+      // read the same and never sit on top of a face-up card.
       this.playerDeck = new BgaCards.Deck(this.cardsManager, $("mydeck"), {
         cardNumber: deckSize,
         counter: {
-          position: "center",
-          extraClasses: "text-shadow",
+          hideWhenEmpty: true,
         },
       });
 
@@ -448,8 +449,7 @@ define([
         cardNumber: parseInt(gamedatas.damage_deck_size, 10),
         fakeCardGenerator: (deckId) => ({ id: deckId, type: damageCardType }),
         counter: {
-          position: "center",
-          extraClasses: "text-shadow",
+          hideWhenEmpty: true,
         },
       });
 

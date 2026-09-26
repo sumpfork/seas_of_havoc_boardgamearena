@@ -74,6 +74,8 @@ const iconGame = {
   statusBar: { addActionButton: (label, callback) => buttons.push({ label, callback }) },
   bgaPerformAction: (name, args) => { action = { name, args }; },
   canPlayerAfford: () => true,
+  restoreServerGameState() {},
+  setClientState() {},
   playable_cards: { 1: { cost: { sail: 2, cannonball: 1, doubloon: 3 } } },
   _pendingMerchantPurchase: { combinations: [{ cb: 2, sail: 1 }] },
   onMerchantSubstituteChosen: (cb, sail) => { action = { cb, sail }; },
@@ -99,12 +101,21 @@ assert.equal((buttons[1].label.match(/role="img"/g) || []).length, 3);
 buttons[1].callback();
 assert.equal(action.args.card_id, 42);
 buttons.length = 0;
-handlers.onUpdateActionButtons.call(iconGame, "extortion", { pending_green: true, pending_red: true });
-assert.equal(buttons.length, 3, "Extortion resource choices must render from server state, including after reload");
+// Extortion uses every flag you control, in an order you choose: one button per flag, plus skip.
+let chosenFlag = null;
+iconGame.onExtortionFlagChosen = flag => { chosenFlag = flag; };
+handlers.onUpdateActionButtons.call(iconGame, "extortion", { pending_flags: ["green", "red", "tan"] });
+assert.equal(buttons.length, 4, "a button per pending flag, in any order, plus skip");
+buttons[2].callback();
+assert.equal(chosenFlag, "tan", "the player picks which flag resolves next");
+buttons[3].callback();
+assert.equal(action.name, "actSkipExtortion");
+buttons.length = 0;
+handlers.onUpdateActionButtons.call(iconGame, "client_extortionGreenResource", {});
+assert.equal(buttons.length, 4, "three resources and a way back");
 buttons[1].callback();
-assert.equal(action.name, "actResourcePickedInDialog");
-assert.equal(action.args.resource, "cannonball");
-assert.equal(action.args.context, "extortion_green_flag");
+assert.equal(action.name, "actExtortionUseFlag");
+assert.deepEqual({ ...action.args }, { flag: "green", resource: "cannonball" });
 const dialogs = loadModule("dialogs.js");
 let scrapAction;
 dialogs.confirmScrapCard.call({
@@ -296,3 +307,14 @@ sent = null;
 bootyGame.canPlayerAfford = () => false;
 bootyGame._sendWithOptionalBooty.call(bootyGame, { sail: 1 }, useBooty => { sent = useBooty; }, "q");
 assert.equal(sent, true, "unaffordable without booty: spend it without asking");
+
+// Damage cards must reach the discard pile as cards; a typeless entry renders face down.
+const damageAdded = [];
+notifications.notif_damageReceived.call({
+  player_id: "1",
+  playerDiscard: { addCard: card => damageAdded.push(card) },
+  updateDamageDeckCount() {},
+}, { player_id: "1", damage_card: { id: "88", type: "0" }, damage_deck_size: 17 });
+assert.equal(damageAdded.length, 1);
+assert.equal(damageAdded[0].id, "88");
+assert.equal(damageAdded[0].type, "0", "the card keeps its type, or the pile shows a card back");

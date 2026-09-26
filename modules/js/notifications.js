@@ -383,7 +383,9 @@ define([
                 " new heading " +
                 move.new_heading,
             );
-            let current_deg = this.getHeadingDegrees(player_ship.heading);
+            // Animate from the heading the server turned *from*, not from whatever this client
+            // last tracked: if the two ever disagree the ship is drawn facing the wrong way.
+            let current_deg = this.getHeadingDegrees(move.old_heading ?? player_ship.heading);
             let target_deg = this.getHeadingDegrees(move.new_heading);
             let diff = Math.abs(target_deg - current_deg);
             let curve = [current_deg, target_deg];
@@ -485,7 +487,13 @@ define([
       let player_id = args.player_id;
       var shipid = "player_ship_" + args.player_id;
       if (player_id == this.player_id) {
-        this.playerDiscard.addCard(damage_card.type, damage_card.id);
+        // addCard takes the card, not (type, id): passing the type alone left the stock holding a
+        // typeless card, which isCardVisible renders face down.
+        this.playerDiscard.addCard({
+          id: damage_card.id,
+          type: damage_card.type,
+          location: "discard",
+        });
       }
       this.updateDamageDeckCount(args.damage_deck_size);
     },

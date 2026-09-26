@@ -33,6 +33,6 @@ class StateIdTest extends TestCase
             $this->assertArrayNotHasKey($id, $seen, "id $id claimed by both " . ($seen[$id] ?? "") . " and $class");
             $seen[$id] = $class;
         }
-        $this->assertCount(25, $seen);
+        $this->assertCount(27, $seen);
     }
 }
