@@ -53,80 +53,81 @@
 .board {
   position: relative;
   width: 1000px;
-  height: 680px;
+  height: 692px;
   margin-bottom: 5px;
   background-image: url(img/board.jpg);
 }
 #seaboard {
   position: relative;
-  top: 97px;
-  left: 310px;
-  width: 380px;
-  height: 380px;
+  /* Sized and placed against the board art: the grid is centred on this box. */
+  top: 112.5px;
+  left: 317px;
+  width: 365px;
+  height: 365px;
 }
 .skiff_slot[data-slotname="capitol"][data-number="n1"] {
-  top: 180px;
-  left: 152px;
+  top: 191.9px;
+  left: 165.4px;
 }
 .skiff_slot[data-slotname="bank"][data-number="n1"] {
-  top: 309px;
-  left: 138px;
+  top: 315.5px;
+  left: 152.0px;
 }
 .skiff_slot[data-slotname="workshop"][data-number="n1"] {
-  top: 420px;
-  left: 52px;
+  top: 421.8px;
+  left: 69.4px;
 }
 .skiff_slot[data-slotname="workshop"][data-number="n2"] {
-  top: 471px;
-  left: 47px;
+  top: 470.7px;
+  left: 64.6px;
 }
 .skiff_slot[data-slotname="trading_post"][data-number="n1"] {
-  top: 585px;
-  left: 144px;
+  top: 579.9px;
+  left: 157.7px;
 }
 .skiff_slot[data-slotname="trading_post"][data-number="n2"] {
-  top: 630px;
-  left: 120px;
+  top: 623.0px;
+  left: 134.7px;
 }
 .skiff_slot[data-slotname="shipyard"][data-number="n1"] {
-  top: 148px;
-  left: 848px;
+  top: 161.2px;
+  left: 833.6px;
 }
 .skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
-  top: 431px;
-  left: 845px;
+  top: 432.4px;
+  left: 830.7px;
 }
 .skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
-  top: 471px;
-  left: 812px;
+  top: 470.7px;
+  left: 799.0px;
 }
 .skiff_slot[data-slotname="sailmaker"][data-number="n1"] {
-  top: 348px;
-  left: 935px;
+  top: 352.8px;
+  left: 917.1px;
 }
 .skiff_slot[data-slotname="deep_cove"][data-number="n1"] {
-  top: 567px;
-  left: 805px;
+  top: 562.6px;
+  left: 792.3px;
 }
 .skiff_slot[data-slotname="deep_cove"][data-number="n2"] {
-  top: 600px;
-  left: 847px;
+  top: 594.3px;
+  left: 832.6px;
 }
 .skiff_slot[data-slotname="green_flag"][data-number="n1"] {
-  top: 69px;
-  left: 53px;
+  top: 76.6px;
+  left: 809.6px;
 }
 .skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
-  top: 69px;
-  left: 145px;
+  top: 76.6px;
+  left: 158.7px;
 }
 .skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
-  top: 69px;
-  left: 823px;
+  top: 76.6px;
+  left: 899.8px;
 }
 .skiff_slot[data-slotname="red_flag"][data-number="n1"] {
-  top: 69px;
-  left: 917px;
+  top: 76.6px;
+  left: 70.4px;
 }
 
 .skiff_slot {
@@ -464,7 +465,8 @@
 
 .seaboardlocation {
   position: relative;
-  background-color: red;
+  background-color: rgb(255, 0, 0);
+  opacity: 0.0;
   width: 1px;
   height: 1px;
 }
@@ -647,14 +649,45 @@
 a.disabled {
   pointer-events: none;
 }
+/* Cannon shot and explosion art paint with currentColor (see the templates in seasofhavoc.js),
+   so each effect is coloured here rather than inside the SVG. */
 .cannonfire {
   position: relative;
+  z-index: 6;
+  /* Dark grey vanished against the sea; a hot muzzle flash has to be the brightest thing there. */
+  color: #fff3c4;
+  filter: drop-shadow(0 0 6px rgba(255, 170, 40, 0.95));
+}
+/* The shot itself, flying from the firing ship to where it lands. */
+.tracer {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  z-index: 6;
+  background: radial-gradient(circle, #fff 0%, #ffd479 45%, rgba(255, 140, 0, 0) 100%);
+  filter: drop-shadow(0 0 6px rgba(255, 170, 40, 0.9));
 }
 .explosion {
   position: relative;
   left: -32px;
   top: -32px;
   z-index: 5;
+  color: #f5a623;
+  filter: drop-shadow(0 0 4px rgba(208, 2, 27, 0.9));
+}
+/* Ramming: a cold, heavier impact, so it does not read as cannon fire. */
+.explosion.ram {
+  color: #f2f2f2;
+  filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8));
+  scale: 1.2;
+}
+/* A shot that fell short: a small pale splash where it landed. */
+.explosion.splash {
+  color: #cfe6f2;
+  filter: drop-shadow(0 0 3px rgba(20, 60, 90, 0.7));
+  scale: 0.6;
 }
 #mycards {
   display: grid;

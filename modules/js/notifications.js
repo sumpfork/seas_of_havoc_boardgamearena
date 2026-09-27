@@ -412,51 +412,34 @@ define([
             break;
           }
           case "explosion": {
-            this.animateExplosionAt(move.hit_x, move.hit_y);
+            let blast = this.explosionAnimation(move.hit_x, move.hit_y);
+            if (blast) {
+              anims.push(blast);
+            }
+            break;
+          }
+          case "collision": {
+            // Ramming: the impact lands on the square the ship could not enter.
+            let impact = this.explosionAnimation(move.collision_x, move.collision_y, "ram");
+            if (impact) {
+              anims.push(impact);
+            }
+            break;
+          }
+          case "fire_miss": {
+            // A shot that hits nothing still has to read as a shot: it falls at the end of its range.
+            let shot = this.shotAnimation(shipid, move.fire_heading, move.miss_x, move.miss_y);
+            let splash = this.explosionAnimation(move.miss_x, move.miss_y, "splash");
+            anims.push(splash ? fx.chain([shot, splash]) : shot);
             break;
           }
           case "fire_hit": {
-            // Unique ids: one card play can now fire several shots, each with its own animation.
-            let fireId = "cannonfire_" + this._nextEffectId();
-            let cannon_fire = this.format_block("jstpl_cannon_fire", { id: fireId });
-            let rotation = this.getHeadingDegrees(move.fire_heading);
-            console.log("fire rotation " + rotation);
-            domConstruct.place(cannon_fire, shipid);
-            let offset = null;
-            var NORTH = 1,
-              SOUTH = 3,
-              EAST = 2,
-              WEST = 4;
-            switch (move.fire_heading) {
-              case NORTH:
-                offset = ["top", "20px"];
-                break;
-              case SOUTH:
-                offset = ["top", "-20px"];
-                break;
-              case EAST:
-                offset = ["left", "20px"];
-                break;
-              case WEST:
-                offset = ["left", "-20px"];
-                break;
-            }
-            console.log(offset);
-            domStyle.set(fireId, "rotate", rotation + "deg");
-            domStyle.set(fireId, offset[0], offset[1], rotation + "deg");
-            domStyle.set(fireId, "opacity", 0);
-            fx.chain([
-              baseFX.fadeIn({ node: fireId, duration: 100 }),
-              baseFX.fadeOut({
-                node: fireId,
-                duration: 100,
-                delay: 1000,
-                onEnd: function () {
-                  domConstruct.destroy(fireId);
-                },
-              }),
-            ]).play();
-            this.animateExplosionAt(move.hit_x, move.hit_y);
+            // Queued, not played: a card that moves and then fires has to show the shot after the
+            // move, and each shot of a multi-cannon card after the one before it. The blast lands
+            // while the cannon is still smoking, as it did when both fired at once.
+            let shot = this.shotAnimation(shipid, move.fire_heading, move.hit_x, move.hit_y);
+            let hit = this.explosionAnimation(move.hit_x, move.hit_y);
+            anims.push(hit ? fx.chain([shot, hit]) : shot);
             break;
           }
         }

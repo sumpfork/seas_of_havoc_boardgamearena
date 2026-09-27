@@ -3,10 +3,14 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const path = require("node:path");
 
-function loadModule(name) {
+// `deps` supplies stubs for the dojo modules a handler actually uses, keyed by the tail of the
+// dependency path ("dojo/_base/fx" -> "fx"). Anything not supplied stays undefined, as before.
+function loadModule(name, deps = {}) {
   let module;
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js", name), "utf8"), {
-    define: (dependencies, factory) => { module = factory(); },
+    define: (dependencies, factory) => {
+      module = factory(...dependencies.map(dep => deps[dep.split("/").pop()]));
+    },
     console: { log() {}, groupCollapsed() {}, groupEnd() {} },
     _: text => text,
     getLibUrl: name => name,
@@ -318,3 +322,55 @@ notifications.notif_damageReceived.call({
 assert.equal(damageAdded.length, 1);
 assert.equal(damageAdded[0].id, "88");
 assert.equal(damageAdded[0].type, "0", "the card keeps its type, or the pile shows a card back");
+
+
+// A card that moves and then fires must show the shot after the move: every effect is queued into
+// the animation chain, not played the moment the notification arrives.
+const played = [];
+const anim = label => ({ label, play() { played.push(label); } });
+const fxStub = {
+  chain: list => anim("chain(" + list.map(a => a.label).join(",") + ")"),
+  combine: list => anim("combine(" + list.map(a => a.label).join(",") + ")"),
+};
+const seqNotifications = loadModule("notifications.js", {
+  fx: fxStub,
+  dom: { byId: () => ({}) },
+  "dom-construct": { place() {}, destroy() {} },
+  "dom-style": { set() {} },
+  "dom-class": { add() {}, remove() {} },
+  "dom-attr": { set() {}, get() {} },
+  query: () => ({ forEach() {} }),
+});
+// notifications.js takes dojo/_base/fx as `baseFX` and dojo/fx as `fx`; both tails collide, so the
+// fade helpers are stubbed on the same object.
+fxStub.fadeIn = settings => anim("fadeIn");
+fxStub.fadeOut = settings => anim("fadeOut");
+fxStub.Animation = function (settings) { return anim("turn"); };
+
+const chained = [];
+seqNotifications.notif_cardPlayed.call({
+  slideToObject: () => anim("slide"),
+  getHeadingDegrees: () => 0,
+  getObjectOnSeaboard: () => ({ heading: 1 }),
+  format_block: () => "<div></div>",
+  _nextEffectId: () => 1,
+  explosionAnimation: (x, y, extraClass) => anim(extraClass ? "blast:" + extraClass : "blast"),
+  shotAnimation: () => anim("shot"),
+  // Present so that firing effects played immediately show up in `played` ahead of the moves,
+  // which is exactly what this test is here to rule out.
+  animateExplosionAt: () => { played.push("blast-played-immediately"); },
+  applyShipwreckEvents() {},
+}, {
+  player_id: "1",
+  moveChain: [
+    { type: "move", new_x: 1, new_y: 1 },
+    { type: "fire_hit", fire_heading: 1, hit_x: 2, hit_y: 2 },
+    { type: "move", new_x: 3, new_y: 1 },
+    { type: "fire_miss", fire_heading: 1, miss_x: 4, miss_y: 1 },
+    { type: "collision", collision_x: 5, collision_y: 1 },
+  ],
+  shipwreck_event: null,
+});
+assert.deepEqual(played, [
+  "chain(slide,chain(shot,blast),slide,chain(shot,blast:splash),blast:ram)",
+], "one chain plays, holding every effect in moveChain order");

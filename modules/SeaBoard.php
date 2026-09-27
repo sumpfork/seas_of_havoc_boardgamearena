@@ -346,7 +346,8 @@ class SeaBoard
                 ];
             }
         }
-        return ["type" => "fire_miss"];
+        // Where the shot fell, so the client can show a miss landing short.
+        return ["type" => "fire_miss", "miss_x" => $x, "miss_y" => $y, "fire_heading" => $fire_heading];
     }
 
     public function isObjectOnWhirlpool(string $object_type, string $arg)

@@ -63,6 +63,10 @@ class SeasOfHavoc extends Table
     // Debug flag: give each player a booty token at game start (one with a wild resource)
     private const DEBUG_START_WITH_BOOTY = true;
 
+    // Debug flag: fix the damage deck size so the end of the game is quick to reach. 0 = play by
+    // the rules (10 + 5 per player). Set back to 0 before release.
+    private const DEBUG_DAMAGE_CARDS = 5;
+
     private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
     private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
@@ -493,6 +497,9 @@ class SeasOfHavoc extends Table
 
     function calculateNumDamageCards($num_players)
     {
+        if (self::DEBUG_DAMAGE_CARDS > 0) {
+            return self::DEBUG_DAMAGE_CARDS;
+        }
         return 10 + $num_players * 5;
     }
 
@@ -1375,7 +1382,7 @@ class SeasOfHavoc extends Table
         $this->trace("final num cards: $num_cards");
         if ($num_cards == 0) {
             // "The game ends at the end of a Sea Phase when the Damage deck is empty."
-            return $this->cards->countCardInLocation("damage_deck") === 0
+            return $this->cards->countCardInLocation("damage_deck") == 0
                 ? STATE_FINAL_SCORING
                 : "seaPhaseDone";
         }
@@ -4749,7 +4756,7 @@ class SeasOfHavoc extends Table
         if ($type === 0 || !$this->hasShipUpgrade($player_id, "xebec_swift_hull")) {
             return false;
         }
-        if ($this->cards->countCardInLocation("hand", $player_id) === 0) {
+        if ($this->cards->countCardInLocation("hand", $player_id) == 0) {
             return false;
         }
         $resources = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];

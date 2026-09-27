@@ -149,15 +149,23 @@ define([
     },
 
     /** Flash an explosion on a board square (cannon hits, rocket blasts). */
-    animateExplosionAt: function (x, y) {
+    /**
+     * The burst as an unplayed animation, so a card's effects can be sequenced with its moves
+     * instead of all going off at once. `extraClass` recolours it for a ram or a splash. Returns
+     * null when the target square is not on screen.
+     */
+    explosionAnimation: function (x, y, extraClass) {
       const targetId = "seaboardlocation_" + x + "_" + y;
       if (!dom.byId(targetId)) {
-        return;
+        return null;
       }
       const id = "explosion_" + this._nextEffectId();
       domConstruct.place(this.format_block("jstpl_explosion", { id: id }), targetId);
+      if (extraClass) {
+        domClass.add(id, extraClass);
+      }
       domStyle.set(id, "opacity", "0");
-      fx.chain([
+      return fx.chain([
         baseFX.fadeIn({ node: id, delay: 100 }),
         baseFX.fadeOut({
           node: id,
@@ -166,7 +174,85 @@ define([
             domConstruct.destroy(id);
           },
         }),
-      ]).play();
+      ]);
+    },
+
+    /**
+     * The muzzle flash as an unplayed animation, sitting on the firing ship and pointing the way
+     * the shot went. Used for hits and misses alike - a miss is still a shot.
+     */
+    muzzleFlashAnimation: function (shipId, fireHeading) {
+      const NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
+      const offsets = { [NORTH]: ["top", "20px"], [SOUTH]: ["top", "-20px"],
+        [EAST]: ["left", "20px"], [WEST]: ["left", "-20px"] };
+      const offset = offsets[fireHeading];
+      if (!offset) {
+        throw new Error("Cannot fire towards heading " + fireHeading);
+      }
+      const id = "cannonfire_" + this._nextEffectId();
+      domConstruct.place(this.format_block("jstpl_cannon_fire", { id: id }), shipId);
+      domStyle.set(id, "rotate", this.getHeadingDegrees(fireHeading) + "deg");
+      domStyle.set(id, offset[0], offset[1]);
+      domStyle.set(id, "opacity", 0);
+      return fx.chain([
+        baseFX.fadeIn({ node: id, duration: 80 }),
+        baseFX.fadeOut({
+          node: id,
+          duration: 200,
+          delay: 100,
+          onEnd: function () {
+            domConstruct.destroy(id);
+          },
+        }),
+      ]);
+    },
+
+    /**
+     * A bright ball flying from the firing ship to the square the shot lands on: without it a
+     * flash on the hull alone does not read as "that ship shot over there". Returns null when
+     * either end is off screen.
+     */
+    tracerAnimation: function (shipId, x, y) {
+      const ship = dom.byId(shipId);
+      const target = dom.byId("seaboardlocation_" + x + "_" + y);
+      const board = dom.byId("seaboard");
+      if (!ship || !target || !board) {
+        return null;
+      }
+      const boardRect = board.getBoundingClientRect();
+      const shipRect = ship.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const id = "tracer_" + this._nextEffectId();
+      domConstruct.place('<div id="' + id + '" class="tracer"></div>', board);
+      domStyle.set(id, {
+        left: shipRect.left - boardRect.left + shipRect.width / 2 + "px",
+        top: shipRect.top - boardRect.top + shipRect.height / 2 + "px",
+      });
+      return baseFX.animateProperty({
+        node: id,
+        duration: 350,
+        properties: {
+          left: targetRect.left - boardRect.left,
+          top: targetRect.top - boardRect.top,
+        },
+        onEnd: function () {
+          domConstruct.destroy(id);
+        },
+      });
+    },
+
+    /** Muzzle flash, then the tracer flying out to where the shot lands. */
+    shotAnimation: function (shipId, fireHeading, x, y) {
+      const flash = this.muzzleFlashAnimation(shipId, fireHeading);
+      const tracer = this.tracerAnimation(shipId, x, y);
+      return tracer ? fx.chain([flash, tracer]) : flash;
+    },
+
+    animateExplosionAt: function (x, y) {
+      const animation = this.explosionAnimation(x, y);
+      if (animation) {
+        animation.play();
+      }
     },
 
     animateBootyTokenPickup: function (event, playerId) {
