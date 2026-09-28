@@ -22,6 +22,15 @@ class SeaTurn extends GameState
         );
     }
 
+    /**
+     * Being asked to play a card with an empty hand means something routed back here instead of
+     * ending the turn - fail loudly rather than leaving the table stuck on a player who cannot act.
+     */
+    public function onEnteringState(int $activePlayerId): void
+    {
+        $this->game->assertActivePlayerHasCards($activePlayerId);
+    }
+
     public function zombie(int $playerId): mixed
     {
         return 'seaTurnDone';

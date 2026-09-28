@@ -122,16 +122,8 @@ define([
             card_type: card.card_type,
             card_id: card_id,
             decisions: JSON.stringify(["pass"]),
-          });
+          }).then(() => this.movePlayedCardToDiscard(card_id, card.card_type));
           this.cleanupCardPlayDialog();
-          console.log("moving card with type: " + card.card_type + " id :" + card_id);
-          this.playerDiscard.addCard({
-            id: card_id,
-            type: card.card_type,
-            location: "discard",
-            fromStock: this.playerHand,
-          });
-          this.playerHand.removeCard({ id: card_id, type: card.card_type });
           console.groupEnd();
         }),
       );
@@ -159,17 +151,11 @@ define([
         var choices_html = result.join("\n");
         domConstruct.place(choices_html, "card_choices");
         query(".card_choice_radio").connect("onchange", this, (event) => {
-          console.groupCollapsed("show/hide play controls");
-          this._showHideCardPlayControls(this.dep_tree);
-          console.groupEnd();
-          this._updatePlayCardButton();
+          this._updateCardPlayControls();
         });
       }
 
-      console.groupCollapsed("show/hide play controls");
-      this._showHideCardPlayControls(this.dep_tree);
-      console.groupEnd();
-      this._updatePlayCardButton();
+      this._updateCardPlayControls();
       if (captainCopyId !== null) {
         query(".pass_card_button").forEach(node => { node.textContent = _("Cancel copy"); });
       } else if (hasPassOption) {
@@ -210,15 +196,28 @@ define([
         }
         this.consumeBootyToken(params.use_booty_card_id);
       }
-      this.bgaPerformAction("actPlayCard", params);
+      this.bgaPerformAction("actPlayCard", params)
+        .then(() => this.movePlayedCardToDiscard(card_id, card.card_type));
       this.cleanupCardPlayDialog();
+    },
+
+    /**
+     * Hand to discard, once the server has accepted the play. Doing it optimistically loses the
+     * card from the hand whenever the server rejects the action, leaving a player who looks like
+     * they have nothing to play. A card the server moved elsewhere itself - a damage card, which
+     * is scrapped rather than discarded - is already gone from the hand, so leave it alone.
+     */
+    movePlayedCardToDiscard: function (card_id, card_type) {
+      if (!this.playerHand.getCards().some(c => c.id == card_id)) {
+        return;
+      }
       this.playerDiscard.addCard({
         id: card_id,
-        type: card.card_type,
+        type: card_type,
         location: "discard",
         fromStock: this.playerHand,
       });
-      this.playerHand.removeCard({ id: card_id, type: card.card_type });
+      this.playerHand.removeCard({ id: card_id, type: card_type });
     },
 
     /**
@@ -543,6 +542,11 @@ define([
       }
 
       tree.forEach((options) => {
+        // Options in a row are exclusive: judge each against the total without this row's current pick,
+        // or a selected option is charged twice and disables itself.
+        var rowCost = this._computeTotalPlayCost([options]);
+        var costWithoutRow = bga.addResources(totalCost,
+          Object.fromEntries(Object.entries(rowCost).map(([r, n]) => [r, -n])));
         for (var option of options) {
           var checkbox = dom.byId(option.id);
           console.log(option);
@@ -559,7 +563,7 @@ define([
               console.log(option.cost);
               console.log("totalCost:");
               console.log(totalCost);
-              var adjustedCost = bga.addResources(option.cost, totalCost);
+              var adjustedCost = bga.addResources(option.cost, costWithoutRow);
               console.log("adjusted cost:");
               console.log(adjustedCost);
               // Merchant doubloon substitution is a market-purchase rule only; the server will not honour it here.
@@ -573,6 +577,53 @@ define([
           }
         }
       });
+    },
+
+    /**
+     * Refresh the dialog after a selection: what is affordable, which rows are stuck, and whether
+     * the play button can light up. Preselecting a stuck row changes the running total, so the
+     * pass repeats until nothing more flips.
+     * @private
+     */
+    _updateCardPlayControls: function () {
+      console.groupCollapsed("show/hide play controls");
+      do {
+        this._showHideCardPlayControls(this.dep_tree);
+      } while (this._markUnaffordableRows(this.dep_tree));
+      console.groupEnd();
+      this._updatePlayCardButton();
+    },
+
+    /**
+     * A row whose every paid option is out of reach leaves the player one real answer. Say so on
+     * the skip chip - "can't afford" rather than "don't" - and pick it for them. Returns true when
+     * a box was ticked, since that changes what the other rows cost.
+     * @private
+     */
+    _markUnaffordableRows: function (tree) {
+      var changed = false;
+      tree.forEach((options) => {
+        var optOut = options.find(o => o.name === "skip" || o.name === "pass");
+        var paid = options.filter(o => o.cost && Object.keys(o.cost).some(r => o.cost[r] > 0));
+        if (optOut && paid.length) {
+          var checkbox = dom.byId(optOut.id);
+          var stuck = domStyle.get(checkbox.parentNode.parentNode, "display") !== "none" &&
+            paid.every(o => dom.byId(o.id).disabled);
+          var chipText = query(".chip_text", checkbox.parentNode)[0];
+          if (chipText) {
+            chipText.textContent = stuck ? _("can\u2019t afford")
+              : optOut.name === "pass" ? _("pass") : _("don\u2019t");
+          }
+          if (stuck && !checkbox.checked) {
+            checkbox.checked = true;
+            changed = true;
+          }
+        }
+        for (var option of options) {
+          changed = this._markUnaffordableRows(option.children) || changed;
+        }
+      });
+      return changed;
     },
 
     /**

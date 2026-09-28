@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * SeasOfHavoc implementation : © <Your name here> <Your email address here>
+ * SeasOfHavoc implementation : © Peter Gorniak
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -465,8 +465,7 @@
 
 .seaboardlocation {
   position: relative;
-  background-color: rgb(255, 0, 0);
-  opacity: 0.0;
+  /* Invisible anchor only: no opacity here, it would hide the explosions and markers placed inside. */
   width: 1px;
   height: 1px;
 }
@@ -711,7 +710,7 @@ a.disabled {
   /* height: 198px; */
 }
 .playable-card-back {
-  background-image: url("img/non_playable_cards.png");
+  background-image: url("img/non_playable_cards.jpg");
   background-size: 864px 1188px;
   background-repeat: no-repeat;
   border-radius: 5px;
@@ -926,7 +925,7 @@ a.disabled {
 /* Non-playable card styling */
 .non-playable-card-front,
 .non-playable-card-back {
-  background-image: url("img/non_playable_cards.png");
+  background-image: url("img/non_playable_cards.jpg");
   background-size: 864px 1189px;
   background-repeat: no-repeat;
   border-radius: 5px;

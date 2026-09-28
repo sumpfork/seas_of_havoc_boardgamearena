@@ -126,7 +126,22 @@ final class PirateQueenCardAbilityTest extends TestCase {
 
         $args = $this->game->argRallyTheFlagsChooseFlag();
 
-        $this->assertSame(["green_flag", "tan_flag"], $args["available_flags"]);
+        $this->assertSame([
+            ["flag_key" => "green_flag", "owner_id" => null, "owner_name" => null],
+            ["flag_key" => "tan_flag", "owner_id" => null, "owner_name" => null],
+        ], $args["available_flags"]);
+    }
+
+    public function testArgRallyTheFlagsNamesTheHolderOfATakenFlag(): void {
+        $this->game->mockUniqueTokens = ["green_flag" => null, "blue_flag" => "2"];
+        $this->game->mockAvailableFlags = ["green_flag", "blue_flag"];
+
+        $args = $this->game->argRallyTheFlagsChooseFlag();
+
+        $this->assertSame([
+            ["flag_key" => "green_flag", "owner_id" => null, "owner_name" => null],
+            ["flag_key" => "blue_flag", "owner_id" => "2", "owner_name" => "Player 2"],
+        ], $args["available_flags"]);
     }
 
     public function testActRallyTheFlagsChooseFlagAcquiresFlag(): void {

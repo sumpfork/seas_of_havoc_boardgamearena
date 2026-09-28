@@ -188,9 +188,12 @@ final class CorsairCardAbilityTest extends TestCase {
     }
 
     public function testActHuntTheBountyChooseTarget(): void {
+        $this->game->getMockCards()->locations["hand_1"] = [["id" => 1, "type" => 1]];
+
         $result = $this->game->actHuntTheBountyChooseTarget("2");
 
-        $this->assertSame(STATE_SEA_TURN, $result);
+        // "You may play another card immediately" - the player is asked, not forced.
+        $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $result);
         // Verify stored target is retrievable
         $this->assertSame(2, (int) $this->game->getGameStateValue("hunt_the_bounty_target"));
     }
@@ -208,7 +211,25 @@ final class CorsairCardAbilityTest extends TestCase {
     }
 
     public function testActSkipHuntTheBounty(): void {
+        $this->game->getMockCards()->locations["hand_1"] = [["id" => 1, "type" => 1]];
+
         $result = $this->game->actSkipHuntTheBounty();
-        $this->assertSame(STATE_SEA_TURN, $result);
+        $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $result);
+    }
+
+    // The declaration is not itself a card play, so an empty hand has to end the turn rather than
+    // offer an extra play the player cannot take.
+    public function testHuntTheBountyExtraPlayIsOptional(): void {
+        $this->game->getMockCards()->locations["hand_1"] = [["id" => 1, "type" => 1]];
+
+        $this->assertSame(STATE_SEA_TURN, $this->game->actHuntTheBountyPlayAnother());
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actSkipHuntTheBountyExtraPlay());
+    }
+
+    public function testHuntTheBountyEndsTurnWithAnEmptyHand(): void {
+        $this->game->getMockCards()->locations["hand_1"] = [];
+
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actHuntTheBountyChooseTarget("2"));
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actSkipHuntTheBounty());
     }
 }

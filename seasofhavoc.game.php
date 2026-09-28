@@ -3,7 +3,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * SeasOfHavoc implementation : © <Your name here> <Your email address here>
+ * SeasOfHavoc implementation : © Peter Gorniak
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -55,6 +55,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_POST_COLLISION_FIRE", 24);
     define("STATE_COLLISION_DISCARD", 25);
     define("STATE_FINAL_SCORING", 26);
+    define("STATE_HUNT_THE_BOUNTY_EXTRA_PLAY", 27);
     define("STATE_END_GAME", 99);
 }
 
@@ -1881,6 +1882,9 @@ class SeasOfHavoc extends Table
             "token_name" => $token_name,
             "player_id" => $player_id,
             "token_key" => $token_key,
+            // Taken off another player's board rather than off the island: the front end animates
+            // the token from that player's panel.
+            "from_player_id" => $current_owner,
         ]);
 
         // Admiral ability: rewards when taking tokens from other players
@@ -3146,9 +3150,23 @@ class SeasOfHavoc extends Table
         return STATE_RALLY_THE_FLAGS;
     }
 
+    /**
+     * A flag can come off the board or off a neighbouring player's panel, and the player needs to
+     * know which before they choose, so each option carries its current holder.
+     */
     function argRallyTheFlagsChooseFlag(): array
     {
-        return ["available_flags" => $this->getRallyTheFlagsOptions(self::getActivePlayerId())];
+        $tokens = $this->getUniqueTokens();
+        $flags = [];
+        foreach ($this->getRallyTheFlagsOptions(self::getActivePlayerId()) as $flag_key) {
+            $owner = $tokens[$flag_key] ?? null;
+            $flags[] = [
+                "flag_key" => $flag_key,
+                "owner_id" => $owner,
+                "owner_name" => $owner === null ? null : $this->getPlayerNameById($owner),
+            ];
+        }
+        return ["available_flags" => $flags];
     }
 
     function actRallyTheFlagsChooseFlag(string $flag_key): mixed
@@ -3582,12 +3600,47 @@ class SeasOfHavoc extends Table
                 "target_name" => $this->getPlayerNameById((int) $target_player_id),
             ],
         );
+        return $this->huntTheBountyDone($player_id);
+    }
+
+    /**
+     * "You may play another card immediately." - the player is asked, rather than pushed straight
+     * back into a sea turn, and is not asked at all with an empty hand.
+     */
+    private function huntTheBountyDone(string $player_id): int
+    {
+        return $this->cards->countCardInLocation("hand", $player_id) > 0
+            ? STATE_HUNT_THE_BOUNTY_EXTRA_PLAY
+            : STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    function actHuntTheBountyPlayAnother(): int
+    {
+        $player_id = $this->getActivePlayerId();
+        if ($this->cards->countCardInLocation("hand", $player_id) == 0) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("You have no cards left to play"));
+        }
         return STATE_SEA_TURN;
+    }
+
+    function actSkipHuntTheBountyExtraPlay(): int
+    {
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    /** @see \Bga\Games\SeasOfHavoc\States\SeaTurn::onEnteringState() */
+    function assertActivePlayerHasCards(int $player_id): void
+    {
+        if ($this->cards->countCardInLocation("hand", $player_id) == 0) {
+            throw new \Bga\GameFramework\SystemException(
+                "Sea turn started for player $player_id with an empty hand",
+            );
+        }
     }
 
     function actSkipHuntTheBounty(): mixed
     {
-        return STATE_SEA_TURN;
+        return $this->huntTheBountyDone($this->getActivePlayerId());
     }
 
     private function fireTurn(string $side): Turn
@@ -4232,6 +4285,13 @@ class SeasOfHavoc extends Table
         $card = $this->playable_cards[$card_type];
         $this->dump("card played", $card);
         $player_id = $this->getActivePlayerId();
+
+        // Damage card, "Repair: When you would play this card, scrap it instead." The repair is
+        // the whole play - no maneuver, no flag action, and the card leaves the deck for good.
+        if (in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true)) {
+            $this->scrapCardAndRefund($card_id, $player_id);
+            return "seaTurnDone";
+        }
 
         // Check if this is a "pass" play (playing card without executing actions)
         $is_pass = !empty($decisions) && $decisions[0] === "pass";

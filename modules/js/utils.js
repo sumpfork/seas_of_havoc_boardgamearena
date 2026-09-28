@@ -42,11 +42,26 @@ define([
         if (player_id === null) {
           continue;
         }
-        var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
-        var token_element = domConstruct.place(token_html, `player_token_board_p${player_id}`);
-        this.placeOnObject(token_element, `${token_key}_p${player_id}`);
+        var token_element = this.placeUniqueToken(token_key, player_id);
         domStyle.set(token_element, "zIndex", 1);
       }
+    },
+
+    /**
+     * Park the one element that represents a unique token on a player's panel slot, creating it
+     * the first time. There is only ever one of each token, so it is reparented rather than
+     * redrawn - that is what lets a transfer animate from the previous owner's panel.
+     */
+    placeUniqueToken: function (token_key, player_id) {
+      var token_element = dom.byId("token_" + token_key);
+      if (!token_element) {
+        token_element = domConstruct.place(this.format_block("jstpl_unique_token", { token_key: token_key }),
+          `player_token_board_p${player_id}`);
+      } else {
+        this.attachToNewParent(token_element, `player_token_board_p${player_id}`);
+      }
+      this.placeOnObject(token_element, `${token_key}_p${player_id}`);
+      return token_element;
     },
 
     // Booty sprite: 4 cols. Col 0 = seafeatures. Cols 1,2 = 4 tokens each (rows 0–3). Col 3 = 1 token (row 0). cellSize 63 = full, 50 = slot.
@@ -209,42 +224,78 @@ define([
 
     /**
      * A bright ball flying from the firing ship to the square the shot lands on: without it a
-     * flash on the hull alone does not read as "that ship shot over there". Returns null when
-     * either end is off screen.
+     * flash on the hull alone does not read as "that ship shot over there". A shot that wraps
+     * around the board edge flies off that edge and comes back in from the opposite one.
+     * Returns null when either end is off screen.
      */
-    tracerAnimation: function (shipId, x, y) {
+    tracerAnimation: function (shipId, fireHeading, x, y) {
+      const NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
       const ship = dom.byId(shipId);
       const target = dom.byId("seaboardlocation_" + x + "_" + y);
       const board = dom.byId("seaboard");
       if (!ship || !target || !board) {
         return null;
       }
-      const boardRect = board.getBoundingClientRect();
-      const shipRect = ship.getBoundingClientRect();
-      const targetRect = target.getBoundingClientRect();
+      const centre = (node) => {
+        const b = board.getBoundingClientRect();
+        const r = node.getBoundingClientRect();
+        return { left: r.left - b.left + r.width / 2, top: r.top - b.top + r.height / 2 };
+      };
+      const cell = (cx, cy) => centre(dom.byId("seaboardlocation_" + cx + "_" + cy));
+      // Off-board cells (-1 and 6) the shot leaves by and re-enters from, on the target's line.
+      const edges = {
+        [NORTH]: () => [cell(x, -1), cell(x, 6)],
+        [SOUTH]: () => [cell(x, 6), cell(x, -1)],
+        [EAST]: () => [cell(6, y), cell(-1, y)],
+        [WEST]: () => [cell(-1, y), cell(6, y)],
+      }[fireHeading];
+      if (!edges) {
+        throw new Error("Cannot fire towards heading " + fireHeading);
+      }
+      // Measured when the shot plays, not now: moves queued ahead of it have not happened yet.
+      let path = null;
+      const plan = () => {
+        if (!path) {
+          const from = centre(ship);
+          const to = centre(target);
+          const [exit, entry] = edges();
+          // The target sits behind the ship relative to the fire heading exactly when the shot wrapped.
+          const ahead = (exit.left - from.left) * (to.left - from.left) + (exit.top - from.top) * (to.top - from.top) > 0;
+          path = ahead ? [from, to, to, to] : [from, exit, entry, to];
+          if (ahead) {
+            // Straight shot: all the flight time goes to the one leg.
+            first.duration = 350;
+            second.duration = 0;
+          }
+        }
+        return path;
+      };
+
       const id = "tracer_" + this._nextEffectId();
-      domConstruct.place('<div id="' + id + '" class="tracer"></div>', board);
-      domStyle.set(id, {
-        left: shipRect.left - boardRect.left + shipRect.width / 2 + "px",
-        top: shipRect.top - boardRect.top + shipRect.height / 2 + "px",
-      });
-      return baseFX.animateProperty({
-        node: id,
-        duration: 350,
-        properties: {
-          left: targetRect.left - boardRect.left,
-          top: targetRect.top - boardRect.top,
-        },
-        onEnd: function () {
-          domConstruct.destroy(id);
-        },
-      });
+      domConstruct.place('<div id="' + id + '" class="tracer" style="display: none"></div>', board);
+      const leg = (i) =>
+        baseFX.animateProperty({
+          node: id,
+          duration: 175,
+          beforeBegin: () => domStyle.set(id, "display", ""),
+          properties: {
+            left: () => ({ start: plan()[i].left, end: plan()[i + 1].left }),
+            top: () => ({ start: plan()[i].top, end: plan()[i + 1].top }),
+          },
+        });
+      const first = leg(0);
+      const second = leg(2);
+      const anim = fx.chain([first, second]);
+      anim.onEnd = function () {
+        domConstruct.destroy(id);
+      };
+      return anim;
     },
 
     /** Muzzle flash, then the tracer flying out to where the shot lands. */
     shotAnimation: function (shipId, fireHeading, x, y) {
       const flash = this.muzzleFlashAnimation(shipId, fireHeading);
-      const tracer = this.tracerAnimation(shipId, x, y);
+      const tracer = this.tracerAnimation(shipId, fireHeading, x, y);
       return tracer ? fx.chain([flash, tracer]) : flash;
     },
 

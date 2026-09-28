@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * SeasOfHavoc implementation : © <Your name here> <Your email address here>
+ * SeasOfHavoc implementation : © Peter Gorniak
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -181,7 +181,7 @@ define([
                     <div id="scrap"></div>
                 </div>
                 <div class="damage-area">
-                    <h3>Damage</h3>
+                    <h3>Damage Deck</h3>
                     <div id="damage_deck"></div>
                 </div>
             </div>
@@ -300,7 +300,7 @@ define([
       </div>`;
 
       window.jstpl_seaboard_location = `<div class="seaboardlocation" id="\${id}"></div>`;
-      window.jstpl_unique_token = `<div class="flagish" data-tokenkey="\${token_key}"></div>`;
+      window.jstpl_unique_token = `<div id="token_\${token_key}" class="flagish" data-tokenkey="\${token_key}"></div>`;
       window.jstpl_player_ship = `<div class="player_ship" id="\${id}" data-shipname="\${shipname}"></div>`;
       window.jstpl_seafeature = `<div class="seafeature" id="\${id}" data-seafeature="\${seafeature_type}"></div>`;
     },

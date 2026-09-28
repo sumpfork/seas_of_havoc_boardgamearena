@@ -374,3 +374,31 @@ seqNotifications.notif_cardPlayed.call({
 assert.deepEqual(played, [
   "chain(slide,chain(shot,blast),slide,chain(shot,blast:splash),blast:ram)",
 ], "one chain plays, holding every effect in moveChain order");
+
+// A row where nothing paid is affordable: the skip chip says so and is picked, so the player is
+// not left hunting for the one enabled radio.
+const nodes = {};
+const node = (id, disabled) => (nodes[id] = {
+  id, disabled, checked: false, chipText: { textContent: "" },
+  parentNode: { id: id + "_container", parentNode: { display: "" } },
+});
+const affordDialogs = loadModule("dialogs.js", {
+  dom: { byId: id => nodes[id] },
+  "dom-style": { get: container => container.display },
+  query: (sel, container) => [nodes[container.id.replace("_container", "")].chipText],
+});
+const row = (fireDisabled) => new Map([["card_choice_0", [
+  { name: "fire left", id: "fire", cost: { cannonball: 1 }, children: new Map() },
+  { name: "skip", id: "skip", children: new Map() },
+]]].map(([k, v]) => { node("fire", fireDisabled); node("skip", false); return [k, v]; }));
+
+let tree = row(true);
+assert.equal(affordDialogs._markUnaffordableRows(tree), true, "an unaffordable row ticks its skip");
+assert.equal(nodes.skip.checked, true);
+assert.equal(nodes.skip.chipText.textContent, "can’t afford");
+assert.equal(affordDialogs._markUnaffordableRows(tree), false, "already ticked: nothing left to change");
+
+tree = row(false);
+assert.equal(affordDialogs._markUnaffordableRows(tree), false, "an affordable row is left alone");
+assert.equal(nodes.skip.checked, false);
+assert.equal(nodes.skip.chipText.textContent, "don’t");

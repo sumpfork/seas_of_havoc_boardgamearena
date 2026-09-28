@@ -289,6 +289,18 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             break;
           }
 
+          case "huntTheBountyExtraPlay": {
+            this.statusBar.addActionButton(
+              _("Play another card"),
+              () => { this.bgaPerformAction("actHuntTheBountyPlayAnother", {}); },
+              { classes: "bgabutton_green" },
+            );
+            this.statusBar.addActionButton(_("End turn"), () => {
+              this.bgaPerformAction("actSkipHuntTheBountyExtraPlay", {});
+            }, { classes: "bgabutton_gray" });
+            break;
+          }
+
           case "swiftHull": {
             this.statusBar.addActionButton(
               _("Pay 1") + " " + this.resourceIcon("sail") + " " + _("to play another card"),
@@ -438,11 +450,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "rallyTheFlagsChooseFlag": {
             var flagNames = { green_flag: _("Green Flag"), tan_flag: _("Tan Flag"), blue_flag: _("Blue Flag"), red_flag: _("Red Flag") };
-            var availableFlags = (args.available_flags || []);
             var self = this;
-            availableFlags.forEach(function (flagKey) {
+            (args.available_flags || []).forEach(function (flag) {
+              var flagKey = flag.flag_key;
+              var name = flagNames[flagKey] || flagKey;
+              // Taking a flag off a neighbour is a different decision from taking a free one.
+              var label = flag.owner_name
+                ? self.format_string_recursive(_("Take ${flag} from ${player}"), { flag: name, player: flag.owner_name })
+                : _("Take") + " " + name;
               self.statusBar.addActionButton(
-                _("Take") + " " + (flagNames[flagKey] || flagKey),
+                label,
                 function () { self.bgaPerformAction("actRallyTheFlagsChooseFlag", { flag_key: flagKey }); },
                 { classes: "bgabutton_green" },
               );

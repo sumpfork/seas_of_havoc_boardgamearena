@@ -281,26 +281,22 @@ define([
       var token_key = args.token_key;
       var player_id = args.player_id;
 
-      var tokens = query("#" + token_key);
-      var token_element = null;
-      if (token_element != null) {
-        token_element = tokens[0];
-      } else {
-        console.log("creating token");
-        var token_html = this.format_block("jstpl_unique_token", { token_key: args.token_key });
-        if (token_key == "first_player_token") {
-          token_element = domConstruct.place(token_html, `skiff_slot_capitol_n1`);
-        } else {
-          token_element = domConstruct.place(token_html, `skiff_slot_${token_key}_n1`);
-        }
+      // A flag taken off another player is already on screen, sitting on their panel: slide that
+      // element across. Only a flag coming off the island has to be created on its island slot.
+      var token_element = dom.byId("token_" + token_key);
+      if (!token_element) {
+        var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
+        var origin = token_key == "first_player_token" ? "skiff_slot_capitol_n1" : `skiff_slot_${token_key}_n1`;
+        token_element = domConstruct.place(token_html, origin);
       }
 
       this.unique_tokens[token_key] = args.player_id;
 
       if (player_id != null) {
-        var target = `${token_key}_p${player_id}`;
         domStyle.set(token_element, "zIndex", 1);
-        this.slideToObject(token_element, target, 1000).play();
+        var slide = this.slideToObject(token_element, `${token_key}_p${player_id}`, 1000);
+        slide.onEnd = () => { this.placeUniqueToken(token_key, player_id); };
+        slide.play();
       }
       console.groupEnd();
     },
