@@ -26,6 +26,8 @@ class IslandTurn extends GameState
     {
         return [
             'can_use_extra_rations' => $this->game->canUseExtraRations($this->game->getActivePlayerId()),
+            'can_restock_market' => $this->game->canRestockMarket(),
+            'market_restocked' => (bool) $this->game->getGameStateValue("market_restocked"),
         ];
     }
 
@@ -43,6 +45,7 @@ class IslandTurn extends GameState
 
     public function zombie(int $playerId): mixed
     {
+        $this->game->setGameStateValue("market_restocked", 0);
         return 'islandTurnDone';
     }
 
@@ -60,6 +63,12 @@ class IslandTurn extends GameState
     public function actActivateShipUpgrade(string $upgrade_key): mixed
     {
         return $this->game->actActivateShipUpgrade($upgrade_key);
+    }
+
+    #[PossibleAction]
+    public function actRestockMarket(): mixed
+    {
+        return $this->game->actRestockMarket();
     }
 
     #[PossibleAction]

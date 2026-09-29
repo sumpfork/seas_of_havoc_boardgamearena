@@ -314,6 +314,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           }
 
           case "islandTurn": {
+            if (args && args.market_restocked) {
+              this.statusBar.setTitle(_("${you} must place a skiff on a newly revealed Market card"));
+            }
+            if (args && args.can_restock_market) {
+              this.statusBar.addActionButton(
+                _("Restock Market"),
+                () => { this.bgaPerformAction("actRestockMarket", {}); },
+                { classes: "bgabutton_gray" },
+              );
+            }
             if (args && args.can_use_extra_rations) {
               this.statusBar.addActionButton(
                 _("Extra Rations") + ": " + _("pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),

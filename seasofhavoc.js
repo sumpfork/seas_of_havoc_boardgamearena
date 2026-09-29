@@ -661,6 +661,7 @@ define([
               skiff: skiff,
             }),
           );
+          this.addPlayerPanelCards(player);
         }
       }
 

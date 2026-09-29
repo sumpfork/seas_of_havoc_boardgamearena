@@ -980,3 +980,35 @@ a.disabled {
     grid-row: 1;
   }
 }
+
+/* Captain and ship upgrades in the player panels */
+.player_panel_cards {
+  display: flex;
+  gap: 4px;
+  padding-top: 4px;
+}
+.panel_card {
+  width: 43px;
+  height: 59px;
+  overflow: hidden;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.panel_card_art {
+  transform: scale(0.3);
+  transform-origin: top left;
+}
+.panel_card.inactive {
+  filter: grayscale(0.8);
+  opacity: 0.8;
+}
+.panel_card.active {
+  border-color: #e8b930;
+}
+.panel_card_flash {
+  animation: panel-card-flash 1s ease-out 2;
+}
+@keyframes panel-card-flash {
+  50% { box-shadow: 0 0 10px 4px #e8b930; }
+}

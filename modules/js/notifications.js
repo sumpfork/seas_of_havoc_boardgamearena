@@ -80,6 +80,9 @@ define([
      */
     notif_shipUpgradeActivated: function (args) {
       console.log("notify: ship upgrade activated", args);
+      const panelId = `panel_upgrade_p${args.player_id}_${args.upgrade_key}`;
+      this.setPanelCardActive(panelId, true);
+      $(panelId).classList.add("panel_card_flash");
       if (args.player_id == this.player_id) {
         this.updateUpgradeCardVisual({ id: `upgrade-${args.upgrade_key}`, isActivated: true });
         (this.player_ship_upgrades || []).forEach((upgrade) => {
@@ -218,6 +221,11 @@ define([
     notif_marketUpdated: function (args) {
       console.groupCollapsed("notify: market updated");
       console.log(args);
+
+      // A restock sends its scrapped cards along; moving them first animates them to the pile.
+      for (var card of args.scrapped || []) {
+        this.scrapPile.addCard({ id: card.id, type: card.type, location: "scrap" });
+      }
 
       var existing_cards = this.market.getCards();
       for (var i = 0; i < existing_cards.length; i++) {

@@ -115,6 +115,7 @@ class SeasOfHavoc extends Table
             "pending_workshop_slot" => 27,
             "swift_hull_card_type" => 28,
             "booty_discard_return_state" => 29,
+            "market_restocked" => 30,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -411,7 +412,7 @@ class SeasOfHavoc extends Table
         }
         $this->cards->createCards($market_deck, "market_deck");
         $this->cards->shuffle("market_deck");
-        $this->cards->pickCardsForLocation(5, "market_deck", "market");
+        $this->refillMarket();
 
         $damage_card = array_filter($this->playable_cards, fn($x) => $x["category"] == "damage")[0];
         $this->cards->createCards(
@@ -1456,8 +1457,7 @@ class SeasOfHavoc extends Table
         // Send the full, unmodified market to all players
         // Frontend will filter out pending purchases for the current player
         // Market cards are returned in a consistent order (by location_arg), so frontend can use array position as slot number
-        $market_cards = $this->cards->getCardsInLocation("market");
-        $result["market"] = $market_cards;
+        $result["market"] = $this->getMarketSlots();
 
         // Send player's actual hand - frontend will add pending purchases to hand display
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
@@ -1473,6 +1473,11 @@ class SeasOfHavoc extends Table
         $result["corsair_occupied_placement_available"] = $this->canUseCorsairOccupiedPlacement($current_player_id);
         $result["corsair_occupied_slot_names"] = $this->corsairOccupiedPlacementSlotNames();
         $result["player_ship_upgrades"] = $this->getPlayerShipUpgrades($current_player_id);
+        // Captains and upgrade states are public, shown in every player's panel.
+        foreach (array_keys($result["players"]) as $player_id) {
+            $result["players"][$player_id]["captain"] = $this->getPlayerCaptain($player_id);
+            $result["players"][$player_id]["ship_upgrades"] = $this->getPlayerShipUpgrades($player_id);
+        }
 
         return $result;
     }
@@ -1676,6 +1681,78 @@ class SeasOfHavoc extends Table
     }
 
     /** Brig Extra Rations: once per Island Phase, pay 1 doubloon to draw 1 card. */
+    /**
+     * The market as a 5-slot list: index i is slot n(i+1), null where the slot is empty. A card's
+     * location_arg is its slot number, so cards stay put under the skiffs that claimed them.
+     */
+    function getMarketSlots(): array
+    {
+        $slots = array_fill(0, 5, null);
+        foreach ($this->cards->getCardsInLocation("market") as $card) {
+            $slot = (int) $card["location_arg"];
+            if ($slot < 1 || $slot > 5 || $slots[$slot - 1] !== null) {
+                throw new \Bga\GameFramework\SystemException("Bad market slot $slot for card {$card["id"]}");
+            }
+            $slots[$slot - 1] = $card;
+        }
+        return $slots;
+    }
+
+    /** Deal a card from the market deck into every empty market slot. */
+    function refillMarket(): void
+    {
+        foreach ($this->getMarketSlots() as $i => $card) {
+            if ($card === null) {
+                $this->cards->pickCardForLocation("market_deck", "market", $i + 1);
+            }
+        }
+    }
+
+    /** True when the active player may restock the market: once, with an unclaimed card to replace. */
+    function canRestockMarket(): bool
+    {
+        if ($this->getGameStateValue("market_restocked")) {
+            return false;
+        }
+        $market_slots = $this->getIslandSlots()["market"];
+        foreach ($this->getMarketSlots() as $i => $card) {
+            if ($card !== null && $market_slots["n" . ($i + 1)]["occupying_player_id"] === null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * "Before placing their Skiff on a card in the market, a player may scrap all unclaimed cards
+     * and replenish the market." The skiff must then go on one of the new cards.
+     */
+    function actRestockMarket(): mixed
+    {
+        $player_id = self::getActivePlayerId();
+        if (!$this->canRestockMarket()) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("The market cannot be restocked now"));
+        }
+        $market_slots = $this->getIslandSlots()["market"];
+        $scrapped = [];
+        foreach ($this->getMarketSlots() as $i => $card) {
+            if ($card !== null && $market_slots["n" . ($i + 1)]["occupying_player_id"] === null) {
+                $this->cards->moveCard((int) $card["id"], "scrap");
+                $card["location"] = "scrap";
+                $scrapped[] = $card;
+            }
+        }
+        $this->refillMarket();
+        $this->setGameStateValue("market_restocked", 1);
+
+        $this->bga->notify->all("marketUpdated", clienttranslate('${player_name} restocks the Market'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "market" => $this->getMarketSlots(),
+            "scrapped" => $scrapped,
+        ]);
+        return STATE_ISLAND_TURN;
+    }
+
     function actExtraRations(): mixed
     {
         $player_id = self::getActivePlayerId();
@@ -1809,7 +1886,10 @@ class SeasOfHavoc extends Table
             // "In the case of a tie, the player with the most resources wins. If there is still a
             // tie, the player with the least Damage wins." BGA compares a single tiebreak number,
             // so the two are packed: resources dominate, fewer damage cards break the remainder.
-            $resources = array_sum($this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? []);
+            // Skiffs share the resource table but are workers, not resources.
+            $held = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];
+            unset($held["skiff"]);
+            $resources = array_sum($held);
             $this->bga->playerScoreAux->set((int) $player_id, $resources * 100 + max(0, 99 - $damage));
         }
 
@@ -2402,6 +2482,15 @@ class SeasOfHavoc extends Table
         $this->dump("occupancies", $occupancies);
         $this->dump("slotnames", $occupancies[$slotname]);
 
+        // "If a player restocks the market, they must place their Skiff on one of the newly
+        // revealed cards." Restock replaced every unclaimed card, so any free market slot is new.
+        $restocked = (bool) $this->getGameStateValue("market_restocked");
+        if ($restocked && ($slotname !== "market" || $occupancies[$slotname][$number]["occupying_player_id"] != null)) {
+            throw new \Bga\GameFramework\UserException(
+                clienttranslate("After restocking you must place your skiff on a newly revealed Market card"),
+            );
+        }
+
         // Check if slot is disabled
         if ($occupancies[$slotname][$number]["disabled"]) {
             throw new \Bga\GameFramework\UserException(clienttranslate("This slot is not available for the current number of players"));
@@ -2451,6 +2540,7 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
             case "market":
+                $this->setGameStateValue("market_restocked", 0);
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
@@ -2798,15 +2888,10 @@ class SeasOfHavoc extends Table
 
         // Clear island slots and refill market
         $this->clearIslandSlots();
-        $num_market_cards = $this->cards->countCardInLocation("market");
-        $this->trace("num market cards: $num_market_cards");
-        if ($num_market_cards < 5) {
-            $this->trace("picking " . (5 - $num_market_cards) . " market cards");
-            $this->cards->pickCardsForLocation(5 - $num_market_cards, "market_deck", "market");
-        }
+        $this->refillMarket();
 
         // Notify all players about the updated market
-        $updated_market = $this->cards->getCardsInLocation("market");
+        $updated_market = $this->getMarketSlots();
         $this->bga->notify->all("marketUpdated", clienttranslate("Market has been refilled"), [
             "market" => $updated_market,
             "islandslots" => $this->getIslandSlots(),
@@ -3428,11 +3513,8 @@ class SeasOfHavoc extends Table
         $this->pay((int) $player_id, $cost);
         $this->cards->moveCard($card_id, "hand", $player_id);
 
-        $num_market_cards = $this->cards->countCardInLocation("market");
-        if ($num_market_cards < 5) {
-            $this->cards->pickCardsForLocation(5 - $num_market_cards, "market_deck", "market");
-        }
-        $updated_market = $this->cards->getCardsInLocation("market");
+        $this->refillMarket();
+        $updated_market = $this->getMarketSlots();
 
         $this->bga->notify->all("cardsPurchased", clienttranslate('${player_name}\'s Timely Trading: purchases a card'), [
             "player_name" => $this->getPlayerNameById($player_id),

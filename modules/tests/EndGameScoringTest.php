@@ -112,7 +112,7 @@ final class EndGameScoringTest extends TestCase
     protected function setUp(): void
     {
         $this->game = new EndGameUT();
-        $this->game->resources = [1 => ["sail" => 2, "doubloon" => 1], 2 => ["sail" => 0]];
+        $this->game->resources = [1 => ["sail" => 2, "doubloon" => 1, "skiff" => 3], 2 => ["sail" => 0, "skiff" => 3]];
     }
 
     private function scoreFor(string $player_id): int

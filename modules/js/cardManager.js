@@ -21,7 +21,7 @@ define(["dojo/dom-style"], function (domStyle) {
         // Selectable stocks own clicks for playing, scrapping, and discarding.
         if (face.closest('.bga-cards_selectable-stock') ||
             face.classList.contains('non-playable-card-back') ||
-            !face.closest('.seasofhavoc-card[data-side="front"]')) return;
+            !(face.closest('.seasofhavoc-card[data-side="front"]') || face.classList.contains('panel_card_art'))) return;
         event.stopPropagation();
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');
@@ -142,6 +142,39 @@ define(["dojo/dom-style"], function (domStyle) {
           }
         });
       }
+    },
+
+    /** Captain and ship upgrade thumbnails in a player's panel; click shows the full card. */
+    addPlayerPanelCards: function (player) {
+      const row = document.createElement("div");
+      row.className = "cp_board player_panel_cards";
+      row.id = `player_panel_cards_p${player.id}`;
+      this.bga.playerPanels.getElement(player.id).append(row);
+      this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
+      for (const upgrade of player.ship_upgrades) {
+        this.addPanelCard(row, `panel_upgrade_p${player.id}_${upgrade.upgrade_key}`, upgrade.upgrade_key, upgrade.is_activated == 1);
+      }
+    },
+
+    addPanelCard: function (row, id, cardKey, active) {
+      const thumb = document.createElement("div");
+      thumb.id = id;
+      thumb.className = "panel_card";
+      thumb.dataset.cardkey = cardKey;
+      row.append(thumb);
+      this.setPanelCardActive(id, active);
+    },
+
+    /** Upgrades show their activated side (2 sprites after the front) once active. */
+    setPanelCardActive: function (id, active) {
+      const thumb = $(id);
+      const cardData = this.non_playable_cards[thumb.dataset.cardkey];
+      const image_id = cardData.image_id + (active ? 2 : 0);
+      const position = `-${(image_id % 6) * 144}px -${Math.floor(image_id / 6) * 198}px`;
+      thumb.classList.toggle("active", active);
+      thumb.classList.toggle("inactive", cardData.category === "ship_upgrade" && !active);
+      thumb.innerHTML = `<div class="non-playable-card-front panel_card_art" style="background-position: ${position}"></div>`;
+      this.setupCardPreview(thumb.firstChild);
     },
 
     /**
