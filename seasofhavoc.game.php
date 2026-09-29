@@ -1691,10 +1691,10 @@ class SeasOfHavoc extends Table
             "trading_post" => clienttranslate("the Trading Post"),
             "market" => clienttranslate("the Market"),
             "deep_cove" => clienttranslate("the Deep Cove"),
-            "green_flag" => clienttranslate("the Green Flag"),
-            "tan_flag" => clienttranslate("the Tan Flag"),
-            "red_flag" => clienttranslate("the Red Flag"),
-            "blue_flag" => clienttranslate("the Blue Flag"),
+            "green_flag" => clienttranslate("the Green Purser's Flag"),
+            "tan_flag" => clienttranslate("the Tan Bosun's Flag"),
+            "red_flag" => clienttranslate("the Red Shipwright's Flag"),
+            "blue_flag" => clienttranslate("the Blue Sailor's Flag"),
         };
     }
 
@@ -3484,25 +3484,25 @@ class SeasOfHavoc extends Table
                     throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
                 }
                 $this->playerGainResources($player_id, [$resource => 1]);
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Flag)'), [
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Purser\'s Flag)'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                     "resource" => "[$resource]", // shown as its icon
                 ]);
                 break;
             case "tan":
                 $this->drawCards($player_id, 1);
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Flag)'), [
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Bosun\'s Flag)'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                 ]);
                 break;
             case "blue":
                 $this->grantExtraTurn($player_id, "island");
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Flag)'), [
+                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Sailor\'s Flag)'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                 ]);
                 break;
             default:
-                throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card to scrap for the Red Flag"));
+                throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card to scrap for the Red Shipwright's Flag"));
         }
         return $this->clearExtortionFlag($flag);
     }

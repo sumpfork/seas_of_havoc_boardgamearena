@@ -154,7 +154,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
     onExtortionFlagChosen: function (flag, args) {
       if (flag === "green") {
         this.setClientState("client_extortionGreenResource", {
-          descriptionmyturn: _("${you} must choose a resource (Green Flag)"),
+          descriptionmyturn: _("${you} must choose a resource (Green Purser's Flag)"),
         });
         return;
       }
@@ -442,7 +442,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             break;
 
           case "rallyTheFlagsChooseFlag": {
-            var flagNames = { green_flag: _("Green Flag"), tan_flag: _("Tan Flag"), blue_flag: _("Blue Flag"), red_flag: _("Red Flag") };
+            var flagNames = { green_flag: _("Green Purser's Flag"), tan_flag: _("Tan Bosun's Flag"), blue_flag: _("Blue Sailor's Flag"), red_flag: _("Red Shipwright's Flag") };
             var self = this;
             (args.available_flags || []).forEach(function (flag) {
               var flagKey = flag.flag_key;
@@ -464,10 +464,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             // "Use the action of each flag you control in any order" - one button per flag left.
             var extortionArgs2 = args || {};
             var extortionNames = {
-              green: _("Green Flag: gain a resource"),
-              tan: _("Tan Flag: draw a card"),
-              blue: _("Blue Flag: extra island turn"),
-              red: _("Red Flag: scrap a card"),
+              green: _("Green Purser's Flag: gain a resource"),
+              tan: _("Tan Bosun's Flag: draw a card"),
+              blue: _("Blue Sailor's Flag: extra island turn"),
+              red: _("Red Shipwright's Flag: scrap a card"),
             };
             (extortionArgs2.pending_flags || []).forEach((flag) => {
               this.statusBar.addActionButton(extortionNames[flag] || flag, () => {
