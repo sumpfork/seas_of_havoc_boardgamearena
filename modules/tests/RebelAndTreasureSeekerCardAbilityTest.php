@@ -283,7 +283,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
     }
 
     public function testInvalidPivotChoiceIsRejected(): void {
-        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->expectException(\Bga\GameFramework\SystemException::class);
         $this->game->processCardActions($this->game->playable_cards[12]['actions'], ['pivot_right']);
     }
 

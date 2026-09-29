@@ -425,17 +425,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "resolveCollision":
             this.statusBar.addActionButton(
-              "<div class='resource pivot_left' role='img' aria-label='Pivot left' data-pivot='pivot left'></div>",
+              "<div class='resource pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource nope' role='img' aria-label='Do not pivot' data-pivot='no pivot'></div>",
+              "<div class='resource nope' role='img' aria-label='" + _("Do not pivot") + "' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource pivot_right' role='img' aria-label='Pivot right' data-pivot='pivot right'></div>",
+              "<div class='resource pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );

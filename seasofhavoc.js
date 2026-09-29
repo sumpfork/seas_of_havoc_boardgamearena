@@ -88,19 +88,25 @@ define([
       try {
         if (log && args && !args.processed) {
           args.processed = true;
-          var keys = ["resource_change", "booty_usage"];
-          for (var i = 0; i < keys.length; i++) {
-            var key = keys[i];
-            if (typeof args[key] === "string") {
-              args[key] = args[key].replace(/\[(sail|cannonball|doubloon|skiff)\]/g, (match, res) => {
-                if (res === "skiff") {
-                  return "<span class='resource log_resource log_skiff' role='img' aria-label='" + _("skiff") + "'>" +
-                    this.format_block("jstpl_skiff_svg", { player_color: "555555" }) + "</span>";
-                }
-                return "<span class='resource log_resource " + res + "'></span>";
-              });
+          // [resource] markers become icons, including inside nested logs (resource_change is one).
+          const keys = ["resource_change", "booty_usage", "resource_list", "resource"];
+          const iconify = (text) => text.replace(/\[(sail|cannonball|doubloon|skiff)\]/g, (match, res) => {
+            if (res === "skiff") {
+              return "<span class='resource log_resource log_skiff' role='img' aria-label='" + _("skiff") + "'>" +
+                this.format_block("jstpl_skiff_svg", { player_color: "555555" }) + "</span>";
             }
-          }
+            return "<span class='resource log_resource " + res + "' role='img' aria-label='" + _(res) + "'></span>";
+          });
+          const walk = (values) => {
+            for (const key of Object.keys(values)) {
+              if (typeof values[key] === "string" && keys.includes(key)) {
+                values[key] = iconify(values[key]);
+              } else if (values[key] && typeof values[key] === "object") {
+                walk(values[key].args ?? values[key]);
+              }
+            }
+          };
+          walk(args);
         }
       } catch (e) {
         console.error(log, args, "bgaFormatText exception", e.stack);
@@ -162,7 +168,7 @@ define([
         <div class="whiteblock market-section">
             <div class="market-container">
                 <div class="market-area">
-                    <h3>Market</h3>
+                    <h3>${_("Market")}</h3>
                     <div id="market">
                         <div id="market_slot_n1" class="market_slot"></div>
                         <div id="market_slot_n2" class="market_slot"></div>
@@ -177,11 +183,11 @@ define([
                     </div>
                 </div>
                 <div class="scrap-area">
-                    <h3>Scrap Pile</h3>
+                    <h3>${_("Scrap Pile")}</h3>
                     <div id="scrap"></div>
                 </div>
                 <div class="damage-area">
-                    <h3>Damage Deck</h3>
+                    <h3>${_("Damage Deck")}</h3>
                     <div id="damage_deck"></div>
                 </div>
             </div>
@@ -189,17 +195,17 @@ define([
 
         <div id="mycards">
         <div id="mydeck_wrap" class="whiteblock">
-            <h3>My Deck</h3>
+            <h3>${_("My Deck")}</h3>
             <div id="mydeck">
             </div>
         </div>
         <div id="myhand_wrap" class="whiteblock">
-            <h3>My Hand</h3>
+            <h3>${_("My Hand")}</h3>
             <div id="myhand">
             </div>
         </div>
         <div id="mydiscard_wrap" class="whiteblock">
-            <h3>My Discard</h3>
+            <h3>${_("My Discard")}</h3>
             <div id="mydiscard">
             </div>
         </div>
@@ -207,12 +213,12 @@ define([
 
         <div id="myship">
         <div id="captain_wrap" class="whiteblock">
-            <h3>Captain</h3>
+            <h3>${_("Captain")}</h3>
             <div id="captain_stock">
             </div>
         </div>
         <div id="upgrades_wrap" class="whiteblock">
-            <h3>Ship Upgrades</h3>
+            <h3>${_("Ship Upgrades")}</h3>
             <div id="upgrades_stock">
             </div>
         </div>
@@ -249,10 +255,10 @@ define([
                               <div id="booty_token_p\${player_id}" class="booty-token-slot"></div>
                           </div>`;
 
-      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">Purchase Card</a>`;
+      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">${_("Purchase Card")}</a>`;
 
       window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="scrap_card_dialog">
-                          <h3>Choose a card to scrap</h3>
+                          <h3>${_("Choose a card to scrap")}</h3>
                           <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="scrap_dialog_buttons">
                               <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_red">${_("Cancel")}</a>
@@ -260,7 +266,7 @@ define([
                       </div>`;
 
       window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="scrap_card_dialog">
-                          <h3>Choose a card to discard</h3>
+                          <h3>${_("Choose a card to discard")}</h3>
                           <div id="discard_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="discard_dialog_buttons">
                               <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_blue disabled">${_("Discard Card")}</a>

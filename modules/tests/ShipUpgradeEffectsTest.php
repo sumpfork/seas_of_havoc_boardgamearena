@@ -67,7 +67,7 @@ final class ShipUpgradeEffectsTest extends TestCase
 
         $this->assertSame("fore", ShipUpgrades::parseFireDecision($rewritten, "chaser fore")[1]);
         $this->assertSame("aft", ShipUpgrades::parseFireDecision($rewritten, "chaser aft")[1]);
-        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->expectException(\Bga\GameFramework\SystemException::class);
         ShipUpgrades::parseFireDecision($rewritten, "chaser left");
     }
 

@@ -239,12 +239,19 @@ final class SeasOfHavocTest extends TestCase
 
     public function testSkiffLogsDescribePlacementAndRetrieval(): void
     {
-        $format = new ReflectionMethod(SeasOfHavoc::class, "formatResourceChangeMessage");
-        $this->assertSame("places 1 [skiff]", $format->invoke($this->game, ["skiff" => -1]));
-        $this->assertSame("retrieves 3 [skiff]", $format->invoke($this->game, ["skiff" => 3]));
+        $method = new ReflectionMethod(SeasOfHavoc::class, "formatResourceChangeMessage");
+        // The message is a nested log (each phrase translated separately); render it as the client does.
+        $render = function ($log) use (&$render) {
+            return is_array($log)
+                ? preg_replace_callback('/\$\{(\w+)\}/', fn($m) => $render($log["args"][$m[1]]), $log["log"])
+                : $log;
+        };
+        $format = fn($resources) => $render($method->invoke($this->game, $resources));
+        $this->assertSame("places 1 [skiff]", $format(["skiff" => -1]));
+        $this->assertSame("retrieves 3 [skiff]", $format(["skiff" => 3]));
         $this->assertSame("places 1 [skiff], pays 2 [sail], gains 1 [doubloon]",
-            $format->invoke($this->game, ["skiff" => -1, "sail" => -2, "doubloon" => 1]));
-        $this->assertSame("", $format->invoke($this->game, ["skiff" => 0]));
+            $format(["skiff" => -1, "sail" => -2, "doubloon" => 1]));
+        $this->assertSame("", $method->invoke($this->game, ["skiff" => 0]));
     }
 
     public function testSumArrayByKey(): void

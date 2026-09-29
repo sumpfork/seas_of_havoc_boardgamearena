@@ -671,7 +671,7 @@ define([
         }
       }
       if (parts.length === 0) return null;
-      return _("Using booty token as ") + parts.join(" + ");
+      return _("Using booty token as ${resources}").replace("${resources}", parts.join(" + "));
     },
   };
 });

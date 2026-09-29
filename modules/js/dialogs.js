@@ -467,6 +467,19 @@ define([
     },
 
     /**
+     * A choice's name, translated. Firing options are "<shot> <side>" ("chain shot left"): the shot
+     * and the side are translated separately (both are registered in ShipUpgrades::translatedNames).
+     * @private
+     */
+    _choiceName: function (name) {
+      var words = name.split(" ");
+      var side = words.pop();
+      return ["left", "right", "fore", "aft"].includes(side) && words.length > 0 && !name.startsWith("pivot")
+        ? _(words.join(" ")) + " " + _(side)
+        : _(name);
+    },
+
+    /**
      * Chip contents for one choice: glyph, name, range and cost.
      * @private
      */
@@ -474,7 +487,7 @@ define([
       var glyph = this._choiceGlyph(option.name);
       var parts = [];
       if (glyph) parts.push('<span class="chip_glyph">' + glyph + "</span>");
-      parts.push('<span class="chip_text">' + (option.name === "skip" ? _("don\u2019t") : _(option.name)) + "</span>");
+      parts.push('<span class="chip_text">' + (option.name === "skip" ? _("don\u2019t") : this._choiceName(option.name)) + "</span>");
       if (option.range) parts.push('<span class="chip_range">' + _("range") + " " + option.range + "</span>");
       var cost = option.cost || {};
       var costHtml = Object.keys(cost)

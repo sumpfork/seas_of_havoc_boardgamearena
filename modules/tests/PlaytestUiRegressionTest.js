@@ -208,6 +208,7 @@ const dialogGame = {
   _renderCardChoiceRows: dialogs._renderCardChoiceRows,
   _choiceLabelHtml: dialogs._choiceLabelHtml,
   _choiceGlyph: dialogs._choiceGlyph,
+  _choiceName: dialogs._choiceName,
   _hoistCardPassOption: dialogs._hoistCardPassOption,
 };
 const renderRows = actions =>

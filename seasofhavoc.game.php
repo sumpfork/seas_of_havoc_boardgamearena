@@ -267,6 +267,7 @@ class SeasOfHavoc extends Table
             [
                 "player_name" => $this->getPlayerNameById($random_first_player),
                 "token_name" => $this->token_names["first_player_token"],
+                "i18n" => ["token_name"],
                 "player_id" => $random_first_player,
                 "token_key" => "first_player_token",
             ],
@@ -1237,11 +1238,13 @@ class SeasOfHavoc extends Table
         $this->bga->notify->all(
             "log",
             clienttranslate(
-                '${player_name} uses Corsair to place on occupied ${slot_name} and gains only resources shown there',
+                '${player_name} uses Corsair to place on occupied ${slot_label} and gains only resources shown there',
             ),
             [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "slot_name" => $slot_name,
+                "slot_label" => $this->islandSlotLabel($slot_name),
+                "i18n" => ["slot_label"],
                 "slot_number" => $number,
             ],
         );
@@ -1675,6 +1678,26 @@ class SeasOfHavoc extends Table
         return $indexed_slots;
     }
 
+    /** An island slot's name as players read it in the log, marked for translation. */
+    function islandSlotLabel(string $slot_name): string
+    {
+        return match ($slot_name) {
+            "capitol" => clienttranslate("the Capitol"),
+            "bank" => clienttranslate("the Bank"),
+            "shipyard" => clienttranslate("the Shipyard"),
+            "sailmaker" => clienttranslate("the Sail Maker"),
+            "blacksmith" => clienttranslate("the Blacksmith"),
+            "workshop" => clienttranslate("the Workshop"),
+            "trading_post" => clienttranslate("the Trading Post"),
+            "market" => clienttranslate("the Market"),
+            "deep_cove" => clienttranslate("the Deep Cove"),
+            "green_flag" => clienttranslate("the Green Flag"),
+            "tan_flag" => clienttranslate("the Tan Flag"),
+            "red_flag" => clienttranslate("the Red Flag"),
+            "blue_flag" => clienttranslate("the Blue Flag"),
+        };
+    }
+
     function occupyIslandSlot(string $player_id, string $slot_name, string $number)
     {
         // Preserve any existing overlay occupant when replacing the main occupant.
@@ -1689,11 +1712,13 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "REPLACE INTO islandslots (slot_key, number, occupying_player_id, corsair_occupying_player_id, disabled) VALUES ('$slot_name', '$number', '$player_id', $corsair_occupying_player_id, $disabled)",
         );
-        $this->bga->notify->all("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_name}'), [
+        $this->bga->notify->all("skiffPlaced", clienttranslate('${player_name} placed a skiff on ${slot_label}'), [
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "player_color" => $this->getPlayerColor($player_id),
             "slot_name" => $slot_name,
+            "slot_label" => $this->islandSlotLabel($slot_name),
+            "i18n" => ["slot_label"],
             "slot_number" => $number,
             "is_corsair_overlay" => false,
         ]);
@@ -1706,12 +1731,14 @@ class SeasOfHavoc extends Table
         );
         $this->bga->notify->all(
             "skiffPlaced",
-            clienttranslate('${player_name} placed a skiff on occupied ${slot_name}'),
+            clienttranslate('${player_name} placed a skiff on occupied ${slot_label}'),
             [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "player_color" => $this->getPlayerColor($player_id),
                 "slot_name" => $slot_name,
+                "slot_label" => $this->islandSlotLabel($slot_name),
+                "i18n" => ["slot_label"],
                 "slot_number" => $number,
                 "is_corsair_overlay" => true,
             ],
@@ -2033,6 +2060,7 @@ class SeasOfHavoc extends Table
         $this->bga->notify->all("tokenAcquired", clienttranslate('${player_name} acquired the ${token_name}'), [
             "player_name" => $this->getPlayerNameById($player_id),
             "token_name" => $token_name,
+            "i18n" => ["token_name"],
             "player_id" => $player_id,
             "token_key" => $token_key,
             // Taken off another player's board rather than off the island: the front end animates
@@ -2377,7 +2405,7 @@ class SeasOfHavoc extends Table
 
         self::DbQuery($sql);
         $msg = $this->formatResourceChangeMessage($resources);
-        $log = $msg ? '${player_name} ${resource_change}' : "";
+        $log = $msg ? clienttranslate('${player_name} ${resource_change}') : "";
         $this->bga->notify->all("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
@@ -2395,7 +2423,7 @@ class SeasOfHavoc extends Table
             "REPLACE INTO resource (player_id, resource_key, resource_count) VALUES ('$player_id','$resource_type','$count')",
         );
         $msg = $this->formatResourceChangeMessage([$resource_type => $diff]);
-        $log = $msg ? '${player_name} ${resource_change}' : "";
+        $log = $msg ? clienttranslate('${player_name} ${resource_change}') : "";
         $this->bga->notify->all("resourcesChanged", $log, [
             "player_name" => self::getPlayerNameById($player_id),
             "resources" => $this->getGameResources(),
@@ -2408,30 +2436,38 @@ class SeasOfHavoc extends Table
      * that the client replaces with icons.
      * e.g. ["sail" => -2, "cannonball" => 1] => "pays 2 [sail], gains 1 [cannonball]"
      */
-    private function formatResourceChangeMessage(array $resources): string
+    /**
+     * The "pays 1 [sail], gains 2 [cannonball]" part of a resource log, as a nested log so each
+     * phrase is translated. [resource] markers become icons on the client (bgaFormatText).
+     */
+    private function formatResourceChangeMessage(array $resources): array|string
     {
-        $gains = [];
-        $losses = [];
+        $list = fn(array $amounts) => implode(" ", array_map(fn($type) => abs($amounts[$type]) . " [$type]", array_keys($amounts)));
+        $skiffs = $resources["skiff"] ?? 0;
+        unset($resources["skiff"]);
+        $losses = array_filter($resources, fn($amount) => $amount < 0);
+        $gains = array_filter($resources, fn($amount) => $amount > 0);
         $parts = [];
-        foreach ($resources as $type => $amount) {
-            if ($type === "skiff" && $amount != 0) {
-                $parts[] = ($amount > 0 ? "retrieves " : "places ") . abs($amount) . " [skiff]";
-            } elseif ($amount > 0) {
-                $gains[] = "$amount [$type]";
-            } elseif ($amount < 0) {
-                $losses[] = abs($amount) . " [$type]";
-            }
+        if ($skiffs != 0) {
+            $parts[] = [
+                "log" => $skiffs > 0 ? clienttranslate('retrieves ${resource_list}') : clienttranslate('places ${resource_list}'),
+                "args" => ["resource_list" => abs($skiffs) . " [skiff]"],
+            ];
         }
         if (!empty($losses)) {
-            $parts[] = "pays " . implode(" ", $losses);
+            $parts[] = ["log" => clienttranslate('pays ${resource_list}'), "args" => ["resource_list" => $list($losses)]];
         }
         if (!empty($gains)) {
-            $parts[] = "gains " . implode(" ", $gains);
+            $parts[] = ["log" => clienttranslate('gains ${resource_list}'), "args" => ["resource_list" => $list($gains)]];
         }
         if (empty($parts)) {
             return "";
         }
-        return implode(", ", $parts);
+        $args = [];
+        foreach ($parts as $i => $part) {
+            $args["part$i"] = $part;
+        }
+        return ["log" => implode(", ", array_map(fn($key) => '${' . $key . '}', array_keys($args))), "args" => $args];
     }
 
     /**
@@ -3045,9 +3081,7 @@ class SeasOfHavoc extends Table
                 $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
                 break;
             default:
-                throw new \Bga\GameFramework\UserException(
-                    clienttranslate("Unknown action type") . ": " . $action_type->value,
-                );
+                throw new \Bga\GameFramework\SystemException("Unknown action type: " . $action_type->value);
         }
         $this->dump("processSimpleAction outcome", $outcome);
         return [
@@ -3452,7 +3486,7 @@ class SeasOfHavoc extends Table
                 $this->playerGainResources($player_id, [$resource => 1]);
                 $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Flag)'), [
                     "player_name" => $this->getPlayerNameById($player_id),
-                    "resource" => $resource,
+                    "resource" => "[$resource]", // shown as its icon
                 ]);
                 break;
             case "tan":
@@ -3878,7 +3912,7 @@ class SeasOfHavoc extends Table
                 "player_id" => $player_id,
                 "cannon_count" => $variant["count"],
                 "shot_name" => $variant["name"],
-                "direction" => implode(" and ", array_unique($sides)),
+                "direction" => $this->sidesLabel(array_values(array_unique($sides))),
                 "range" => $variant["range"],
                 "i18n" => ["direction", "shot_name"],
             ],
@@ -3889,6 +3923,18 @@ class SeasOfHavoc extends Table
             $chain = array_merge($chain, $this->resolveOneShot($player_id, $variant, $shot_side));
         }
         return $chain;
+    }
+
+    /** The side(s) a shot goes out of, for the log: "left", or "left and right". */
+    private function sidesLabel(array $sides): array|string
+    {
+        if (count($sides) === 1) {
+            return $sides[0];
+        }
+        return [
+            "log" => clienttranslate('${side1} and ${side2}'),
+            "args" => ["side1" => $sides[0], "side2" => $sides[1], "i18n" => ["side1", "side2"]],
+        ];
     }
 
     private function resolveOneShot(string $player_id, array $variant, string $side): array
@@ -4081,7 +4127,7 @@ class SeasOfHavoc extends Table
             [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
-                "resource" => $resource,
+                "resource" => "[$resource]", // shown as its icon
             ],
         );
     }
@@ -4246,7 +4292,7 @@ class SeasOfHavoc extends Table
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
                     $decision_index = array_search($decision, $choice_names, true);
                     if ($decision_index === false) {
-                        throw new \Bga\GameFramework\UserException("Invalid card action choice: " . $decision);
+                        throw new \Bga\GameFramework\SystemException("Invalid card action choice: " . $decision);
                     }
                     if ($decision === self::NIMBLE_HULL_CHOICE) {
                         $this->useNimbleHull($this->getActivePlayerId());

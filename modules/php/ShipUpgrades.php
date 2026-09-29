@@ -14,6 +14,23 @@ class ShipUpgrades
     /** Fire action name => number of cannon fired. */
     const FIRE_COUNTS = ["fire" => 1, "2 x fire" => 2, "3 x fire" => 3];
 
+    /**
+     * Shot, side and maneuver names as players see them: in the card play dialog (translated there
+     * with _()) and in the fire log (via i18n). Listed here so the translation tools pick them up.
+     */
+    public static function translatedNames(): array
+    {
+        return [
+            clienttranslate("fire"), clienttranslate("2 x fire"), clienttranslate("3 x fire"),
+            clienttranslate("carronade"), clienttranslate("chain shot"), clienttranslate("rocket"),
+            clienttranslate("heavy guns"), clienttranslate("chaser"), clienttranslate("both sides"),
+            clienttranslate("heavy guns both sides"),
+            clienttranslate("left"), clienttranslate("right"), clienttranslate("fore"), clienttranslate("aft"),
+            clienttranslate("forward"), clienttranslate("pivot left"), clienttranslate("pivot right"),
+            clienttranslate("pivot 180"), clienttranslate("scrap self"), clienttranslate("skip"), clienttranslate("pass"),
+        ];
+    }
+
     const SIDES_BROADSIDE = ["left", "right"];
     const SIDES_CHASER = ["fore", "aft"];
 
@@ -121,7 +138,7 @@ class ShipUpgrades
                 }
             }
         }
-        throw new \Bga\GameFramework\UserException("Invalid firing choice: " . $decision);
+        throw new \Bga\GameFramework\SystemException("Invalid firing choice: " . $decision);
     }
 
     /** The sides each of a variant's shots is fired to, in order. */
