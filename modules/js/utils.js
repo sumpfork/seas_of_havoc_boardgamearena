@@ -33,6 +33,26 @@ define([
       }
     },
 
+    /**
+     * A ship on a whirlpool or gust hides it, though it acts on the ship after every card. Show a
+     * small copy of the feature in the corner of the square, above the ship.
+     */
+    refreshSeaFeatureBadges: function () {
+      document.querySelectorAll(".seafeature_badge").forEach((node) => node.remove());
+      const ships = this.seaboard.filter((e) => e.type === "player_ship");
+      for (const feature of this.seaboard) {
+        if (feature.type !== "whirlpool" && feature.type !== "gust") continue;
+        if (!ships.some((ship) => ship.x == feature.x && ship.y == feature.y)) continue;
+        const badge = domConstruct.place(
+          `<div class="seafeature seafeature_badge" data-seafeature="${feature.type}"></div>`,
+          "seaboardlocation_" + feature.x + "_" + feature.y,
+        );
+        if (feature.type === "gust") {
+          badge.style.rotate = this.getHeadingDegrees(feature.heading) - 90 + "deg";
+        }
+      }
+    },
+
     getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {
@@ -121,6 +141,15 @@ define([
       return node;
     },
 
+    /** A large copy of a face-up booty token on hover, so the resources on it can be read. */
+    addBootyTokenTooltip: function (node, imageId) {
+      node.id = node.id || "booty_token_view_" + this._nextEffectId();
+      const zoom = this.createBootyTokenNode(false, imageId);
+      zoom.classList.add("booty-token-zoom");
+      this.setBootyTokenPosition(zoom, imageId, 126);
+      this.addTooltipHtml(node.id, zoom.outerHTML);
+    },
+
     updateMyBootyToken: function (typeArgOverride) {
       console.groupCollapsed("[booty] updateMyBootyToken");
       const tokens = this.booty_tokens || [];
@@ -142,12 +171,14 @@ define([
           const node = this.createBootyTokenNode(false, token.type_arg);
           this.setBootyTokenImageForSlot(node, token.type_arg);
           domConstruct.place(node, mySlot);
+          this.addBootyTokenTooltip(node, token.type_arg);
         });
         domClass.add(mySlot, "has-token");
       } else if (typeArg !== undefined) {
         const node = this.createBootyTokenNode(false, typeArg);
         this.setBootyTokenImageForSlot(node, typeArg);
         domConstruct.place(node, mySlot);
+        this.addBootyTokenTooltip(node, typeArg);
         domClass.add(mySlot, "has-token");
       } else if (tokens.length > 0) {
         // Fallback: show facedown token only if we KNOW player has tokens

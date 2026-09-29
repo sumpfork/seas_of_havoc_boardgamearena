@@ -432,6 +432,7 @@ define([
       console.groupEnd();
       if (!anims.length) {
         applyShipwreckEvents();
+        this.refreshSeaFeatureBadges();
         return;
       }
       // Returned so the notification queue waits for the moves and rams to finish: a ram is
@@ -440,6 +441,7 @@ define([
         const chain = fx.chain(anims);
         chain.onEnd = () => {
           applyShipwreckEvents();
+          this.refreshSeaFeatureBadges();
           resolve();
         };
         chain.play();

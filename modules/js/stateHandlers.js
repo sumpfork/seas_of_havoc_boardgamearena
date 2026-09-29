@@ -274,13 +274,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           case "bootyDiscard": {
             // Token values are secret, so the choice is private: show the player their own art.
             ((args._private || {}).booty_tokens || []).forEach((token) => {
+              // An inline icon: the sprite scaled to the token's size, not the panel slot's.
               const node = this.createBootyTokenNode(false, token.image_id);
-              this.setBootyTokenImageForSlot(node, token.image_id);
+              node.classList.add("booty-token-button-icon");
+              node.id = "booty_discard_choice_" + token.id;
+              this.setBootyTokenPosition(node, token.image_id, 36);
               this.statusBar.addActionButton(
                 _("Discard") + " " + node.outerHTML,
                 () => { this.bgaPerformAction("actDiscardBootyToken", { card_id: token.id }); },
                 { color: "secondary" },
               );
+              this.addBootyTokenTooltip(document.getElementById(node.id), token.image_id);
             });
             break;
           }

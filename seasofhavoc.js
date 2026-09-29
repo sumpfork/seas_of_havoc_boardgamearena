@@ -788,6 +788,8 @@ define([
         }
       }
 
+      this.refreshSeaFeatureBadges();
+
       // Setup game notifications
       this.setupNotifications();
 

@@ -413,6 +413,21 @@
   left: 14px;
   box-shadow: -2px 0 3px rgba(0, 0, 0, 0.5);
 }
+/* A booty token shown inside an action button (choosing one to discard). */
+.booty-token.booty-token-button-icon {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  background-size: 144px 144px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+/* The large copy of a booty token shown on hover. */
+.booty-token.booty-token-zoom {
+  width: 126px;
+  height: 126px;
+  background-size: 504px 504px;
+}
 .booty-token-slot .booty-token-back {
   background-position: 0px -150px;
 }
@@ -1141,4 +1156,23 @@ a.disabled {
   to {
     opacity: 0;
   }
+}
+
+/* A whirlpool or gust under a ship: a small copy in the top-right corner, above the ship. */
+.seafeature.seafeature_badge {
+  width: 34px;
+  height: 34px;
+  background-size: 136px 136px;
+  left: 0px;
+  top: -34px;
+  z-index: 3;
+  pointer-events: none;
+  mask-image: radial-gradient(#333 45%, #00000000 70%);
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 3px #fff);
+}
+.seafeature_badge[data-seafeature="whirlpool"] {
+  background-position: 0px 0px;
+}
+.seafeature_badge[data-seafeature="gust"] {
+  background-position: 0px -68px;
 }
