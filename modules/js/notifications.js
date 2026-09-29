@@ -357,7 +357,9 @@ define([
     notif_cardPlayed: function (args) {
       console.groupCollapsed("notify: card played");
       console.log(args);
-      var shipid = "player_ship_" + args.player_id;
+      // Which of the player's ships the card moved: they have two in the 2 Ship Variant.
+      var shipArg = args.ship ?? args.player_id;
+      var shipid = "player_ship_" + shipArg;
 
       var anims = [];
       for (var move of args.moveChain) {
@@ -377,7 +379,7 @@ define([
             break;
           }
           case "turn": {
-            let player_ship = this.getObjectOnSeaboard("player_ship", args.player_id);
+            let player_ship = this.getObjectOnSeaboard("player_ship", shipArg);
             console.log(
               args.player_id +
                 " my old heading " +

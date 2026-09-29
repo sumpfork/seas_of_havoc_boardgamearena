@@ -122,3 +122,6 @@ CREATE TABLE IF NOT EXISTS `upgrade_uses` (
   `upgrade_key` varchar(64) NOT NULL,
   PRIMARY KEY (`player_id`, `upgrade_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- 2 Ship Variant: the type of the player's second ship, NULL when they sail only one.
+ALTER TABLE `player` ADD `player_ship2` varchar(64) DEFAULT NULL;

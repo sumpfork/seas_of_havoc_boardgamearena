@@ -23,6 +23,16 @@ define([
     /**
      * Find an object on the seaboard by type and arg
      */
+    /** Glow the active player's ship(s) in their colour, so it is clear whose turn it is on the board. */
+    highlightActivePlayerShips: function (playerId) {
+      for (const ship of document.querySelectorAll("#seaboard .player_ship")) {
+        const owner = ship.id.replace("player_ship_", "").split("_")[0];
+        const active = playerId != null && owner == playerId;
+        ship.classList.toggle("active_turn_ship", active);
+        ship.style.setProperty("--owner-color", active ? "#" + this.gamedatas.playerinfo[owner].player_color : "");
+      }
+    },
+
     getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {

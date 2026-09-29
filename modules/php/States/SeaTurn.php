@@ -39,8 +39,8 @@ class SeaTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null): mixed
+    public function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null, int $ship = 1): mixed
     {
-        return $this->game->actPlayCard($card_type, $card_id, $decisions, $use_booty_card_id);
+        return $this->game->actPlayCard($card_type, $card_id, $decisions, $use_booty_card_id, $ship);
     }
 }

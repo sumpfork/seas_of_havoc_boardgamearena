@@ -159,6 +159,7 @@ const privateScraps = { available_cards: [{ id: 42, type: 19 }] };
 let shownScraps;
 handlers.onEnteringState.call({
   updateHandSelectionMode() {},
+  highlightActivePlayerShips() {},
   isCurrentPlayerActive: () => true,
   setupScrapCardSelection: args => { shownScraps = args; },
 }, "cardFlag", { args: { flag: "red", _private: privateScraps } });

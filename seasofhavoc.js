@@ -225,6 +225,7 @@ define([
       // Define JavaScript templates for dynamic content generation
       window.jstpl_card_play_dialog = `<div id="card_display_dialog">
                           <div id="card_display"></div>
+                          <div id="card_ship_choice"></div>
                           <div id="card_choices"></div>
                           <div id="card_play_buttons">
                             <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">${_("Pass whole card")}</div>
@@ -728,11 +729,14 @@ define([
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
-          case "player_ship":
+          case "player_ship": {
+            // A second ship (2 Ship Variant) is "<player id>_2" on the board.
+            var [owner, second] = String(entry.arg).split("_");
+            var ownerInfo = gamedatas.playerinfo[owner];
             var shipid = "player_ship_" + entry.arg;
             var subs = {
               id: shipid,
-              shipname: gamedatas.playerinfo[entry.arg].player_ship,
+              shipname: second ? ownerInfo.player_ship2 : ownerInfo.player_ship,
             };
             var ship = this.format_block("jstpl_player_ship", subs);
             domConstruct.place(ship, "seaboard");
@@ -740,6 +744,7 @@ define([
             this.placeOnObject(shipid, target_id);
             domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
             break;
+          }
           case "rock":
           case "gust":
           case "whirlpool":

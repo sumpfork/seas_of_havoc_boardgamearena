@@ -128,6 +128,20 @@ define([
         }),
       );
 
+      // 2 Ship Variant: "Each card you play applies only to one ship."
+      var me = this.gamedatas.playerinfo[this.player_id];
+      if (me.player_ship2 && captainCopyId === null) {
+        domConstruct.place(
+          `<div class="card_ship_choice_label">${_("Ship")}:</div>` +
+            [[1, me.player_ship], [2, me.player_ship2]].map(([n, name]) =>
+              // The ship as it looks on the board: players know their ships by sight, not by name.
+              `<label class="card_ship_option" title="${_(name)}"><input type="radio" name="card_ship" value="${n}" ${n === 1 ? "checked" : ""} aria-label="${_(name)}">` +
+              `<div class="player_ship card_ship_sprite" data-shipname="${name}"></div></label>`,
+            ).join(" "),
+          "card_ship_choice",
+        );
+      }
+
       var display_dom = query("#card_display");
       console.log("display dom:");
       console.log(display_dom);
@@ -183,6 +197,10 @@ define([
         card_id: card_id,
         decisions: JSON.stringify(decisions),
       };
+      var shipChoice = document.querySelector('input[name="card_ship"]:checked');
+      if (shipChoice) {
+        params.ship = Number(shipChoice.value);
+      }
       if (useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
         var totalCost = this._computeTotalPlayCost(this.dep_tree);
         params.use_booty_card_id = this.getMyBootyTokenId(totalCost);

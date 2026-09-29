@@ -1016,3 +1016,50 @@ a.disabled {
 @keyframes panel-card-flash {
   50% { box-shadow: 0 0 10px 4px #e8b930; }
 }
+
+/* 2 Ship Variant: which ship a card is played with, shown as the ships' board sprites. */
+#card_ship_choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card_ship_option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.card_ship_option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.card_ship_option:has(input:checked) {
+  border-color: #e8b930;
+  background: rgba(232, 185, 48, 0.15);
+}
+.card_ship_option:has(input:focus-visible) {
+  outline: 2px solid #4a90d9;
+}
+.player_ship.card_ship_sprite {
+  position: static;
+}
+
+/* A player's ship(s) at the start of their panel's card row, scaled down from the board sprite. */
+.player_ship.panel_ship {
+  position: static;
+  align-self: center;
+  width: 40px;
+  height: 30.33px;
+  background-size: 40px;
+}
+
+/* The active player's ship(s), glowing in their colour. */
+.player_ship.active_turn_ship {
+  filter: drop-shadow(0 0 3px var(--owner-color)) drop-shadow(0 0 3px var(--owner-color));
+}

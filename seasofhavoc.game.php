@@ -62,6 +62,9 @@ if (!defined("STATE_END_GAME")) {
 
 class SeasOfHavoc extends Table
 {
+    /** Table option (gameoptions.jsonc): 1 = off, 2 = 2 Ship Variant. */
+    private const OPTION_TWO_SHIPS = 100;
+
     // Debug flag: give each player a booty token at game start (one with a wild resource)
     private const DEBUG_START_WITH_BOOTY = true;
 
@@ -119,6 +122,8 @@ class SeasOfHavoc extends Table
             "market_restocked" => 30,
             "pending_chain_shot_victims" => 31,
             "chain_shot_shooter" => 32,
+            // 2 Ship Variant: which of the active player's ships the current card moves (1 or 2).
+            "active_ship" => 33,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -180,6 +185,15 @@ class SeasOfHavoc extends Table
         }
         $sql .= implode(",", $values);
         self::DbQuery($sql);
+        // 2 Ship Variant: each player also sails a second ship, of a type nobody else has. "No cards
+        // or upgrades from the 2nd ship are used", so it only needs its name, for its sprite.
+        if ($this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2) {
+            foreach (array_keys($players) as $player_id) {
+                $ship = array_rand($default_colors);
+                unset($default_colors[$ship]);
+                self::DbQuery("UPDATE player SET player_ship2 = '$ship' WHERE player_id = $player_id");
+            }
+        }
         //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
@@ -359,6 +373,14 @@ class SeasOfHavoc extends Table
                 "arg" => $playerid,
                 "heading" => $heading,
             ]);
+            if ($this->hasSecondShip($playerid)) {
+                $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
+                $this->seaboard->placeObject($position["x"], $position["y"], [
+                    "type" => "player_ship",
+                    "arg" => self::secondShipArg($playerid),
+                    "heading" => $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]),
+                ]);
+            }
 
             // TEMP HACK: force first players to specific captains for ability testing.
             if (isset($forced_captains_for_testing[$player_index])) {
@@ -692,7 +714,7 @@ class SeasOfHavoc extends Table
 
     private function collectShipwrecksAtPlayer(int $player_id): array
     {
-        $ship_info = $this->seaboard->findObject("player_ship", $player_id);
+        $ship_info = $this->seaboard->findObject("player_ship", $this->activeShipArg($player_id));
         if (!$ship_info) {
             return ["shipwreck_event" => null, "booty_card" => null];
         }
@@ -1030,6 +1052,32 @@ class SeasOfHavoc extends Table
                 clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
             );
         }
+    }
+
+    /**
+     * 2 Ship Variant. A ship on the board is identified by its owner's player id; a second ship by
+     * the player id with "_2" appended. Anything that finds a ship on the board and wants the player
+     * behind it goes through shipOwner().
+     */
+    static function secondShipArg($player_id): string
+    {
+        return $player_id . "_2";
+    }
+
+    static function shipOwner($ship_arg): string
+    {
+        return explode("_", (string) $ship_arg)[0];
+    }
+
+    function hasSecondShip($player_id): bool
+    {
+        return self::getUniqueValueFromDB("SELECT player_ship2 FROM player WHERE player_id = " . (int) $player_id) !== null;
+    }
+
+    /** The ship the player's current card applies to: "Each card you play applies only to one ship." */
+    function activeShipArg($player_id): string
+    {
+        return (int) $this->getGameStateValue("active_ship") === 2 ? self::secondShipArg($player_id) : (string) $player_id;
     }
 
     private function shipwreckPlacementBlockingTypes(): array
@@ -1548,7 +1596,7 @@ class SeasOfHavoc extends Table
     {
         // Deliberately uncached: this carries player_score, and the previous static cache both
         // went stale after scoring and ignored $player_id (caching one row for every later call).
-        $sql = "SELECT player_id, player_no, player_name, player_score, player_score_aux, player_ship, player_color
+        $sql = "SELECT player_id, player_no, player_name, player_score, player_score_aux, player_ship, player_ship2, player_color
                 FROM player";
         if ($player_id !== null) {
             $sql .= " WHERE player_id = $player_id";
@@ -2913,13 +2961,14 @@ class SeasOfHavoc extends Table
     function processSimpleAction(PrimitiveCardPlayAction $action_type)
     {
         $player_id = $this->getActivePlayerId();
+        $ship = $this->activeShipArg($player_id);
         $outcome = [];
         $collision_occurred = false;
         $shipwreck_event = null;
         $booty_card = null;
         switch ($action_type) {
             case PrimitiveCardPlayAction::FORWARD:
-                $result = $this->seaboard->moveObjectForward("player_ship", $player_id, ["rock", "player_ship"]);
+                $result = $this->seaboard->moveObjectForward("player_ship", $ship, ["rock", "player_ship"]);
                 $outcome[] = $result;
                 if ($result["type"] == "collision") {
                     $collision_occurred = true;
@@ -2931,13 +2980,13 @@ class SeasOfHavoc extends Table
                 }
                 break;
             case PrimitiveCardPlayAction::PIVOT_LEFT:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::LEFT);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::LEFT);
                 break;
             case PrimitiveCardPlayAction::PIVOT_AROUND:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::AROUND);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::AROUND);
                 break;
             case PrimitiveCardPlayAction::PIVOT_RIGHT:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
+                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
                 break;
             default:
                 throw new \Bga\GameFramework\UserException(
@@ -3032,7 +3081,7 @@ class SeasOfHavoc extends Table
                 return $empty;
             }
         } else {
-            $ship = $this->seaboard->findObject("player_ship", $player_id);
+            $ship = $this->seaboard->findObject("player_ship", $this->activeShipArg($player_id));
             if ($ship === null) {
                 throw new \Bga\GameFramework\SystemException("Treasure Seeker ship is missing");
             }
@@ -3222,11 +3271,14 @@ class SeasOfHavoc extends Table
             }
         }
 
-        $ship = $this->seaboard->findObject("player_ship", $player_id);
+        $ship = $this->seaboard->findObject("player_ship", $this->activeShipArg($player_id));
         if ($ship) {
             foreach ($this->seaboard->getSurroundingPositions($ship["x"], $ship["y"]) as $pos) {
                 foreach ($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["player_ship"]) as $obj) {
-                    $other_id = $obj["arg"];
+                    $other_id = self::shipOwner($obj["arg"]);
+                    if ($other_id === (string) $player_id) {
+                        continue; // your own other ship (2 Ship Variant)
+                    }
                     foreach ($flag_keys as $fk) {
                         if (isset($tokens[$fk]) && $tokens[$fk] == $other_id) {
                             $available[] = $fk;
@@ -3568,13 +3620,14 @@ class SeasOfHavoc extends Table
 
     protected function getBoardingPartyTargets(string $player_id): array
     {
-        $ship = $this->seaboard->findObject("player_ship", $player_id);
+        $ship = $this->seaboard->findObject("player_ship", $this->activeShipArg($player_id));
         if (!$ship) return [];
         $targets = [];
         foreach ($this->seaboard->getSurroundingPositions($ship["x"], $ship["y"]) as $pos) {
             foreach ($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["player_ship"]) as $obj) {
-                $other_id = (string) $obj["arg"];
-                if ($other_id === $player_id) continue;
+                $other_id = self::shipOwner($obj["arg"]);
+                // Both of an opponent's ships can be alongside: they are still one player to board.
+                if ($other_id === (string) $player_id || isset($targets[$other_id])) continue;
                 $resources = $this->getGameResourcesHierarchical((int) $other_id)[$other_id] ?? [];
                 $stealable = array_filter(
                     array_intersect_key($resources, array_flip(["sail", "cannonball", "doubloon"])),
@@ -3582,7 +3635,7 @@ class SeasOfHavoc extends Table
                 );
                 $booty_count = $this->cards->countCardInLocation("booty_player", $other_id);
                 if (!empty($stealable) || $booty_count > 0) {
-                    $targets[] = [
+                    $targets[$other_id] = [
                         "player_id" => $other_id,
                         "resources" => $stealable,
                         "booty_token_count" => $booty_count,
@@ -3590,7 +3643,7 @@ class SeasOfHavoc extends Table
                 }
             }
         }
-        return $targets;
+        return array_values($targets);
     }
 
     function argBoardingParty(): array
@@ -3792,7 +3845,7 @@ class SeasOfHavoc extends Table
 
         while (true) {
             $outcome = $this->seaboard->resolveCannonFire(
-                $player_id,
+                $this->activeShipArg($player_id),
                 $direction,
                 $range,
                 ["rock", "player_ship"],
@@ -3811,7 +3864,7 @@ class SeasOfHavoc extends Table
                 }
                 $this->applyShipHit($player_id, $collider, $outcome["fire_heading"], $shot === "heavy" ? 1 : 0);
                 if ($shot === "chain") {
-                    $this->applyChainShotLoss($player_id, $collider["arg"]);
+                    $this->applyChainShotLoss($player_id, self::shipOwner($collider["arg"]));
                 }
             }
 
@@ -3836,7 +3889,9 @@ class SeasOfHavoc extends Table
     /** Score infamy for a hit on a ship and give the target a damage card. */
     private function applyShipHit(string $player_id, array $collider, Heading $fire_heading, int $bonus_infamy): void
     {
-        $hit_player_id = (string) $collider["arg"];
+        // Hitting your own ship (a rocket blast, or your other ship in the 2 Ship Variant) has its
+        // normal effects, except that no infamy is gained.
+        $hit_player_id = self::shipOwner($collider["arg"]);
         if ((int) $hit_player_id !== (int) $player_id) {
             // Raking: hitting a ship from directly ahead or astern.
             $raking =
@@ -3874,7 +3929,7 @@ class SeasOfHavoc extends Table
             }
             $chain[] = ["type" => "explosion", "hit_x" => $position["x"], "hit_y" => $position["y"]];
             foreach ($ships as $ship) {
-                $hit_player_id = (string) $ship["arg"];
+                $hit_player_id = self::shipOwner($ship["arg"]);
                 if ((int) $hit_player_id !== (int) $player_id) {
                     $this->scoreInfamy(
                         $player_id,
@@ -4036,12 +4091,16 @@ class SeasOfHavoc extends Table
     {
         foreach ($colliders as $collider) {
             if ($collider["type"] === "player_ship") {
-                $this->scoreInfamy(
-                    $player_id,
-                    1,
-                    clienttranslate('${player_name} rams another ship and scores ${score_increment} infamy'),
-                );
-                $this->dealDamageCard((string) $collider["arg"]);
+                $rammed_player_id = self::shipOwner($collider["arg"]);
+                // Ramming your own other ship (2 Ship Variant) damages it but earns no infamy.
+                if ($rammed_player_id !== (string) $player_id) {
+                    $this->scoreInfamy(
+                        $player_id,
+                        1,
+                        clienttranslate('${player_name} rams another ship and scores ${score_increment} infamy'),
+                    );
+                }
+                $this->dealDamageCard($rammed_player_id);
             } elseif ($collider["type"] === "rock") {
                 $this->dealDamageCard($player_id);
             }
@@ -4345,6 +4404,7 @@ class SeasOfHavoc extends Table
             $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} fires after the collision'), [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
+                "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $outcome["action_chain"],
                 "cost" => $outcome["cost"],
                 "shipwreck_event" => null,
@@ -4356,9 +4416,10 @@ class SeasOfHavoc extends Table
     function applyWhirlpoolRotation($player_id)
     {
         // Check if the ship is on a whirlpool
-        if ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+        $ship = $this->activeShipArg($player_id);
+        if ($this->seaboard->isObjectOnWhirlpool("player_ship", $ship)) {
             $this->trace("Ship is on whirlpool - rotating 90 degrees clockwise");
-            $turn_result = $this->seaboard->turnObject("player_ship", $player_id, Turn::RIGHT);
+            $turn_result = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
             return ["result" => $turn_result, "occurred" => true];
         }
         return ["result" => null, "occurred" => false];
@@ -4367,10 +4428,11 @@ class SeasOfHavoc extends Table
     function applyGustPush($player_id)
     {
         // Check if the ship is on a gust
-        $gust = $this->seaboard->getGustAtObjectLocation("player_ship", $player_id);
+        $ship = $this->activeShipArg($player_id);
+        $gust = $this->seaboard->getGustAtObjectLocation("player_ship", $ship);
         if ($gust) {
             $this->trace("Ship is on gust - pushing in direction " . $gust["heading"]->toString());
-            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $player_id, $gust["heading"], [
+            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $ship, $gust["heading"], [
                 "rock",
                 "player_ship",
             ]);
@@ -4417,13 +4479,19 @@ class SeasOfHavoc extends Table
         ];
     }
 
-    function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null)
+    function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null, int $ship = 1)
     {
         $held = $this->cards->getCard($card_id);
         if (!$held || $held["location"] !== "hand" || $held["location_arg"] != $this->getActivePlayerId() ||
             (int) $held["type"] !== $card_type) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card from your hand"));
         }
+        if ($ship !== 1 && ($ship !== 2 || !$this->hasSecondShip($this->getActivePlayerId()))) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose one of your ships"));
+        }
+        // Everything this card goes on to do - including a captain card it opens, the shot after a
+        // collision, and the sea features at the end - applies to this ship.
+        $this->setGameStateValue("active_ship", $ship);
         return $this->resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id);
     }
 
@@ -4475,6 +4543,7 @@ class SeasOfHavoc extends Table
                 $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} has played a card'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                     "player_id" => $player_id,
+                    "ship" => $this->activeShipArg($player_id),
                     "moveChain" => [],
                     "cost" => [],
                     "shipwreck_event" => null,
@@ -4520,7 +4589,7 @@ class SeasOfHavoc extends Table
                         $notification_message = clienttranslate(
                             '${player_name} has played a card and is affected by the whirlpool and gust',
                         );
-                    } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                    } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
                         $notification_message = clienttranslate(
                             '${player_name} has played a card and is rotated by the whirlpool',
                         );
@@ -4538,6 +4607,7 @@ class SeasOfHavoc extends Table
         $this->bga->notify->all("cardPlayed", $notification_message, [
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
+            "ship" => $this->activeShipArg($player_id),
             "moveChain" => $all_moves,
             "cost" => $outcome["cost"],
             "shipwreck_event" => $shipwreck_event,
@@ -4665,7 +4735,7 @@ class SeasOfHavoc extends Table
                     $notification_message = clienttranslate(
                         '${player_name} pivots and is affected by the whirlpool and gust',
                     );
-                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
                     $notification_message = clienttranslate('${player_name} pivots and is rotated by the whirlpool');
                 } else {
                     $notification_message = clienttranslate('${player_name} pivots and is pushed by the gust');
@@ -4675,6 +4745,7 @@ class SeasOfHavoc extends Table
             $this->bga->notify->all("cardPlayed", $notification_message, [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
+                "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $all_moves,
                 "cost" => $outcome["cost"],
                 "shipwreck_event" => $shipwreck_event,
@@ -4687,7 +4758,7 @@ class SeasOfHavoc extends Table
 
             if (count($seafeature_effects["moves"]) == 2) {
                 $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
-            } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $player_id)) {
+            } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
                 $notification_message = clienttranslate('${player_name} is rotated by the whirlpool');
             } else {
                 $notification_message = clienttranslate('${player_name} is pushed by the gust');
@@ -4696,6 +4767,7 @@ class SeasOfHavoc extends Table
             $this->bga->notify->all("cardPlayed", $notification_message, [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
+                "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $seafeature_effects["moves"],
                 "cost" => [],
                 "shipwreck_event" => $shipwreck_event,

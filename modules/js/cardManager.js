@@ -150,6 +150,15 @@ define(["dojo/dom-style"], function (domStyle) {
       row.className = "cp_board player_panel_cards";
       row.id = `player_panel_cards_p${player.id}`;
       this.bga.playerPanels.getElement(player.id).append(row);
+      // The player's ships as drawn on the board: in the 2 Ship Variant this is how you tell whose
+      // second ship is whose, since each ship type has its own colour.
+      const info = this.gamedatas.playerinfo[player.id];
+      for (const shipname of [info.player_ship, info.player_ship2].filter(Boolean)) {
+        row.insertAdjacentHTML(
+          "beforeend",
+          `<div class="player_ship panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`,
+        );
+      }
       this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
       for (const upgrade of player.ship_upgrades) {
         this.addPanelCard(row, `panel_upgrade_p${player.id}_${upgrade.upgrade_key}`, upgrade.upgrade_key, upgrade.is_activated == 1);

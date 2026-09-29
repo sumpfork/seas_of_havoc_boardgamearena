@@ -230,6 +230,32 @@ final class ShipUpgradeFiringTest extends TestCase
         $this->assertSame(["2"], $this->game->damaged);
     }
 
+    public function testHittingAnOpponentsSecondShipScoresAndDamagesThatPlayer(): void
+    {
+        $this->game->fireResults = [self::hit(2, 2, 1, SeasOfHavoc::secondShipArg("2"), Heading::EAST)];
+
+        $this->fire("fire left", [], ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]);
+
+        $this->assertSame([["player_id" => "1", "amount" => 2]], $this->game->infamy);
+        $this->assertSame(["2"], $this->game->damaged);
+    }
+
+    public function testHittingYourOwnOtherShipDamagesYouWithoutInfamy(): void
+    {
+        $this->game->fireResults = [self::hit(2, 2, 1, SeasOfHavoc::secondShipArg("1"), Heading::EAST)];
+
+        $this->fire("fire left", [], ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]);
+
+        $this->assertSame([], $this->game->infamy);
+        $this->assertSame(["1"], $this->game->damaged);
+    }
+
+    public function testShipOwnerMapsBothShipsToTheirPlayer(): void
+    {
+        $this->assertSame("2389204", SeasOfHavoc::shipOwner("2389204"));
+        $this->assertSame("2389204", SeasOfHavoc::shipOwner(SeasOfHavoc::secondShipArg(2389204)));
+    }
+
     public function testChainShotLeavesTheChoiceToTheVictim(): void
     {
         $this->game->fireResults = [self::hit(2, 2, 1, "2", Heading::EAST)];

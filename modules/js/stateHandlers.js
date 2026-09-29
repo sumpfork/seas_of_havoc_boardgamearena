@@ -11,6 +11,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
     onEnteringState: function (stateName, args) {
       console.log("Entering state: " + stateName);
       this.updateHandSelectionMode();
+      this.highlightActivePlayerShips(args.type === "activeplayer" ? args.active_player : null);
 
       switch (stateName) {
         case "cardPurchases": {
