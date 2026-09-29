@@ -538,6 +538,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             break;
           }
 
+          case "chainShotLoss": {
+            for (const resource of args.options) {
+              this.statusBar.addActionButton(
+                _("Lose 1") + " " + this.resourceIcon(resource),
+                () => { this.bgaPerformAction("actChainShotLose", { resource: resource }); },
+              );
+            }
+            break;
+          }
+
           case "timelyTrading": {
             var ttArgs = args || {};
             var ttMarket = ttArgs.market || [];

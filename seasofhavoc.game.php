@@ -56,6 +56,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_COLLISION_DISCARD", 25);
     define("STATE_FINAL_SCORING", 26);
     define("STATE_HUNT_THE_BOUNTY_EXTRA_PLAY", 27);
+    define("STATE_CHAIN_SHOT_LOSS", 28);
     define("STATE_END_GAME", 99);
 }
 
@@ -116,6 +117,8 @@ class SeasOfHavoc extends Table
             "swift_hull_card_type" => 28,
             "booty_discard_return_state" => 29,
             "market_restocked" => 30,
+            "pending_chain_shot_victims" => 31,
+            "chain_shot_shooter" => 32,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -1358,6 +1361,10 @@ class SeasOfHavoc extends Table
         $overflow = $this->bootyOverflowState(STATE_NEXT_PLAYER_SEA_PHASE);
         if ($overflow !== null) {
             return $overflow;
+        }
+        $chain_shot = $this->nextChainShotLossState();
+        if ($chain_shot !== null) {
+            return $chain_shot;
         }
         $type = (int) $this->getGameStateValue("pending_card_flag_type");
         if ($type !== 0) {
@@ -3882,27 +3889,87 @@ class SeasOfHavoc extends Table
     }
 
     /**
-     * Sloop of War Chain Shot: the ship hit loses a resource of its choice.
-     * ponytail: the victim is not the active player, so the largest stack is dropped on their
-     * behalf instead of opening an out-of-turn prompt. Add a multiactive choice state if it matters.
+     * Sloop of War Chain Shot: the ship hit loses a resource of its choice. The victim is not the
+     * active player, so the hit is queued and they choose once the shot has resolved (see
+     * nextChainShotLossState). The queue is the victims' player numbers packed as decimal digits.
      */
     private function applyChainShotLoss(string $player_id, string $hit_player_id): void
     {
-        $resources = $this->getGameResourcesHierarchical((int) $hit_player_id)[$hit_player_id] ?? [];
+        $player_no = (int) $this->getPlayerNoById((int) $hit_player_id);
+        $queue = (int) $this->getGameStateValue("pending_chain_shot_victims");
+        $this->setGameStateValue("pending_chain_shot_victims", $queue * 10 + $player_no);
+    }
+
+    /** The resources a chain shot victim can choose to lose: those they have any of, skiffs aside. */
+    function chainShotLossOptions(int $player_id): array
+    {
+        $resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
         unset($resources["skiff"]);
-        $resources = array_filter($resources, fn($count) => $count > 0);
-        if (empty($resources)) {
-            return;
+        return array_keys(array_filter($resources, fn($count) => $count > 0));
+    }
+
+    /**
+     * Hand the turn to the next queued chain shot victim, or return null once none are left. A
+     * victim with nothing, or only one kind of resource, has no choice to make and is settled here.
+     */
+    private function nextChainShotLossState(): ?int
+    {
+        while (($queue = (int) $this->getGameStateValue("pending_chain_shot_victims")) !== 0) {
+            $victim_no = $queue % 10;
+            $victim_id = (int) array_key_first(array_filter(
+                $this->loadPlayersBasicInfos(),
+                fn($player) => (int) $player["player_no"] === $victim_no,
+            ));
+            $options = $this->chainShotLossOptions($victim_id);
+            if (count($options) > 1) {
+                $this->setGameStateValue("chain_shot_shooter", (int) $this->getActivePlayerId());
+                $this->gamestate->changeActivePlayer($victim_id);
+                $this->giveExtraTime($victim_id);
+                return STATE_CHAIN_SHOT_LOSS;
+            }
+            $this->setGameStateValue("pending_chain_shot_victims", intdiv($queue, 10));
+            if (count($options) === 1) {
+                $this->loseChainShotResource($victim_id, $options[0]);
+            }
         }
-        arsort($resources);
-        $resource = array_key_first($resources);
-        $this->playerGainResources($hit_player_id, [$resource => -1]);
+        return null;
+    }
+
+    function actChainShotLose(string $resource): mixed
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        if (!in_array($resource, $this->chainShotLossOptions($player_id), true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource you have"));
+        }
+        $this->loseChainShotResource($player_id, $resource);
+        $this->setGameStateValue(
+            "pending_chain_shot_victims",
+            intdiv((int) $this->getGameStateValue("pending_chain_shot_victims"), 10),
+        );
+        // Back to the shooter; the next-player step hands over to any further victims first.
+        $this->gamestate->changeActivePlayer((int) $this->getGameStateValue("chain_shot_shooter"));
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    /** Zombie fallback: lose one of whatever the victim has most of. */
+    function actChainShotLoseLargest(): mixed
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        $resources = $this->getGameResourcesHierarchical($player_id)[$player_id];
+        $options = $this->chainShotLossOptions($player_id);
+        usort($options, fn($a, $b) => $resources[$b] <=> $resources[$a]);
+        return $this->actChainShotLose($options[0]);
+    }
+
+    private function loseChainShotResource(int $player_id, string $resource): void
+    {
+        $this->playerGainResources($player_id, [$resource => -1]);
         $this->bga->notify->all(
             "log",
             clienttranslate('${player_name} loses 1 ${resource} to chain shot'),
             [
-                "player_name" => $this->getPlayerNameById($hit_player_id),
-                "player_id" => $hit_player_id,
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
                 "resource" => $resource,
             ],
         );

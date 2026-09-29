@@ -33,7 +33,8 @@ class ShipUpgradeFiringUT extends SeasOfHavocUT
         $this->deck->createCards([["type" => 0, "type_arg" => 0, "nbr" => 20]], "damage_deck");
     }
 
-    public function getActivePlayerId(): string { return "1"; }
+    public string $activePlayer = "1";
+    public function getActivePlayerId(): string { return $this->activePlayer; }
     public function getPlayerNameById(int $player_id): string { return "Player$player_id"; }
     public function getPlayerCaptain($player_id) { return "admiral"; }
     public function getPlayerShipUpgrades($player_id) {
@@ -229,7 +230,7 @@ final class ShipUpgradeFiringTest extends TestCase
         $this->assertSame(["2"], $this->game->damaged);
     }
 
-    public function testChainShotTakesTheVictimsLargestResource(): void
+    public function testChainShotLeavesTheChoiceToTheVictim(): void
     {
         $this->game->fireResults = [self::hit(2, 2, 1, "2", Heading::EAST)];
 
@@ -240,21 +241,27 @@ final class ShipUpgradeFiringTest extends TestCase
         ]);
 
         $this->assertSame(2, $this->game->fireCalls[0]["distance"]);
-        $this->assertSame([["2", ["cannonball" => -1]]], $this->game->gains);
+        $this->assertSame([], $this->game->gains, 'nothing is taken until the victim chooses');
     }
 
-    public function testChainShotOnAPlayerWithNothingToLoseIsHarmless(): void
+    public function testChainShotVictimChoosesAmongTheResourcesTheyHave(): void
     {
-        $this->game->resources["2"] = ["sail" => 0, "cannonball" => 0, "doubloon" => 0, "skiff" => 3];
-        $this->game->fireResults = [self::hit(2, 2, 1, "2", Heading::EAST)];
+        $this->game->resources["2"] = ["sail" => 0, "cannonball" => 3, "doubloon" => 2, "skiff" => 3];
+        $this->assertSame(["cannonball", "doubloon"], $this->game->chainShotLossOptions(2));
+    }
 
-        $this->fire("chain shot left", ["sloop_of_war_chain_shot"], [
-            "action" => "fire",
-            "range" => 3,
-            "cost" => ["cannonball" => 1],
-        ]);
+    public function testChainShotVictimLosesTheChosenResource(): void
+    {
+        $this->game->activePlayer = "2";
+        $this->game->actChainShotLose("doubloon");
+        $this->assertSame([["2", ["doubloon" => -1]]], $this->game->gains);
+    }
 
-        $this->assertSame([], $this->game->gains);
+    public function testChainShotVictimCannotChooseWhatTheyLack(): void
+    {
+        $this->game->activePlayer = "2";
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actChainShotLose("skiff");
     }
 
     public function testChasersFireForeAndAft(): void
