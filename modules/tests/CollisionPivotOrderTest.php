@@ -1,5 +1,7 @@
 <?php declare(strict_types=1);
 
+use Bga\Games\SeasOfHavoc\SeaBoard;
+use Bga\Games\SeasOfHavoc\Turn;
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/SeasOfHavocTest.php';
 

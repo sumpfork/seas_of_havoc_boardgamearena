@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . "/PrimitiveCardPlayAction.php";
+namespace Bga\Games\SeasOfHavoc;
 
 /**
  * Ship upgrade effects that are pure rewrites of a card's action tree.

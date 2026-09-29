@@ -1,5 +1,7 @@
 <?php
 
+namespace Bga\Games\SeasOfHavoc;
+
 // Canonical action strings shared by material definitions and the game engine.
 enum PrimitiveCardPlayAction: string
 {

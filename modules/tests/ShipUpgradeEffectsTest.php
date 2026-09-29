@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
+use Bga\Games\SeasOfHavoc\ShipUpgrades;
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . "/../ShipUpgrades.php";
 
 /** Loads material.inc.php on its own so the upgrade definitions can be inspected without the game. */
 class ShipUpgradeMaterial

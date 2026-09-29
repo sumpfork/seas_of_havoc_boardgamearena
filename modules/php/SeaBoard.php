@@ -1,47 +1,11 @@
 <?php
 
+namespace Bga\Games\SeasOfHavoc;
+
 /**
  * SeaBoard class for Seas of Havoc
  * Manages the game board state and object placement/movement
  */
-
-enum Heading: int
-{
-    case NO_HEADING = 0;
-    case NORTH = 1;
-    case EAST = 2;
-    case SOUTH = 3;
-    case WEST = 4;
-
-    public function toString(): string
-    {
-        return match ($this) {
-            Heading::NO_HEADING => "NO_HEADING",
-            Heading::NORTH => "NORTH",
-            Heading::EAST => "EAST",
-            Heading::SOUTH => "SOUTH",
-            Heading::WEST => "WEST",
-        };
-    }
-}
-
-enum Turn: int
-{
-    case LEFT = 0;
-    case RIGHT = 1;
-    case AROUND = 2;
-    case NOTURN = 4;
-
-    public function toString(): string
-    {
-        return match ($this) {
-            Turn::LEFT => "LEFT",
-            Turn::RIGHT => "RIGHT",
-            Turn::AROUND => "AROUND",
-            Turn::NOTURN => "NOTURN",
-        };
-    }
-}
 
 class SeaBoard
 {

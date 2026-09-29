@@ -17,13 +17,13 @@
  *
  */
 
-require_once "modules/SeaBoard.php";
-
 use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\Table;
-
-require_once __DIR__ . "/modules/PrimitiveCardPlayAction.php";
-require_once __DIR__ . "/modules/ShipUpgrades.php";
+use Bga\Games\SeasOfHavoc\Heading;
+use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
+use Bga\Games\SeasOfHavoc\SeaBoard;
+use Bga\Games\SeasOfHavoc\ShipUpgrades;
+use Bga\Games\SeasOfHavoc\Turn;
 
 // State ids (state machine itself is defined by the classes in modules/php/States/).
 if (!defined("STATE_END_GAME")) {
