@@ -178,11 +178,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           this.cleanupTradingPostUi();
           break;
 
-        case "client_workshopChooseUpgrade":
-          this.clientStateVars.workshop_upgrades = null;
-          this.clientStateVars.workshop_slot_number = null;
-          break;
-
         case "extortion":
           this.cleanupScrapCardSelection();
           break;
@@ -315,6 +310,31 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
           }
 
           case "islandTurn": {
+            // A placement waiting on a choice comes back from the server's args, so a refresh
+            // restores it.
+            if (args.pending_resource_choice) {
+              this.statusBar.setTitle(_("${you} must select a resource"));
+              for (const resource of ["sail", "cannonball", "doubloon"]) {
+                this.statusBar.addActionButton(
+                  this.resourceIcon(resource),
+                  () => this.bgaPerformAction("actResourcePickedInDialog", { resource: resource }),
+                  { classes: "bgabutton_resource" },
+                );
+              }
+              break;
+            }
+            if (args.pending_workshop) {
+              this.statusBar.setTitle(_("${you} must choose a ship upgrade to activate"));
+              for (const upgrade of args.pending_workshop.upgrades) {
+                const cost = Object.entries(upgrade.cost).map(([resource, amount]) => amount + " " + this.resourceIcon(resource));
+                this.statusBar.addActionButton(
+                  _(upgrade.name) + " (" + cost.join(" ") + ")",
+                  () => this.bgaPerformAction("actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key }),
+                  { classes: "bgabutton_green" },
+                );
+              }
+              break;
+            }
             if (args && args.market_restocked) {
               this.statusBar.setTitle(_("${you} must place a skiff on a newly revealed Market card"));
             }
@@ -404,41 +424,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
 
           case "client_tradingPostGain":
             this.buildTradingPostGainUI();
-            break;
-
-          case "client_workshopChooseUpgrade": {
-            var upgrades = this.clientStateVars.workshop_upgrades || [];
-            var self2 = this;
-            upgrades.forEach(function (upgrade) {
-              var costParts = Object.entries(upgrade.cost || {}).map(function ([resource, amount]) {
-                return amount + " " + self2.resourceIcon(resource);
-              });
-              var label = _(upgrade.name) + " (" + costParts.join(" ") + ")";
-              var affordable = self2.canPlayerAfford(upgrade.cost, false, false);
-              self2.statusBar.addActionButton(label, function () {
-                if (!affordable) return;
-                self2.bgaPerformAction("actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key });
-              }, { classes: affordable ? "bgabutton_green" : "bgabutton_gray disabled" });
-            });
-            break;
-          }
-
-          case "client_resourceDialog":
-            this.statusBar.addActionButton(
-              this.resourceIcon("sail"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              this.resourceIcon("cannonball"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
-            this.statusBar.addActionButton(
-              this.resourceIcon("doubloon"),
-              this.onResourceButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
-            );
             break;
 
           case "resolveCollision":
@@ -650,32 +635,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             }
             break;
         }
-      }
-    },
-
-    /**
-     * Handle resource button click in dialog
-     */
-    onResourceButtonClicked: function (event) {
-      console.log("resource button clicked");
-      const source = event.target || event.srcElement;
-      console.log(
-        "resource picked " +
-          source.dataset.resource +
-          " context: " +
-          this.clientStateVars.slot_context +
-          " number: " +
-          this.clientStateVars.slot_number,
-      );
-
-      event.preventDefault();
-      if (source.dataset.resource != null) {
-        this.bgaPerformAction("actResourcePickedInDialog", {
-          resource: source.dataset.resource,
-          context: this.clientStateVars.slot_context,
-          number: this.clientStateVars.slot_number,
-        });
-        this.statusBar.removeActionButtons();
       }
     },
 

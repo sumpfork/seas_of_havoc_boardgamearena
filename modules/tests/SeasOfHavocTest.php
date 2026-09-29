@@ -136,9 +136,9 @@ class SeasOfHavocUT extends SeasOfHavoc
         return $this->runAction(fn() => parent::actPlaceSkiff($slotname, $number));
     }
 
-    public function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
+    public function actResourcePickedInDialog(string $resource): mixed
     {
-        return $this->runAction(fn() => parent::actResourcePickedInDialog($resource, $context, $number));
+        return $this->runAction(fn() => parent::actResourcePickedInDialog($resource));
     }
 
     public function actTradingPostExchange(

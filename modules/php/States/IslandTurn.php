@@ -28,6 +28,10 @@ class IslandTurn extends GameState
             'can_use_extra_rations' => $this->game->canUseExtraRations($this->game->getActivePlayerId()),
             'can_restock_market' => $this->game->canRestockMarket(),
             'market_restocked' => (bool) $this->game->getGameStateValue("market_restocked"),
+            // A skiff placement still waiting on a choice. In the args, not a notification, so a
+            // page refresh shows the choice again.
+            'pending_resource_choice' => $this->game->getPendingResourceChoice(),
+            'pending_workshop' => $this->game->getPendingWorkshopChoice(),
         ];
     }
 
@@ -38,14 +42,18 @@ class IslandTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
+    public function actResourcePickedInDialog(string $resource): mixed
     {
-        return $this->game->actResourcePickedInDialog($resource, $context, $number);
+        return $this->game->actResourcePickedInDialog($resource);
     }
 
     public function zombie(int $playerId): mixed
     {
         $this->game->setGameStateValue("market_restocked", 0);
+        $this->game->setGameStateValue("pending_resource_context", 0);
+        $this->game->setGameStateValue("pending_resource_slot", 0);
+        $this->game->setGameStateValue("pending_workshop_player", 0);
+        $this->game->setGameStateValue("pending_workshop_slot", 0);
         // Give up the remaining skiffs, or the island phase would keep coming back to this player.
         $this->game->playerSetResourceCount($playerId, "skiff", 0);
         return 'islandTurnDone';

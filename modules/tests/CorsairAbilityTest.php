@@ -92,7 +92,7 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
-        $this->game->actResourcePickedInDialog('sail', 'corsair_occupied_bank', 'n1');
+        $this->game->actResourcePickedInDialog('sail');
 
         $this->assertSame(1, $this->game->mockPlayerResources['sail']);
         $this->assertSame(1, $this->game->mockPlayerResources['doubloon']);
@@ -103,12 +103,32 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
+    public function testAPendingResourceChoiceSurvivesARefresh(): void {
+        $this->game->actPlaceSkiff('capitol', 'n1');
+        // What IslandTurn::getArgs sends: a reloaded page rebuilds the choice from this.
+        $this->assertSame(
+            ['context' => 'corsair_occupied_capitol', 'number' => 'n1'],
+            $this->game->getPendingResourceChoice(),
+        );
+    }
+
+    public function testAResourceChoiceMustBeARealResource(): void {
+        $this->game->actPlaceSkiff('capitol', 'n1');
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actResourcePickedInDialog('skiff');
+    }
+
+    public function testNoResourceCanBeChosenWithoutAPendingPlacement(): void {
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actResourcePickedInDialog('sail');
+    }
+
     public function testCorsairCanPlaceOnOccupiedCapitolAndOnlyGainChosenResource(): void {
         $this->game->actPlaceSkiff('capitol', 'n1');
         $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
-        $this->game->actResourcePickedInDialog('cannonball', 'corsair_occupied_capitol', 'n1');
+        $this->game->actResourcePickedInDialog('cannonball');
 
         $this->assertSame(1, $this->game->mockPlayerResources['cannonball']);
         $this->assertSame(0, $this->game->mockPlayerResources['skiff']);
@@ -123,7 +143,7 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
-        $this->game->actResourcePickedInDialog('doubloon', 'corsair_occupied_green_flag', 'n1');
+        $this->game->actResourcePickedInDialog('doubloon');
 
         $this->assertSame(1, $this->game->mockPlayerResources['doubloon']);
         $this->assertSame(0, $this->game->mockPlayerResources['skiff']);

@@ -109,7 +109,11 @@ final class ShipUpgradeActivationTest extends TestCase
 
         $this->assertSame(1, $this->game->getGameStateValue("pending_workshop_player"));
         $this->assertSame(1, $this->game->getGameStateValue("pending_workshop_slot"));
-        $this->assertSame("showWorkshopDialog", $this->game->debugLastNotif["type"]);
+        // The choice is offered through the island turn's args, so a refresh shows it again.
+        $this->assertSame(
+            ["xebec_lateen_rigging", "xebec_swift_hull"],
+            array_column($this->game->getPendingWorkshopChoice()["upgrades"], "upgrade_key"),
+        );
         $this->assertEmpty($this->game->resourceAdjustments);
         $this->assertEmpty($this->game->occupiedSlots);
     }

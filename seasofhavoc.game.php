@@ -65,6 +65,15 @@ class SeasOfHavoc extends Table
     /** Table option (gameoptions.jsonc): 1 = off, 2 = 2 Ship Variant. */
     private const OPTION_TWO_SHIPS = 100;
 
+    private const RESOURCE_CHOICE_CONTEXTS = [
+        "capitol",
+        "bank",
+        "green_flag",
+        "corsair_occupied_capitol",
+        "corsair_occupied_bank",
+        "corsair_occupied_green_flag",
+    ];
+
     // Debug flag: give each player a booty token at game start (one with a wild resource)
     private const DEBUG_START_WITH_BOOTY = true;
 
@@ -124,6 +133,10 @@ class SeasOfHavoc extends Table
             "chain_shot_shooter" => 32,
             // 2 Ship Variant: which of the active player's ships the current card moves (1 or 2).
             "active_ship" => 33,
+            // A skiff placement waiting on the player's resource choice (Capitol, Bank, green flag,
+            // or the Corsair on one of those): RESOURCE_CHOICE_CONTEXTS index + 1, and slot number.
+            "pending_resource_context" => 34,
+            "pending_resource_slot" => 35,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -2421,12 +2434,64 @@ class SeasOfHavoc extends Table
         return implode(", ", $parts);
     }
 
+    /**
+     * Record that the active player's skiff placement waits on a resource choice. It lives on the
+     * server, not in a one-off notification, so a page refresh brings the choice back (see
+     * IslandTurn::getArgs) and the choice is checked against the placement actually made.
+     */
     function showResourceChoiceDialog(string $context, string $context_number)
     {
-        $this->bga->notify->player(self::getActivePlayerId(), "showResourceChoiceDialog", "", [
-            "context" => $context,
-            "context_number" => $context_number,
-        ]);
+        $index = array_search($context, self::RESOURCE_CHOICE_CONTEXTS, true);
+        if ($index === false) {
+            throw new \Bga\GameFramework\SystemException("bad resource choice context: $context");
+        }
+        $this->setGameStateValue("pending_resource_context", $index + 1);
+        $this->setGameStateValue("pending_resource_slot", (int) ltrim($context_number, "n"));
+    }
+
+    /** The pending resource choice as ["context" => ..., "number" => "nX"], or null. */
+    function getPendingResourceChoice(): ?array
+    {
+        $index = (int) $this->getGameStateValue("pending_resource_context");
+        if ($index === 0) {
+            return null;
+        }
+        return [
+            "context" => self::RESOURCE_CHOICE_CONTEXTS[$index - 1],
+            "number" => "n" . (int) $this->getGameStateValue("pending_resource_slot"),
+        ];
+    }
+
+    /** The pending workshop choice for the island turn's args: its slot and the upgrades on offer. */
+    function getPendingWorkshopChoice(): ?array
+    {
+        $pending = $this->getPendingWorkshopSelection();
+        if ($pending === null) {
+            return null;
+        }
+        return [
+            "slot_number" => $pending["slot_number"],
+            "upgrades" => $this->workshopUpgradeOptions($pending["player_id"]),
+        ];
+    }
+
+    /** The inactive ship upgrades the player can afford to activate at the workshop. */
+    private function workshopUpgradeOptions(int $player_id): array
+    {
+        $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
+        $options = [];
+        foreach ($this->getPlayerShipUpgrades($player_id) as $upgrade) {
+            $card = $this->non_playable_cards[$upgrade["upgrade_key"]];
+            if (!$upgrade["is_activated"] && $this->canPayFor($card["cost"] ?? [], $player_resources)) {
+                $options[] = [
+                    "upgrade_key" => $upgrade["upgrade_key"],
+                    "name" => $card["name"],
+                    "cost" => $card["cost"] ?? [],
+                    "infamy" => $card["infamy"] ?? 0,
+                ];
+            }
+        }
+        return $options;
     }
 
     function notifyDeckSizeChanged(string $player_id, string $message = "")
@@ -2537,6 +2602,11 @@ class SeasOfHavoc extends Table
                 clienttranslate("Finish the trading post exchange before placing another skiff"),
             );
         }
+        if ($this->getPendingResourceChoice() !== null || $this->getPendingWorkshopSelection() !== null) {
+            throw new \Bga\GameFramework\UserException(
+                clienttranslate("Finish your current placement before placing another skiff"),
+            );
+        }
         $occupancies = $this->getIslandSlots();
 
         $this->dump("occupancies", $occupancies);
@@ -2564,7 +2634,7 @@ class SeasOfHavoc extends Table
                 if ($resolved) {
                     return "islandTurnDone";
                 }
-                return null; // Dialog shown, waiting for actResourcePickedInDialog
+                return STATE_ISLAND_TURN; // re-entered so the args offer the resource choice
             }
             throw new \Bga\GameFramework\UserException(clienttranslate("There is already a skiff on this slot"));
         }
@@ -2573,10 +2643,10 @@ class SeasOfHavoc extends Table
             case "capitol":
                 $this->acquireToken($player_id, "first_player_token");
                 $this->showResourceChoiceDialog($slotname, $number);
-                return null; // Dialog shown, waiting for actResourcePickedInDialog
+                return STATE_ISLAND_TURN; // re-entered so the args offer the resource choice
             case "bank":
                 $this->showResourceChoiceDialog($slotname, $number);
-                return null; // Dialog shown, waiting for actResourcePickedInDialog
+                return STATE_ISLAND_TURN; // re-entered so the args offer the resource choice
             case "shipyard":
                 $this->playerGainResources($player_id, [
                     "sail" => 2,
@@ -2612,7 +2682,7 @@ class SeasOfHavoc extends Table
                 return null; // Dialog shown, waiting for actTradingPostExchange
             case "green_flag":
                 $this->showResourceChoiceDialog($slotname, $number);
-                return null; // Dialog shown, waiting for actResourcePickedInDialog
+                return STATE_ISLAND_TURN; // re-entered so the args offer the resource choice
             case "tan_flag":
                 $this->playerGainResources($player_id, ["skiff" => -1]);
                 $this->acquireToken($player_id, $slotname);
@@ -2638,46 +2708,32 @@ class SeasOfHavoc extends Table
                 $this->occupyIslandSlot($player_id, $slotname, $number);
                 return "islandTurnDone";
             case "workshop":
-                $inactive_upgrades = array_values(
-                    array_filter($this->getPlayerShipUpgrades($player_id), fn($upgrade) => !$upgrade["is_activated"]),
-                );
-                $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
-                $affordable_upgrades = array_values(
-                    array_filter(
-                        $inactive_upgrades,
-                        fn($upgrade) => $this->canPayFor(
-                            $this->non_playable_cards[$upgrade["upgrade_key"]]["cost"] ?? [],
-                            $player_resources,
-                        ),
-                    ),
-                );
-                if (empty($affordable_upgrades)) {
+                if (empty($this->workshopUpgradeOptions((int) $player_id))) {
                     throw new \Bga\GameFramework\UserException(
                         clienttranslate("You have no ship upgrade you can afford to activate"),
                     );
                 }
                 $this->setPendingWorkshopSelection((int) $player_id, $number);
-                $this->bga->notify->player($player_id, "showWorkshopDialog", "", [
-                    "slot_number" => $number,
-                    "upgrades" => array_map(
-                        fn($upgrade) => [
-                            "upgrade_key" => $upgrade["upgrade_key"],
-                            "name" => $this->non_playable_cards[$upgrade["upgrade_key"]]["name"],
-                            "cost" => $this->non_playable_cards[$upgrade["upgrade_key"]]["cost"] ?? [],
-                            "infamy" => $this->non_playable_cards[$upgrade["upgrade_key"]]["infamy"] ?? 0,
-                        ],
-                        $affordable_upgrades,
-                    ),
-                ]);
-                return null; // Dialog shown, waiting for actActivateShipUpgrade
+                return STATE_ISLAND_TURN; // re-entered so the args offer the upgrades
             default:
                 throw new \Bga\GameFramework\SystemException("bad skiff slot: $slotname");
         }
     }
 
-    function actResourcePickedInDialog(string $resource, string $context, string $number): mixed
+    function actResourcePickedInDialog(string $resource): mixed
     {
         $player_id = $this->getActivePlayerId();
+        $pending = $this->getPendingResourceChoice();
+        if ($pending === null) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("There is no resource to choose"));
+        }
+        if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+        }
+        $context = $pending["context"];
+        $number = $pending["number"];
+        $this->setGameStateValue("pending_resource_context", 0);
+        $this->setGameStateValue("pending_resource_slot", 0);
         switch ($context) {
             case "capitol":
                 $this->playerGainResources($player_id, [

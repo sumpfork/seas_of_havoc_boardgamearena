@@ -34,44 +34,12 @@ define([
     },
 
     /**
-     * Show resource choice dialog notification
-     */
-    notif_showResourceChoiceDialog: function (args) {
-      console.groupCollapsed("show resource choice dialog");
-
-      this.clientStateVars.slot_context = args.context;
-      this.clientStateVars.slot_number = args.context_number;
-      console.log("context: " + this.clientStateVars.slot_context);
-      console.log("number: " + this.clientStateVars.slot_number);
-
-      this.setClientState("client_resourceDialog", {
-        descriptionmyturn: _("${you} must select a resource"),
-      });
-
-      console.groupEnd();
-    },
-
-    /**
      * Trading post dialog notification
      */
     notif_showTradingPostDialog: function (args) {
       console.groupCollapsed("show trading post dialog");
       console.log("slot_number:", args.slot_number);
       this.initTradingPost(args.slot_number);
-      console.groupEnd();
-    },
-
-    /**
-     * Workshop upgrade-choice dialog notification
-     */
-    notif_showWorkshopDialog: function (args) {
-      console.groupCollapsed("show workshop dialog");
-      console.log("slot_number:", args.slot_number, "upgrades:", args.upgrades);
-      this.clientStateVars.workshop_slot_number = args.slot_number;
-      this.clientStateVars.workshop_upgrades = args.upgrades;
-      this.setClientState("client_workshopChooseUpgrade", {
-        descriptionmyturn: _("${you} must choose a ship upgrade to activate"),
-      });
       console.groupEnd();
     },
 
