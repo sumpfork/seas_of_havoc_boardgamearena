@@ -261,7 +261,14 @@ define([
 
       window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="scrap_card_dialog">
                           <h3>${_("Choose a card to scrap")}</h3>
-                          <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
+                          <div id="scrap_hand_group" class="scrap_card_group">
+                              <h4>${_("Your hand")}</h4>
+                              <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
+                          </div>
+                          <div id="scrap_discard_group" class="scrap_card_group">
+                              <h4>${_("Discard pile")}</h4>
+                              <div id="scrap_discard_selection_wrapper" class="card_selection_wrapper"></div>
+                          </div>
                           <div class="scrap_dialog_buttons">
                               <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_red">${_("Cancel")}</a>
                           </div>

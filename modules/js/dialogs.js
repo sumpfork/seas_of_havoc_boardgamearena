@@ -835,25 +835,36 @@ define([
       var scrapDialog = this.format_block("jstpl_scrap_card_dialog", {});
       document.body.insertAdjacentHTML("beforeend", scrapDialog);
 
-      this.scrapCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("scrap_card_selection_wrapper"), {
-        gap: "16px",
-        center: true,
-        scrollStep: 160,
-        buttonGap: "4px",
-        scrollbarVisible: false,
-        leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
-        rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
-      });
+      // Hand and discard pile are shown as separate rows, so the player can see where each
+      // card comes from. One selection across both.
+      const makeStock = (wrapperId) => {
+        const stock = new BgaCards.ScrollableStock(this.cardsManager, $(wrapperId), {
+          gap: "16px",
+          center: true,
+          scrollStep: 160,
+          buttonGap: "4px",
+          scrollbarVisible: false,
+          leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
+          rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
+        });
+        stock.setSelectionMode("single");
+        return stock;
+      };
+      this.scrapCardSelection = makeStock("scrap_card_selection_wrapper");
+      this.scrapDiscardSelection = makeStock("scrap_discard_selection_wrapper");
 
-      this.scrapCardSelection.setSelectionMode("single");
+      const inHand = (card) => card.location === "hand";
+      const handPreviews = this._addPreviewCards(this.scrapCardSelection, args.available_cards, inHand);
+      const discardPreviews = this._addPreviewCards(this.scrapDiscardSelection, args.available_cards, (card) => !inHand(card));
+      this.scrapPreviewCards = new Map([...handPreviews, ...discardPreviews]);
+      domStyle.set("scrap_hand_group", "display", handPreviews.size ? "" : "none");
+      domStyle.set("scrap_discard_group", "display", discardPreviews.size ? "" : "none");
 
-      this.scrapPreviewCards = this._addPreviewCards(this.scrapCardSelection, args.available_cards);
-
-      this.scrapCardSelection.onSelectionChange = (selection, lastChange) => {
+      this.scrapSelectedCardId = null;
+      const onSelect = (stock, other) => (selection) => {
         if (selection.length > 0) {
-          var selectedCard = this.scrapPreviewCards.get(Number(selection[0].id));
-          console.log("Card selected for scrapping:", selectedCard);
-
+          other.unselectAll(true);
+          this.scrapSelectedCardId = this.scrapPreviewCards.get(Number(selection[0].id)).id;
           if (!$("confirm_scrap_button")) {
             domConstruct.create(
               "a",
@@ -866,18 +877,22 @@ define([
               $("cancel_scrap_button"),
               "before",
             );
-
+            // Reads the selection when clicked: the player may change their mind after the
+            // button appears.
             on($("confirm_scrap_button"), "click", (event) => {
               event.preventDefault();
-              this.confirmScrapCard(selectedCard.id);
+              this.confirmScrapCard(this.scrapSelectedCardId);
             });
           }
-        } else {
+        } else if (other.getSelection().length === 0) {
+          this.scrapSelectedCardId = null;
           if ($("confirm_scrap_button")) {
             domConstruct.destroy("confirm_scrap_button");
           }
         }
       };
+      this.scrapCardSelection.onSelectionChange = onSelect(this.scrapCardSelection, this.scrapDiscardSelection);
+      this.scrapDiscardSelection.onSelectionChange = onSelect(this.scrapDiscardSelection, this.scrapCardSelection);
 
       on($("cancel_scrap_button"), "click", (event) => {
         event.preventDefault();
@@ -1074,8 +1089,11 @@ define([
       console.log("Cleaning up scrap card selection");
 
       this._destroySelectionStock(this.scrapCardSelection);
+      this._destroySelectionStock(this.scrapDiscardSelection);
       this.scrapCardSelection = null;
+      this.scrapDiscardSelection = null;
       this.scrapPreviewCards = null;
+      this.scrapSelectedCardId = null;
 
       if ($("scrap_card_dialog")) {
         domConstruct.destroy("scrap_card_dialog");

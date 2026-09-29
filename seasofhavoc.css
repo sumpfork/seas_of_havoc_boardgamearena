@@ -1176,3 +1176,11 @@ a.disabled {
 .seafeature_badge[data-seafeature="gust"] {
   background-position: 0px -68px;
 }
+
+/* Scrap dialog: the hand and the discard pile as separate, labelled rows. */
+.scrap_card_group h4 {
+  margin: 12px 0 4px;
+  text-align: left;
+  font-size: 14px;
+  color: #6b5210;
+}
