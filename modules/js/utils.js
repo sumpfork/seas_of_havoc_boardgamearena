@@ -197,20 +197,27 @@ define([
      * the shot went. Used for hits and misses alike - a miss is still a shot.
      */
     muzzleFlashAnimation: function (shipId, fireHeading) {
-      const NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
-      const offsets = { [NORTH]: ["top", "20px"], [SOUTH]: ["top", "-20px"],
-        [EAST]: ["left", "20px"], [WEST]: ["left", "-20px"] };
-      const offset = offsets[fireHeading];
-      if (!offset) {
+      // The art is a barrel at the top with the blast spiking out of the bottom, so it fires south
+      // unturned: north needs a half turn, and each heading after it a further quarter turn.
+      if (![1, 2, 3, 4].includes(Number(fireHeading))) {
         throw new Error("Cannot fire towards heading " + fireHeading);
       }
+      // On the board, not inside the ship: the ship is rotated to its heading, which would rotate
+      // the flash and its offset a second time.
+      const board = dom.byId("seaboard");
       const id = "cannonfire_" + this._nextEffectId();
-      domConstruct.place(this.format_block("jstpl_cannon_fire", { id: id }), shipId);
-      domStyle.set(id, "rotate", this.getHeadingDegrees(fireHeading) + "deg");
-      domStyle.set(id, offset[0], offset[1]);
+      domConstruct.place(this.format_block("jstpl_cannon_fire", { id: id }), board);
+      domStyle.set(id, "rotate", ((fireHeading - 1) * 90 + 180) % 360 + "deg");
       domStyle.set(id, "opacity", 0);
+      // Measured when the flash plays: moves queued ahead of it have not happened yet.
+      const placeOnShip = () => {
+        const b = board.getBoundingClientRect();
+        const r = dom.byId(shipId).getBoundingClientRect();
+        domStyle.set(id, "left", r.left - b.left + r.width / 2 + "px");
+        domStyle.set(id, "top", r.top - b.top + r.height / 2 + "px");
+      };
       return fx.chain([
-        baseFX.fadeIn({ node: id, duration: 80 }),
+        baseFX.fadeIn({ node: id, duration: 80, beforeBegin: placeOnShip }),
         baseFX.fadeOut({
           node: id,
           duration: 200,

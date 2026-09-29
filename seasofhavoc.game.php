@@ -460,6 +460,11 @@ class SeasOfHavoc extends Table
      * Each player's discard is its own ordered pile: the location name carries the player, which
      * frees card_location_arg to be the position in the pile (highest = top).
      */
+    function discardHand(int $player_id): void
+    {
+        $this->cards->moveAllCardsInLocation("hand", $this->playerDiscardName($player_id), $player_id);
+    }
+
     function playerDiscardName($player_id)
     {
         return "player_discard_" . $player_id;
@@ -4979,47 +4984,6 @@ class SeasOfHavoc extends Table
         $this->gamestate->nextState( 'some_gamestate_transition' );
     }    
     */
-
-    //////////////////////////////////////////////////////////////////////////////
-    //////////// Zombie
-    ////////////
-
-    /*
-        zombieTurn:
-        
-        This method is called each time it is the turn of a player who has quit the game (= "zombie" player).
-        You can do whatever you want in order to make sure the turn of this player ends appropriately
-        (ex: pass).
-        
-        Important: your zombie code will be called when the player leaves the game. This action is triggered
-        from the main site and propagated to the gameserver from a server, not from a browser.
-        As a consequence, there is no current player associated to this action. In your zombieTurn function,
-        you must _never_ use getCurrentPlayerId() or getCurrentPlayerName(), otherwise it will fail with a "Not logged" error message. 
-    */
-
-    function zombieTurn($state, $active_player)
-    {
-        $statename = $state["name"];
-
-        if ($state["type"] === "activeplayer") {
-            switch ($statename) {
-                default:
-                    $this->gamestate->nextState("zombiePass");
-                    break;
-            }
-
-            return;
-        }
-
-        if ($state["type"] === "multipleactiveplayer") {
-            // Make sure player is in a non blocking status for role turn
-            $this->gamestate->setPlayerNonMultiactive($active_player, "");
-
-            return;
-        }
-
-        throw new \Bga\GameFramework\SystemException("Zombie mode not supported at this game state: " . $statename);
-    }
 
     ///////////////////////////////////////////////////////////////////////////////////:
     ////////// DB upgrade

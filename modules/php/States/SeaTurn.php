@@ -33,6 +33,8 @@ class SeaTurn extends GameState
 
     public function zombie(int $playerId): mixed
     {
+        // Discard the hand, or the sea phase would keep coming back to this player.
+        $this->game->discardHand($playerId);
         return 'seaTurnDone';
     }
 
