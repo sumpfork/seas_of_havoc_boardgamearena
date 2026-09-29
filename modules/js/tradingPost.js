@@ -85,7 +85,7 @@ define([
         var res = TRADEABLE_RESOURCES[i];
         var count = parseInt(playerRes[res]) || 0;
         var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_resource trading-resource-btn' + disabledClass
+        html += '<a class="bgabutton bgabutton_gray trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="1" data-phase="spend">'
           + this.resourceIcon(res) + '</a>';
       }
@@ -98,12 +98,12 @@ define([
         var res = TRADEABLE_RESOURCES[i];
         var count = parseInt(playerRes[res]) || 0;
         var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_resource trading-resource-btn' + disabledClass
+        html += '<a class="bgabutton bgabutton_gray trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="2" data-phase="spend">'
           + this.resourceIcon(res) + '</a>';
       }
       html += '<a class="bgabutton bgabutton_gray trading-resource-btn" '
-        + 'data-resource="skip" data-row="2" data-phase="spend">Skip</a>';
+        + 'data-resource="skip" data-row="2" data-phase="spend">' + _("Skip") + '</a>';
       html += '</div>';
 
       html += '</div>';
@@ -112,7 +112,7 @@ define([
       this.statusBar.addActionButton(
         _("Confirm"),
         this.onTradingPostSpendConfirm.bind(this),
-        { id: "trading_post_confirm_btn", classes: "bgabutton_green" },
+        { id: "trading_post_confirm_btn", },
       );
       domClass.add("trading_post_confirm_btn", "disabled");
 
@@ -140,7 +140,7 @@ define([
         html += '<span class="trading-row-label">' + row + '.</span>';
         for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
           var res = TRADEABLE_RESOURCES[i];
-          html += '<a class="bgabutton bgabutton_resource trading-resource-btn'
+          html += '<a class="bgabutton bgabutton_gray trading-resource-btn'
             + '" data-resource="' + res + '" data-row="' + row + '" data-phase="gain">'
             + this.resourceIcon(res) + '</a>';
         }
@@ -152,7 +152,7 @@ define([
       this.statusBar.addActionButton(
         _("Confirm"),
         this.onTradingPostGainConfirm.bind(this),
-        { id: "trading_post_confirm_btn", classes: "bgabutton_green" },
+        { id: "trading_post_confirm_btn", },
       );
       domClass.add("trading_post_confirm_btn", "disabled");
 

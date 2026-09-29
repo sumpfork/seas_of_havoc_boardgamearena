@@ -149,16 +149,14 @@ define([
               if (!this.canPlayerAfford(card.cost)) {
                 console.log("disabling");
                 buttonNodes.forEach(function (node) {
-                  domClass.remove(node, "bgabutton_green");
                   domClass.add(node, "disabled");
-                  html.set(node, "Cannot Afford");
+                  html.set(node, _("Cannot Afford"));
                 });
               } else {
                 console.log("enabling purchase button");
                 buttonNodes.forEach(function (node) {
-                  domClass.add(node, "bgabutton_green");
                   domClass.remove(node, "disabled");
-                  html.set(node, "Purchase Card");
+                  html.set(node, _("Purchase Card"));
                 });
               }
             }

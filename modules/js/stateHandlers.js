@@ -229,7 +229,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               ["sail", "cannonball", "doubloon"].forEach(resource => {
                 this.statusBar.addActionButton(this.resourceIcon(resource), () => {
                   this.bgaPerformAction("actResolveCardFlag", { resource });
-                }, { classes: "bgabutton_resource" });
+                }, { color: "secondary" });
               });
             } else if (args.flag === "tan" || args.flag === "blue") {
               this.statusBar.addActionButton(args.flag === "tan" ? _("Draw a card") : _("Take another turn"), () => {
@@ -238,7 +238,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             }
             this.statusBar.addActionButton(_("Skip flag action"), () => {
               this.bgaPerformAction("actSkipCardFlag", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
 
           case "postCollisionFire": {
@@ -266,7 +266,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             this.statusBar.addActionButton(
               _("Don't fire"),
               () => { this.bgaPerformAction("actPostCollisionFire", { decision: "skip" }); },
-              { classes: "bgabutton_gray" },
+              { color: "secondary" },
             );
             break;
           }
@@ -279,7 +279,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               this.statusBar.addActionButton(
                 _("Discard") + " " + node.outerHTML,
                 () => { this.bgaPerformAction("actDiscardBootyToken", { card_id: token.id }); },
-                { classes: "bgabutton_resource" },
+                { color: "secondary" },
               );
             });
             break;
@@ -289,11 +289,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             this.statusBar.addActionButton(
               _("Play another card"),
               () => { this.bgaPerformAction("actHuntTheBountyPlayAnother", {}); },
-              { classes: "bgabutton_green" },
+              {},
             );
             this.statusBar.addActionButton(_("End turn"), () => {
               this.bgaPerformAction("actSkipHuntTheBountyExtraPlay", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
@@ -301,11 +301,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             this.statusBar.addActionButton(
               _("Pay 1") + " " + this.resourceIcon("sail") + " " + _("to play another card"),
               () => { this.bgaPerformAction("actUseSwiftHull", {}); },
-              { classes: "bgabutton_green" },
+              {},
             );
             this.statusBar.addActionButton(_("End turn"), () => {
               this.bgaPerformAction("actSkipSwiftHull", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
@@ -318,7 +318,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 this.statusBar.addActionButton(
                   this.resourceIcon(resource),
                   () => this.bgaPerformAction("actResourcePickedInDialog", { resource: resource }),
-                  { classes: "bgabutton_resource" },
+                  { color: "secondary" },
                 );
               }
               break;
@@ -330,7 +330,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 this.statusBar.addActionButton(
                   _(upgrade.name) + " (" + cost.join(" ") + ")",
                   () => this.bgaPerformAction("actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key }),
-                  { classes: "bgabutton_green" },
+                  {},
                 );
               }
               break;
@@ -342,14 +342,14 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               this.statusBar.addActionButton(
                 _("Restock Market"),
                 () => { this.bgaPerformAction("actRestockMarket", {}); },
-                { classes: "bgabutton_gray" },
+                { color: "secondary" },
               );
             }
             if (args && args.can_use_extra_rations) {
               this.statusBar.addActionButton(
                 _("Extra Rations") + ": " + _("pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
                 () => { this.bgaPerformAction("actExtraRations", {}); },
-                { classes: "bgabutton_green" },
+                {},
               );
             }
             break;
@@ -361,7 +361,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             console.log("Adding Complete Purchases button for state: " + stateName);
             this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
             this.statusBar.addActionButton(_("Restart Purchases"), this.onRestartPurchasesClicked.bind(this), {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             break;
 
@@ -377,44 +377,41 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 var isNone = combo.cb === 0 && combo.sail === 0;
                 self.statusBar.addActionButton(label, function () {
                   self.onMerchantSubstituteChosen(combo.cb, combo.sail);
-                }, { classes: isNone ? "bgabutton_gray" : "bgabutton_green" });
+                }, { color: isNone ? "secondary" : "primary" });
               });
               this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
-                classes: "bgabutton_red",
+                color: "alert",
               });
             }
             break;
 
           case "client_bootyPurchaseConfirm":
             this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPurchaseYes.bind(this), {
-              classes: "bgabutton_green",
-            });
+              });
             this.statusBar.addActionButton(_("No thanks"), this.onBootyPurchaseNo.bind(this), {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             this.statusBar.addActionButton(_("Cancel"), this.onBootyPurchaseCancel.bind(this), {
-              classes: "bgabutton_red",
+              color: "alert",
             });
             break;
 
           case "client_bootyPlayConfirm":
             this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPlayYes.bind(this), {
-              classes: "bgabutton_green",
-            });
+              });
             this.statusBar.addActionButton(_("No thanks"), this.onBootyPlayNo.bind(this), {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             this.statusBar.addActionButton(_("Cancel"), this.onBootyPlayCancel.bind(this), {
-              classes: "bgabutton_red",
+              color: "alert",
             });
             break;
 
           case "client_tradingPostBootyChoice":
             this.statusBar.addActionButton(_("Yes, use booty token"), this.onTradingPostBootyYes.bind(this), {
-              classes: "bgabutton_green",
-            });
+              });
             this.statusBar.addActionButton(_("No, trade resources"), this.onTradingPostBootyNo.bind(this), {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             break;
 
@@ -430,17 +427,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             this.statusBar.addActionButton(
               "<div class='resource pivot_left' role='img' aria-label='Pivot left' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
+              { color: "secondary" },
             );
             this.statusBar.addActionButton(
               "<div class='resource nope' role='img' aria-label='Do not pivot' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
+              { color: "secondary" },
             );
             this.statusBar.addActionButton(
               "<div class='resource pivot_right' role='img' aria-label='Pivot right' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
-              { classes: "bgabutton_resource" },
+              { color: "secondary" },
             );
             break;
 
@@ -457,7 +454,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               self.statusBar.addActionButton(
                 label,
                 function () { self.bgaPerformAction("actRallyTheFlagsChooseFlag", { flag_key: flagKey }); },
-                { classes: "bgabutton_green" },
+                {},
               );
             });
             break;
@@ -479,7 +476,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             });
             this.statusBar.addActionButton(_("Skip the rest"), () => {
               this.bgaPerformAction("actSkipExtortion", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
@@ -487,10 +484,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             ["sail", "cannonball", "doubloon"].forEach((resource) => {
               this.statusBar.addActionButton(this.resourceIcon(resource), () => {
                 this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource });
-              }, { classes: "bgabutton_resource" });
+              }, { color: "secondary" });
             });
             this.statusBar.addActionButton(_("Back"), () => { this.restoreServerGameState(); }, {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             break;
           }
@@ -507,20 +504,20 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 barterSelf.statusBar.addActionButton(
                   "1 " + barterSelf.resourceIcon(res) + " → " + amount + " " + barterSelf.resourceIcon("infamy"),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "resource_to_infamy" }); },
-                  { classes: "bgabutton_green" },
+                  {},
                 );
               }
               if (infamy >= amount) {
                 barterSelf.statusBar.addActionButton(
                   amount + " " + barterSelf.resourceIcon("infamy") + " → 1 " + barterSelf.resourceIcon(res),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
-                  { classes: "bgabutton_green" },
+                  {},
                 );
               }
             });
             this.statusBar.addActionButton(_("Skip (No Exchange)"), function () {
               barterSelf.bgaPerformAction("actSkipBarter", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
@@ -542,7 +539,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
             this.statusBar.addActionButton(
               _("Gain") + " 2 " + this.resourceIcon("doubloon"),
               function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
-              { classes: "bgabutton_green" },
+              {},
             );
             var ttMarketArr = Array.isArray(ttMarket) ? ttMarket : Object.values(ttMarket);
             ttMarketArr.forEach(function (card) {
@@ -561,7 +558,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                     doubloons_as_sails: 0,
                   });
                 },
-                { classes: canAfford ? "bgabutton_green" : "bgabutton_gray" },
+                { disabled: !canAfford },
               );
             });
             break;
@@ -580,7 +577,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                   bpSelf.statusBar.addActionButton(
                     _("Steal") + " 1 " + bpSelf.resourceIcon(r) + " " + _("from") + " " + tname,
                     function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: r }); },
-                    { classes: "bgabutton_green" },
+                    {},
                   );
                 }
               });
@@ -588,13 +585,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
                 bpSelf.statusBar.addActionButton(
                   _("Steal booty token from") + " " + tname,
                   function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: "booty_token" }); },
-                  { classes: "bgabutton_green" },
+                  {},
                 );
               }
             });
             this.statusBar.addActionButton(_("Skip (No Steal)"), function () {
               bpSelf.bgaPerformAction("actSkipBoardingParty", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
@@ -606,18 +603,18 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClas
               htbSelf.statusBar.addActionButton(
                 _("Target") + " " + (target.player_name || target.player_id),
                 function () { htbSelf.bgaPerformAction("actHuntTheBountyChooseTarget", { target_player_id: target.player_id }); },
-                { classes: "bgabutton_green" },
+                {},
               );
             });
             this.statusBar.addActionButton(_("Skip (No Target)"), function () {
               htbSelf.bgaPerformAction("actSkipHuntTheBounty", {});
-            }, { classes: "bgabutton_gray" });
+            }, { color: "secondary" });
             break;
           }
 
           case "treasureSeekerAdjust":
             this.statusBar.addActionButton(_("Keep current location"), this.onSkipTreasureSeekerAdjust.bind(this), {
-              classes: "bgabutton_gray",
+              color: "secondary",
             });
             break;
 

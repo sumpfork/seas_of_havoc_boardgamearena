@@ -308,10 +308,6 @@
   background-position: -60px -30px;
 }
 /* Resource buttons: solid beige, no default button gradient */
-.bgabutton.bgabutton_resource {
-  background: #ecdfc3;
-  filter: none;
-}
 .flagish {
   background-image: url("img/flags_1stplayer.png");
   width: 50px;

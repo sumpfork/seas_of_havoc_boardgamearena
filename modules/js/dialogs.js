@@ -702,10 +702,8 @@ define([
       let ready = this._checkIsCardReadyToBePlayed(this.dep_tree);
       console.groupEnd();
       if (ready) {
-        domClass.add(button_id, "bgabutton_green");
         domClass.remove(button_id, "disabled");
       } else {
-        domClass.remove(button_id, "bgabutton_green");
         domClass.add(button_id, "disabled");
       }
     },
@@ -882,8 +880,6 @@ define([
       );
 
       domClass.add("confirm_discard_button", "disabled");
-      domClass.add("confirm_discard_button", "bgabutton_gray");
-      domClass.remove("confirm_discard_button", "bgabutton_green");
       this.rebelDiscardSelectedCardId = null;
 
       this.discardCardSelection.onSelectionChange = (selection, lastChange) => {
@@ -892,13 +888,9 @@ define([
           this.rebelDiscardSelectedCardId = selectedCard.id;
           console.log("Card selected for discard:", selectedCard);
           domClass.remove("confirm_discard_button", "disabled");
-          domClass.add("confirm_discard_button", "bgabutton_green");
-          domClass.remove("confirm_discard_button", "bgabutton_gray");
         } else {
           this.rebelDiscardSelectedCardId = null;
           domClass.add("confirm_discard_button", "disabled");
-          domClass.remove("confirm_discard_button", "bgabutton_green");
-          domClass.add("confirm_discard_button", "bgabutton_gray");
         }
       };
 

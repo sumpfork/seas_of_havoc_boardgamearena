@@ -229,7 +229,7 @@ define([
                           <div id="card_choices"></div>
                           <div id="card_play_buttons">
                             <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">${_("Pass whole card")}</div>
-                            <div id="play_card_button" class="bgabutton bgabutton_green play_card_button">${_("Play card")}</div>
+                            <div id="play_card_button" class="bgabutton bgabutton_blue play_card_button">${_("Play card")}</div>
                           </div>
                           </div>`;
 
@@ -249,13 +249,13 @@ define([
                               <div id="booty_token_p\${player_id}" class="booty-token-slot"></div>
                           </div>`;
 
-      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_green purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">Purchase Card</a>`;
+      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">Purchase Card</a>`;
 
       window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="scrap_card_dialog">
                           <h3>Choose a card to scrap</h3>
                           <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="scrap_dialog_buttons">
-                              <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_gray">Cancel</a>
+                              <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_red">${_("Cancel")}</a>
                           </div>
                       </div>`;
 
@@ -263,7 +263,7 @@ define([
                           <h3>Choose a card to discard</h3>
                           <div id="discard_card_selection_wrapper" class="card_selection_wrapper"></div>
                           <div class="discard_dialog_buttons">
-                              <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_gray disabled">Discard Card</a>
+                              <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_blue disabled">${_("Discard Card")}</a>
                           </div>
                       </div>`;
 
