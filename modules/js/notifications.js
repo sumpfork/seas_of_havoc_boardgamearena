@@ -344,6 +344,10 @@ define([
             }
             var target_id = "seaboardlocation_" + move.new_x + "_" + move.new_y;
             anims.push(this.slideToObject(shipid, target_id, 1000));
+            // Keep the board model current: the card play preview starts from it.
+            const moved = this.getObjectOnSeaboard("player_ship", shipArg);
+            moved.x = move.new_x;
+            moved.y = move.new_y;
             break;
           }
           case "turn": {
@@ -425,14 +429,21 @@ define([
           this.applyShipwreckEvents([args.shipwreck_event]);
         }
       };
-      if (anims.length) {
-        const chain = fx.chain(anims);
-        chain.onEnd = applyShipwreckEvents;
-        chain.play();
-      } else {
-        applyShipwreckEvents();
-      }
       console.groupEnd();
+      if (!anims.length) {
+        applyShipwreckEvents();
+        return;
+      }
+      // Returned so the notification queue waits for the moves and rams to finish: a ram is
+      // followed by the collision discard, which must not open over a ship still sailing.
+      return new Promise((resolve) => {
+        const chain = fx.chain(anims);
+        chain.onEnd = () => {
+          applyShipwreckEvents();
+          resolve();
+        };
+        chain.play();
+      });
     },
 
     /**

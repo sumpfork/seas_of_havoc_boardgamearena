@@ -20,8 +20,9 @@ define(["dojo/dom-style"], function (domStyle) {
       face.addEventListener('click', event => {
         // Selectable stocks own clicks for playing, scrapping, and discarding.
         if (face.closest('.bga-cards_selectable-stock') ||
-            face.classList.contains('non-playable-card-back') ||
-            !(face.closest('.seasofhavoc-card[data-side="front"]') || face.classList.contains('panel_card_art'))) return;
+            (face.classList.contains('non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) ||
+            !(face.closest('.seasofhavoc-card[data-side="front"]') || face.classList.contains('panel_card_art') ||
+              face.classList.contains('upgrade-activated-face'))) return;
         event.stopPropagation();
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');
@@ -69,7 +70,8 @@ define(["dojo/dom-style"], function (domStyle) {
       if (side === "back" && cardData && cardData.category === "ship_upgrade") {
         // Ship upgrade cards flip to their activated (upgraded) side, stored 2 sprites after the front.
         image_id = cardData.image_id + 2;
-        div.classList.add("non-playable-card-back");
+        // Its upgraded side: real card art, so it can be enlarged like a front.
+        div.classList.add("non-playable-card-back", "upgrade-activated-face");
       } else if (cardData) {
         image_id = cardData.image_id;
         div.classList.add("non-playable-card-front");

@@ -14,6 +14,9 @@ define([
   "dojo/dom-attr",
   getLibUrl("bga-cards", "1.x"),
 ], function (dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards) {
+  // Card actions with no choice in them that get a locked row of their own in the play dialog.
+  const FIXED_MOVES = ["forward", "left", "right", "pivot left", "pivot right", "pivot 180"];
+
   return {
     /**
      * Clean up card play dialog
@@ -22,6 +25,10 @@ define([
       if (this._closeCardPlayDialogOnOutsideClick) {
         document.removeEventListener("click", this._closeCardPlayDialogOnOutsideClick);
         this._closeCardPlayDialogOnOutsideClick = null;
+      }
+      if (this._closeCardPlayDialogOnEscape) {
+        document.removeEventListener("keydown", this._closeCardPlayDialogOnEscape);
+        this._closeCardPlayDialogOnEscape = null;
       }
       if (this.cardDisplayStock) {
         try {
@@ -33,6 +40,8 @@ define([
       }
       this.dep_tree = null;
       this._captainCopyId = null;
+      this._previewActions = null;
+      this.clearCardPreview();
       domConstruct.destroy("card_display_dialog");
     },
 
@@ -65,26 +74,17 @@ define([
         this.playerHand.unselectAll();
       };
       document.addEventListener("click", this._closeCardPlayDialogOnOutsideClick);
-
-      var makeDecisionSummary = function (tree, decisionSummary) {
-        if (typeof decisionSummary === "undefined") {
-          decisionSummary = [];
+      // Escape drops the card back too. A card zoom open on top takes the key first, and the
+      // booty prompt is answered from the status bar, so the dialog stays for both.
+      this._closeCardPlayDialogOnEscape = (event) => {
+        if (event.key !== "Escape" || this._pendingBootySend || document.querySelector("dialog[open]")) {
+          return;
         }
-        console.log("making decision summary " + decisionSummary);
-        tree.forEach((options) => {
-          for (let i = 0; i < options.length; i++) {
-            let option = options[i];
-            console.log(option);
-            var checkbox = dom.byId(option.id);
-            console.log("checked: " + checkbox.checked);
-            if (checkbox.checked) {
-              decisionSummary.push(option.name);
-              makeDecisionSummary(option.children, decisionSummary);
-            }
-          }
-        });
-        return decisionSummary;
+        this.cleanupCardPlayDialog();
+        this.playerHand.unselectAll();
       };
+      document.addEventListener("keydown", this._closeCardPlayDialogOnEscape);
+
 
       on(
         query(".play_card_button"),
@@ -92,7 +92,7 @@ define([
         lang.hitch(this, (event) => {
           console.groupCollapsed("card play button clicked");
           event.preventDefault();
-          var decisionSummary = makeDecisionSummary(this.dep_tree);
+          var decisionSummary = this._decisionSummary(this.dep_tree);
           var totalCost = this._computeTotalPlayCost(this.dep_tree);
           var captainCopyId = this._captainCopyId;
 
@@ -140,6 +140,7 @@ define([
             ).join(" "),
           "card_ship_choice",
         );
+        query('input[name="card_ship"]').connect("onchange", this, () => this.updateCardPreview());
       }
 
       var display_dom = query("#card_display");
@@ -151,8 +152,8 @@ define([
       console.log(card);
 
       // Build card dependency tree
+      this._previewActions = card.actions;
       this.dep_tree = this._makeCardDependencyTree(card.actions);
-      var hasPassOption = this._hoistCardPassOption(card.actions, this.dep_tree);
       console.log(this.dep_tree);
 
       // Render choice rows
@@ -164,7 +165,10 @@ define([
       if (result.length > 0) {
         var choices_html = result.join("\n");
         domConstruct.place(choices_html, "card_choices");
+        this._lockFixedRows(this.dep_tree);
         query(".card_choice_radio").connect("onchange", this, (event) => {
+          // The player has answered this row themselves: nothing in it is an automatic pick now.
+          query(`input[name="${event.target.name}"]`).forEach((radio) => delete radio.dataset.autoTicked);
           this._updateCardPlayControls();
         });
       }
@@ -172,11 +176,36 @@ define([
       this._updateCardPlayControls();
       if (captainCopyId !== null) {
         query(".pass_card_button").forEach(node => { node.textContent = _("Cancel copy"); });
-      } else if (hasPassOption) {
-        // Passing is already offered as an option on the first row - two buttons for one outcome.
-        query(".pass_card_button").forEach(node => { domStyle.set(node, "display", "none"); });
       }
       this.cardPlayDialogShown = true;
+    },
+
+    /** Tick the rows for moves the card always makes, and stop them being changed. */
+    _lockFixedRows: function (tree) {
+      tree.forEach((options) => {
+        for (const option of options) {
+          if (option.fixed) {
+            const radio = dom.byId(option.id);
+            radio.checked = true;
+            radio.disabled = true;
+            radio.classList.add("card_choice_fixed");
+          }
+          this._lockFixedRows(option.children);
+        }
+      });
+    },
+
+    /** The decisions ticked in the dialog so far, in the order the server consumes them. */
+    _decisionSummary: function (tree, decisionSummary = []) {
+      tree.forEach((options) => {
+        for (const option of options) {
+          if (dom.byId(option.id).checked && !option.fixed) {
+            decisionSummary.push(option.name);
+            this._decisionSummary(option.children, decisionSummary);
+          }
+        }
+      });
+      return decisionSummary;
     },
 
     /**
@@ -303,7 +332,7 @@ define([
      * Build dependency tree from card actions
      * @private
      */
-    _makeCardDependencyTree: function (actions, choice_count) {
+    _makeCardDependencyTree: function (actions, choice_count, topLevel = true) {
       var bga = this;
       var tree = new Map();
       if (typeof choice_count === "undefined") {
@@ -322,7 +351,8 @@ define([
             for (const option of action.choices) {
               var choice_name = option.name || option.action;
               var id = "card_choice_" + choice_count + "_option_" + option_count;
-              var children = this._makeCardDependencyTree([option], choice_count + num_descendant_choices + 1);
+              // Inside a choice the option's chip already names its move: no fixed rows for it.
+              var children = this._makeCardDependencyTree([option], choice_count + num_descendant_choices + 1, false);
               var entry = {
                 name: choice_name,
                 id: id,
@@ -358,7 +388,7 @@ define([
             break;
 
           case "sequence":
-            var children = this._makeCardDependencyTree(action.actions, choice_count);
+            var children = this._makeCardDependencyTree(action.actions, choice_count, topLevel);
             children.forEach((value, key) => {
               tree.set(key, value);
             });
@@ -410,6 +440,17 @@ define([
               tree.set("choice_" + choice_count, tree_choices);
               choice_count++;
               num_descendant_choices += 1;
+            } else if (topLevel && FIXED_MOVES.includes(choice_name)) {
+              // A move the card always makes: shown as its own row, ticked and locked, so the dialog
+              // lists everything the card does. The server takes no decision for it.
+              tree.set("choice_" + choice_count, [{
+                name: choice_name,
+                id: "card_choice_" + choice_count + "_option_0",
+                fixed: true,
+                children: new Map(),
+              }]);
+              choice_count++;
+              num_descendant_choices += 1;
             }
           }
         }
@@ -418,29 +459,6 @@ define([
       console.log("returning tree");
       console.log(tree);
       return tree;
-    },
-
-    /**
-     * A card whose only action is optional can be played for no effect at all, so its auto-generated
-     * "skip" rows all mean the same thing: pass. Replace them with a single "pass" option on the
-     * first row, which sends the same decision as the pass button. Cards that also do something
-     * mandatory keep their per-action "skip" - there, skipping is not passing.
-     * @private
-     */
-    _hoistCardPassOption: function (actions, tree) {
-      var optional = a => Object.hasOwn(a, "cost") ||
-        (a.action === "choice" && a.choices.every(c => Object.hasOwn(c, "cost")));
-      if (actions.length !== 1 || !optional(actions[0])) {
-        return false;
-      }
-      var stripSkips = t => t.forEach((options, key) => {
-        t.set(key, options.filter(o => o.name !== "skip"));
-        options.forEach(o => stripSkips(o.children));
-      });
-      stripSkips(tree);
-      var firstRow = tree.get(tree.keys().next().value);
-      firstRow.push({ name: "pass", id: "card_choice_pass", children: new Map() });
-      return true;
     },
 
     /**
@@ -487,7 +505,7 @@ define([
       var glyph = this._choiceGlyph(option.name);
       var parts = [];
       if (glyph) parts.push('<span class="chip_glyph">' + glyph + "</span>");
-      parts.push('<span class="chip_text">' + (option.name === "skip" ? _("don\u2019t") : this._choiceName(option.name)) + "</span>");
+      parts.push('<span class="chip_text">' + this._choiceName(option.name) + "</span>");
       if (option.range) parts.push('<span class="chip_range">' + _("range") + " " + option.range + "</span>");
       var cost = option.cost || {};
       var costHtml = Object.keys(cost)
@@ -618,23 +636,31 @@ define([
      */
     _updateCardPlayControls: function () {
       console.groupCollapsed("show/hide play controls");
+      // Hiding a row unticks it and lowers the total cost, which can make other rows affordable
+      // again, so go round until neither the cost nor the automatic picks change.
+      let costBefore;
       do {
+        costBefore = JSON.stringify(this._computeTotalPlayCost(this.dep_tree));
         this._showHideCardPlayControls(this.dep_tree);
-      } while (this._markUnaffordableRows(this.dep_tree));
+      } while (
+        this._markUnaffordableRows(this.dep_tree) ||
+        JSON.stringify(this._computeTotalPlayCost(this.dep_tree)) !== costBefore
+      );
       console.groupEnd();
       this._updatePlayCardButton();
+      this.updateCardPreview();
     },
 
     /**
      * A row whose every paid option is out of reach leaves the player one real answer. Say so on
-     * the skip chip - "can't afford" rather than "don't" - and pick it for them. Returns true when
+     * the skip chip - "can't afford" rather than "skip" - and pick it for them. Returns true when
      * a box was ticked, since that changes what the other rows cost.
      * @private
      */
     _markUnaffordableRows: function (tree) {
       var changed = false;
       tree.forEach((options) => {
-        var optOut = options.find(o => o.name === "skip" || o.name === "pass");
+        var optOut = options.find(o => o.name === "skip");
         var paid = options.filter(o => o.cost && Object.keys(o.cost).some(r => o.cost[r] > 0));
         if (optOut && paid.length) {
           var checkbox = dom.byId(optOut.id);
@@ -642,11 +668,17 @@ define([
             paid.every(o => dom.byId(o.id).disabled);
           var chipText = query(".chip_text", checkbox.parentNode)[0];
           if (chipText) {
-            chipText.textContent = stuck ? _("can\u2019t afford")
-              : optOut.name === "pass" ? _("pass") : _("don\u2019t");
+            chipText.textContent = stuck ? _("can\u2019t afford") : _("skip");
           }
           if (stuck && !checkbox.checked) {
             checkbox.checked = true;
+            checkbox.dataset.autoTicked = "1";
+            changed = true;
+          } else if (!stuck && checkbox.checked && checkbox.dataset.autoTicked) {
+            // Ticked for the player only because nothing else was affordable: now something is,
+            // so leave the choice to them again.
+            checkbox.checked = false;
+            delete checkbox.dataset.autoTicked;
             changed = true;
           }
         }

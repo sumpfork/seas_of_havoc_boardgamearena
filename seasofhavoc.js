@@ -36,6 +36,7 @@ define([
   g_gamethemeurl + "modules/js/treasureSeeker.js",
   g_gamethemeurl + "modules/js/stateHandlers.js",
   g_gamethemeurl + "modules/js/notifications.js",
+  g_gamethemeurl + "modules/js/cardPreview.js",
   // Dojo extras
   "dojo/NodeList-traverse",
   "dojo/NodeList-data",
@@ -62,6 +63,7 @@ define([
   TreasureSeeker,
   StateHandlers,
   Notifications,
+  CardPreview,
 ) {
   // Direction constants - available globally for this module
   const NORTH = Constants.NORTH;
@@ -419,6 +421,7 @@ define([
         },
         setupBackDiv: (card, div) => {
           this.setupNonPlayableCardHelper(card, div, "back");
+          this.setupCardPreview(div);
         },
         isCardVisible: (card) => {
           return true;
@@ -870,7 +873,7 @@ define([
   });
 
   // Mix in methods from all modules
-  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, TradingPost, TreasureSeeker, StateHandlers, Notifications];
+  var modulesToMixin = [Utils, IslandSlots, CardManager, Dialogs, Purchases, TradingPost, TreasureSeeker, StateHandlers, Notifications, CardPreview];
 
   for (var i = 0; i < modulesToMixin.length; i++) {
     var module = modulesToMixin[i];

@@ -617,6 +617,12 @@
   cursor: not-allowed;
   background: #f5ead8;
 }
+/* A move the card always makes: selected, but not something to click. */
+.card_choice_radio.card_choice_fixed:checked + .card_choice_chip {
+  opacity: 1;
+  cursor: default;
+  background: rgba(232, 179, 53, 0.55);
+}
 .chip_glyph {
   font-size: 16px;
   line-height: 1;
@@ -1061,4 +1067,78 @@ a.disabled {
 /* The active player's ship(s), glowing in their colour. */
 .player_ship.active_turn_ship {
   filter: drop-shadow(0 0 3px var(--owner-color)) drop-shadow(0 0 3px var(--owner-color));
+}
+
+/* Card play preview on the sea board: moves, where the ship ends, rams, and shot range. */
+.card_preview_mark {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  z-index: 4;
+  pointer-events: none;
+}
+.card_preview_mark svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+.card_preview_route {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  z-index: 4;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+}
+.card_preview_route path {
+  fill: none;
+  stroke: #fff3c4;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.card_preview_route path.card_preview_shot {
+  stroke: #ff9d2e;
+  stroke-width: 3;
+  stroke-dasharray: 6 5;
+}
+.cannonfire.card_preview_flash {
+  pointer-events: none;
+}
+.card_preview_route path.card_preview_shot_end {
+  stroke: #ff9d2e;
+  stroke-width: 5;
+}
+.card_preview_route marker path {
+  fill: #fff3c4;
+  stroke: none;
+}
+.card_preview_chevron svg {
+  fill: #ff9d2e;
+}
+.card_preview_collision svg {
+  fill: #e53935;
+}
+.player_ship.card_preview_ghost {
+  position: absolute;
+  margin: -22.75px 0 0 -30px;
+  opacity: 0.85;
+  z-index: 3;
+  pointer-events: none;
+}
+.player_ship.card_preview_origin {
+  opacity: 0.35;
+}
+/* A pivot played out on the ghost: it turns, then the pivot arrow goes. */
+.player_ship.card_preview_ghost.card_preview_turning {
+  transition: rotate 0.6s ease-in-out 0.2s;
+}
+.card_preview_route path.card_preview_pivot_fading {
+  animation: card-preview-fade 0.3s ease-in 0.8s forwards;
+}
+@keyframes card-preview-fade {
+  to {
+    opacity: 0;
+  }
 }

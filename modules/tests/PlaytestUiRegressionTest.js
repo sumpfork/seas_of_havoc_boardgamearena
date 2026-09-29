@@ -209,7 +209,6 @@ const dialogGame = {
   _choiceLabelHtml: dialogs._choiceLabelHtml,
   _choiceGlyph: dialogs._choiceGlyph,
   _choiceName: dialogs._choiceName,
-  _hoistCardPassOption: dialogs._hoistCardPassOption,
 };
 const renderRows = actions =>
   dialogGame._renderCardChoiceRows(dialogGame._makeCardDependencyTree.call(dialogGame, actions));
@@ -236,29 +235,30 @@ assert.ok(choiceRows[2].includes('value="2 x fire right"'));
 assert.ok(choiceRows[2].includes("range 2") && choiceRows[2].includes('data-resource="cannonball"'),
   "chips must show range and cost");
 
-// A card that only does optional things is passable from its options line; the redundant per-branch
-// "skip" chips go away. A card with a mandatory action keeps them - there, skipping is not passing.
-const passRows = actions => {
-  const tree = dialogGame._makeCardDependencyTree.call(dialogGame, actions);
-  const hoisted = dialogGame._hoistCardPassOption(actions, tree);
-  return { hoisted, rows: dialogGame._renderCardChoiceRows(tree) };
-};
-const optional = passRows([
+// Every optional action keeps its own "skip" chip; passing the whole card is the dialog's button.
+const skipRows = actions =>
+  dialogGame._renderCardChoiceRows(dialogGame._makeCardDependencyTree.call(dialogGame, actions)).join("");
+const optionalRows = skipRows([
   { action: "choice", choices: [
     { action: "fire", range: 3, cost: { cannonball: 1 } },
     { action: "2 x fire", range: 2, cost: { cannonball: 2 } },
   ] },
 ]);
-assert.equal(optional.hoisted, true);
-assert.ok(optional.rows[0].includes('value="pass"'), "an all-optional card passes from its first row");
-assert.ok(!optional.rows.join("").includes('value="skip"'), "no per-branch skips duplicating the pass");
-const mandatory = passRows([
+assert.ok(optionalRows.includes('value="skip"'), "an all-optional card still offers skip on its row");
+assert.ok(!optionalRows.includes('value="pass"'), "passing is the button's job, not a row option");
+
+// Moves the card always makes get a locked row of their own; moves inside a choice do not.
+const fixedTree = dialogGame._makeCardDependencyTree.call(dialogGame, [
   { action: "forward" },
   { action: "fire", range: 3, cost: { cannonball: 1 } },
+  { action: "choice", choices: [{ action: "left" }, { action: "right" }] },
 ]);
-assert.equal(mandatory.hoisted, false);
-assert.ok(mandatory.rows[0].includes('value="skip"'), "skipping the fire still sails the card's move");
-assert.ok(!mandatory.rows.join("").includes('value="pass"'));
+const rowsOf = tree => [...tree.values()].map(options => options.map(o => o.name + (o.fixed ? " (fixed)" : "")));
+assert.deepEqual(JSON.parse(JSON.stringify(rowsOf(fixedTree))), [
+  ["forward (fixed)"],
+  ["fire left", "fire right", "skip"],
+  ["left", "right"],
+], "the fixed forward is listed, with no skip; the choice's options add no rows of their own");
 
 // Selection dialogs show previews under display ids: the real cards must stay in the hand, or the
 // stock books a card it never receives the element for and the dialog renders empty.
@@ -381,7 +381,7 @@ assert.deepEqual(played, [
 // not left hunting for the one enabled radio.
 const nodes = {};
 const node = (id, disabled) => (nodes[id] = {
-  id, disabled, checked: false, chipText: { textContent: "" },
+  id, disabled, checked: false, dataset: {}, chipText: { textContent: "" },
   parentNode: { id: id + "_container", parentNode: { display: "" } },
 });
 const affordDialogs = loadModule("dialogs.js", {
@@ -403,4 +403,71 @@ assert.equal(affordDialogs._markUnaffordableRows(tree), false, "already ticked: 
 tree = row(false);
 assert.equal(affordDialogs._markUnaffordableRows(tree), false, "an affordable row is left alone");
 assert.equal(nodes.skip.checked, false);
-assert.equal(nodes.skip.chipText.textContent, "don’t");
+assert.equal(nodes.skip.chipText.textContent, "skip");
+
+// Something else on the card stops needing the resources (its row got hidden): the automatic
+// "can't afford" pick is taken back, leaving the row unanswered again.
+tree = row(true);
+affordDialogs._markUnaffordableRows(tree);
+nodes.fire.disabled = false;
+assert.equal(affordDialogs._markUnaffordableRows(tree), true, "an automatic pick is undone once affordable");
+assert.equal(nodes.skip.checked, false);
+assert.equal(nodes.skip.chipText.textContent, "skip");
+
+// A skip the player picked themselves stays picked.
+tree = row(false);
+nodes.skip.checked = true;
+assert.equal(affordDialogs._markUnaffordableRows(tree), false, "the player's own skip is left alone");
+assert.equal(nodes.skip.checked, true);
+
+// Card play preview: the client's copy of the movement rules must agree with the server's.
+{
+  // The module runs in its own vm context, whose arrays fail strict deepEqual here: copy them out.
+  const preview = loadModule("cardPreview.js");
+  const simulateCardPlay = (...args) => JSON.parse(JSON.stringify(preview.simulateCardPlay(...args)));
+  const N = 1, E = 2, S = 3, W = 4;
+  const open = () => false;
+  const routes = (marks) => marks.filter(m => m.type === "route").map(m => m.points);
+  const only = (marks, type) => marks.filter(m => m.type === type).map(m => [m.x, m.y, m.heading]);
+
+  // Seen on Studio: facing north at (1,5), "left" ended at (0,4) facing west.
+  let marks = simulateCardPlay([{ action: "left" }], [], { x: 1, y: 5, heading: N }, open);
+  assert.deepEqual(routes(marks), [[[1, 5], [1, 4], [0, 4]]], "left is one route bending round the corner");
+  assert.deepEqual(marks.filter(m => m.type === "pivot"), [], "the pivot in left is shown by the bend, not an arc");
+  assert.deepEqual(only(marks, "ghost"), [[0, 4, W]], "the ghost ship shows where the move ends");
+
+  marks = simulateCardPlay([{ action: "forward" }], [], { x: 3, y: 0, heading: N }, open);
+  assert.deepEqual(only(marks, "ghost"), [[3, 5, N]], "moving off the top edge comes back in at the bottom");
+  assert.deepEqual(routes(marks), [[[3, 0], [3, -0.5]], [[3, 5.5], [3, 5]]],
+    "a route off an edge stops at the edge and carries on from the opposite one");
+
+  marks = simulateCardPlay([{ action: "forward" }, { action: "forward" }], [], { x: 2, y: 2, heading: E },
+    (x, y) => x === 3 && y === 2);
+  assert.deepEqual(marks.map(m => m.type), ["collision", "route"], "a ram stops the card and the ship does not move");
+  assert.deepEqual(routes(marks), [[[2, 2], [2.55, 2]]], "the arrow runs on to the edge of the rammed square");
+
+  const choice = [{ action: "choice", choices: [{ action: "pivot left" }, { action: "pivot right" }] }];
+  assert.deepEqual(simulateCardPlay(choice, [], { x: 0, y: 0, heading: N }, open), [],
+    "nothing is drawn for a choice not yet made");
+  marks = simulateCardPlay(choice, ["pivot right"], { x: 0, y: 0, heading: N }, open);
+  assert.deepEqual(only(marks, "ghost"), [[0, 0, E]], "the chosen option is what is drawn");
+  assert.deepEqual(marks.filter(m => m.type === "pivot").map(m => [m.turn, m.from]), [["pivot right", N]],
+    "a pivot on the spot gets its own arc, starting from the old heading");
+
+  const fire = [{ action: "fire", range: 3, cost: { cannonball: 1 } }];
+  marks = simulateCardPlay(fire, ["fire left"], { x: 2, y: 2, heading: N }, open);
+  assert.deepEqual(only(marks, "chevron"), [[1, 2, W], [0, 2, W], [5, 2, W]], "a shot's range is marked, wrapping");
+  assert.deepEqual(marks.find(m => m.type === "shot").lines,
+    [[[1.65, 2], [1, 2], [0, 2], [-0.5, 2]], [[5.5, 2], [5, 2], [4.55, 2]]],
+    "the shot line starts just outside the ship, breaks at the edge, and ends at the far edge of its range");
+  assert.deepEqual(simulateCardPlay(fire, ["skip"], { x: 2, y: 2, heading: N }, open), [], "a skipped shot draws nothing");
+
+  const bothSides = [{ action: "2 x fire", range: 2, variants: [
+    { name: "both sides", range: 1, count: 2, sides: ["left", "right"], both_sides: true },
+  ] }];
+  marks = simulateCardPlay(bothSides, ["both sides left"], { x: 2, y: 2, heading: N }, open);
+  assert.deepEqual(only(marks, "chevron"), [[1, 2, W], [3, 2, E]], "both sides fires one shot each way");
+
+  assert.deepEqual(simulateCardPlay([{ action: "forward" }], ["pass"], { x: 0, y: 0, heading: N }, open), [],
+    "passing the card shows nothing");
+}
