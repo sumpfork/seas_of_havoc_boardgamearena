@@ -824,6 +824,9 @@ a.disabled {
 /* Market and Scrap Pile Layout */
 .market-section {
   min-height: 250px;
+  /* The buy buttons' z-index lifts them over their market card only; without this they sat above
+     everything else on the page too, like the cards in hand as the page scrolled past. */
+  isolation: isolate;
 }
 
 .market-container {
