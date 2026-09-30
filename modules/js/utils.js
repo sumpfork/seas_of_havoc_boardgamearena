@@ -11,7 +11,11 @@ define([
   "dojo/query",
   "dojo/_base/fx",
   "dojo/fx",
-], function (dom, domClass, domConstruct, domStyle, query, baseFX, fx) {
+  g_gamethemeurl + "modules/js/constants.js",
+], function (dom, domClass, domConstruct, domStyle, query, baseFX, fx, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     resourceIcon: function (resource) {
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };

@@ -65,6 +65,9 @@ define([
   Notifications,
   CardPreview,
 ) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   // Direction constants - available globally for this module
   const NORTH = Constants.NORTH;
   const EAST = Constants.EAST;

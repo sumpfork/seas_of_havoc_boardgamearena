@@ -179,7 +179,7 @@ class SeaBoard
         $this->syncFromDB();
         $object_info = $this->findObject($object_type, $arg);
         $object = $object_info["object"];
-        $this->bga->dump("object being moved forward", $object_info);
+        $this->bga->mydump("object being moved forward", $object_info);
         $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $object["heading"]);
 
         $collided = $this->getObjectsOfTypes($movement_result["new_x"], $movement_result["new_y"], $collision_types);
@@ -243,7 +243,7 @@ class SeaBoard
         $old_heading = $object["heading"];
 
         $this->removeObject($object_info["x"], $object_info["y"], $object["type"], $object["arg"]);
-        $this->bga->trace(
+        $this->bga->mytrace(
             "changing heading from " .
                 $object["heading"]->toString() .
                 " to " .
@@ -275,7 +275,7 @@ class SeaBoard
         $fire_heading = $this->turnHeading($ship_heading, $direction);
         $x = $object_info["x"];
         $y = $object_info["y"];
-        $this->bga->trace(
+        $this->bga->mytrace(
             "resolving cannon fire from " .
                 $x .
                 " " .
@@ -296,9 +296,9 @@ class SeaBoard
             }
             $x = $movement_result["new_x"];
             $y = $movement_result["new_y"];
-            $this->bga->trace("checking " . $x . " " . $y . " while firing");
+            $this->bga->mytrace("checking " . $x . " " . $y . " while firing");
             $collided = $this->getObjectsOfTypes($x, $y, $collision_types);
-            $this->bga->dump("collided", $collided);
+            $this->bga->mydump("collided", $collided);
             if (count($collided)) {
                 return [
                     "type" => "fire_hit",
@@ -348,7 +348,7 @@ class SeaBoard
         $this->syncFromDB();
         $object_info = $this->findObject($object_type, $arg);
         $object = $object_info["object"];
-        $this->bga->trace("Pushing " . $object_type . " " . $arg . " in direction " . $direction->toString());
+        $this->bga->mytrace("Pushing " . $object_type . " " . $arg . " in direction " . $direction->toString());
 
         $movement_result = $this->computeForwardMovement($object_info["x"], $object_info["y"], $direction);
 
@@ -450,6 +450,6 @@ class SeaBoard
 
     function dump()
     {
-        $this->bga->dump("seaboard", $this->contents);
+        $this->bga->mydump("seaboard", $this->contents);
     }
 }

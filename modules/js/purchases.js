@@ -11,7 +11,11 @@ define([
   "dojo/html",
   "dojo/_base/lang",
   "dojo/query",
-], function (domClass, domConstruct, domStyle, attr, html, lang, query) {
+  g_gamethemeurl + "modules/js/constants.js",
+], function (domClass, domConstruct, domStyle, attr, html, lang, query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     /**
      * Update card purchase buttons on market cards

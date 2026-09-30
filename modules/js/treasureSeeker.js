@@ -1,14 +1,16 @@
 /**
  * Treasure Seeker captain ability UI
  */
-define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "dojo/on", "dojo/query"], function (
+define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "dojo/on", "dojo/query", g_gamethemeurl + "modules/js/constants.js"], function (
   dojo,
   declare,
   domClass,
   domConstruct,
   on,
-  query,
-) {
+  query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     setupTreasureSeekerAdjust: function (args) {
       console.log("Setting up treasure seeker adjust");

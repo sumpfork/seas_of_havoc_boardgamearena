@@ -8,7 +8,10 @@
  * processCardActions on the server; keep them in step (PlaytestUiRegressionTest.js checks both).
  */
 
-define(["dojo/dom", "dojo/dom-construct"], function (dom, domConstruct) {
+define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants.js"], function (dom, domConstruct, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   const NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
   const SIZE = 6; // SeaBoard::WIDTH / HEIGHT
   const STEP = { [NORTH]: [0, -1], [EAST]: [1, 0], [SOUTH]: [0, 1], [WEST]: [-1, 0] };

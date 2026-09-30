@@ -4,7 +4,31 @@
  */
 
 define([], function () {
+  // Debug logging is on in Studio and off in production. To turn it on in production, run
+  // localStorage.setItem("soh_debug", "1") in the game frame's console and reload.
+  let debugLogging = false;
+  try {
+    debugLogging = location.hostname.startsWith("studio.") || localStorage.getItem("soh_debug") === "1";
+  } catch (e) {
+    // No location or storage (tests, sandboxed frames): stay quiet.
+  }
+  const silent = () => {};
+
   return {
+    /**
+     * What the modules use as `console`: the real one when debugging, otherwise one whose chatty
+     * methods do nothing. Warnings and errors always get through.
+     */
+    console: debugLogging
+      ? globalThis.console
+      : {
+          log: silent,
+          groupCollapsed: silent,
+          groupEnd: silent,
+          warn: (...args) => globalThis.console.warn(...args),
+          error: (...args) => globalThis.console.error(...args),
+        },
+
     // Direction constants - must match PHP versions
     NORTH: 1,
     EAST: 2,

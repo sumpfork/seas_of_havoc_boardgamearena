@@ -9,7 +9,11 @@ define([
   "dojo/dom-class",
   "dojo/dom-construct",
   "dojo/query",
-], function(dom, domClass, domConstruct, query) {
+  g_gamethemeurl + "modules/js/constants.js",
+], function (dom, domClass, domConstruct, query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
 
   var TRADEABLE_RESOURCES = ["sail", "cannonball", "doubloon"];
 

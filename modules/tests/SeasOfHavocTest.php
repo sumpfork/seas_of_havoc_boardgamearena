@@ -213,6 +213,8 @@ if (!class_exists("MockBGA")) {
         }
         public function dump($label, $data) {}
         public function trace($message) {}
+        public function mytrace($message) {}
+        public function mydump($label, $data) {}
     }
 }
 

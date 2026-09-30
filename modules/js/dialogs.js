@@ -13,7 +13,11 @@ define([
   "dojo/query",
   "dojo/dom-attr",
   getLibUrl("bga-cards", "1.x"),
-], function (dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards) {
+  g_gamethemeurl + "modules/js/constants.js",
+], function (dom, domClass, domConstruct, domStyle, lang, on, query, attr, BgaCards, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   // Card actions with no choice in them that get a locked row of their own in the play dialog.
   const FIXED_MOVES = ["forward", "left", "right", "pivot left", "pivot right", "pivot 180"];
 

@@ -3,12 +3,14 @@
  * Handles island slot display and skiff slot positioning
  */
 
-define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query"], function (
+define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", g_gamethemeurl + "modules/js/constants.js"], function (
   domClass,
   domConstruct,
   domStyle,
-  query,
-) {
+  query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     isIslandSkiffPlacementActive: function () {
       if (!this.isCurrentPlayerActive()) {

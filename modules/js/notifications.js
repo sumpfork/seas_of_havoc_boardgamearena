@@ -12,7 +12,11 @@ define([
   "dojo/_base/fx",
   "dojo/fx",
   "dojo/query",
-], function (dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query) {
+  g_gamethemeurl + "modules/js/constants.js",
+], function (dom, domClass, domConstruct, domStyle, attr, baseFX, fx, query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     /**
      * Set up all notification subscriptions

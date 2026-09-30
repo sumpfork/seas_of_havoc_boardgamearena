@@ -3,7 +3,10 @@
  * Card setup helpers and card-related UI management
  */
 
-define(["dojo/dom-style"], function (domStyle) {
+define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function (domStyle, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     setupCardPreview: function (face) {
       if (face.dataset.previewReady) return;

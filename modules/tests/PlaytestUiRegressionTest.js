@@ -7,13 +7,19 @@ const path = require("node:path");
 // dependency path ("dojo/_base/fx" -> "fx"). Anything not supplied stays undefined, as before.
 function loadModule(name, deps = {}) {
   let module;
+  // Every module takes constants.js for its (debug-only) console: supply the real one.
+  if (name !== "constants.js" && !deps["constants.js"]) {
+    deps = { ...deps, "constants.js": loadModule("constants.js") };
+  }
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../js", name), "utf8"), {
     define: (dependencies, factory) => {
       module = factory(...dependencies.map(dep => deps[dep.split("/").pop()]));
     },
-    console: { log() {}, groupCollapsed() {}, groupEnd() {} },
+    console: { log() {}, groupCollapsed() {}, groupEnd() {}, warn() {}, error() {} },
+    globalThis: { console: { log() {}, groupCollapsed() {}, groupEnd() {}, warn() {}, error() {} } },
     _: text => text,
     getLibUrl: name => name,
+    g_gamethemeurl: "",
   });
   return module;
 }

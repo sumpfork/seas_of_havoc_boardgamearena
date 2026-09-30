@@ -3,7 +3,10 @@
  * Game state enter/leave/update action button handlers
  */
 
-define(["dojo/dom-class", "dojo/dom-construct", "dojo/query"], function (domClass, domConstruct, query) {
+define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "modules/js/constants.js"], function (domClass, domConstruct, query, Constants) {
+  // Debug logging only in Studio (see constants.js).
+  const console = Constants.console;
+
   return {
     /**
      * Called when entering a new game state
