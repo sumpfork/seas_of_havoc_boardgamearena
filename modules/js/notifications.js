@@ -586,8 +586,10 @@ define([
       console.log(`Player ${player_id} deck reshuffled, new deck size: ${deck_size}`);
 
       if (player_id == this.player_id) {
-        this.playerDiscard.removeAll();
         this.updateDeckCount(deck_size);
+        // Wait for the discard pile to empty: the draw that follows adds some of these same cards
+        // to the hand, and their old elements must be gone by then.
+        return this.playerDiscard.removeAll();
       }
     },
   };
