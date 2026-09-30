@@ -1199,6 +1199,7 @@ class SeasOfHavoc extends Table
         $this->setGameStateValue("pending_treasure_seeker_player", (int) $this->getActivePlayerId());
 
         $this->gamestate->changeActivePlayer((int) $treasure_seeker_id);
+        $this->giveExtraTime((int) $treasure_seeker_id);
         // Note: jumpToState is removed - callers return the TreasureSeekerAdjust state class to trigger the transition
         return true;
     }
@@ -1225,6 +1226,7 @@ class SeasOfHavoc extends Table
     {
         $resume = (int) $this->getGameStateValue("pending_treasure_seeker_resume");
         $this->gamestate->changeActivePlayer((int) $this->getGameStateValue("pending_treasure_seeker_player"));
+        $this->giveExtraTime((int) $this->getGameStateValue("pending_treasure_seeker_player"));
         $this->setGameStateValue("pending_treasure_seeker_player", 0);
         $this->setGameStateValue("pending_shipwreck_arg", 0);
         $this->setGameStateValue("pending_shipwreck_x", 0);
@@ -1320,6 +1322,7 @@ class SeasOfHavoc extends Table
         if ($rebel_id !== null) {
             $this->mytrace("Rebel player ($rebel_id) must discard before island phase begins");
             $this->gamestate->changeActivePlayer($rebel_id);
+            $this->giveExtraTime((int) $rebel_id);
             return "rebelDiscard";
         }
 
@@ -1327,6 +1330,7 @@ class SeasOfHavoc extends Table
             "Setting first player token owner ($first_player_token_owner) as active player for island phase",
         );
         $this->gamestate->changeActivePlayer($first_player_token_owner);
+        $this->giveExtraTime((int) $first_player_token_owner);
 
         return "islandTurn";
     }
@@ -1407,6 +1411,9 @@ class SeasOfHavoc extends Table
             return;
         }
         $this->gamestate->setPlayersMultiactive($claimants, "cardPurchasesDone", true);
+        foreach ($claimants as $claimant) {
+            $this->giveExtraTime((int) $claimant);
+        }
 
         // Initialize the claimants to the "making purchases" private state
         $this->gamestate->initializePrivateStateForAllActivePlayers();
@@ -1431,6 +1438,7 @@ class SeasOfHavoc extends Table
 
         $this->mytrace("Setting first player token owner ($first_player_token_owner) as active player for sea phase");
         $this->gamestate->changeActivePlayer($first_player_token_owner);
+        $this->giveExtraTime((int) $first_player_token_owner);
 
         $this->setGameStateValue("hunt_the_bounty_target", 0);
         $this->clearUpgradeUses(["sloop_of_war_nimble_hull"]);
@@ -4204,6 +4212,7 @@ class SeasOfHavoc extends Table
         );
         // Back to the shooter; the next-player step hands over to any further victims first.
         $this->gamestate->changeActivePlayer((int) $this->getGameStateValue("chain_shot_shooter"));
+        $this->giveExtraTime((int) $this->getGameStateValue("chain_shot_shooter"));
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
@@ -5111,6 +5120,7 @@ class SeasOfHavoc extends Table
         }
 
         $this->gamestate->changeActivePlayer($first_player_token_owner);
+        $this->giveExtraTime((int) $first_player_token_owner);
         return "cardDiscarded";
     }
 
