@@ -27,6 +27,7 @@ use Bga\Games\SeasOfHavoc\ShipUpgradeRules;
 use Bga\Games\SeasOfHavoc\CaptainAbilities;
 use Bga\Games\SeasOfHavoc\IslandPhase;
 use Bga\Games\SeasOfHavoc\CardPlay;
+use Bga\Games\SeasOfHavoc\ZombieMoves;
 use Bga\Games\SeasOfHavoc\Firing;
 use Bga\Games\SeasOfHavoc\ScoringAndStats;
 
@@ -68,7 +69,7 @@ if (!defined("STATE_END_GAME")) {
 class SeasOfHavoc extends Table
 {
     // The game logic, grouped by theme in modules/php/.
-    use Resources, Decks, BootyAndShipwrecks, ShipUpgradeRules, CaptainAbilities, IslandPhase, CardPlay, Firing, ScoringAndStats;
+    use Resources, Decks, BootyAndShipwrecks, ShipUpgradeRules, CaptainAbilities, IslandPhase, CardPlay, Firing, ScoringAndStats, ZombieMoves;
 
     /** Table option (gameoptions.jsonc): 1 = off, 2 = 2 Ship Variant. */
     private const OPTION_TWO_SHIPS = 100;

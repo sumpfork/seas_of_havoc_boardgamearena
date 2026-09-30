@@ -17,6 +17,7 @@
     "medium_additional_time": 40,
     "slow_additional_time": 50,
     "tie_breaker_description": "Most resources; if still tied, the fewest damage cards",
+    "tie_breaker_split": [100 , 1],
     "losers_not_ranked": false,
     "solo_mode_ranked": false,
     "is_coop": 0,

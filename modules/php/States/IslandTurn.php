@@ -58,14 +58,7 @@ class IslandTurn extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        $this->game->setGameStateValue("market_restocked", 0);
-        $this->game->setGameStateValue("pending_resource_context", 0);
-        $this->game->setGameStateValue("pending_resource_slot", 0);
-        $this->game->setGameStateValue("pending_workshop_player", 0);
-        $this->game->setGameStateValue("pending_workshop_slot", 0);
-        // Give up the remaining skiffs, or the island phase would keep coming back to this player.
-        $this->game->playerSetResourceCount($playerId, "skiff", 0);
-        return 'islandTurnDone';
+        return $this->game->zombieIslandTurn($playerId);
     }
 
     #[PossibleAction]
