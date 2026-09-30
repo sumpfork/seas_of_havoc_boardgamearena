@@ -273,7 +273,14 @@ define([
         domStyle.set(id, "top", r.top - b.top + r.height / 2 + "px");
       };
       return fx.chain([
-        baseFX.fadeIn({ node: id, duration: 80, beforeBegin: placeOnShip }),
+        baseFX.fadeIn({
+          node: id,
+          duration: 80,
+          beforeBegin: () => {
+            placeOnShip();
+            this.bga.sounds.play("cannon_fire"); // sounds/cannon_fire.mp3/.ogg, preloaded by BGA
+          },
+        }),
         baseFX.fadeOut({
           node: id,
           duration: 200,
