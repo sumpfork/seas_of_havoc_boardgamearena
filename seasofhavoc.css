@@ -46,11 +46,11 @@
 
 /********* You can start writing your CSS below this line: **********/
 
-.cp_board {
+.soh_cp_board {
   clear: both;
 }
 
-.board {
+.soh_board {
   position: relative;
   width: 1000px;
   height: 692px;
@@ -65,72 +65,72 @@
   width: 365px;
   height: 365px;
 }
-.skiff_slot[data-slotname="capitol"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="capitol"][data-number="n1"] {
   top: 191.9px;
   left: 165.4px;
 }
-.skiff_slot[data-slotname="bank"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="bank"][data-number="n1"] {
   top: 315.5px;
   left: 152.0px;
 }
-.skiff_slot[data-slotname="workshop"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="workshop"][data-number="n1"] {
   top: 421.8px;
   left: 69.4px;
 }
-.skiff_slot[data-slotname="workshop"][data-number="n2"] {
+.soh_skiff_slot[data-slotname="workshop"][data-number="n2"] {
   top: 470.7px;
   left: 64.6px;
 }
-.skiff_slot[data-slotname="trading_post"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="trading_post"][data-number="n1"] {
   top: 579.9px;
   left: 157.7px;
 }
-.skiff_slot[data-slotname="trading_post"][data-number="n2"] {
+.soh_skiff_slot[data-slotname="trading_post"][data-number="n2"] {
   top: 623.0px;
   left: 134.7px;
 }
-.skiff_slot[data-slotname="shipyard"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="shipyard"][data-number="n1"] {
   top: 161.2px;
   left: 833.6px;
 }
-.skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
   top: 432.4px;
   left: 830.7px;
 }
-.skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
+.soh_skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
   top: 470.7px;
   left: 799.0px;
 }
-.skiff_slot[data-slotname="sailmaker"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="sailmaker"][data-number="n1"] {
   top: 352.8px;
   left: 917.1px;
 }
-.skiff_slot[data-slotname="deep_cove"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="deep_cove"][data-number="n1"] {
   top: 562.6px;
   left: 792.3px;
 }
-.skiff_slot[data-slotname="deep_cove"][data-number="n2"] {
+.soh_skiff_slot[data-slotname="deep_cove"][data-number="n2"] {
   top: 594.3px;
   left: 832.6px;
 }
-.skiff_slot[data-slotname="green_flag"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="green_flag"][data-number="n1"] {
   top: 76.6px;
   left: 809.6px;
 }
-.skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
   top: 76.6px;
   left: 158.7px;
 }
-.skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
   top: 76.6px;
   left: 899.8px;
 }
-.skiff_slot[data-slotname="red_flag"][data-number="n1"] {
+.soh_skiff_slot[data-slotname="red_flag"][data-number="n1"] {
   top: 76.6px;
   left: 70.4px;
 }
 
-.skiff_slot {
+.soh_skiff_slot {
   position: absolute;
   width: 26px;
   height: 26px;
@@ -141,12 +141,12 @@
 }
 
 /* Market slots (SlotStock containers) - positioned by SlotStock */
-.market_slot {
+.soh_market_slot {
   position: relative;
 }
 
 /* Skiff slots are separate overlay elements positioned absolutely over market slots */
-.skiff_slot[data-slotname="market"] {
+.soh_skiff_slot[data-slotname="market"] {
   position: absolute;
   bottom: 3px;
   right: 2px;
@@ -155,46 +155,46 @@
 }
 
 /* Skiff indicator inside market skiff slots */
-.skiff_slot[data-slotname="market"] .skiff {
+.soh_skiff_slot[data-slotname="market"] .soh_skiff {
   position: relative;
 }
-.skiff_slot.unoccupied:hover {
+.soh_skiff_slot.soh_unoccupied:hover {
   outline-color: rgba(41, 145, 198, 0.7);
   background-color: rgba(25, 52, 226, 0.7);
   outline-style: solid;
   outline-width: 2px;
   cursor: pointer;
 }
-.skiff_slot.occupied_blocked {
+.soh_skiff_slot.soh_occupied_blocked {
   pointer-events: none;
   cursor: default;
   background-color: rgba(90, 90, 90, 0.2) !important;
   box-shadow: none;
   opacity: 0.7;
 }
-.skiff_slot.occupied_blocked:hover {
+.soh_skiff_slot.soh_occupied_blocked:hover {
   outline: none;
   background-color: rgba(90, 90, 90, 0.2) !important;
 }
-.skiff_slot.workshop_unavailable {
+.soh_skiff_slot.soh_workshop_unavailable {
   pointer-events: none;
   cursor: default;
   background-color: rgba(90, 90, 90, 0.2) !important;
   box-shadow: none;
   opacity: 0.7;
 }
-.skiff_slot.workshop_unavailable:hover {
+.soh_skiff_slot.soh_workshop_unavailable:hover {
   outline: none;
   background-color: rgba(90, 90, 90, 0.2) !important;
 }
-.skiff_slot.corsair_selectable {
+.soh_skiff_slot.soh_corsair_selectable {
   background-color: rgba(232, 179, 53, 0.45) !important;
   box-shadow:
     inset 0 0 0 2px rgba(201, 140, 20, 0.95),
     0 0 10px rgba(232, 179, 53, 0.75);
   animation: corsair-slot-pulse 1.6s ease-in-out infinite;
 }
-.skiff_slot.corsair_selectable::before {
+.soh_skiff_slot.soh_corsair_selectable::before {
   content: "";
   position: absolute;
   bottom: -4px;
@@ -207,7 +207,7 @@
   z-index: 2;
   pointer-events: none;
 }
-.skiff_slot.corsair_selectable::after {
+.soh_skiff_slot.soh_corsair_selectable::after {
   content: "+";
   position: absolute;
   bottom: -1px;
@@ -222,14 +222,14 @@
   z-index: 3;
   pointer-events: none;
 }
-.skiff_slot.corsair_selectable:hover {
+.soh_skiff_slot.soh_corsair_selectable:hover {
   outline-color: rgba(201, 140, 20, 1);
   background-color: rgba(232, 179, 53, 0.8) !important;
   outline-style: solid;
   outline-width: 2px;
   cursor: pointer;
 }
-.skiff_slot.corsair_selectable .skiff.corsair_selectable_hint {
+.soh_skiff_slot.soh_corsair_selectable .soh_skiff.soh_corsair_selectable_hint {
   filter: drop-shadow(0 0 5px rgba(232, 179, 53, 1));
 }
 @keyframes corsair-slot-pulse {
@@ -245,23 +245,23 @@
       0 0 14px rgba(232, 179, 53, 0.95);
   }
 }
-.skiff_slot.disabled {
+.soh_skiff_slot.disabled {
   background-color: transparent;
   pointer-events: none;
 }
-.skiff_slot.disabled:hover {
+.soh_skiff_slot.disabled:hover {
   outline: none;
   background-color: transparent;
   cursor: default;
 }
-.resource {
+.soh_resource {
   width: 30px;
   height: 30px;
   background-image: url("img/resources.png");
   background-repeat: none;
   display: inline-block;
 }
-.resource.log_resource {
+.soh_resource.soh_log_resource {
   width: 18px;
   height: 18px;
   min-width: 18px;
@@ -271,44 +271,44 @@
   margin: 0 2px;
   display: inline-block;
 }
-.resource.log_resource.cannonball {
+.soh_resource.soh_log_resource.soh_cannonball {
   background-position: 0px 0px;
 }
-.resource.log_skiff {
+.soh_resource.soh_log_skiff {
   background-image: none;
 }
-.resource.log_resource.sail {
+.soh_resource.soh_log_resource.soh_sail {
   background-position: -18px 0px;
 }
-.resource.log_resource.doubloon {
+.soh_resource.soh_log_resource.soh_doubloon {
   background-position: 0px -18px;
 }
-.resource.log_resource.infamy {
+.soh_resource.soh_log_resource.soh_infamy {
   background-position: -18px -18px;
 }
-.cannonball {
+.soh_cannonball {
   background-position: 0px 0px;
 }
-.sail {
+.soh_sail {
   background-position: -30px 0px;
 }
-.doubloon {
+.soh_doubloon {
   background-position: 0px -30px;
 }
-.infamy {
+.soh_infamy {
   background-position: -30px -30px;
 }
-.pivot_left {
+.soh_pivot_left {
   background-position: -60px 0px;
 }
-.pivot_right {
+.soh_pivot_right {
   background-position: -90px 0px;
 }
-.nope {
+.soh_nope {
   background-position: -60px -30px;
 }
 /* Resource buttons: solid beige, no default button gradient */
-.flagish {
+.soh_flagish {
   background-image: url("img/flags_1stplayer.png");
   width: 50px;
   height: 50px;
@@ -316,25 +316,25 @@
   display: inline-block;
   position: relative;
 }
-.flagish[data-tokenkey="red_flag"] {
+.soh_flagish[data-tokenkey="red_flag"] {
   background-position: 0px 0px;
 }
-.flagish[data-tokenkey="tan_flag"] {
+.soh_flagish[data-tokenkey="tan_flag"] {
   background-position: 0px -50px;
 }
-.flagish[data-tokenkey="green_flag"] {
+.soh_flagish[data-tokenkey="green_flag"] {
   background-position: 0px -100px;
 }
-.flagish[data-tokenkey="blue_flag"] {
+.soh_flagish[data-tokenkey="blue_flag"] {
   background-position: 0px -150px;
 }
-.flagish[data-tokenkey="first_player_token"] {
+.soh_flagish[data-tokenkey="first_player_token"] {
   background-position: 0px -200px;
 }
-.no_own_flag {
+.soh_no_own_flag {
   opacity: 0.25;
 }
-.seafeature {
+.soh_seafeature {
   width: 63px;
   height: 63px;
   background-image: url("img/booty_seafeatures.jpg");
@@ -344,30 +344,30 @@
   z-index: 1;
   mask-image: radial-gradient(#333 40%, #00000000 60%);
 }
-.seafeature[data-seafeature="shipwreck"] {
+.soh_seafeature[data-seafeature="shipwreck"] {
   border-radius: 50%;
   background-position: 0px -189px;
 }
 /* When a shipwreck sits atop a rock/gust/whirlpool, shrink both to 70% and
    split them into opposite corners of the space instead of stacking them. */
-.seafeature_paired_shipwreck {
+.soh_seafeature_paired_shipwreck {
   transform: translate(9.45px, -9.45px) scale(0.7);
   z-index: 2;
 }
-.seafeature_hidden_partner {
+.soh_seafeature_hidden_partner {
   transform: translate(-9.45px, 9.45px) scale(0.7);
   z-index: 1;
 }
-.seafeature[data-seafeature="gust"] {
+.soh_seafeature[data-seafeature="gust"] {
   background-position: 0px -126px;
 }
-.seafeature[data-seafeature="rock"] {
+.soh_seafeature[data-seafeature="rock"] {
   background-position: 0px -63px;
 }
-.seafeature[data-seafeature="whirlpool"] {
+.soh_seafeature[data-seafeature="whirlpool"] {
   background-position: 0px -0px;
 }
-.booty-token {
+.soh_booty-token {
   width: 63px;
   height: 63px;
   display: block;
@@ -377,14 +377,14 @@
   border-radius: 50%;
   overflow: hidden;
 }
-.booty-token-back {
+.soh_booty-token-back {
   background-position: 0px -189px;
 }
-.booty-token-pickup {
+.soh_booty-token-pickup {
   position: absolute;
   z-index: 870;
 }
-.booty-token-slot {
+.soh_booty-token-slot {
   border-radius: 50%;
   width: 50px;
   height: 50px;
@@ -396,25 +396,25 @@
   opacity: 0.5;
 }
 /* Slot with token - full opacity */
-.booty-token-slot.has-token {
+.soh_booty-token-slot.soh_has-token {
   opacity: 1;
 }
 /* Token inside slot - smaller size to fit */
-.booty-token-slot .booty-token {
+.soh_booty-token-slot .soh_booty-token {
   width: 50px;
   height: 50px;
   background-size: 200px 200px;
   opacity: 1 !important; /* Ensure token is fully visible regardless of parent */
 }
 /* Galleon Treasure Hold: two tokens fit in the hold, stacked with a slight offset */
-.booty-token-slot .booty-token + .booty-token {
+.soh_booty-token-slot .soh_booty-token + .soh_booty-token {
   position: absolute;
   top: 0;
   left: 14px;
   box-shadow: -2px 0 3px rgba(0, 0, 0, 0.5);
 }
 /* A booty token shown inside an action button (choosing one to discard). */
-.booty-token.booty-token-button-icon {
+.soh_booty-token.soh_booty-token-button-icon {
   display: inline-block;
   width: 36px;
   height: 36px;
@@ -423,31 +423,31 @@
   margin-left: 4px;
 }
 /* The large copy of a booty token shown on hover. */
-.booty-token.booty-token-zoom {
+.soh_booty-token.soh_booty-token-zoom {
   width: 126px;
   height: 126px;
   background-size: 504px 504px;
 }
-.booty-token-slot .booty-token-back {
+.soh_booty-token-slot .soh_booty-token-back {
   background-position: 0px -150px;
 }
-.resource_count {
+.soh_resource_count {
   position: relative;
   top: -10px;
 }
-.skiff {
+.soh_skiff {
   width: 40px;
   height: 40px;
   display: inline-block;
   position: relative;
 }
-.skiff.corsair_overlay {
+.soh_skiff.soh_corsair_overlay {
   position: absolute;
   left: 14px;
   top: -4px;
   z-index: 2;
 }
-.player_ship {
+.soh_player_ship {
   width: 60px;
   height: 45.5px;
   background-image: url("img/bga_ships.png");
@@ -455,26 +455,26 @@
   position: absolute;
   z-index: 2;
 }
-.player_ship[data-shipname="Galleon"] {
+.soh_player_ship[data-shipname="Galleon"] {
   background-position: 0% 0%;
 }
-.player_ship[data-shipname="Sloop of War"] {
+.soh_player_ship[data-shipname="Sloop of War"] {
   background-position: 0% -100%;
 }
-.player_ship[data-shipname="Ship-of-the-Line"] {
+.soh_player_ship[data-shipname="Ship-of-the-Line"] {
   background-position: 0% -200%;
 }
-.player_ship[data-shipname="War Junk"] {
+.soh_player_ship[data-shipname="War Junk"] {
   background-position: 0% -300%;
 }
-.player_ship[data-shipname="Xebec"] {
+.soh_player_ship[data-shipname="Xebec"] {
   background-position: 0% -400%;
 }
-.player_ship[data-shipname="Brig"] {
+.soh_player_ship[data-shipname="Brig"] {
   background-position: 0% -500%;
 }
 
-.seaboardlocation {
+.soh_seaboardlocation {
   position: relative;
   /* Invisible anchor only: no opacity here, it would hide the explosions and markers placed inside. */
   width: 1px;
@@ -482,7 +482,7 @@
 }
 
 /* Treasure Seeker: valid shipwreck destination markers */
-.treasure_seeker_marker {
+.soh_treasure_seeker_marker {
   position: absolute;
   width: 55px;
   height: 55px;
@@ -498,7 +498,7 @@
   z-index: 5;
   animation: treasure-seeker-pulse 1.6s ease-in-out infinite;
 }
-.treasure_seeker_marker:hover {
+.soh_treasure_seeker_marker:hover {
   background-color: rgba(232, 179, 53, 0.7);
   box-shadow: 0 0 14px rgba(232, 179, 53, 1);
 }
@@ -508,7 +508,7 @@
 }
 
 /* Treasure Seeker: highlight on the current shipwreck */
-.treasure_seeker_shipwreck_highlight {
+.soh_treasure_seeker_shipwreck_highlight {
   filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1)) drop-shadow(0 0 12px rgba(201, 140, 20, 0.8));
   animation: treasure-seeker-shipwreck-pulse 1.6s ease-in-out infinite;
 }
@@ -516,16 +516,16 @@
   0%, 100% { filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1))  drop-shadow(0 0 12px rgba(201, 140, 20, 0.8)); }
   50%       { filter: drop-shadow(0 0 12px rgba(232, 179, 53, 1)) drop-shadow(0 0 20px rgba(201, 140, 20, 1)); }
 }
-.card-zoom-dialog {
+.soh_card-zoom-dialog {
   border: 0;
   border-radius: 8px;
   padding: 16px;
   text-align: center;
 }
-.card-zoom-dialog::backdrop {
+.soh_card-zoom-dialog::backdrop {
   background: rgba(0, 0, 0, 0.65);
 }
-.card-zoom-dialog > button {
+.soh_card-zoom-dialog > button {
   margin: 12px 0 0;
 }
 #card_display_dialog {
@@ -582,27 +582,27 @@
   width: 144px;
   height: 198px;
 }
-.card_choices_row {
+.soh_card_choices_row {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   padding: 6px 0;
 }
-.card_choices_row + .card_choices_row {
+.soh_card_choices_row + .soh_card_choices_row {
   border-top: 1px dashed #d4b87a;
 }
-.card_choice_radio_container {
+.soh_card_choice_radio_container {
   display: contents;
 }
 /* The radio itself stays in the DOM (and keyboard focusable) - the label is the visible chip. */
-.card_choice_radio {
+.soh_card_choice_radio {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
   margin: 0;
 }
-.card_choice_chip {
+.soh_card_choice_chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -615,44 +615,44 @@
   white-space: nowrap;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
-.card_choice_chip:hover {
+.soh_card_choice_chip:hover {
   background: #efe0c4;
 }
-.card_choice_radio:checked + .card_choice_chip {
+.soh_card_choice_radio:checked + .soh_card_choice_chip {
   background: rgba(232, 179, 53, 0.55);
   border-color: #8b6914;
   font-weight: 600;
 }
-.card_choice_radio:focus-visible + .card_choice_chip {
+.soh_card_choice_radio:focus-visible + .soh_card_choice_chip {
   outline: 2px solid #8b6914;
   outline-offset: 1px;
 }
-.card_choice_radio:disabled + .card_choice_chip {
+.soh_card_choice_radio:disabled + .soh_card_choice_chip {
   opacity: 0.4;
   cursor: not-allowed;
   background: #f5ead8;
 }
 /* A move the card always makes: selected, but not something to click. */
-.card_choice_radio.card_choice_fixed:checked + .card_choice_chip {
+.soh_card_choice_radio.soh_card_choice_fixed:checked + .soh_card_choice_chip {
   opacity: 1;
   cursor: default;
   background: rgba(232, 179, 53, 0.55);
 }
-.chip_glyph {
+.soh_chip_glyph {
   font-size: 16px;
   line-height: 1;
 }
-.chip_range {
+.soh_chip_range {
   font-size: 11px;
   opacity: 0.7;
 }
-.chip_cost {
+.soh_chip_cost {
   display: inline-flex;
   align-items: center;
   padding-left: 5px;
   border-left: 1px solid #d4b87a;
 }
-.purchase_card_button {
+.soh_purchase_card_button {
   display: block;
   position: absolute;
   top: 100%;
@@ -667,7 +667,7 @@ a.disabled {
 }
 /* Cannon shot and explosion art paint with currentColor (see the templates in seasofhavoc.js),
    so each effect is coloured here rather than inside the SVG. */
-.cannonfire {
+.soh_cannonfire {
   position: absolute;
   /* The barrel end (top centre of the 36px svg) sits on the spot it is placed at, and the art
      turns around that point, so the blast always comes out of the ship. */
@@ -679,7 +679,7 @@ a.disabled {
   filter: drop-shadow(0 0 4px rgba(255, 120, 0, 0.9)) drop-shadow(0 0 10px rgba(255, 60, 0, 0.6));
 }
 /* The shot itself, flying from the firing ship to where it lands. */
-.tracer {
+.soh_tracer {
   position: absolute;
   width: 12px;
   height: 12px;
@@ -689,7 +689,7 @@ a.disabled {
   background: radial-gradient(circle, #fff 0%, #ffd479 45%, rgba(255, 140, 0, 0) 100%);
   filter: drop-shadow(0 0 6px rgba(255, 170, 40, 0.9));
 }
-.explosion {
+.soh_explosion {
   position: relative;
   left: -32px;
   top: -32px;
@@ -698,13 +698,13 @@ a.disabled {
   filter: drop-shadow(0 0 4px rgba(208, 2, 27, 0.9));
 }
 /* Ramming: a cold, heavier impact, so it does not read as cannon fire. */
-.explosion.ram {
+.soh_explosion.soh_ram {
   color: #f2f2f2;
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8));
   scale: 1.2;
 }
 /* A shot that fell short: a small pale splash where it landed. */
-.explosion.splash {
+.soh_explosion.soh_splash {
   color: #cfe6f2;
   filter: drop-shadow(0 0 3px rgba(20, 60, 90, 0.7));
   scale: 0.6;
@@ -717,12 +717,12 @@ a.disabled {
   display: grid;
   grid-template-columns: 200px 350px 1fr;
 }
-.seasofhavoc-card {
+.soh_seasofhavoc-card {
   width: 144px;
   height: 198px;
   position: relative;
 }
-.playable-card-front {
+.soh_playable-card-front {
   background-image: url("img/playable_cards.jpg");
   background-size: 864px 2772px;
   background-repeat: no-repeat;
@@ -730,7 +730,7 @@ a.disabled {
   /* width: 144px; */
   /* height: 198px; */
 }
-.playable-card-back {
+.soh_playable-card-back {
   background-image: url("img/non_playable_cards.jpg");
   background-size: 864px 1188px;
   background-repeat: no-repeat;
@@ -740,7 +740,7 @@ a.disabled {
 }
 
 /* Dim overlay behind the discard/scrap dialog */
-.card_dialog_overlay {
+.soh_card_dialog_overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
@@ -749,7 +749,7 @@ a.disabled {
 }
 
 /* Scrap / discard card selection dialog styles */
-.scrap_card_dialog {
+.soh_scrap_card_dialog {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -764,7 +764,7 @@ a.disabled {
   max-width: 92vw;
 }
 
-.scrap_card_dialog h3 {
+.soh_scrap_card_dialog h3 {
   margin: 0 0 16px;
   text-align: center;
   color: #5a3a00;
@@ -772,7 +772,7 @@ a.disabled {
   letter-spacing: 0.02em;
 }
 
-.scrap_card_dialog .card_selection_wrapper {
+.soh_scrap_card_dialog .soh_card_selection_wrapper {
   margin: 0 0 4px;
   min-height: 220px;
   border: 1px solid #d4b87a;
@@ -781,42 +781,42 @@ a.disabled {
   background: #f5ead8;
 }
 
-.scrap_card_dialog .scrollable-stock {
+.soh_scrap_card_dialog .scrollable-stock {
   display: flex;
   align-items: center;
   width: 100%;
   min-height: 200px;
 }
 
-.scrap_card_dialog .scrollable-stock-inner {
+.soh_scrap_card_dialog .scrollable-stock-inner {
   flex: 1;
   min-width: 0;
   overflow-x: auto;
 }
 
-.scrap_dialog_buttons,
-.discard_dialog_buttons {
+.soh_scrap_dialog_buttons,
+.soh_discard_dialog_buttons {
   text-align: center;
   margin-top: 18px;
 }
 
-.scrap_dialog_buttons .bgabutton,
-.discard_dialog_buttons .bgabutton {
+.soh_scrap_dialog_buttons .bgabutton,
+.soh_discard_dialog_buttons .bgabutton {
   margin: 0 10px;
 }
 
 /* Suppress BGA framework's yellow dashed selectable outline on cards in these dialogs */
-.scrap_card_dialog .bga-cards_selectable-card {
+.soh_scrap_card_dialog .bga-cards_selectable-card {
   outline: none !important;
   border: none !important;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.scrap_card_dialog .bga-cards_selectable-card:hover {
+.soh_scrap_card_dialog .bga-cards_selectable-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
-.scrap_card_dialog .bga-cards_selected-card {
+.soh_scrap_card_dialog .bga-cards_selected-card {
   outline: 3px solid #2e9e3a !important;
   border-radius: 5px;
   transform: translateY(-6px);
@@ -824,7 +824,7 @@ a.disabled {
 }
 
 /* Compact scroll arrows — override global bgabutton sizing */
-.scrap_card_dialog .card_dialog_scroll_btn {
+.soh_scrap_card_dialog .soh_card_dialog_scroll_btn {
   width: 26px !important;
   min-width: 26px !important;
   height: 52px !important;
@@ -843,20 +843,20 @@ a.disabled {
 }
 
 /* Market and Scrap Pile Layout */
-.market-section {
+.soh_market-section {
   min-height: 250px;
   /* The buy buttons' z-index lifts them over their market card only; without this they sat above
      everything else on the page too, like the cards in hand as the page scrolled past. */
   isolation: isolate;
 }
 
-.market-container {
+.soh_market-container {
   display: flex;
   gap: 20px;
   align-items: flex-start;
 }
 
-.market-area {
+.soh_market-area {
   flex: 1;
   min-width: 0; /* Allows flex item to shrink */
   margin-right: auto; /* Push market to the left */
@@ -866,21 +866,21 @@ a.disabled {
   position: relative;
 }
 
-.scrap-area {
+.soh_scrap-area {
   margin-left: auto; /* Force to the right */
 }
 
-.damage-area {
+.soh_damage-area {
   margin-left: 20px;
 }
 
-.scrap-area h3,
-.damage-area h3 {
+.soh_scrap-area h3,
+.soh_damage-area h3 {
   text-align: left;
   margin-bottom: 10px;
 }
 
-.market-area h3 {
+.soh_market-area h3 {
   margin-top: 0;
   margin-bottom: 10px;
   text-align: center;
@@ -947,8 +947,8 @@ a.disabled {
 /* SlotStock will handle layout with its own settings */
 
 /* Non-playable card styling */
-.non-playable-card-front,
-.non-playable-card-back {
+.soh_non-playable-card-front,
+.soh_non-playable-card-back {
   background-image: url("img/non_playable_cards.jpg");
   background-size: 864px 1189px;
   background-repeat: no-repeat;
@@ -960,24 +960,24 @@ a.disabled {
 /* BGA Cards library will handle card flipping animations */
 
 /* Trading post resource selection rows */
-.trading-post-rows {
+.soh_trading-post-rows {
   display: block;
   width: 100%;
   margin-bottom: 6px;
 }
-.trading-row {
+.soh_trading-row {
   display: flex;
   align-items: center;
   gap: 4px;
   margin-bottom: 4px;
 }
-.trading-row-label {
+.soh_trading-row-label {
   font-weight: bold;
   min-width: 20px;
   text-align: right;
   margin-right: 2px;
 }
-.trading-resource-btn {
+.soh_trading-resource-btn {
   cursor: pointer;
   border: 2px solid transparent;
   border-radius: 4px;
@@ -985,11 +985,11 @@ a.disabled {
     border-color 0.15s,
     opacity 0.15s;
 }
-.trading-resource-btn.trading-selected {
+.soh_trading-resource-btn.soh_trading-selected {
   border-color: #333;
   box-shadow: none;
 }
-.trading-resource-btn.disabled {
+.soh_trading-resource-btn.disabled {
   opacity: 0.35;
   cursor: default;
   pointer-events: none;
@@ -1006,12 +1006,12 @@ a.disabled {
 }
 
 /* Captain and ship upgrades in the player panels */
-.player_panel_cards {
+.soh_player_panel_cards {
   display: flex;
   gap: 4px;
   padding-top: 4px;
 }
-.panel_card {
+.soh_panel_card {
   width: 43px;
   height: 59px;
   overflow: hidden;
@@ -1019,18 +1019,18 @@ a.disabled {
   border: 2px solid transparent;
   cursor: pointer;
 }
-.panel_card_art {
+.soh_panel_card_art {
   transform: scale(0.3);
   transform-origin: top left;
 }
-.panel_card.inactive {
+.soh_panel_card.soh_inactive {
   filter: grayscale(0.8);
   opacity: 0.8;
 }
-.panel_card.active {
+.soh_panel_card.soh_active {
   border-color: #e8b930;
 }
-.panel_card_flash {
+.soh_panel_card_flash {
   animation: panel-card-flash 1s ease-out 2;
 }
 @keyframes panel-card-flash {
@@ -1043,7 +1043,7 @@ a.disabled {
   align-items: center;
   gap: 8px;
 }
-.card_ship_option {
+.soh_card_ship_option {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1054,24 +1054,24 @@ a.disabled {
   cursor: pointer;
   font-size: 12px;
 }
-.card_ship_option input {
+.soh_card_ship_option input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
-.card_ship_option:has(input:checked) {
+.soh_card_ship_option:has(input:checked) {
   border-color: #e8b930;
   background: rgba(232, 185, 48, 0.15);
 }
-.card_ship_option:has(input:focus-visible) {
+.soh_card_ship_option:has(input:focus-visible) {
   outline: 2px solid #4a90d9;
 }
-.player_ship.card_ship_sprite {
+.soh_player_ship.soh_card_ship_sprite {
   position: static;
 }
 
 /* A player's ship(s) at the start of their panel's card row, scaled down from the board sprite. */
-.player_ship.panel_ship {
+.soh_player_ship.soh_panel_ship {
   position: static;
   align-self: center;
   width: 40px;
@@ -1080,12 +1080,12 @@ a.disabled {
 }
 
 /* The active player's ship(s), glowing in their colour. */
-.player_ship.active_turn_ship {
+.soh_player_ship.soh_active_turn_ship {
   filter: drop-shadow(0 0 3px var(--owner-color)) drop-shadow(0 0 3px var(--owner-color));
 }
 
 /* Card play preview on the sea board: moves, where the ship ends, rams, and shot range. */
-.card_preview_mark {
+.soh_card_preview_mark {
   position: absolute;
   width: 36px;
   height: 36px;
@@ -1093,12 +1093,12 @@ a.disabled {
   z-index: 4;
   pointer-events: none;
 }
-.card_preview_mark svg {
+.soh_card_preview_mark svg {
   width: 100%;
   height: 100%;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
 }
-.card_preview_route {
+.soh_card_preview_route {
   position: absolute;
   left: 0;
   top: 0;
@@ -1107,49 +1107,49 @@ a.disabled {
   pointer-events: none;
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
 }
-.card_preview_route path {
+.soh_card_preview_route path {
   fill: none;
   stroke: #fff3c4;
   stroke-width: 6;
   stroke-linecap: round;
 }
-.card_preview_route path.card_preview_shot {
+.soh_card_preview_route path.soh_card_preview_shot {
   stroke: #ff9d2e;
   stroke-width: 3;
   stroke-dasharray: 6 5;
 }
-.cannonfire.card_preview_flash {
+.soh_cannonfire.soh_card_preview_flash {
   pointer-events: none;
 }
-.card_preview_route path.card_preview_shot_end {
+.soh_card_preview_route path.soh_card_preview_shot_end {
   stroke: #ff9d2e;
   stroke-width: 5;
 }
-.card_preview_route marker path {
+.soh_card_preview_route marker path {
   fill: #fff3c4;
   stroke: none;
 }
-.card_preview_chevron svg {
+.soh_card_preview_chevron svg {
   fill: #ff9d2e;
 }
-.card_preview_collision svg {
+.soh_card_preview_collision svg {
   fill: #e53935;
 }
-.player_ship.card_preview_ghost {
+.soh_player_ship.soh_card_preview_ghost {
   position: absolute;
   margin: -22.75px 0 0 -30px;
   opacity: 0.85;
   z-index: 3;
   pointer-events: none;
 }
-.player_ship.card_preview_origin {
+.soh_player_ship.soh_card_preview_origin {
   opacity: 0.35;
 }
 /* A pivot played out on the ghost: it turns, then the pivot arrow goes. */
-.player_ship.card_preview_ghost.card_preview_turning {
+.soh_player_ship.soh_card_preview_ghost.soh_card_preview_turning {
   transition: rotate 0.6s ease-in-out 0.2s;
 }
-.card_preview_route path.card_preview_pivot_fading {
+.soh_card_preview_route path.soh_card_preview_pivot_fading {
   animation: card-preview-fade 0.3s ease-in 0.8s forwards;
 }
 @keyframes card-preview-fade {
@@ -1159,7 +1159,7 @@ a.disabled {
 }
 
 /* A whirlpool or gust under a ship: a small copy in the top-right corner, above the ship. */
-.seafeature.seafeature_badge {
+.soh_seafeature.soh_seafeature_badge {
   width: 34px;
   height: 34px;
   background-size: 136px 136px;
@@ -1170,15 +1170,15 @@ a.disabled {
   mask-image: radial-gradient(#333 45%, #00000000 70%);
   filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 3px #fff);
 }
-.seafeature_badge[data-seafeature="whirlpool"] {
+.soh_seafeature_badge[data-seafeature="whirlpool"] {
   background-position: 0px 0px;
 }
-.seafeature_badge[data-seafeature="gust"] {
+.soh_seafeature_badge[data-seafeature="gust"] {
   background-position: 0px -68px;
 }
 
 /* Scrap dialog: the hand and the discard pile as separate, labelled rows. */
-.scrap_card_group h4 {
+.soh_scrap_card_group h4 {
   margin: 12px 0 4px;
   text-align: left;
   font-size: 14px;

@@ -63,7 +63,7 @@ define([
       console.log("notify: ship upgrade activated", args);
       const panelId = `panel_upgrade_p${args.player_id}_${args.upgrade_key}`;
       this.setPanelCardActive(panelId, true);
-      $(panelId).classList.add("panel_card_flash");
+      $(panelId).classList.add("soh_panel_card_flash");
       if (args.player_id == this.player_id) {
         this.updateUpgradeCardVisual({ id: `upgrade-${args.upgrade_key}`, isActivated: true });
         (this.player_ship_upgrades || []).forEach((upgrade) => {
@@ -128,7 +128,7 @@ define([
       console.log("skiff_id: " + skiff_id);
       var player_board = this.bga.playerPanels.getElement(args.player_id);
       console.log("player board:", player_board);
-      var skiff_slot = query(`.skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
+      var skiff_slot = query(`.soh_skiff_slot[data-slotname="${slot_name}"][data-number="${slot_number}"]`)[0];
       console.log("skiff slot:");
       console.log(skiff_slot);
 
@@ -163,11 +163,11 @@ define([
             var card_div = this.cardsManager.getCardElement(purchased_card);
             if (card_div) {
               domClass.remove(card_div, "purchased");
-              var skiff_slot = query(`.skiff_slot`, card_div)[0];
+              var skiff_slot = query(`.soh_skiff_slot`, card_div)[0];
               if (skiff_slot) {
-                query(".skiff", skiff_slot).forEach(domConstruct.destroy);
-                query(".purchase_card_button", card_div).forEach(domConstruct.destroy);
-                domClass.add(skiff_slot, "unoccupied");
+                query(".soh_skiff", skiff_slot).forEach(domConstruct.destroy);
+                query(".soh_purchase_card_button", card_div).forEach(domConstruct.destroy);
+                domClass.add(skiff_slot, "soh_unoccupied");
                 domStyle.set(skiff_slot, "display", "none");
               }
             }
@@ -175,10 +175,10 @@ define([
         }
       }
 
-      query(".skiff_slot[data-slotname='market']").forEach(function (slot) {
-        query(".skiff", slot).forEach(domConstruct.destroy);
-        query(".purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
-        domClass.add(slot, "unoccupied");
+      query(".soh_skiff_slot[data-slotname='market']").forEach(function (slot) {
+        query(".soh_skiff", slot).forEach(domConstruct.destroy);
+        query(".soh_purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
+        domClass.add(slot, "soh_unoccupied");
         var slot_number = attr.get(slot, "data-number");
         var market_slot_id = "market_slot_n" + slot_number.substring(1);
         var market_slot = $(market_slot_id);
@@ -411,7 +411,7 @@ define([
           }
           case "collision": {
             // Ramming: the impact lands on the square the ship could not enter.
-            let impact = this.explosionAnimation(move.collision_x, move.collision_y, "ram");
+            let impact = this.explosionAnimation(move.collision_x, move.collision_y, "soh_ram");
             if (impact) {
               anims.push(impact);
             }
@@ -420,7 +420,7 @@ define([
           case "fire_miss": {
             // A shot that hits nothing still has to read as a shot: it falls at the end of its range.
             let shot = this.shotAnimation(shipid, move.fire_heading, move.miss_x, move.miss_y);
-            let splash = this.explosionAnimation(move.miss_x, move.miss_y, "splash");
+            let splash = this.explosionAnimation(move.miss_x, move.miss_y, "soh_splash");
             anims.push(splash ? fx.chain([shot, splash]) : shot);
             break;
           }

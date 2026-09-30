@@ -29,7 +29,7 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
 
       var shipwreckId = "shipwreck_" + args.shipwreck_arg;
       if ($(shipwreckId)) {
-        domClass.add(shipwreckId, "treasure_seeker_shipwreck_highlight");
+        domClass.add(shipwreckId, "soh_treasure_seeker_shipwreck_highlight");
       }
 
       this._treasureSeekerAdjustHandlers = [];
@@ -42,7 +42,7 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
             "div",
             {
               id: markerId,
-              class: "treasure_seeker_marker",
+              class: "soh_treasure_seeker_marker",
             },
             "seaboard",
           );
@@ -57,9 +57,9 @@ define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "d
 
     cleanupTreasureSeekerAdjust: function () {
       console.log("Cleaning up treasure seeker adjust");
-      query(".treasure_seeker_marker").forEach(domConstruct.destroy);
-      query(".treasure_seeker_shipwreck_highlight").forEach(function (node) {
-        domClass.remove(node, "treasure_seeker_shipwreck_highlight");
+      query(".soh_treasure_seeker_marker").forEach(domConstruct.destroy);
+      query(".soh_treasure_seeker_shipwreck_highlight").forEach(function (node) {
+        domClass.remove(node, "soh_treasure_seeker_shipwreck_highlight");
       });
       if (this._treasureSeekerAdjustHandlers) {
         for (var i = 0; i < this._treasureSeekerAdjustHandlers.length; i++) {

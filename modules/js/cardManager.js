@@ -32,13 +32,13 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       face.addEventListener('click', event => {
         // Selectable stocks own clicks for playing, scrapping, and discarding.
         if (face.closest('.bga-cards_selectable-stock') ||
-            (face.classList.contains('non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) ||
-            !(face.closest('.seasofhavoc-card[data-side="front"]') || face.classList.contains('panel_card_art') ||
+            (face.classList.contains('soh_non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) ||
+            !(face.closest('.soh_seasofhavoc-card[data-side="front"]') || face.classList.contains('soh_panel_card_art') ||
               face.classList.contains('upgrade-activated-face'))) return;
         event.stopPropagation();
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');
-        dialog.className = 'card-zoom-dialog';
+        dialog.className = 'soh_card-zoom-dialog';
         dialog.setAttribute('aria-label', _('Card preview'));
         const close = document.createElement('button');
         close.type = 'button';
@@ -83,16 +83,16 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         // Ship upgrade cards flip to their activated (upgraded) side, stored 2 sprites after the front.
         image_id = cardData.image_id + 2;
         // Its upgraded side: real card art, so it can be enlarged like a front.
-        div.classList.add("non-playable-card-back", "upgrade-activated-face");
+        div.classList.add("soh_non-playable-card-back", "upgrade-activated-face");
       } else if (cardData) {
         image_id = cardData.image_id;
-        div.classList.add("non-playable-card-front");
+        div.classList.add("soh_non-playable-card-front");
       } else if (this.non_playable_cards && this.non_playable_cards.card_back) {
         image_id = this.non_playable_cards.card_back.image_id;
-        div.classList.add("non-playable-card-back");
+        div.classList.add("soh_non-playable-card-back");
       } else {
         image_id = 0;
-        div.classList.add("non-playable-card-back");
+        div.classList.add("soh_non-playable-card-back");
       }
 
       console.log(
@@ -161,7 +161,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
     /** Captain and ship upgrade thumbnails in a player's panel; click shows the full card. */
     addPlayerPanelCards: function (player) {
       const row = document.createElement("div");
-      row.className = "cp_board player_panel_cards";
+      row.className = "soh_cp_board soh_player_panel_cards";
       row.id = `player_panel_cards_p${player.id}`;
       this.bga.playerPanels.getElement(player.id).append(row);
       // The player's ships as drawn on the board: in the 2 Ship Variant this is how you tell whose
@@ -170,7 +170,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       for (const shipname of [info.player_ship, info.player_ship2].filter(Boolean)) {
         row.insertAdjacentHTML(
           "beforeend",
-          `<div class="player_ship panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`,
+          `<div class="soh_player_ship soh_panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`,
         );
       }
       this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
@@ -182,7 +182,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
     addPanelCard: function (row, id, cardKey, active) {
       const thumb = document.createElement("div");
       thumb.id = id;
-      thumb.className = "panel_card";
+      thumb.className = "soh_panel_card";
       thumb.dataset.cardkey = cardKey;
       row.append(thumb);
       this.setPanelCardActive(id, active);
@@ -194,9 +194,9 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       const cardData = this.non_playable_cards[thumb.dataset.cardkey];
       const image_id = cardData.image_id + (active ? 2 : 0);
       const position = `-${(image_id % 6) * 144}px -${Math.floor(image_id / 6) * 198}px`;
-      thumb.classList.toggle("active", active);
-      thumb.classList.toggle("inactive", cardData.category === "ship_upgrade" && !active);
-      thumb.innerHTML = `<div class="non-playable-card-front panel_card_art" style="background-position: ${position}"></div>`;
+      thumb.classList.toggle("soh_active", active);
+      thumb.classList.toggle("soh_inactive", cardData.category === "ship_upgrade" && !active);
+      thumb.innerHTML = `<div class="soh_non-playable-card-front soh_panel_card_art" style="background-position: ${position}"></div>`;
       this.setupCardPreview(thumb.firstChild);
     },
 

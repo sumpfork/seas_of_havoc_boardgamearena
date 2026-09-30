@@ -278,7 +278,7 @@ define([
 
       this.playerSpendResources(effectiveCost);
 
-      var purchase_button = query(`.purchase_card_button[data-slotnumber="${slotnumber}"]`)[0];
+      var purchase_button = query(`.soh_purchase_card_button[data-slotnumber="${slotnumber}"]`)[0];
       if (purchase_button) {
         domConstruct.destroy(purchase_button);
       }
@@ -286,8 +286,8 @@ define([
       var skiff_slot_id = "skiff_slot_market_" + slotnumber;
       var skiff_slot = $(skiff_slot_id);
       if (skiff_slot) {
-        query(".skiff", skiff_slot).forEach(domConstruct.destroy);
-        domClass.add(skiff_slot, "unoccupied");
+        query(".soh_skiff", skiff_slot).forEach(domConstruct.destroy);
+        domClass.add(skiff_slot, "soh_unoccupied");
         domStyle.set(skiff_slot, "display", "none");
         if (this.islandSlots && this.islandSlots.market && this.islandSlots.market[slotnumber]) {
           this.islandSlots.market[slotnumber].occupying_player_id = null;
@@ -414,7 +414,7 @@ define([
       if (!cardsPayload || cardsPayload.length === 0) {
         cardsPayload = [];
       }
-      query(".purchase_card_button").forEach(domConstruct.destroy);
+      query(".soh_purchase_card_button").forEach(domConstruct.destroy);
       this.bgaPerformAction("actCompletePurchases", {
         cards_purchased: JSON.stringify(cardsPayload),
       });
@@ -463,7 +463,7 @@ define([
       this._pendingDoubloonsAsCannonballs = 0;
       this._pendingDoubloonsAsSails = 0;
 
-      query(".purchase_card_button").forEach(domConstruct.destroy);
+      query(".soh_purchase_card_button").forEach(domConstruct.destroy);
       this.updateCardPurchaseButtons(true);
 
       this.updateIslandSlots(this.islandSlots, this.gamedatas.players);

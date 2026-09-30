@@ -258,7 +258,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           const [ex, ey] = at(BOW_ANGLE[pivot.from] + sweep);
           const flag = sweep > 0 ? 1 : 0;
           paths.push(
-            `<path${turnsInPlace.includes(pivot) ? ' class="card_preview_pivot_fading"' : ""}` +
+            `<path${turnsInPlace.includes(pivot) ? ' class="soh_card_preview_pivot_fading"' : ""}` +
               ` d="M ${sx} ${sy} A ${r} ${r} 0 0 ${flag} ${mx} ${my} A ${r} ${r} 0 0 ${flag} ${ex} ${ey}"` +
               ' marker-end="url(#card_preview_arrowhead)"/>',
           );
@@ -268,17 +268,17 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
         for (const shot of shots) {
           const lines = shot.lines.map((line) => line.map(toPixels));
           for (const line of lines) {
-            paths.push(`<path class="card_preview_shot" d="M ${line.map((p) => p.join(" ")).join(" L ")}"/>`);
+            paths.push(`<path class="soh_card_preview_shot" d="M ${line.map((p) => p.join(" ")).join(" L ")}"/>`);
           }
           const [ex, ey] = lines[lines.length - 1][lines[lines.length - 1].length - 1];
           const [dx, dy] = STEP[shot.heading];
           const half = cell * 0.3;
           paths.push(
-            `<path class="card_preview_shot_end" d="M ${ex - dy * half} ${ey - dx * half} L ${ex + dy * half} ${ey + dx * half}"/>`,
+            `<path class="soh_card_preview_shot_end" d="M ${ex - dy * half} ${ey - dx * half} L ${ex + dy * half} ${ey + dx * half}"/>`,
           );
         }
         domConstruct.place(
-          `<svg class="card_preview_route" width="${board.offsetWidth}" height="${board.offsetHeight}">` +
+          `<svg class="soh_card_preview_route" width="${board.offsetWidth}" height="${board.offsetHeight}">` +
             '<defs><marker id="card_preview_arrowhead" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">' +
             '<path d="M0 0 L10 5 L0 10 Z"/></marker></defs>' + paths.join("") + "</svg>",
           board,
@@ -293,7 +293,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           this.format_block("jstpl_cannon_fire", { id: "card_preview_flash_" + shots.indexOf(shot) }),
           board,
         );
-        flash.classList.add("card_preview_flash");
+        flash.classList.add("soh_card_preview_flash");
         flash.style.left = fx + "px";
         flash.style.top = fy + "px";
         flash.style.rotate = (((shot.heading - 1) * 90 + 180) % 360) + "deg";
@@ -310,12 +310,12 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           const origin = document.getElementById("player_ship_" + shipArg);
           const shipName = origin.dataset.shipname;
           // Fade the real ship so the ghost reads as where it will be, even in the same square.
-          origin.classList.add("card_preview_origin");
-          html = `<div class="player_ship card_preview_ghost" data-shipname="${shipName}"></div>`;
+          origin.classList.add("soh_card_preview_origin");
+          html = `<div class="soh_player_ship soh_card_preview_ghost" data-shipname="${shipName}"></div>`;
           rotate = this.getHeadingDegrees(mark.heading);
         } else {
           const glyph = { chevron: CHEVRON, collision: CROSS }[mark.type];
-          html = `<div class="card_preview_mark card_preview_${mark.type}">${glyph}</div>`;
+          html = `<div class="soh_card_preview_mark soh_card_preview_${mark.type}">${glyph}</div>`;
         }
         const node = domConstruct.place(html, anchor);
         node.style.rotate = rotate + "deg";
@@ -326,16 +326,16 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           const turn = turnsInPlace.reduce((sum, p) => sum + (p.turn === "pivot left" ? -90 : p.turn === "pivot right" ? 90 : 180), 0);
           node.style.rotate = start + "deg";
           node.getBoundingClientRect(); // commit the start angle so the change below animates
-          node.classList.add("card_preview_turning");
+          node.classList.add("soh_card_preview_turning");
           node.style.rotate = start + turn + "deg";
         }
       }
     },
 
     clearCardPreview: function () {
-      document.querySelectorAll(".card_preview_mark, .card_preview_ghost, .card_preview_route, .card_preview_flash")
+      document.querySelectorAll(".soh_card_preview_mark, .soh_card_preview_ghost, .soh_card_preview_route, .soh_card_preview_flash")
         .forEach((node) => node.remove());
-      document.querySelectorAll(".card_preview_origin").forEach((node) => node.classList.remove("card_preview_origin"));
+      document.querySelectorAll(".soh_card_preview_origin").forEach((node) => node.classList.remove("soh_card_preview_origin"));
     },
   };
 });

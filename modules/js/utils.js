@@ -30,7 +30,7 @@ define([
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
       if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);
       const label = names[resource].replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-      return '<span class="resource log_resource ' + resource + '" data-resource="' + resource + '" role="img" aria-label="' + label + '" title="' + label + '"></span>';
+      return '<span class="soh_resource soh_log_resource soh_' + resource + '" data-resource="' + resource + '" role="img" aria-label="' + label + '" title="' + label + '"></span>';
     },
 
     /**
@@ -38,10 +38,10 @@ define([
      */
     /** Glow the active player's ship(s) in their colour, so it is clear whose turn it is on the board. */
     highlightActivePlayerShips: function (playerId) {
-      for (const ship of document.querySelectorAll("#seaboard .player_ship")) {
+      for (const ship of document.querySelectorAll("#seaboard .soh_player_ship")) {
         const owner = ship.id.replace("player_ship_", "").split("_")[0];
         const active = playerId != null && owner == playerId;
-        ship.classList.toggle("active_turn_ship", active);
+        ship.classList.toggle("soh_active_turn_ship", active);
         ship.style.setProperty("--owner-color", active ? "#" + this.gamedatas.playerinfo[owner].player_color : "");
       }
     },
@@ -51,13 +51,13 @@ define([
      * small copy of the feature in the corner of the square, above the ship.
      */
     refreshSeaFeatureBadges: function () {
-      document.querySelectorAll(".seafeature_badge").forEach((node) => node.remove());
+      document.querySelectorAll(".soh_seafeature_badge").forEach((node) => node.remove());
       const ships = this.seaboard.filter((e) => e.type === "player_ship");
       for (const feature of this.seaboard) {
         if (feature.type !== "whirlpool" && feature.type !== "gust") continue;
         if (!ships.some((ship) => ship.x == feature.x && ship.y == feature.y)) continue;
         const badge = domConstruct.place(
-          `<div class="seafeature seafeature_badge" data-seafeature="${feature.type}"></div>`,
+          `<div class="soh_seafeature soh_seafeature_badge" data-seafeature="${feature.type}"></div>`,
           "seaboardlocation_" + feature.x + "_" + feature.y,
         );
         if (feature.type === "gust") {
@@ -146,7 +146,7 @@ define([
       } else {
         console.log("[booty] createBootyTokenNode faceup", { imageId });
       }
-      const classes = isBack ? "booty-token booty-token-back" : "booty-token";
+      const classes = isBack ? "soh_booty-token soh_booty-token-back" : "soh_booty-token";
       const node = domConstruct.create("div", { className: classes });
       if (!isBack) {
         this.setBootyTokenImage(node, imageId);
@@ -158,7 +158,7 @@ define([
     addBootyTokenTooltip: function (node, imageId) {
       node.id = node.id || "booty_token_view_" + this._nextEffectId();
       const zoom = this.createBootyTokenNode(false, imageId);
-      zoom.classList.add("booty-token-zoom");
+      zoom.classList.add("soh_booty-token-zoom");
       this.setBootyTokenPosition(zoom, imageId, 126);
       this.addTooltipHtml(node.id, zoom.outerHTML);
     },
@@ -177,7 +177,7 @@ define([
       }
       console.log("[booty] typeArg:", typeArg, "tokens:", tokens);
       domConstruct.empty(mySlot);
-      domClass.remove(mySlot, "has-token");
+      domClass.remove(mySlot, "soh_has-token");
       if (tokens.length > 1) {
         // Galleon Treasure Hold: the hold can carry two tokens, so show them all.
         tokens.forEach((token) => {
@@ -186,19 +186,19 @@ define([
           domConstruct.place(node, mySlot);
           this.addBootyTokenTooltip(node, token.type_arg);
         });
-        domClass.add(mySlot, "has-token");
+        domClass.add(mySlot, "soh_has-token");
       } else if (typeArg !== undefined) {
         const node = this.createBootyTokenNode(false, typeArg);
         this.setBootyTokenImageForSlot(node, typeArg);
         domConstruct.place(node, mySlot);
         this.addBootyTokenTooltip(node, typeArg);
-        domClass.add(mySlot, "has-token");
+        domClass.add(mySlot, "soh_has-token");
       } else if (tokens.length > 0) {
         // Fallback: show facedown token only if we KNOW player has tokens
         console.warn("[booty] typeArg undefined but has tokens, showing facedown as fallback");
         const node = this.createBootyTokenNode(true, null);
         domConstruct.place(node, mySlot);
-        domClass.add(mySlot, "has-token");
+        domClass.add(mySlot, "soh_has-token");
       }
       console.groupEnd();
     },
@@ -209,7 +209,7 @@ define([
       domConstruct.empty(slot);
       const node = this.createBootyTokenNode(true, null);
       domConstruct.place(node, slot);
-      domClass.add(slot, "has-token");
+      domClass.add(slot, "soh_has-token");
     },
 
     _nextEffectId: function () {
@@ -333,7 +333,7 @@ define([
       };
 
       const id = "tracer_" + this._nextEffectId();
-      domConstruct.place('<div id="' + id + '" class="tracer" style="display: none"></div>', board);
+      domConstruct.place('<div id="' + id + '" class="soh_tracer" style="display: none"></div>', board);
       const leg = (i) =>
         baseFX.animateProperty({
           node: id,
@@ -384,7 +384,7 @@ define([
           : this.createBootyTokenNode(true, null);
       const tokenId = `booty_pickup_${playerId}_${event.shipwreck_arg}_${Date.now()}`;
       tokenNode.id = tokenId;
-      domClass.add(tokenNode, "booty-token-pickup");
+      domClass.add(tokenNode, "soh_booty-token-pickup");
       const overlayRoot = dom.byId("overall_game") || seaboardNode;
       domConstruct.place(tokenNode, overlayRoot);
       const startId = `seaboardlocation_${event.old_x}_${event.old_y}`;
@@ -711,7 +711,7 @@ define([
       for (var res in bootyResolved) {
         var used = Math.min(bootyResolved[res] || 0, cost[res] || 0);
         for (var i = 0; i < used; i++) {
-          parts.push("<span class='resource log_resource " + res + "'></span>");
+          parts.push("<span class='soh_resource soh_log_resource soh_" + res + "'></span>");
         }
       }
       if (parts.length === 0) return null;

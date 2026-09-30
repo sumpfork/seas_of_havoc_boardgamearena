@@ -77,7 +77,7 @@ define([
       // excluded so picking a different card just swaps dialogs, and the action buttons because the
       // booty prompt is answered from the status bar while this dialog is still up.
       this._closeCardPlayDialogOnOutsideClick = (event) => {
-        if (event.target.closest("#card_display_dialog, #myhand, #captain_card_choices, .card-zoom-dialog, .bgabutton")) {
+        if (event.target.closest("#card_display_dialog, #myhand, #captain_card_choices, .soh_card-zoom-dialog, .bgabutton")) {
           return;
         }
         if (this._pendingBootySend) {
@@ -148,8 +148,8 @@ define([
           `<div class="card_ship_choice_label">${_("Ship")}:</div>` +
             [[1, me.player_ship], [2, me.player_ship2]].map(([n, name]) =>
               // The ship as it looks on the board: players know their ships by sight, not by name.
-              `<label class="card_ship_option" title="${_(name)}"><input type="radio" name="card_ship" value="${n}" ${n === 1 ? "checked" : ""} aria-label="${_(name)}">` +
-              `<div class="player_ship card_ship_sprite" data-shipname="${name}"></div></label>`,
+              `<label class="soh_card_ship_option" title="${_(name)}"><input type="radio" name="card_ship" value="${n}" ${n === 1 ? "checked" : ""} aria-label="${_(name)}">` +
+              `<div class="soh_player_ship soh_card_ship_sprite" data-shipname="${name}"></div></label>`,
             ).join(" "),
           "card_ship_choice",
         );
@@ -179,7 +179,7 @@ define([
         var choices_html = result.join("\n");
         domConstruct.place(choices_html, "card_choices");
         this._lockFixedRows(this.dep_tree);
-        query(".card_choice_radio").connect("onchange", this, (event) => {
+        query(".soh_card_choice_radio").connect("onchange", this, (event) => {
           // The player has answered this row themselves: nothing in it is an automatic pick now.
           query(`input[name="${event.target.name}"]`).forEach((radio) => delete radio.dataset.autoTicked);
           this._updateCardPlayControls();
@@ -201,7 +201,7 @@ define([
             const radio = dom.byId(option.id);
             radio.checked = true;
             radio.disabled = true;
-            radio.classList.add("card_choice_fixed");
+            radio.classList.add("soh_card_choice_fixed");
           }
           this._lockFixedRows(option.children);
         }
@@ -517,15 +517,15 @@ define([
     _choiceLabelHtml: function (option) {
       var glyph = this._choiceGlyph(option.name);
       var parts = [];
-      if (glyph) parts.push('<span class="chip_glyph">' + glyph + "</span>");
+      if (glyph) parts.push('<span class="soh_chip_glyph">' + glyph + "</span>");
       parts.push('<span class="chip_text">' + this._choiceName(option.name) + "</span>");
-      if (option.range) parts.push('<span class="chip_range">' + _("range") + " " + option.range + "</span>");
+      if (option.range) parts.push('<span class="soh_chip_range">' + _("range") + " " + option.range + "</span>");
       var cost = option.cost || {};
       var costHtml = Object.keys(cost)
         .filter(r => cost[r] > 0)
         .map(r => cost[r] + this.resourceIcon(r))
         .join("");
-      if (costHtml) parts.push('<span class="chip_cost">' + costHtml + "</span>");
+      if (costHtml) parts.push('<span class="soh_chip_cost">' + costHtml + "</span>");
       return parts.join("");
     },
 
@@ -678,7 +678,8 @@ define([
         if (optOut && paid.length) {
           var checkbox = dom.byId(optOut.id);
           var stuck = domStyle.get(checkbox.parentNode.parentNode, "display") !== "none" &&
-            paid.every(o => dom.byId(o.id).disabled);
+            // A free alternative (e.g. carronade) keeps the row open even when every paid shot is out of reach.
+            options.every(o => o === optOut || dom.byId(o.id).disabled);
           var chipText = query(".chip_text", checkbox.parentNode)[0];
           if (chipText) {
             chipText.textContent = stuck ? _("can\u2019t afford") : _("skip");
@@ -774,21 +775,14 @@ define([
       const ability = args.ability;
       const data = args._private;
       const cards = data.available_cards;
-      const panel = domConstruct.create("div", { id: "captain_card_choices" }, "myhand_wrap", "first");
-      const title = domConstruct.create("p", {}, panel);
-      const buttons = domConstruct.create("div", {}, panel);
       const send = (choices) => this.bgaPerformAction("actResolveCaptainCard", {
         choices: JSON.stringify(choices), decisions: JSON.stringify([]),
       });
-      const button = (label, action, icon = null) => {
-        const node = domConstruct.create("button", { type: "button", className: "bgabutton bgabutton_blue", textContent: label }, buttons);
-        if (icon) node.innerHTML = this.resourceIcon(icon);
-        on(node, "click", action);
-      };
+      const button = (label, action, color = "primary") => this.statusBar.addActionButton(label, action, { color });
       if (ability === "unearth_riches") {
-        title.textContent = _("Unearth Riches — gain:") + " " + Object.entries(data.resources).map(([r, n]) => n + " " + r).join(", ");
+        this.statusBar.setTitle(_("Unearth Riches — gain:") + " " + Object.entries(data.resources).map(([r, n]) => n + " " + r).join(", "));
         if (data.resources.choice) {
-          ["sail", "cannonball", "doubloon"].forEach(r => button(_(r), () => send({ resource: r }), r));
+          ["sail", "cannonball", "doubloon"].forEach(r => button(this.resourceIcon(r), () => send({ resource: r }), "secondary"));
         } else {
           button(_("Gain rewards"), () => send({}));
         }
@@ -796,11 +790,14 @@ define([
       }
       if (ability === "retaliation") {
         // Every damage card is identical, so there is nothing to pick between: go straight to the shot.
-        title.textContent = _("Retaliation: scrap a damage card, then you may fire.");
-        [[_("Fire left (free, range 3)"), "fire left"], [_("Fire right (free, range 3)"), "fire right"],
-          [_("Scrap without firing"), "skip"]].forEach(([label, fire]) => button(label, () => send({ fire: fire })));
+        this.statusBar.setTitle(_("Retaliation: scrap a damage card, then you may fire."));
+        button(_("Fire left (free, range 3)"), () => send({ fire: "fire left" }));
+        button(_("Fire right (free, range 3)"), () => send({ fire: "fire right" }));
+        button(_("Scrap without firing"), () => send({ fire: "skip" }), "secondary");
         return;
       }
+      const panel = domConstruct.create("div", { id: "captain_card_choices" }, "myhand_wrap", "first");
+      const title = domConstruct.create("p", {}, panel);
       title.textContent = ability === "spyglass" ? _("Spyglass: choose the card to keep, then the remaining cards in top-to-bottom deck order.") :
         _("Improvisation: choose a card to copy.");
       const stockNode = domConstruct.create("div", {}, panel);
@@ -812,7 +809,7 @@ define([
       const order = [];
       this.captainChoiceStock.onCardClick = (preview) => {
         const card = byId.get(Number(preview.id));
-        domConstruct.empty(buttons);
+        this.statusBar.removeActionButtons();
         if (ability === "spyglass") {
           order.push(Number(card.id));
           this.captainChoiceStock.removeCard(preview);
@@ -821,7 +818,7 @@ define([
             title.textContent = _("Ready: keep the first card and return the others in the selected order.");
             button(_("Confirm"), () => send({ order: order }));
           }
-          button(_("Start over"), () => this.setupCaptainCardSelection(args));
+          button(_("Start over"), () => { this.statusBar.removeActionButtons(); this.setupCaptainCardSelection(args); }, "secondary");
         } else {
           this.showCardPlayDialog(this.playable_cards[card.type], Number(card.id), Number(card.id));
         }
@@ -842,7 +839,7 @@ define([
 
       var overlay = document.createElement("div");
       overlay.id = "card_dialog_overlay";
-      overlay.className = "card_dialog_overlay";
+      overlay.className = "soh_card_dialog_overlay";
       document.body.appendChild(overlay);
 
       var scrapDialog = this.format_block("jstpl_scrap_card_dialog", {});
@@ -857,8 +854,8 @@ define([
           scrollStep: 160,
           buttonGap: "4px",
           scrollbarVisible: false,
-          leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
-          rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
+          leftButton: { html: "‹", classes: ["soh_card_dialog_scroll_btn"] },
+          rightButton: { html: "›", classes: ["soh_card_dialog_scroll_btn"] },
         });
         stock.setSelectionMode("single");
         return stock;
@@ -927,7 +924,7 @@ define([
 
       var overlay = document.createElement("div");
       overlay.id = "card_dialog_overlay";
-      overlay.className = "card_dialog_overlay";
+      overlay.className = "soh_card_dialog_overlay";
       document.body.appendChild(overlay);
 
       var discardDialog = this.format_block("jstpl_discard_card_dialog", {});
@@ -940,8 +937,8 @@ define([
         scrollStep: 160,
         buttonGap: "4px",
         scrollbarVisible: false,
-        leftButton: { html: "‹", classes: ["card_dialog_scroll_btn"] },
-        rightButton: { html: "›", classes: ["card_dialog_scroll_btn"] },
+        leftButton: { html: "‹", classes: ["soh_card_dialog_scroll_btn"] },
+        rightButton: { html: "›", classes: ["soh_card_dialog_scroll_btn"] },
       });
 
       this.discardCardSelection.setSelectionMode("single");
@@ -1008,16 +1005,16 @@ define([
       }
 
       const overlay = domConstruct.create(
-        "div", { id: "card_dialog_overlay", className: "card_dialog_overlay" }, document.body,
+        "div", { id: "card_dialog_overlay", className: "soh_card_dialog_overlay" }, document.body,
       );
       const dialog = domConstruct.create(
-        "div", { id: "pile_view_dialog", className: "scrap_card_dialog" }, document.body,
+        "div", { id: "pile_view_dialog", className: "soh_scrap_card_dialog" }, document.body,
       );
       domConstruct.create("h3", { textContent: title + " (" + cards.length + ")" }, dialog);
       const wrapper = domConstruct.create(
-        "div", { id: "pile_view_wrapper", className: "card_selection_wrapper" }, dialog,
+        "div", { id: "pile_view_wrapper", className: "soh_card_selection_wrapper" }, dialog,
       );
-      const buttons = domConstruct.create("div", { className: "scrap_dialog_buttons" }, dialog);
+      const buttons = domConstruct.create("div", { className: "soh_scrap_dialog_buttons" }, dialog);
       const close = domConstruct.create(
         "a", { href: "#", className: "bgabutton bgabutton_gray", textContent: _("Close") }, buttons,
       );
@@ -1028,8 +1025,8 @@ define([
         scrollStep: 160,
         buttonGap: "4px",
         scrollbarVisible: false,
-        leftButton: { html: "\u2039", classes: ["card_dialog_scroll_btn"] },
-        rightButton: { html: "\u203A", classes: ["card_dialog_scroll_btn"] },
+        leftButton: { html: "\u2039", classes: ["soh_card_dialog_scroll_btn"] },
+        rightButton: { html: "\u203A", classes: ["soh_card_dialog_scroll_btn"] },
       });
       this._addPreviewCards(this.pileViewStock, cards);
 

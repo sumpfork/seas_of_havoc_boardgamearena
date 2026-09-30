@@ -78,22 +78,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
         case "seaPhaseSetup": {
           // Clear all skiffs when entering sea phase
           query(".skiff_placed").forEach(domConstruct.destroy);
-          query(".purchase_card_button").forEach(domConstruct.destroy);
-          query(".skiff_slot").forEach(function (slot) {
-            domClass.add(slot, "unoccupied");
-            query(".skiff", slot).forEach(domConstruct.destroy);
+          query(".soh_purchase_card_button").forEach(domConstruct.destroy);
+          query(".soh_skiff_slot").forEach(function (slot) {
+            domClass.add(slot, "soh_unoccupied");
+            query(".soh_skiff", slot).forEach(domConstruct.destroy);
           });
           break;
         }
 
         case "seaTurn": {
           query(".skiff_placed").forEach(domConstruct.destroy);
-          query(".purchase_card_button").forEach(domConstruct.destroy);
-          break;
-        }
-
-        case "captainCard": {
-          if (this.isCurrentPlayerActive()) this.setupCaptainCardSelection(args.args);
+          query(".soh_purchase_card_button").forEach(domConstruct.destroy);
           break;
         }
 
@@ -236,6 +231,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
+          case "captainCard":
+            // Here rather than onEnteringState: the framework clears the status bar buttons before this.
+            this.setupCaptainCardSelection(args);
+            break;
+
           case "cardFlag":
             if (args.flag === "green") {
               ["sail", "cannonball", "doubloon"].forEach(resource => {
@@ -288,7 +288,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             ((args._private || {}).booty_tokens || []).forEach((token) => {
               // An inline icon: the sprite scaled to the token's size, not the panel slot's.
               const node = this.createBootyTokenNode(false, token.image_id);
-              node.classList.add("booty-token-button-icon");
+              node.classList.add("soh_booty-token-button-icon");
               node.id = "booty_discard_choice_" + token.id;
               this.setBootyTokenPosition(node, token.image_id, 36);
               this.statusBar.addActionButton(
@@ -441,17 +441,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "resolveCollision":
             this.statusBar.addActionButton(
-              "<div class='resource pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
+              "<div class='soh_resource soh_pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource nope' role='img' aria-label='" + _("Do not pivot") + "' data-pivot='no pivot'></div>",
+              "<div class='soh_resource soh_nope' role='img' aria-label='" + _("Do not pivot") + "' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );
             this.statusBar.addActionButton(
-              "<div class='resource pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
+              "<div class='soh_resource soh_pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
               { color: "secondary" },
             );

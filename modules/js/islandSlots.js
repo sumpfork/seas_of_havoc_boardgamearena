@@ -107,11 +107,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
 
       domConstruct.place(skiff, skiffSlot);
       domClass.add(skiff_id, "skiff_placed");
-      if (domClass.contains(skiffSlot, "corsair_selectable") && !isCorsairOverlay) {
-        domClass.add(skiff_id, "corsair_selectable_hint");
+      if (domClass.contains(skiffSlot, "soh_corsair_selectable") && !isCorsairOverlay) {
+        domClass.add(skiff_id, "soh_corsair_selectable_hint");
       }
       if (isCorsairOverlay) {
-        domClass.add(skiff_id, "corsair_overlay");
+        domClass.add(skiff_id, "soh_corsair_overlay");
       }
     },
 
@@ -139,7 +139,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
           }
 
           // Clear any existing skiffs and lingering flag tokens from this slot
-          query(".skiff, .flagish", skiff_slot).forEach(domConstruct.destroy);
+          query(".soh_skiff, .soh_flagish", skiff_slot).forEach(domConstruct.destroy);
 
           // Handle disabled slots
           if (slotData.disabled) {
@@ -150,21 +150,21 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
           }
 
           if (this.canCurrentPlayerUseCorsairOnSlot(slot, slotData)) {
-            domClass.add(skiff_slot_id, "corsair_selectable");
+            domClass.add(skiff_slot_id, "soh_corsair_selectable");
           } else {
-            domClass.remove(skiff_slot_id, "corsair_selectable");
+            domClass.remove(skiff_slot_id, "soh_corsair_selectable");
           }
 
           if (this.shouldBlockOccupiedSkiffSlot(slot, slotData)) {
-            domClass.add(skiff_slot_id, "occupied_blocked");
+            domClass.add(skiff_slot_id, "soh_occupied_blocked");
           } else {
-            domClass.remove(skiff_slot_id, "occupied_blocked");
+            domClass.remove(skiff_slot_id, "soh_occupied_blocked");
           }
 
           if (this.shouldBlockWorkshopSlot(slot)) {
-            domClass.add(skiff_slot_id, "workshop_unavailable");
+            domClass.add(skiff_slot_id, "soh_workshop_unavailable");
           } else {
-            domClass.remove(skiff_slot_id, "workshop_unavailable");
+            domClass.remove(skiff_slot_id, "soh_workshop_unavailable");
           }
 
           var primaryOccupantId = slotData.occupying_player_id;
@@ -197,7 +197,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
                   console.log(
                     "Skipping skiff for slot " + number + " - card " + card_id_for_slot + " is pending purchase",
                   );
-                  domClass.add(skiff_slot_id, "unoccupied");
+                  domClass.add(skiff_slot_id, "soh_unoccupied");
                   continue;
                 }
               }
@@ -207,13 +207,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
             if (corsairOccupantId != null) {
               this.renderSkiffInSlot(skiff_slot, slot, number, corsairOccupantId, players, true);
             }
-            domClass.remove(skiff_slot_id, "unoccupied");
+            domClass.remove(skiff_slot_id, "soh_unoccupied");
           } else if (corsairOccupantId != null) {
             this.renderSkiffInSlot(skiff_slot, slot, number, corsairOccupantId, players, true);
-            domClass.remove(skiff_slot_id, "unoccupied");
+            domClass.remove(skiff_slot_id, "soh_unoccupied");
           } else {
             // Slot is unoccupied
-            domClass.add(skiff_slot_id, "unoccupied");
+            domClass.add(skiff_slot_id, "soh_unoccupied");
 
             // For market slots, position and show/hide based on whether there's a card
             if (slot == "market") {

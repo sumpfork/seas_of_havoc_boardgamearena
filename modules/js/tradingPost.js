@@ -89,33 +89,33 @@ define([
 
       this.cleanupTradingPostUi();
 
-      var html = '<div id="trading_post_rows" class="trading-post-rows">';
+      var html = '<div id="trading_post_rows" class="soh_trading-post-rows">';
 
       // Row 1
-      html += '<div class="trading-row">';
-      html += '<span class="trading-row-label">1.</span>';
+      html += '<div class="soh_trading-row">';
+      html += '<span class="soh_trading-row-label">1.</span>';
       for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
         var res = TRADEABLE_RESOURCES[i];
         var count = parseInt(playerRes[res]) || 0;
         var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_gray trading-resource-btn' + disabledClass
+        html += '<a class="bgabutton bgabutton_gray soh_trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="1" data-phase="spend">'
           + this.resourceIcon(res) + '</a>';
       }
       html += '</div>';
 
       // Row 2
-      html += '<div class="trading-row">';
-      html += '<span class="trading-row-label">2.</span>';
+      html += '<div class="soh_trading-row">';
+      html += '<span class="soh_trading-row-label">2.</span>';
       for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
         var res = TRADEABLE_RESOURCES[i];
         var count = parseInt(playerRes[res]) || 0;
         var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_gray trading-resource-btn' + disabledClass
+        html += '<a class="bgabutton bgabutton_gray soh_trading-resource-btn' + disabledClass
           + '" data-resource="' + res + '" data-row="2" data-phase="spend">'
           + this.resourceIcon(res) + '</a>';
       }
-      html += '<a class="bgabutton bgabutton_gray trading-resource-btn" '
+      html += '<a class="bgabutton bgabutton_gray soh_trading-resource-btn" '
         + 'data-resource="skip" data-row="2" data-phase="spend">' + _("Skip") + '</a>';
       html += '</div>';
 
@@ -147,13 +147,13 @@ define([
 
       this.cleanupTradingPostUi();
 
-      var html = '<div id="trading_post_rows" class="trading-post-rows">';
+      var html = '<div id="trading_post_rows" class="soh_trading-post-rows">';
       for (var row = 1; row <= numRows; row++) {
-        html += '<div class="trading-row">';
-        html += '<span class="trading-row-label">' + row + '.</span>';
+        html += '<div class="soh_trading-row">';
+        html += '<span class="soh_trading-row-label">' + row + '.</span>';
         for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
           var res = TRADEABLE_RESOURCES[i];
-          html += '<a class="bgabutton bgabutton_gray trading-resource-btn'
+          html += '<a class="bgabutton bgabutton_gray soh_trading-resource-btn'
             + '" data-resource="' + res + '" data-row="' + row + '" data-phase="gain">'
             + this.resourceIcon(res) + '</a>';
         }
@@ -181,9 +181,9 @@ define([
 
       for (var row = 1; row <= selectedResources.length; row++) {
         var resource = selectedResources[row - 1];
-        query('.trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]').forEach(function(btn) {
+        query('.soh_trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]').forEach(function(btn) {
           if (btn.dataset.resource === resource) {
-            domClass.add(btn, "trading-selected");
+            domClass.add(btn, "soh_trading-selected");
           }
         });
       }
@@ -191,7 +191,7 @@ define([
 
     _wireTradingResourceButtons: function(phase) {
       var self = this;
-      query("#trading_post_rows .trading-resource-btn").forEach(function(btn) {
+      query("#trading_post_rows .soh_trading-resource-btn").forEach(function(btn) {
         btn.addEventListener("click", function(event) {
           event.preventDefault();
           self._onTradingResourceClicked(btn, phase);
@@ -205,9 +205,9 @@ define([
       var row = btn.dataset.row;
 
       // Select this button, deselect others in the same row
-      query('.trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]')
-        .forEach(function(b) { domClass.remove(b, "trading-selected"); });
-      domClass.add(btn, "trading-selected");
+      query('.soh_trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]')
+        .forEach(function(b) { domClass.remove(b, "soh_trading-selected"); });
+      domClass.add(btn, "soh_trading-selected");
 
       if (phase === "spend") {
         this._updateTradingSpendConstraints();
@@ -222,7 +222,7 @@ define([
       var playerRes = this.getPlayerResources();
 
       var row1Selected = null;
-      query('.trading-resource-btn.trading-selected[data-row="1"][data-phase="spend"]')
+      query('.soh_trading-resource-btn.soh_trading-selected[data-row="1"][data-phase="spend"]')
         .forEach(function(btn) { row1Selected = btn.dataset.resource; });
 
       var remaining = {};
@@ -233,13 +233,13 @@ define([
         remaining[row1Selected] = Math.max(0, (remaining[row1Selected] || 0) - 1);
       }
 
-      query('.trading-resource-btn[data-row="2"][data-phase="spend"]').forEach(function(btn) {
+      query('.soh_trading-resource-btn[data-row="2"][data-phase="spend"]').forEach(function(btn) {
         if (btn.dataset.resource === "skip") return;
         var res = btn.dataset.resource;
         if ((remaining[res] || 0) < 1) {
           domClass.add(btn, "disabled");
-          if (domClass.contains(btn, "trading-selected")) {
-            domClass.remove(btn, "trading-selected");
+          if (domClass.contains(btn, "soh_trading-selected")) {
+            domClass.remove(btn, "soh_trading-selected");
           }
         } else {
           domClass.remove(btn, "disabled");
@@ -253,8 +253,8 @@ define([
 
       var canConfirm = false;
       if (phase === "spend") {
-        var row1Ok = query('.trading-resource-btn.trading-selected[data-row="1"][data-phase="spend"]').length > 0;
-        var row2Ok = query('.trading-resource-btn.trading-selected[data-row="2"][data-phase="spend"]').length > 0;
+        var row1Ok = query('.soh_trading-resource-btn.soh_trading-selected[data-row="1"][data-phase="spend"]').length > 0;
+        var row2Ok = query('.soh_trading-resource-btn.soh_trading-selected[data-row="2"][data-phase="spend"]').length > 0;
         canConfirm = row1Ok && row2Ok;
       } else {
         canConfirm = true;
@@ -262,7 +262,7 @@ define([
           ? 2
           : this._tradingPostState.resourcesSpent.length;
         for (var row = 1; row <= numRows; row++) {
-          if (query('.trading-resource-btn.trading-selected[data-row="' + row + '"][data-phase="gain"]').length === 0) {
+          if (query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="gain"]').length === 0) {
             canConfirm = false;
             break;
           }
@@ -281,7 +281,7 @@ define([
 
       var resourcesSpent = [];
       for (var row = 1; row <= 2; row++) {
-        query('.trading-resource-btn.trading-selected[data-row="' + row + '"][data-phase="spend"]')
+        query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="spend"]')
           .forEach(function(btn) {
             if (btn.dataset.resource !== "skip") {
               resourcesSpent.push(btn.dataset.resource);
@@ -303,7 +303,7 @@ define([
         : this._tradingPostState.resourcesSpent.length;
       var resourcesGained = [];
       for (var row = 1; row <= numRows; row++) {
-        query('.trading-resource-btn.trading-selected[data-row="' + row + '"][data-phase="gain"]')
+        query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="gain"]')
           .forEach(function(btn) {
             resourcesGained.push(btn.dataset.resource);
           });

@@ -97,10 +97,10 @@ define([
           const keys = ["resource_change", "booty_usage", "resource_list", "resource"];
           const iconify = (text) => text.replace(/\[(sail|cannonball|doubloon|skiff)\]/g, (match, res) => {
             if (res === "skiff") {
-              return "<span class='resource log_resource log_skiff' role='img' aria-label='" + _("skiff") + "'>" +
+              return "<span class='soh_resource soh_log_resource soh_log_skiff' role='img' aria-label='" + _("skiff") + "'>" +
                 this.format_block("jstpl_skiff_svg", { player_color: "555555" }) + "</span>";
             }
-            return "<span class='resource log_resource " + res + "' role='img' aria-label='" + _(res) + "'></span>";
+            return "<span class='soh_resource soh_log_resource soh_" + res + "' role='img' aria-label='" + _(res) + "'></span>";
           });
           const walk = (values) => {
             for (const key of Object.keys(values)) {
@@ -151,47 +151,47 @@ define([
      */
     setupGameArea: function () {
       const html = `
-        <div id="board" class="board shadow">
-            <div id="skiff_slot_capitol_n1" class="skiff_slot unoccupied" data-slotname="capitol" data-number="n1"></div>
-            <div id="skiff_slot_bank_n1" class="skiff_slot unoccupied" data-slotname="bank" data-number="n1"></div>
-            <div id="skiff_slot_workshop_n1" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n1"></div>
-            <div id="skiff_slot_workshop_n2" class="skiff_slot unoccupied" data-slotname="workshop" data-number="n2"></div>
-            <div id="skiff_slot_trading_post_n1" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n1"></div>
-            <div id="skiff_slot_trading_post_n2" class="skiff_slot unoccupied" data-slotname="trading_post" data-number="n2"></div>
-            <div id="skiff_slot_shipyard_n1" class="skiff_slot unoccupied" data-slotname="shipyard" data-number="n1"></div>   
-            <div id="skiff_slot_blacksmith_n1" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n1"></div>
-            <div id="skiff_slot_blacksmith_n2" class="skiff_slot unoccupied" data-slotname="blacksmith" data-number="n2"></div>
-            <div id="skiff_slot_sailmaker_n1" class="skiff_slot unoccupied" data-slotname="sailmaker" data-number="n1"></div>
-            <div id="skiff_slot_deep_cove_n1" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n1"></div>
-            <div id="skiff_slot_deep_cove_n2" class="skiff_slot unoccupied" data-slotname="deep_cove" data-number="n2"></div>
-            <div id="skiff_slot_green_flag_n1" class="skiff_slot unoccupied" data-slotname="green_flag" data-number="n1"></div>
-            <div id="skiff_slot_tan_flag_n1" class="skiff_slot unoccupied" data-slotname="tan_flag" data-number="n1"></div>
-            <div id="skiff_slot_blue_flag_n1" class="skiff_slot unoccupied" data-slotname="blue_flag" data-number="n1"></div>
-            <div id="skiff_slot_red_flag_n1" class="skiff_slot unoccupied" data-slotname="red_flag" data-number="n1"></div>
+        <div id="board" class="soh_board shadow">
+            <div id="skiff_slot_capitol_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="capitol" data-number="n1"></div>
+            <div id="skiff_slot_bank_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="bank" data-number="n1"></div>
+            <div id="skiff_slot_workshop_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="workshop" data-number="n1"></div>
+            <div id="skiff_slot_workshop_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="workshop" data-number="n2"></div>
+            <div id="skiff_slot_trading_post_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="trading_post" data-number="n1"></div>
+            <div id="skiff_slot_trading_post_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="trading_post" data-number="n2"></div>
+            <div id="skiff_slot_shipyard_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="shipyard" data-number="n1"></div>   
+            <div id="skiff_slot_blacksmith_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="blacksmith" data-number="n1"></div>
+            <div id="skiff_slot_blacksmith_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="blacksmith" data-number="n2"></div>
+            <div id="skiff_slot_sailmaker_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="sailmaker" data-number="n1"></div>
+            <div id="skiff_slot_deep_cove_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="deep_cove" data-number="n1"></div>
+            <div id="skiff_slot_deep_cove_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="deep_cove" data-number="n2"></div>
+            <div id="skiff_slot_green_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="green_flag" data-number="n1"></div>
+            <div id="skiff_slot_tan_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="tan_flag" data-number="n1"></div>
+            <div id="skiff_slot_blue_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="blue_flag" data-number="n1"></div>
+            <div id="skiff_slot_red_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="red_flag" data-number="n1"></div>
             <div id="seaboard"></div>
         </div>
-        <div class="whiteblock market-section">
-            <div class="market-container">
-                <div class="market-area">
+        <div class="whiteblock soh_market-section">
+            <div class="soh_market-container">
+                <div class="soh_market-area">
                     <h3>${_("Market")}</h3>
                     <div id="market">
-                        <div id="market_slot_n1" class="market_slot"></div>
-                        <div id="market_slot_n2" class="market_slot"></div>
-                        <div id="market_slot_n3" class="market_slot"></div>
-                        <div id="market_slot_n4" class="market_slot"></div>
-                        <div id="market_slot_n5" class="market_slot"></div>
-                        <div id="skiff_slot_market_n1" class="skiff_slot unoccupied" data-slotname="market" data-number="n1"></div>
-                        <div id="skiff_slot_market_n2" class="skiff_slot unoccupied" data-slotname="market" data-number="n2"></div>
-                        <div id="skiff_slot_market_n3" class="skiff_slot unoccupied" data-slotname="market" data-number="n3"></div>
-                        <div id="skiff_slot_market_n4" class="skiff_slot unoccupied" data-slotname="market" data-number="n4"></div>
-                        <div id="skiff_slot_market_n5" class="skiff_slot unoccupied" data-slotname="market" data-number="n5"></div>
+                        <div id="market_slot_n1" class="soh_market_slot"></div>
+                        <div id="market_slot_n2" class="soh_market_slot"></div>
+                        <div id="market_slot_n3" class="soh_market_slot"></div>
+                        <div id="market_slot_n4" class="soh_market_slot"></div>
+                        <div id="market_slot_n5" class="soh_market_slot"></div>
+                        <div id="skiff_slot_market_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n1"></div>
+                        <div id="skiff_slot_market_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n2"></div>
+                        <div id="skiff_slot_market_n3" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n3"></div>
+                        <div id="skiff_slot_market_n4" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n4"></div>
+                        <div id="skiff_slot_market_n5" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n5"></div>
                     </div>
                 </div>
-                <div class="scrap-area">
+                <div class="soh_scrap-area">
                     <h3>${_("Scrap Pile")}</h3>
                     <div id="scrap"></div>
                 </div>
-                <div class="damage-area">
+                <div class="soh_damage-area">
                     <h3>${_("Damage Deck")}</h3>
                     <div id="damage_deck"></div>
                 </div>
@@ -245,49 +245,49 @@ define([
                           </div>`;
 
       window.jstpl_resources_playerboard = `
-                          <div class="cp_board" id="player_resource_board_p\${player_id}">
-                              <div id="sail_p\${player_id}" class="sail resource"></div><span id="sailcount_p\${player_id}" class="resource_count">0</span>
-                              <div id="cannonball_p\${player_id}" class="cannonball resource"></div><span id="cannonballcount_p\${player_id}" class="resource_count">0</span>
-                              <div id="doubloon_p\${player_id}" class="doubloon resource"></div><span id="doublooncount_p\${player_id}" class="resource_count">0</span>
-                              \${skiff} <span id="skiffcount_p\${player_id}" class="resource_count">0</span>
+                          <div class="soh_cp_board" id="player_resource_board_p\${player_id}">
+                              <div id="sail_p\${player_id}" class="soh_sail soh_resource"></div><span id="sailcount_p\${player_id}" class="soh_resource_count">0</span>
+                              <div id="cannonball_p\${player_id}" class="soh_cannonball soh_resource"></div><span id="cannonballcount_p\${player_id}" class="soh_resource_count">0</span>
+                              <div id="doubloon_p\${player_id}" class="soh_doubloon soh_resource"></div><span id="doublooncount_p\${player_id}" class="soh_resource_count">0</span>
+                              \${skiff} <span id="skiffcount_p\${player_id}" class="soh_resource_count">0</span>
                           </div>
-                          <div class="cp_board" id="player_token_board_p\${player_id}">
-                              <div id="green_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="green_flag"></div>
-                              <div id="tan_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="tan_flag"></div>
-                              <div id="blue_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="blue_flag"></div>
-                              <div id="red_flag_p\${player_id}" class="flagish no_own_flag" data-tokenkey="red_flag"></div>
-                              <div id="first_player_token_p\${player_id}" class="flagish no_own_flag" data-tokenkey="first_player_token"></div>
-                              <div id="booty_token_p\${player_id}" class="booty-token-slot"></div>
+                          <div class="soh_cp_board" id="player_token_board_p\${player_id}">
+                              <div id="green_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="green_flag"></div>
+                              <div id="tan_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="tan_flag"></div>
+                              <div id="blue_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="blue_flag"></div>
+                              <div id="red_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="red_flag"></div>
+                              <div id="first_player_token_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="first_player_token"></div>
+                              <div id="booty_token_p\${player_id}" class="soh_booty-token-slot"></div>
                           </div>`;
 
-      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">${_("Purchase Card")}</a>`;
+      window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue soh_purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">${_("Purchase Card")}</a>`;
 
-      window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="scrap_card_dialog">
+      window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="soh_scrap_card_dialog">
                           <h3>${_("Choose a card to scrap")}</h3>
-                          <div id="scrap_hand_group" class="scrap_card_group">
+                          <div id="scrap_hand_group" class="soh_scrap_card_group">
                               <h4>${_("Your hand")}</h4>
-                              <div id="scrap_card_selection_wrapper" class="card_selection_wrapper"></div>
+                              <div id="scrap_card_selection_wrapper" class="soh_card_selection_wrapper"></div>
                           </div>
-                          <div id="scrap_discard_group" class="scrap_card_group">
+                          <div id="scrap_discard_group" class="soh_scrap_card_group">
                               <h4>${_("Discard pile")}</h4>
-                              <div id="scrap_discard_selection_wrapper" class="card_selection_wrapper"></div>
+                              <div id="scrap_discard_selection_wrapper" class="soh_card_selection_wrapper"></div>
                           </div>
-                          <div class="scrap_dialog_buttons">
+                          <div class="soh_scrap_dialog_buttons">
                               <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_red">${_("Cancel")}</a>
                           </div>
                       </div>`;
 
-      window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="scrap_card_dialog">
+      window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="soh_scrap_card_dialog">
                           <h3>${_("Choose a card to discard")}</h3>
-                          <div id="discard_card_selection_wrapper" class="card_selection_wrapper"></div>
-                          <div class="discard_dialog_buttons">
+                          <div id="discard_card_selection_wrapper" class="soh_card_selection_wrapper"></div>
+                          <div class="soh_discard_dialog_buttons">
                               <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_blue disabled">${_("Discard Card")}</a>
                           </div>
                       </div>`;
 
-      window.jstpl_card_choices_row = `<div class="card_choices_row">\${card_choices}</div>`;
+      window.jstpl_card_choices_row = `<div class="soh_card_choices_row">\${card_choices}</div>`;
 
-      window.jstpl_card_choice_radio = `<div class="card_choice_radio_container"><input type="radio" class="card_choice_radio" id="\${id}" name="\${name}" value="\${value}"/><label class="card_choice_chip" for="\${id}">\${label}</label></div>`;
+      window.jstpl_card_choice_radio = `<div class="soh_card_choice_radio_container"><input type="radio" class="soh_card_choice_radio" id="\${id}" name="\${name}" value="\${value}"/><label class="soh_card_choice_chip" for="\${id}">\${label}</label></div>`;
 
       window.jstpl_skiff_svg = `<svg width="100%" height="100%" viewBox="0 0 298 265" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
       <g transform="matrix(1,0,0,1,-702.792,-710.191)">
@@ -299,11 +299,11 @@ define([
           </g>
       </g>
       </svg>`;
-      window.jstpl_skiff = `<div id="\${id}" class="skiff">${window.jstpl_skiff_svg}</div>`;
+      window.jstpl_skiff = `<div id="\${id}" class="soh_skiff">${window.jstpl_skiff_svg}</div>`;
 
       // Cannon shot and explosion art: Lorc, https://game-icons.net (CC BY 3.0). They paint with
       // currentColor, so the colour of each effect lives in the stylesheet - see .cannonfire etc.
-      window.jstpl_cannon_fire = `<div id="\${id}" class="cannonfire">
+      window.jstpl_cannon_fire = `<div id="\${id}" class="soh_cannonfire">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: 36px; width: 36px;">
           <defs>
               <!-- White-hot at the muzzle ring, where the shot leaves the barrel, cooling through
@@ -322,7 +322,7 @@ define([
           <rect width="512" height="512" fill="url(#\${id}_heat)" clip-path="url(#\${id}_shape)"></rect>
       </svg></div>`;
 
-      window.jstpl_explosion = `<div id="\${id}" class="explosion">
+      window.jstpl_explosion = `<div id="\${id}" class="soh_explosion">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: 64px; width: 64px;">
           <g class="" transform="translate(0,0)">
               <path d="M287.586 15.297l3.504 110.963 31.537-110.963h-35.04zm-95.78.238l-1.75 236.047-170.533-43.33L130.486 377.69l-88.77-5.174 114.432 112.357-44.466-75.867L186.896 417l-51.748-109.94 110.114 79.956-12.635-185.23.002.003 75.212 170.57 75.816-89.95-6.62 154.582 60.173-39.978-20.388 79.486 75.756-142.787-75.924 1.94L487.32 155.87l-131.402 73.08-12.264-139.69-65.41 140.336-86.435-214.06h-.003zM45.503 44.095L39.355 75.94 154.285 218h.002l-77.6-166.836-31.185-7.07zm422.27 24.776l-31.184 7.07-43.738 107.37 81.068-82.59-6.147-31.85zM279.208 403.61c-40.176 0-72.708 32.537-72.708 72.71 0 5.725.636 10.706 1.887 16.05 7.25-32.545 36.097-56.655 70.82-56.655 34.82 0 63.673 23.97 70.82 56.656 1.218-5.277 1.888-10.404 1.888-16.05 0-40.175-32.536-72.71-72.71-72.71z" fill="currentColor"></path>
@@ -330,10 +330,10 @@ define([
       </svg>
       </div>`;
 
-      window.jstpl_seaboard_location = `<div class="seaboardlocation" id="\${id}"></div>`;
-      window.jstpl_unique_token = `<div id="token_\${token_key}" class="flagish" data-tokenkey="\${token_key}"></div>`;
-      window.jstpl_player_ship = `<div class="player_ship" id="\${id}" data-shipname="\${shipname}"></div>`;
-      window.jstpl_seafeature = `<div class="seafeature" id="\${id}" data-seafeature="\${seafeature_type}"></div>`;
+      window.jstpl_seaboard_location = `<div class="soh_seaboardlocation" id="\${id}"></div>`;
+      window.jstpl_unique_token = `<div id="token_\${token_key}" class="soh_flagish" data-tokenkey="\${token_key}"></div>`;
+      window.jstpl_player_ship = `<div class="soh_player_ship" id="\${id}" data-shipname="\${shipname}"></div>`;
+      window.jstpl_seafeature = `<div class="soh_seafeature" id="\${id}" data-seafeature="\${seafeature_type}"></div>`;
     },
 
     /*
@@ -368,12 +368,12 @@ define([
       this.setupHelper = (card, div) => {
         let image_id = null;
         if (typeof card.type !== "undefined") {
-          div.classList.add("playable-card-front");
+          div.classList.add("soh_playable-card-front");
           const cardData = this.playable_cards[card.type];
           image_id = cardData.image_id;
         } else {
           image_id = gamedatas.non_playable_cards.card_back.image_id;
-          div.classList.add("playable-card-back");
+          div.classList.add("soh_playable-card-back");
         }
         console.log(
           "setup helper for card: " +
@@ -402,7 +402,7 @@ define([
         cardHeight: 198,
 
         setupDiv: (card, div) => {
-          div.classList.add("seasofhavoc-card");
+          div.classList.add("soh_seasofhavoc-card");
         },
         setupFrontDiv: (card, div) => {
           this.setupHelper(card, div);
@@ -423,7 +423,7 @@ define([
         cardWidth: 144,
         cardHeight: 198,
         setupDiv: (card, div) => {
-          div.classList.add("seasofhavoc-card", "non-playable-card");
+          div.classList.add("soh_seasofhavoc-card", "non-playable-card");
         },
         setupFrontDiv: (card, div) => {
           this.setupNonPlayableCardHelper(card, div, "front");
@@ -444,7 +444,7 @@ define([
         cardWidth: 63,
         cardHeight: 63,
         setupDiv: (card, div) => {
-          div.classList.add("booty-token");
+          div.classList.add("soh_booty-token");
         },
       });
 
@@ -783,16 +783,16 @@ define([
               if (isPairedPartner) {
                 // The individual "rotate" CSS property is applied before "transform", which would
                 // rotate our corner-shift offset too. Combine everything into one transform instead.
-                $(seafeatureid).classList.add("seafeature_hidden_partner");
+                $(seafeatureid).classList.add("soh_seafeature_hidden_partner");
                 domStyle.set(seafeatureid, "transform", `translate(-9.45px, 9.45px) scale(0.7) rotate(${gustDeg}deg)`);
               } else {
                 domStyle.set(seafeatureid, "rotate", gustDeg + "deg");
               }
             }
             if (isPairedShipwreck) {
-              $(seafeatureid).classList.add("seafeature_paired_shipwreck");
+              $(seafeatureid).classList.add("soh_seafeature_paired_shipwreck");
             } else if (isPairedPartner && entry.type !== "gust") {
-              $(seafeatureid).classList.add("seafeature_hidden_partner");
+              $(seafeatureid).classList.add("soh_seafeature_hidden_partner");
             }
             break;
         }
@@ -803,7 +803,7 @@ define([
       // Setup game notifications
       this.setupNotifications();
 
-      var skiffslot_class = query(".skiff_slot");
+      var skiffslot_class = query(".soh_skiff_slot");
       var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
 
       console.log("Ending game setup");
@@ -819,7 +819,7 @@ define([
       event.preventDefault();
       const source = event.target || event.srcElement;
       const sourceElement = source && source.nodeType === 1 ? source : null;
-      const slotElement = sourceElement ? sourceElement.closest(".skiff_slot") : null;
+      const slotElement = sourceElement ? sourceElement.closest(".soh_skiff_slot") : null;
       if (!this.checkAction("actPlaceSkiff")) {
         console.log("nope");
         return;
@@ -835,12 +835,12 @@ define([
         return;
       }
 
-      if (slotElement.classList.contains("occupied_blocked")) {
+      if (slotElement.classList.contains("soh_occupied_blocked")) {
         console.log("skiff slot is occupied and not available");
         return;
       }
 
-      if (slotElement.classList.contains("workshop_unavailable")) {
+      if (slotElement.classList.contains("soh_workshop_unavailable")) {
         console.log("no affordable ship upgrade to activate at the workshop");
         return;
       }

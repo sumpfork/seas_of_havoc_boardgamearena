@@ -192,7 +192,7 @@ gameMethods.bgaFormatText.call({ format_block: formatBlock }, "resources", logAr
 assert.match(logArgs.resource_change, /<svg /);
 assert.match(logArgs.resource_change, /aria-label='skiff'/);
 assert.doesNotMatch(logArgs.resource_change, /\bid=/, "Repeated log icons must not duplicate DOM IDs");
-assert.match(logArgs.booty_usage, /log_resource cannonball/);
+assert.match(logArgs.booty_usage, /soh_log_resource soh_cannonball/);
 assert.match(formatBlock("jstpl_skiff", { id: "board-skiff", player_color: "ff0000" }), /fill:#ff0000/);
 console.log("Playtest UI regressions passed");
 
@@ -208,7 +208,7 @@ assert.equal(relocationCleaned, true, "Inactive players clear old relocation con
 const dialogGame = {
   resourceIcon: utils.resourceIcon,
   format_block: (name, args) => Object.entries(args).reduce((html, [k, v]) => html.split("${" + k + "}").join(v),
-    name === "jstpl_card_choices_row" ? '<div class="card_choices_row">${card_choices}</div>'
+    name === "jstpl_card_choices_row" ? '<div class="soh_card_choices_row">${card_choices}</div>'
       : '<input id="${id}" name="${name}" value="${value}"/><label>${label}</label>'),
   _makeCardDependencyTree: dialogs._makeCardDependencyTree,
   _renderCardChoiceRows: dialogs._renderCardChoiceRows,
@@ -380,7 +380,7 @@ seqNotifications.notif_cardPlayed.call({
   shipwreck_event: null,
 });
 assert.deepEqual(played, [
-  "chain(slide,chain(shot,blast),slide,chain(shot,blast:splash),blast:ram)",
+  "chain(slide,chain(shot,blast),slide,chain(shot,blast:soh_splash),blast:soh_ram)",
 ], "one chain plays, holding every effect in moveChain order");
 
 // A row where nothing paid is affordable: the skip chip says so and is picked, so the player is
@@ -425,6 +425,16 @@ tree = row(false);
 nodes.skip.checked = true;
 assert.equal(affordDialogs._markUnaffordableRows(tree), false, "the player's own skip is left alone");
 assert.equal(nodes.skip.checked, true);
+
+// A free alternative (carronade) keeps the row open when the paid shot is out of reach.
+node("fire", true); node("carronade", false); node("skip", false);
+tree = new Map([["card_choice_0", [
+  { name: "fire left", id: "fire", cost: { cannonball: 1 }, children: new Map() },
+  { name: "carronade", id: "carronade", cost: {}, children: new Map() },
+  { name: "skip", id: "skip", children: new Map() },
+]]]);
+assert.equal(affordDialogs._markUnaffordableRows(tree), false, "a free carronade leaves the row to the player");
+assert.equal(nodes.skip.checked, false);
 
 // Card play preview: the client's copy of the movement rules must agree with the server's.
 {
