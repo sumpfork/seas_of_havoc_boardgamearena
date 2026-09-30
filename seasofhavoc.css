@@ -1184,3 +1184,51 @@ a.disabled {
   font-size: 14px;
   color: #6b5210;
 }
+
+#soh_score_sheet_popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.soh_score_sheet_close {
+  align-self: flex-end;
+}
+
+.soh_score_sheet_parchment {
+  background: linear-gradient(#f4e4bc, #e8d098);
+  border: 3px solid #6b4423;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  padding: 10px 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #3b2412;
+}
+
+.soh_score_sheet_label {
+  text-align: left;
+  vertical-align: middle;
+  padding-right: 12px;
+  font-weight: bold;
+  border-bottom: 1px dashed rgba(107, 68, 35, 0.4);
+}
+
+.soh_score_sheet_score {
+  text-align: center;
+  vertical-align: middle;
+  font-size: 18px;
+  border-bottom: 1px dashed rgba(107, 68, 35, 0.4);
+}
+
+.soh_score_sheet_total {
+  font-size: 22px;
+  font-weight: bold;
+  border-top: 2px solid #6b4423;
+  border-bottom: none;
+}

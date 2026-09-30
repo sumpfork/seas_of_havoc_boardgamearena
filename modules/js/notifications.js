@@ -35,6 +35,10 @@ define([
       this.bgaSetupPromiseNotifications();
     },
 
+    notif_endScores: function (args) {
+      return this.showScoreSheet(args.endScores, true);
+    },
+
     /**
      * Deck size changed notification
      */

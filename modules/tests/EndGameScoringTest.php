@@ -161,6 +161,21 @@ final class EndGameScoringTest extends TestCase
         $this->assertSame(0, $this->scoreFor('1'), 'scrapped cards left the deck and score nothing');
     }
 
+    public function testEndScoresSplitPurchasedCardsFromDamage(): void
+    {
+        $this->game->deck->add(1, $this->game->marketCardTypeWithInfamy(3), 'player_discard_1', 1);
+        $this->game->deck->add(2, $this->game->damageCardType(), 'player_deck_1', 1);
+        $this->game->bga->playerStats->inc('infamy_from_shots', 5, 1);
+        $this->game->bga->playerScore->set(1, 7);
+
+        $scores = $this->game->getEndScores();
+        $this->assertSame(3, $scores[1]['purchased']);
+        $this->assertSame(-1, $scores[1]['damage']);
+        $this->assertSame(5, $scores[1]['shots']);
+        $this->assertSame(0, $scores[1]['upgrades']);
+        $this->assertSame(7, $scores[1]['total']);
+    }
+
     public function testTiebreakPrefersResourcesThenFewerDamageCards(): void
     {
         $this->game->deck->add(1, $this->game->damageCardType(), 'player_discard_1', 1);

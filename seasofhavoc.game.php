@@ -801,6 +801,7 @@ class SeasOfHavoc extends Table
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
 
         $result["resources"] = $this->getGameResources();
+        $result["endScores"] = (int) $this->gamestate->state_id() === STATE_END_GAME ? $this->getEndScores() : null;
 
         // Get pending purchases for current player ONLY
         // Pending purchases are private per-player and not visible to other players until all players commit

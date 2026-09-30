@@ -52,8 +52,32 @@ trait ScoringAndStats
             $this->bga->playerScoreAux->set((int) $player_id, $resources * 100 + max(0, 99 - $damage));
         }
         $this->recordWinnerStats();
+        $this->bga->notify->all("endScores", "", ["endScores" => $this->getEndScores()]);
 
         return STATE_END_GAME;
+    }
+
+    /**
+     * The end-of-game score sheet: where each player's infamy came from. The battle and upgrade
+     * rows come from the infamy stats; card infamy is split into what was bought and what damage cost.
+     */
+    function getEndScores(): array
+    {
+        $scores = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $player_id) {
+            $row = ["purchased" => 0, "damage" => 0];
+            foreach ($this->getPlayerOwnedCards((string) $player_id) as $card) {
+                $definition = $this->playable_cards[(int) $card["type"]];
+                $key = ($definition["category"] ?? "") === "damage" ? "damage" : "purchased";
+                $row[$key] += $definition["infamy"] ?? 0;
+            }
+            foreach (["shots", "rams", "captain", "upgrades"] as $source) {
+                $row[$source] = (int) $this->bga->playerStats->get("infamy_from_$source", (int) $player_id);
+            }
+            $row["total"] = (int) $this->bga->playerScore->get((int) $player_id);
+            $scores[(int) $player_id] = $row;
+        }
+        return $scores;
     }
 
     /**

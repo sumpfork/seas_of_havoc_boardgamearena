@@ -25,6 +25,7 @@ define([
   "dojo/query",
   getLibUrl("bga-animations", "1.x"),
   getLibUrl("bga-cards", "1.x"),
+  getLibUrl("bga-score-sheet", "1.x"),
   // Custom modules - use g_gamethemeurl to load from game folder
   g_gamethemeurl + "modules/js/constants.js",
   g_gamethemeurl + "modules/js/utils.js",
@@ -52,6 +53,7 @@ define([
   query,
   BgaAnimations,
   BgaCards,
+  BgaScoreSheet,
   // Custom modules
   Constants,
   Utils,
@@ -348,6 +350,44 @@ define([
             
             "gamedatas" argument contains all datas retrieved by your "getAllDatas" PHP method.
         */
+
+    /** End-of-game breakdown of each player's infamy, above the board. */
+    showScoreSheet: function (scores, animate) {
+      // A floating popup: the end-of-game results panel redraws the page top, which swallowed an inline sheet.
+      document.getElementById("soh_score_sheet_popup")?.remove();
+      const popup = document.createElement("div");
+      popup.id = "soh_score_sheet_popup";
+      document.body.appendChild(popup);
+      const close = document.createElement("a");
+      close.href = "#";
+      close.className = "bgabutton bgabutton_gray soh_score_sheet_close";
+      close.textContent = _("Close");
+      close.addEventListener("click", (event) => { event.preventDefault(); popup.remove(); });
+      const node = document.createElement("div");
+      node.id = "soh_score_sheet";
+      popup.append(node, close);
+      const entries = [
+        { property: "shots", label: _("Hits") },
+        { property: "rams", label: _("Rams") },
+        { property: "captain", label: _("Captain") },
+        { property: "purchased", label: _("Purchased cards") },
+        { property: "damage", label: _("Damage") },
+        { property: "upgrades", label: _("Ship upgrades") },
+        { property: "total", label: _("Total"), labelClasses: "soh_score_sheet_label soh_score_sheet_total", scoresClasses: "soh_score_sheet_score soh_score_sheet_total", height: 34 },
+      ].map(e => ({ labelClasses: "soh_score_sheet_label", scoresClasses: "soh_score_sheet_score", ...e }));
+      const sheet = new BgaScoreSheet.ScoreSheet(node, {
+        animationsActive: () => animate && this.bgaAnimationsActive(),
+        players: this.gamedatas.players,
+        entries: entries,
+        classes: "soh_score_sheet_parchment",
+        playerNameWidth: 100,
+        playerNameHeight: 36,
+        entryLabelWidth: 150,
+        entryLabelHeight: 28,
+        scores: animate ? undefined : scores,
+      });
+      return animate ? sheet.setScores(scores, { startBy: this.player_id }) : Promise.resolve();
+    },
 
     setup: function (gamedatas) {
       console.groupCollapsed("Game Setup");
@@ -799,6 +839,9 @@ define([
       }
 
       this.refreshSeaFeatureBadges();
+      if (gamedatas.endScores) {
+        this.showScoreSheet(gamedatas.endScores, false);
+      }
 
       // Setup game notifications
       this.setupNotifications();
