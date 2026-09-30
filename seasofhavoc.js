@@ -402,6 +402,14 @@ define([
 
       // Initialize the game area HTML structure (replaces legacy view.php/tpl files)
       this.setupGameArea();
+      // The board art is laid out at 1000px; shrink it to the available width rather than scroll.
+      const board = document.getElementById("board");
+      const fitBoard = () => {
+        const width = board.parentElement.clientWidth;
+        if (width > 0) board.style.zoom = Math.min(1, width / 1000); // 0 while the game area is hidden
+      };
+      new ResizeObserver(fitBoard).observe(board.parentElement);
+      fitBoard();
 
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;

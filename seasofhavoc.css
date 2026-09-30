@@ -54,7 +54,7 @@
   position: relative;
   width: 1000px;
   height: 692px;
-  margin-bottom: 5px;
+  margin: 0 auto 5px; /* centred when the column is wider than the board */
   background-image: url(img/board.jpg);
 }
 #seaboard {
@@ -70,7 +70,7 @@
   left: 165.4px;
 }
 .soh_skiff_slot[data-slotname="bank"][data-number="n1"] {
-  top: 315.5px;
+  top: 316.5px;
   left: 152.0px;
 }
 .soh_skiff_slot[data-slotname="workshop"][data-number="n1"] {
@@ -83,18 +83,18 @@
 }
 .soh_skiff_slot[data-slotname="trading_post"][data-number="n1"] {
   top: 579.9px;
-  left: 157.7px;
+  left: 155.7px;
 }
 .soh_skiff_slot[data-slotname="trading_post"][data-number="n2"] {
   top: 623.0px;
-  left: 134.7px;
+  left: 132.7px;
 }
 .soh_skiff_slot[data-slotname="shipyard"][data-number="n1"] {
-  top: 161.2px;
-  left: 833.6px;
+  top: 160.7px;
+  left: 832.2px;
 }
 .soh_skiff_slot[data-slotname="blacksmith"][data-number="n1"] {
-  top: 432.4px;
+  top: 434.4px;
   left: 830.7px;
 }
 .soh_skiff_slot[data-slotname="blacksmith"][data-number="n2"] {
@@ -115,28 +115,33 @@
 }
 .soh_skiff_slot[data-slotname="green_flag"][data-number="n1"] {
   top: 76.6px;
-  left: 809.6px;
+  left: 810.6px;
 }
 .soh_skiff_slot[data-slotname="tan_flag"][data-number="n1"] {
   top: 76.6px;
-  left: 158.7px;
+  left: 159.7px;
 }
 .soh_skiff_slot[data-slotname="blue_flag"][data-number="n1"] {
   top: 76.6px;
-  left: 899.8px;
+  left: 900.8px;
 }
 .soh_skiff_slot[data-slotname="red_flag"][data-number="n1"] {
   top: 76.6px;
-  left: 70.4px;
+  left: 69.4px;
 }
 
 .soh_skiff_slot {
   position: absolute;
-  width: 26px;
-  height: 26px;
+  /* A 32px tap target (BGA minimum), but only the middle 26px is painted so the disc matches
+     the marker printed on the board; the negative margin keeps the marker's centre. */
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 3px;
+  background-clip: content-box;
+  outline-offset: -3px;
   border-radius: 50%;
-  /* padding: 9px 7px 6px 4px; */
-  margin: 2px;
+  margin: -1px;
   background-color: rgba(0, 34, 255, 0.306);
 }
 
@@ -197,8 +202,8 @@
 .soh_skiff_slot.soh_corsair_selectable::before {
   content: "";
   position: absolute;
-  bottom: -4px;
-  right: -4px;
+  bottom: -1px;
+  right: -1px;
   width: 16px;
   height: 16px;
   border: 2px dashed rgba(201, 140, 20, 1);
@@ -210,8 +215,8 @@
 .soh_skiff_slot.soh_corsair_selectable::after {
   content: "+";
   position: absolute;
-  bottom: -1px;
-  right: 1px;
+  bottom: 2px;
+  right: 4px;
   width: 14px;
   height: 14px;
   line-height: 14px;
@@ -443,8 +448,8 @@
 }
 .soh_skiff.soh_corsair_overlay {
   position: absolute;
-  left: 14px;
-  top: -4px;
+  left: 17px; /* +3px: measured from the slot's edge, which now sits 3px outside the marker */
+  top: -1px;
   z-index: 2;
 }
 .soh_player_ship {
@@ -760,7 +765,7 @@ a.disabled {
   padding: 24px 28px 20px;
   z-index: 890;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-  min-width: 780px;
+  min-width: min(780px, 92vw);
   max-width: 92vw;
 }
 
@@ -825,8 +830,8 @@ a.disabled {
 
 /* Compact scroll arrows — override global bgabutton sizing */
 .soh_scrap_card_dialog .soh_card_dialog_scroll_btn {
-  width: 26px !important;
-  min-width: 26px !important;
+  width: 32px !important;
+  min-width: 32px !important;
   height: 52px !important;
   max-height: 52px !important;
   font-size: 20px !important;
@@ -1225,4 +1230,20 @@ a.disabled {
   font-weight: bold;
   border-top: 2px solid #6b4423;
   border-bottom: none;
+}
+
+/* Your island turn: free skiff slots pulse so they read as the places to click. */
+.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_workshop_unavailable):not(.soh_occupied_blocked) {
+  background-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 12px 1px rgba(255, 215, 90, 0.9);
+  outline: 3px solid #fff;
+  animation: soh-slot-pulse 1.6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+@keyframes soh-slot-pulse {
+  50% {
+    outline-color: #ffd75a;
+    box-shadow: 0 0 18px 4px rgba(255, 215, 90, 1);
+  }
 }

@@ -177,6 +177,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
      */
     onLeavingState: function (stateName) {
       console.log("Leaving state: " + stateName);
+      this.bga.gameArea.getElement().classList.remove("soh_placing");
 
       switch (stateName) {
         case "client_tradingPostBootyChoice":
@@ -636,6 +637,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "islandTurn":
             this.refreshSkiffSlotPlaceability();
+            // Makes the free skiff slots pulse (see .soh_placing in the CSS).
+            this.bga.gameArea.getElement().classList.add("soh_placing");
             if (
               this.player_captain === "corsair" &&
               this.corsairOccupiedPlacementAvailable &&
