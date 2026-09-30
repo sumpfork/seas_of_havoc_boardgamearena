@@ -1,4 +1,13 @@
 /**
+ *------
+ * SeasOfHavoc implementation : © Peter Gorniak
+ *
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ */
+
+/**
  * Seas of Havoc - Card Play Preview
  * While the card play dialog is open, draws what the card will do on the sea board: the route the
  * ship sails as one arrow (bending round corners, as on the cards), a ghost ship where it ends

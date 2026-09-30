@@ -1,4 +1,13 @@
 /**
+ *------
+ * SeasOfHavoc implementation : © Peter Gorniak
+ *
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ */
+
+/**
  * Treasure Seeker captain ability UI
  */
 define(["dojo", "dojo/_base/declare", "dojo/dom-class", "dojo/dom-construct", "dojo/on", "dojo/query", g_gamethemeurl + "modules/js/constants.js"], function (

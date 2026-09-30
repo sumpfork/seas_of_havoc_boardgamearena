@@ -1,4 +1,13 @@
 /**
+ *------
+ * SeasOfHavoc implementation : © Peter Gorniak
+ *
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ */
+
+/**
  * Seas of Havoc - State Handlers Module
  * Game state enter/leave/update action button handlers
  */

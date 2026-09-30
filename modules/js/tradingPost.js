@@ -1,4 +1,13 @@
 /**
+ *------
+ * SeasOfHavoc implementation : © Peter Gorniak
+ *
+ * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
+ * See http://en.boardgamearena.com/#!doc/Studio for more information.
+ * -----
+ */
+
+/**
  * Seas of Havoc - Trading Post Module
  * Handles the trading post island slot: exchange up to 2 resources for others,
  * or spend a booty token to gain 2 resources.
