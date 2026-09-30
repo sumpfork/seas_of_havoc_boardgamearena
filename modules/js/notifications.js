@@ -140,7 +140,7 @@ define([
         this.placeOnObject(skiff_id, player_board);
       }
       domStyle.set(skiff_id, "zIndex", 1);
-      this.slideToObject(skiff_id, skiff_slot, 1000).play();
+      this.slideToObject(skiff_id, skiff_slot, 800).play();
       console.groupEnd();
     },
 
@@ -287,7 +287,7 @@ define([
 
       if (player_id != null) {
         domStyle.set(token_element, "zIndex", 1);
-        var slide = this.slideToObject(token_element, `${token_key}_p${player_id}`, 1000);
+        var slide = this.slideToObject(token_element, `${token_key}_p${player_id}`, 800);
         slide.onEnd = () => { this.placeUniqueToken(token_key, player_id); };
         slide.play();
       }
@@ -354,13 +354,13 @@ define([
           case "move": {
             if (move.teleport_at != null) {
               let target_id = "seaboardlocation_" + move.teleport_at.x + "_" + move.teleport_at.y;
-              let forward = this.slideToObject(shipid, target_id, 1000);
+              let forward = this.slideToObject(shipid, target_id, 800);
               anims.push(forward);
               target_id = "seaboardlocation_" + move.teleport_to.x + "_" + move.teleport_to.y;
               anims.push(this.slideToObject(shipid, target_id, 0));
             }
             var target_id = "seaboardlocation_" + move.new_x + "_" + move.new_y;
-            anims.push(this.slideToObject(shipid, target_id, 1000));
+            anims.push(this.slideToObject(shipid, target_id, 800));
             // Keep the board model current: the card play preview starts from it.
             const moved = this.getObjectOnSeaboard("player_ship", shipArg);
             moved.x = move.new_x;

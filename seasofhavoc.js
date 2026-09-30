@@ -358,14 +358,16 @@ define([
       const popup = document.createElement("div");
       popup.id = "soh_score_sheet_popup";
       document.body.appendChild(popup);
-      const close = document.createElement("a");
-      close.href = "#";
-      close.className = "bgabutton bgabutton_gray soh_score_sheet_close";
-      close.textContent = _("Close");
-      close.addEventListener("click", (event) => { event.preventDefault(); popup.remove(); });
+      // Closes on a click outside the sheet or on Escape.
+      let closed;
+      const closedPromise = new Promise(resolve => { closed = resolve; });
+      const onKey = (event) => { if (event.key === "Escape") dismiss(); };
+      const dismiss = () => { popup.remove(); document.removeEventListener("keydown", onKey); closed(); };
+      popup.addEventListener("click", (event) => { if (event.target === popup) dismiss(); });
+      document.addEventListener("keydown", onKey);
       const node = document.createElement("div");
       node.id = "soh_score_sheet";
-      popup.append(node, close);
+      popup.append(node);
       const entries = [
         { property: "shots", label: _("Hits") },
         { property: "rams", label: _("Rams") },
@@ -386,7 +388,11 @@ define([
         entryLabelHeight: 28,
         scores: animate ? undefined : scores,
       });
-      return animate ? sheet.setScores(scores, { startBy: this.player_id }) : Promise.resolve();
+      if (!animate) return Promise.resolve();
+      // Live game: hold the notification queue until the sheet is closed, so BGA's end-of-game
+      // screen only takes over afterwards. Replays (animations off) don't wait.
+      const shown = sheet.setScores(scores, { startBy: this.player_id });
+      return this.bgaAnimationsActive() ? Promise.all([shown, closedPromise]) : shown;
     },
 
     setup: function (gamedatas) {

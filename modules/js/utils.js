@@ -235,10 +235,12 @@ define([
       }
       domStyle.set(id, "opacity", "0");
       return fx.chain([
-        baseFX.fadeIn({ node: id, delay: 100 }),
+        // 0.8s in total: 50 delay + 150 in + 400 hold + 200 out.
+        baseFX.fadeIn({ node: id, delay: 50, duration: 150 }),
         baseFX.fadeOut({
           node: id,
-          delay: 1000,
+          delay: 400,
+          duration: 200,
           onEnd: function () {
             domConstruct.destroy(id);
           },
@@ -389,7 +391,7 @@ define([
       domConstruct.place(tokenNode, overlayRoot);
       const startId = `seaboardlocation_${event.old_x}_${event.old_y}`;
       this.placeOnObject(tokenId, startId);
-      const anim = this.slideToObject(tokenId, targetSlotId, 1000);
+      const anim = this.slideToObject(tokenId, targetSlotId, 800);
       const self = this;
       anim.onEnd = function () {
         console.log("[booty] animation onEnd", {
