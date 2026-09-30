@@ -208,6 +208,8 @@ if (!class_exists("MockBGA")) {
             // reaching the framework score counters would fatal before the test could assert.
             $this->playerScore = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
             $this->playerScoreAux = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
+            $this->playerStats = new \Bga\GameFramework\PlayerStats();
+            $this->tableStats = new \Bga\GameFramework\TableStats();
         }
         public function dump($label, $data) {}
         public function trace($message) {}

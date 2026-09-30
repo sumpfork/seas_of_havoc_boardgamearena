@@ -21,7 +21,7 @@ class PirateQueenActionUT extends SeasOfHavocUT {
         return $this->mockCaptains[$player_id] ?? null;
     }
 
-    public function scoreInfamy(string $player_id, int $amount, string $message = "") {
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "") {
         $this->infamyAwards[] = [
             "player_id" => $player_id,
             "amount" => $amount,

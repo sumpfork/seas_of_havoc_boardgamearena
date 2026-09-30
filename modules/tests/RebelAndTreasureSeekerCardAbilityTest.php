@@ -29,7 +29,7 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
 
     public function drawCards(string $player_id, int $num_cards = 1) { $this->draws[] = $num_cards; }
     public function dealDamageCard(string $hit_player_id): void { $this->damaged[] = $hit_player_id; }
-    public function scoreInfamy(string $player_id, int $amount, string $message = "") { $this->infamy[] = [$player_id, $amount]; }
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "") { $this->infamy[] = [$player_id, $amount]; }
     public function playerGainResources($player_id, $resources) { $this->gains[] = $resources; }
     public function getActivePlayerId(): string { return '1'; }
     public function getPlayerNameById(int $player_id): string { return 'Player'; }

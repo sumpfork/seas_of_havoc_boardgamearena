@@ -1,16 +1,211 @@
+// Stat ids are never reused: table 10 and player 10 were the unused template "Number of turns".
+// Captain and ship stats store 1-based indexes into SeasOfHavoc::STAT_CAPTAINS / STAT_SHIPS; the
+// value_labels below must list them in the same order ("None" is 0).
 {
     "table": {
-        "turns_number": {
-            "id": 10,
-            "name": "Number of turns",
+        "rounds": {
+            "id": 11,
+            "name": "Rounds played",
+            "type": "int"
+        },
+        "winning_captain": {
+            "id": 12,
+            "name": "Winning captain",
+            "type": "int"
+        },
+        "winning_ship": {
+            "id": 13,
+            "name": "Winning ship",
+            "type": "int"
+        },
+        "winning_captain_ship": {
+            "id": 14,
+            "name": "Winning captain and ship",
+            "type": "int"
+        },
+        "two_ship_variant": {
+            "id": 15,
+            "name": "2 Ship Variant",
+            "type": "bool"
+        },
+        "winner_infamy": {
+            "id": 16,
+            "name": "Winner's infamy",
+            "type": "int"
+        },
+        "winning_margin": {
+            "id": 17,
+            "name": "Winning margin (infamy)",
             "type": "int"
         }
     },
     "player": {
-        "turns_number": {
-            "id": 10,
-            "name": "Number of turns",
+        "captain": {
+            "id": 30,
+            "name": "Captain",
+            "type": "int"
+        },
+        "ship": {
+            "id": 31,
+            "name": "Ship",
+            "type": "int"
+        },
+        "upgrades_activated": {
+            "id": 32,
+            "name": "Ship upgrades activated",
+            "type": "int"
+        },
+        "cards_bought": {
+            "id": 33,
+            "name": "Cards bought",
+            "type": "int"
+        },
+        "cards_scrapped": {
+            "id": 34,
+            "name": "Cards scrapped (including damage repaired)",
+            "type": "int"
+        },
+        "shots_fired": {
+            "id": 35,
+            "name": "Shots fired",
+            "type": "int"
+        },
+        "shots_missed": {
+            "id": 36,
+            "name": "Shots that hit no ship",
+            "type": "int"
+        },
+        "hits_broadside": {
+            "id": 37,
+            "name": "Ships hit from the side",
+            "type": "int"
+        },
+        "hits_raking": {
+            "id": 38,
+            "name": "Ships hit bow or stern (raking)",
+            "type": "int"
+        },
+        "rams": {
+            "id": 39,
+            "name": "Ships rammed",
+            "type": "int"
+        },
+        "rammed": {
+            "id": 40,
+            "name": "Times rammed by another ship",
+            "type": "int"
+        },
+        "rock_collisions": {
+            "id": 41,
+            "name": "Collisions with rocks",
+            "type": "int"
+        },
+        "damage_received": {
+            "id": 42,
+            "name": "Damage cards received",
+            "type": "int"
+        },
+        "infamy_from_shots": {
+            "id": 43,
+            "name": "Infamy from shots",
+            "type": "int"
+        },
+        "infamy_from_rams": {
+            "id": 44,
+            "name": "Infamy from ramming",
+            "type": "int"
+        },
+        "infamy_from_cards": {
+            "id": 45,
+            "name": "Infamy from cards (end of game)",
+            "type": "int"
+        },
+        "infamy_from_upgrades": {
+            "id": 46,
+            "name": "Infamy from ship upgrades (end of game)",
+            "type": "int"
+        },
+        "infamy_from_captain": {
+            "id": 47,
+            "name": "Infamy from captain abilities",
             "type": "int"
         }
+    },
+    "value_labels": {
+        "12": [
+            "None",
+            "Pirate Queen",
+            "Rebel",
+            "Admiral",
+            "Merchant",
+            "Corsair",
+            "Treasure Seeker"
+        ],
+        "13": [
+            "None",
+            "Xebec",
+            "Ship-of-the-Line",
+            "Galleon",
+            "Sloop of War",
+            "War Junk",
+            "Brig"
+        ],
+        "14": [
+            "None",
+            "Pirate Queen / Xebec",
+            "Pirate Queen / Ship-of-the-Line",
+            "Pirate Queen / Galleon",
+            "Pirate Queen / Sloop of War",
+            "Pirate Queen / War Junk",
+            "Pirate Queen / Brig",
+            "Rebel / Xebec",
+            "Rebel / Ship-of-the-Line",
+            "Rebel / Galleon",
+            "Rebel / Sloop of War",
+            "Rebel / War Junk",
+            "Rebel / Brig",
+            "Admiral / Xebec",
+            "Admiral / Ship-of-the-Line",
+            "Admiral / Galleon",
+            "Admiral / Sloop of War",
+            "Admiral / War Junk",
+            "Admiral / Brig",
+            "Merchant / Xebec",
+            "Merchant / Ship-of-the-Line",
+            "Merchant / Galleon",
+            "Merchant / Sloop of War",
+            "Merchant / War Junk",
+            "Merchant / Brig",
+            "Corsair / Xebec",
+            "Corsair / Ship-of-the-Line",
+            "Corsair / Galleon",
+            "Corsair / Sloop of War",
+            "Corsair / War Junk",
+            "Corsair / Brig",
+            "Treasure Seeker / Xebec",
+            "Treasure Seeker / Ship-of-the-Line",
+            "Treasure Seeker / Galleon",
+            "Treasure Seeker / Sloop of War",
+            "Treasure Seeker / War Junk",
+            "Treasure Seeker / Brig"
+        ],
+        "30": [
+            "None",
+            "Pirate Queen",
+            "Rebel",
+            "Admiral",
+            "Merchant",
+            "Corsair",
+            "Treasure Seeker"
+        ],
+        "31": [
+            "None",
+            "Xebec",
+            "Ship-of-the-Line",
+            "Galleon",
+            "Sloop of War",
+            "War Junk",
+            "Brig"
+        ]
     }
 }

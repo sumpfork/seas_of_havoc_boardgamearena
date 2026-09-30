@@ -45,7 +45,7 @@ class MerchantCardUT extends SeasOfHavocUT {
         }
     }
 
-    public function scoreInfamy(string $player_id, int $amount, string $message = ""): void {
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = ""): void {
         $this->infamyAwards[] = ["player_id" => $player_id, "amount" => $amount];
         $this->mockPlayerInfamy += $amount;
     }

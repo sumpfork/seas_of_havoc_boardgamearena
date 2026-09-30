@@ -47,7 +47,7 @@ class ShipUpgradeFiringUT extends SeasOfHavocUT
             $this->activeUpgrades[(string) $player_id] ?? [],
         );
     }
-    public function scoreInfamy(string $player_id, int $amount, string $message = "") {
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "") {
         $this->infamy[] = ["player_id" => $player_id, "amount" => $amount];
     }
     public function getGameResourcesHierarchical(?int $player_id = null) { return $this->resources; }

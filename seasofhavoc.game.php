@@ -65,6 +65,13 @@ class SeasOfHavoc extends Table
     /** Table option (gameoptions.jsonc): 1 = off, 2 = 2 Ship Variant. */
     private const OPTION_TWO_SHIPS = 100;
 
+    /** Captain and ship stats store 1-based indexes into these (stats.jsonc value_labels match). */
+    const STAT_CAPTAINS = ["pirate_queen", "rebel", "admiral", "merchant", "corsair", "treasure_seeker"];
+    const STAT_SHIPS = ["Xebec", "Ship-of-the-Line", "Galleon", "Sloop of War", "War Junk", "Brig"];
+
+    /** Where infamy comes from, each with its own player stat (infamy_from_<source>). */
+    const INFAMY_SOURCES = ["shots", "rams", "cards", "upgrades", "captain"];
+
     private const RESOURCE_CHOICE_CONTEXTS = [
         "capitol",
         "bank",
@@ -212,6 +219,20 @@ class SeasOfHavoc extends Table
 
         // Infamy is tracked by the framework's player_score counter.
         $this->bga->playerScore->initDb(array_map('intval', array_keys($players)));
+
+        $this->bga->tableStats->init(
+            ["rounds", "winning_captain", "winning_ship", "winning_captain_ship", "winner_infamy", "winning_margin"],
+            0,
+        );
+        $this->bga->tableStats->init("two_ship_variant", $this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2);
+        $this->bga->playerStats->init(
+            array_merge(
+                ["captain", "ship", "upgrades_activated", "cards_bought", "cards_scrapped", "shots_fired", "shots_missed",
+                    "hits_broadside", "hits_raking", "rams", "rammed", "rock_collisions", "damage_received"],
+                array_map(fn($source) => "infamy_from_$source", self::INFAMY_SOURCES),
+            ),
+            0,
+        );
 
         /************ Start the game initialization *****/
 
@@ -404,6 +425,8 @@ class SeasOfHavoc extends Table
                 $captain_key = array_pop($captain_keys);
             }
             $this->assignCaptainToPlayer($playerid, $captain_key);
+            $this->bga->playerStats->set("captain", $this->captainStatValue($captain_key), (int) $playerid);
+            $this->bga->playerStats->set("ship", $this->shipStatValue($player["player_ship"]), (int) $playerid);
 
             // Assign ship upgrade cards matching player's ship
             $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
@@ -797,6 +820,7 @@ class SeasOfHavoc extends Table
         self::DbQuery(
             "UPDATE player_ship_upgrades SET is_activated = 1 WHERE player_id = '$player_id' AND upgrade_key = '$upgrade_key'",
         );
+        $this->bga->playerStats->inc("upgrades_activated", 1, (int) $player_id);
     }
 
     /** @return array<string,bool> upgrade_key => true for every activated upgrade of this player */
@@ -999,6 +1023,7 @@ class SeasOfHavoc extends Table
             $this->scoreInfamy(
                 $player_id,
                 2,
+                "captain",
                 clienttranslate(
                     '${player_name}\'s Pirate Queen ability: gains 2 infamy for controlling the most flags',
                 ),
@@ -1063,6 +1088,7 @@ class SeasOfHavoc extends Table
             $this->scoreInfamy(
                 $player_id,
                 1,
+                "captain",
                 clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
             );
         }
@@ -1269,6 +1295,7 @@ class SeasOfHavoc extends Table
     function stIslandPhaseSetup()
     {
         $this->mytrace("stIslandPhaseSetup");
+        $this->bga->tableStats->inc("rounds", 1);
         $this->applyPirateQueenIslandPhaseStartAbilities();
 
         $player_infos = $this->getPlayerInfo();
@@ -1942,6 +1969,7 @@ class SeasOfHavoc extends Table
                 $this->scoreInfamy(
                     (string) $player_id,
                     $infamy_total,
+                    "upgrades",
                     clienttranslate('${player_name} scores ${score_increment} infamy from ship upgrades'),
                 );
             }
@@ -1980,6 +2008,7 @@ class SeasOfHavoc extends Table
                 $this->scoreInfamy(
                     (string) $player_id,
                     $infamy,
+                    "cards",
                     clienttranslate('${player_name} scores ${score_increment} infamy from their cards'),
                 );
             }
@@ -1992,6 +2021,7 @@ class SeasOfHavoc extends Table
             $resources = array_sum($held);
             $this->bga->playerScoreAux->set((int) $player_id, $resources * 100 + max(0, 99 - $damage));
         }
+        $this->recordWinnerStats();
 
         return STATE_END_GAME;
     }
@@ -2076,8 +2106,64 @@ class SeasOfHavoc extends Table
      * Infamy is the player score. The framework counter owns the DB write and the notification
      * that refreshes the score on the front end, so do not touch the score column directly.
      */
-    function scoreInfamy(string $player_id, int $amount, string $message = "")
+    /** The player's (first) ship type, e.g. "Brig". */
+    function getPlayerShipName(int $player_id): string
     {
+        return self::getUniqueValueFromDB("SELECT player_ship FROM player WHERE player_id = $player_id");
+    }
+
+    /** The value the captain and ship stats store for a captain: its 1-based place in STAT_CAPTAINS. */
+    function captainStatValue(string $captain_key): int
+    {
+        $index = array_search($captain_key, self::STAT_CAPTAINS, true);
+        if ($index === false) {
+            throw new \Bga\GameFramework\SystemException("Captain missing from STAT_CAPTAINS: $captain_key");
+        }
+        return $index + 1;
+    }
+
+    function shipStatValue(string $ship_name): int
+    {
+        $index = array_search($ship_name, self::STAT_SHIPS, true);
+        if ($index === false) {
+            throw new \Bga\GameFramework\SystemException("Ship missing from STAT_SHIPS: $ship_name");
+        }
+        return $index + 1;
+    }
+
+    /**
+     * Who won with what, ranked as BGA ranks the table: infamy, then the tiebreak. A tie on both
+     * credits the first of the tied players.
+     */
+    private function recordWinnerStats(): void
+    {
+        $standings = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $player_id) {
+            $standings[] = [
+                "id" => (int) $player_id,
+                "score" => (int) $this->bga->playerScore->get((int) $player_id),
+                "aux" => (int) $this->bga->playerScoreAux->get((int) $player_id),
+            ];
+        }
+        usort($standings, fn($a, $b) => [$b["score"], $b["aux"]] <=> [$a["score"], $a["aux"]]);
+        $winner = $standings[0];
+        $captain = $this->captainStatValue($this->getPlayerCaptain($winner["id"]));
+        $ship = $this->shipStatValue($this->getPlayerShipName($winner["id"]));
+        $this->bga->tableStats->set("winning_captain", $captain);
+        $this->bga->tableStats->set("winning_ship", $ship);
+        // Labelled "<captain> / <ship>" in stats.jsonc, captains in the outer order.
+        $this->bga->tableStats->set("winning_captain_ship", ($captain - 1) * count(self::STAT_SHIPS) + $ship);
+        $this->bga->tableStats->set("winner_infamy", $winner["score"]);
+        $this->bga->tableStats->set("winning_margin", $winner["score"] - ($standings[1]["score"] ?? 0));
+    }
+
+    /** @param string $source one of INFAMY_SOURCES: where the infamy came from, for the stats. */
+    function scoreInfamy(string $player_id, int $amount, string $source, string $message = "")
+    {
+        if (!in_array($source, self::INFAMY_SOURCES, true)) {
+            throw new \Bga\GameFramework\SystemException("Unknown infamy source: $source");
+        }
+        $this->bga->playerStats->inc("infamy_from_$source", $amount, (int) $player_id);
         if ($message === "") {
             $message = clienttranslate('${player_name} scored ${score_increment} infamy');
         }
@@ -3020,6 +3106,7 @@ class SeasOfHavoc extends Table
 
             // Move card to player's hand
             $this->cards->moveCard($card_id, "hand", $player_id);
+            $this->bga->playerStats->inc("cards_bought", 1, (int) $player_id);
 
             // Track for notification
             if (!isset($purchases_by_player[$player_id])) {
@@ -3332,6 +3419,7 @@ class SeasOfHavoc extends Table
             $this->scoreInfamy(
                 $player_id,
                 1,
+                "captain",
                 clienttranslate('${player_name}\'s Inspire: gains 1 infamy'),
             );
             $this->drawCards($player_id);
@@ -3427,6 +3515,7 @@ class SeasOfHavoc extends Table
             $this->scoreInfamy(
                 $player_id,
                 1,
+                "captain",
                 clienttranslate('${player_name}\'s Rally the Flags: gains 1 infamy for controlling the most flags'),
             );
         }
@@ -3576,7 +3665,7 @@ class SeasOfHavoc extends Table
         $infamy_amount = self::BARTER_RATES[$resource];
         if ($direction === "resource_to_infamy") {
             $this->pay((int) $player_id, [$resource => 1]);
-            $this->scoreInfamy($player_id, $infamy_amount,
+            $this->scoreInfamy($player_id, $infamy_amount, "captain",
                 clienttranslate('${player_name}\'s Barter: gains ${score_increment} infamy'),
             );
         } elseif ($direction === "infamy_to_resource") {
@@ -3584,7 +3673,7 @@ class SeasOfHavoc extends Table
             if ($current_infamy < $infamy_amount) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Not enough infamy for this exchange"));
             }
-            $this->scoreInfamy($player_id, -$infamy_amount,
+            $this->scoreInfamy($player_id, -$infamy_amount, "captain",
                 clienttranslate('${player_name}\'s Barter: spends infamy'),
             );
             $this->playerGainResources($player_id, [$resource => 1]);
@@ -3666,6 +3755,7 @@ class SeasOfHavoc extends Table
 
         $this->pay((int) $player_id, $cost);
         $this->cards->moveCard($card_id, "hand", $player_id);
+        $this->bga->playerStats->inc("cards_bought", 1, (int) $player_id);
 
         $this->refillMarket();
         $updated_market = $this->getMarketSlots();
@@ -3771,7 +3861,7 @@ class SeasOfHavoc extends Table
             $this->playerGainResources($target_player_id, [$item => -1]);
             $this->playerGainResources($player_id, [$item => 1]);
         }
-        $this->scoreInfamy($player_id, 1, clienttranslate('${player_name}\'s Boarding Party: gains 1 infamy'));
+        $this->scoreInfamy($player_id, 1, "captain", clienttranslate('${player_name}\'s Boarding Party: gains 1 infamy'));
         $this->bga->notify->all("log",
             clienttranslate('${player_name} uses Boarding Party and steals from ${target_name}'),
             [
@@ -3944,6 +4034,8 @@ class SeasOfHavoc extends Table
         $shot = $variant["shot"];
         $chain = [];
         $from_distance = 0;
+        $hit_a_ship = false;
+        $this->bga->playerStats->inc("shots_fired", 1, (int) $player_id);
 
         while (true) {
             $outcome = $this->seaboard->resolveCannonFire(
@@ -3965,6 +4057,7 @@ class SeasOfHavoc extends Table
                     continue;
                 }
                 $this->applyShipHit($player_id, $collider, $outcome["fire_heading"], $shot === "heavy" ? 1 : 0);
+                $hit_a_ship = true;
                 if ($shot === "chain") {
                     $this->applyChainShotLoss($player_id, self::shipOwner($collider["arg"]));
                 }
@@ -3985,6 +4078,9 @@ class SeasOfHavoc extends Table
             $from_distance = $outcome["hit_distance"];
         }
 
+        if (!$hit_a_ship) {
+            $this->bga->playerStats->inc("shots_missed", 1, (int) $player_id);
+        }
         return $chain;
     }
 
@@ -3999,7 +4095,8 @@ class SeasOfHavoc extends Table
             $raking =
                 $collider["heading"] == $fire_heading ||
                 $collider["heading"] == SeaBoard::turnHeading($fire_heading, Turn::AROUND);
-            $this->scoreInfamy($player_id, ($raking ? 3 : 2) + $bonus_infamy);
+            $this->bga->playerStats->inc($raking ? "hits_raking" : "hits_broadside", 1, (int) $player_id);
+            $this->scoreInfamy($player_id, ($raking ? 3 : 2) + $bonus_infamy, "shots");
         }
         $this->dealDamageCard($hit_player_id);
 
@@ -4012,6 +4109,7 @@ class SeasOfHavoc extends Table
             $this->scoreInfamy(
                 $player_id,
                 1,
+                "captain",
                 clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 infamy'),
             );
         }
@@ -4036,6 +4134,7 @@ class SeasOfHavoc extends Table
                     $this->scoreInfamy(
                         $player_id,
                         1,
+                        "shots",
                         clienttranslate('${player_name}\'s rocket explosion: gains 1 infamy'),
                     );
                 }
@@ -4138,6 +4237,7 @@ class SeasOfHavoc extends Table
      */
     function dealDamageCard(string $hit_player_id): void
     {
+        $this->bga->playerStats->inc("damage_received", 1, (int) $hit_player_id);
         $top = $this->cards->getCardOnTop($this->playerDiscardName($hit_player_id));
         $bulkheads =
             $top !== null &&
@@ -4196,14 +4296,18 @@ class SeasOfHavoc extends Table
                 $rammed_player_id = self::shipOwner($collider["arg"]);
                 // Ramming your own other ship (2 Ship Variant) damages it but earns no infamy.
                 if ($rammed_player_id !== (string) $player_id) {
+                    $this->bga->playerStats->inc("rams", 1, (int) $player_id);
+                    $this->bga->playerStats->inc("rammed", 1, (int) $rammed_player_id);
                     $this->scoreInfamy(
                         $player_id,
                         1,
+                        "rams",
                         clienttranslate('${player_name} rams another ship and scores ${score_increment} infamy'),
                     );
                 }
                 $this->dealDamageCard($rammed_player_id);
             } elseif ($collider["type"] === "rock") {
+                $this->bga->playerStats->inc("rock_collisions", 1, (int) $player_id);
                 $this->dealDamageCard($player_id);
             }
         }
@@ -5099,6 +5203,7 @@ class SeasOfHavoc extends Table
 
         // Move card to scrap pile
         $this->cards->moveCard($card_id, "scrap");
+        $this->bga->playerStats->inc("cards_scrapped", 1, (int) $player_id);
 
         // Ensure card ID is properly formatted
         $card_for_notification = [

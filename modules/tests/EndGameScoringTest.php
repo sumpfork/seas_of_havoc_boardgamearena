@@ -82,7 +82,7 @@ class EndGameUT extends SeasOfHavocUT
         (new ReflectionProperty(SeasOfHavoc::class, 'cards'))->setValue($this, $this->deck);
     }
 
-    public function scoreInfamy(string $player_id, int $amount, string $message = "")
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "")
     {
         $this->scored[] = [$player_id, $amount];
     }
@@ -93,6 +93,10 @@ class EndGameUT extends SeasOfHavocUT
     public function getPlayerShipUpgrades($player_id): array { return $this->upgrades[$player_id] ?? []; }
     public function getPlayerNameById(int $player_id): string { return "Player$player_id"; }
     public function hasShipUpgrade($player_id, string $upgrade_key): bool { return false; }
+    public array $captains = [1 => "admiral", 2 => "corsair"];
+    public array $ships = [1 => "Brig", 2 => "Galleon"];
+    public function getPlayerCaptain($player_id) { return $this->captains[(int) $player_id]; }
+    public function getPlayerShipName(int $player_id): string { return $this->ships[$player_id]; }
 
     public function marketCardTypeWithInfamy(int $infamy): int
     {
@@ -196,4 +200,20 @@ final class EndGameScoringTest extends TestCase
         $this->assertCount(1, $discarded);
         $this->assertSame($this->game->damageCardType(), (int) reset($discarded)['type']);
     }
+
+    public function testWinnerStatsRecordTheWinnersCaptainShipAndMargin(): void
+    {
+        $this->game->deck->add(1, $this->game->marketCardTypeWithInfamy(3), 'player_discard_1', 1);
+        $this->game->deck->add(2, $this->game->marketCardTypeWithInfamy(1), 'player_discard_2', 2);
+        $this->game->bga->playerScore->set(1, 3);
+        $this->game->bga->playerScore->set(2, 1);
+        $this->game->stFinalScoring();
+
+        $stats = $this->game->bga->tableStats;
+        $this->assertSame(3, $stats->get("winning_captain"), "admiral is third in STAT_CAPTAINS");
+        $this->assertSame(6, $stats->get("winning_ship"), "Brig is sixth in STAT_SHIPS");
+        $this->assertSame((3 - 1) * 6 + 6, $stats->get("winning_captain_ship"), "labelled Admiral / Brig");
+        $this->assertSame(2, $stats->get("winning_margin"));
+    }
+
 }

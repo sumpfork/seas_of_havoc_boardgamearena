@@ -16,7 +16,7 @@ class PostCollisionFireUT extends SeasOfHavocUT
     public array $infamy = [];
 
     public function dealDamageCard(string $hit_player_id): void { $this->damaged[] = $hit_player_id; }
-    public function scoreInfamy(string $player_id, int $amount, string $message = ""): void
+    public function scoreInfamy(string $player_id, int $amount, string $source, string $message = ""): void
     {
         $this->infamy[] = [$player_id, $amount];
     }

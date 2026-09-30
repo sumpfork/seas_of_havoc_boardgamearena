@@ -48,7 +48,7 @@ final class ScoringTest extends TestCase
 
     public function testScoringGoesThroughTheFrameworkCounter(): void
     {
-        $this->game->scoreInfamy("1", 2);
+        $this->game->scoreInfamy("1", 2, "shots");
 
         $this->assertSame(2, $this->counter->get(1));
         $this->assertSame(0, $this->counter->get(2), "other players are untouched");
@@ -56,8 +56,8 @@ final class ScoringTest extends TestCase
 
     public function testScoresAccumulate(): void
     {
-        $this->game->scoreInfamy("1", 2);
-        $this->game->scoreInfamy("1", 3);
+        $this->game->scoreInfamy("1", 2, "shots");
+        $this->game->scoreInfamy("1", 3, "shots");
 
         $this->assertSame(5, $this->counter->get(1));
     }
@@ -65,22 +65,22 @@ final class ScoringTest extends TestCase
     public function testScoringAcceptsNegativeAmounts(): void
     {
         // Barter trades infamy back for a resource.
-        $this->game->scoreInfamy("1", 5);
-        $this->game->scoreInfamy("1", -3);
+        $this->game->scoreInfamy("1", 5, "shots");
+        $this->game->scoreInfamy("1", -3, "captain");
 
         $this->assertSame(2, $this->counter->get(1));
     }
 
     public function testGetPlayerInfamyReadsTheCounterBack(): void
     {
-        $this->game->scoreInfamy("1", 4);
+        $this->game->scoreInfamy("1", 4, "shots");
 
         $this->assertSame(4, $this->game->readPlayerInfamy("1"));
     }
 
     public function testTheDefaultLogLineKeepsItsIncrementArgument(): void
     {
-        $this->game->scoreInfamy("1", 3);
+        $this->game->scoreInfamy("1", 3, "shots");
 
         $message = $this->counter->messages[0];
         $this->assertStringContainsString('${score_increment}', $message->message);
@@ -91,7 +91,7 @@ final class ScoringTest extends TestCase
     public function testACustomLogLineIsPassedThroughUnchanged(): void
     {
         // e.g. "${player_name}'s Hunt the Bounty: gains 1 infamy"
-        $this->game->scoreInfamy("2", 1, 'custom ${player_name} line');
+        $this->game->scoreInfamy("2", 1, "captain", 'custom ${player_name} line');
 
         $this->assertSame('custom ${player_name} line', $this->counter->messages[0]->message);
         $this->assertSame("Player2", $this->counter->messages[0]->args["player_name"]);
