@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Decks: each player's deck, hand and discard pile, drawing and discarding, scrapping, and damage cards.
  * Part of the SeasOfHavoc game class, split out by theme.

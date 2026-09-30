@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Ship upgrades in play: which a player has and has activated, the workshop, and the upgrades that act during a turn (Nimble Hull, Swift Hull, Extra Rations). The card rewriting they cause is in ShipUpgrades.
  * Part of the SeasOfHavoc game class, split out by theme.

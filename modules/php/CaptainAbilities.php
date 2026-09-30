@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Captains: their passive abilities and their captain cards (Rally the Flags, Extortion, Barter, Timely Trading, Boarding Party, Hunt the Bounty, and the cards that pick from hand or discard).
  * Part of the SeasOfHavoc game class, split out by theme.

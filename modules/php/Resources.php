@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Resources: reading, gaining, paying and logging player resources, including paying with a booty token.
  * Part of the SeasOfHavoc game class, split out by theme.

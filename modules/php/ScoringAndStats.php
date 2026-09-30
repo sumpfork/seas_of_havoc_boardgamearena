@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Infamy (the score), final scoring, and the game statistics.
  * Part of the SeasOfHavoc game class, split out by theme.

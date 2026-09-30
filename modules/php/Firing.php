@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Cannon fire: resolving shots of every type, hits and raking, rocket blasts, and chain shot losses.
  * Part of the SeasOfHavoc game class, split out by theme.

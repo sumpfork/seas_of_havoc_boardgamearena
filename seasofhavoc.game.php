@@ -17,13 +17,9 @@
  *
  */
 
-use Bga\GameFramework\Actions\Types\JsonParam;
 use Bga\GameFramework\Table;
 use Bga\Games\SeasOfHavoc\Heading;
-use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
 use Bga\Games\SeasOfHavoc\SeaBoard;
-use Bga\Games\SeasOfHavoc\ShipUpgrades;
-use Bga\Games\SeasOfHavoc\Turn;
 use Bga\Games\SeasOfHavoc\Resources;
 use Bga\Games\SeasOfHavoc\Decks;
 use Bga\Games\SeasOfHavoc\BootyAndShipwrecks;
@@ -94,11 +90,11 @@ class SeasOfHavoc extends Table
     ];
 
     // Debug flag: give each player a booty token at game start (one with a wild resource)
-    private const DEBUG_START_WITH_BOOTY = true;
+    private const DEBUG_START_WITH_BOOTY = false;
 
     // Debug flag: fix the damage deck size so the end of the game is quick to reach. 0 = play by
     // the rules (10 + 5 per player). Set back to 0 before release.
-    private const DEBUG_DAMAGE_CARDS = 5;
+    private const DEBUG_DAMAGE_CARDS = 0;
 
     private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
@@ -193,7 +189,7 @@ class SeasOfHavoc extends Table
         // TEMP HACK: force the first players onto specific ships for upgrade testing.
         // Ships decide which two upgrades a player can buy, and a fixed gameinfos order meant a
         // given player count always produced the same ones. Empty = deal ships at random.
-        $forced_ships_for_testing = ["War Junk", "Sloop of War", "Brig"]; // [] to deal at random
+        $forced_ships_for_testing = []; //["War Junk", "Sloop of War", "Brig"];
         $ship_index = 0;
 
         foreach ($players as $player_id => $player) {

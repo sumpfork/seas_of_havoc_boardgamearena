@@ -11,8 +11,6 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
-use Bga\GameFramework\Actions\Types\JsonParam;
-
 /**
  * Booty tokens (drawing, capacity, discarding) and shipwrecks (placement, pickup, the Treasure Seeker's adjustment).
  * Part of the SeasOfHavoc game class, split out by theme.
