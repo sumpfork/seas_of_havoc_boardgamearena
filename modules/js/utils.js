@@ -30,7 +30,17 @@ define([
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
       if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);
       const label = names[resource].replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-      return '<span class="soh_resource soh_log_resource soh_' + resource + '" data-resource="' + resource + '" role="img" aria-label="' + label + '" title="' + label + '"></span>';
+      return (
+        '<span class="soh_resource soh_log_resource soh_' +
+        resource +
+        '" data-resource="' +
+        resource +
+        '" role="img" aria-label="' +
+        label +
+        '" title="' +
+        label +
+        '"></span>'
+      );
     },
 
     /**
@@ -98,8 +108,10 @@ define([
     placeUniqueToken: function (token_key, player_id) {
       var token_element = dom.byId("token_" + token_key);
       if (!token_element) {
-        token_element = domConstruct.place(this.format_block("jstpl_unique_token", { token_key: token_key }),
-          `player_token_board_p${player_id}`);
+        token_element = domConstruct.place(
+          this.format_block("jstpl_unique_token", { token_key: token_key }),
+          `player_token_board_p${player_id}`,
+        );
       } else {
         this.attachToNewParent(token_element, `player_token_board_p${player_id}`);
       }
@@ -236,7 +248,14 @@ define([
       domStyle.set(id, "opacity", "0");
       return fx.chain([
         // 0.8s in total: 50 delay + 150 in + 400 hold + 200 out.
-        baseFX.fadeIn({ node: id, delay: 50, duration: 150 }),
+        baseFX.fadeIn({
+          node: id,
+          delay: 50,
+          duration: 150,
+          beforeBegin: () => {
+            this.bga.sounds.play("crash");
+          },
+        }),
         baseFX.fadeOut({
           node: id,
           delay: 400,
@@ -263,7 +282,7 @@ define([
       const board = dom.byId("seaboard");
       const id = "cannonfire_" + this._nextEffectId();
       domConstruct.place(this.format_block("jstpl_cannon_fire", { id: id }), board);
-      domStyle.set(id, "rotate", ((fireHeading - 1) * 90 + 180) % 360 + "deg");
+      domStyle.set(id, "rotate", (((fireHeading - 1) * 90 + 180) % 360) + "deg");
       domStyle.set(id, "opacity", 0);
       // Measured when the flash plays: moves queued ahead of it have not happened yet.
       const placeOnShip = () => {
@@ -299,7 +318,10 @@ define([
      * Returns null when either end is off screen.
      */
     tracerAnimation: function (shipId, fireHeading, x, y) {
-      const NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4;
+      const NORTH = 1,
+        EAST = 2,
+        SOUTH = 3,
+        WEST = 4;
       const ship = dom.byId(shipId);
       const target = dom.byId("seaboardlocation_" + x + "_" + y);
       const board = dom.byId("seaboard");
@@ -330,7 +352,8 @@ define([
           const to = centre(target);
           const [exit, entry] = edges();
           // The target sits behind the ship relative to the fire heading exactly when the shot wrapped.
-          const ahead = (exit.left - from.left) * (to.left - from.left) + (exit.top - from.top) * (to.top - from.top) > 0;
+          const ahead =
+            (exit.left - from.left) * (to.left - from.left) + (exit.top - from.top) * (to.top - from.top) > 0;
           path = ahead ? [from, to, to, to] : [from, exit, entry, to];
           if (ahead) {
             // Straight shot: all the flight time goes to the one leg.
