@@ -794,22 +794,9 @@ define([
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
-          case "player_ship": {
-            // A second ship (2 Ship Variant) is "<player id>_2" on the board.
-            var [owner, second] = String(entry.arg).split("_");
-            var ownerInfo = gamedatas.playerinfo[owner];
-            var shipid = "player_ship_" + entry.arg;
-            var subs = {
-              id: shipid,
-              shipname: second ? ownerInfo.player_ship2 : ownerInfo.player_ship,
-            };
-            var ship = this.format_block("jstpl_player_ship", subs);
-            domConstruct.place(ship, "seaboard");
-            console.log(target_id);
-            this.placeOnObject(shipid, target_id);
-            domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
+          case "player_ship":
+            this.addShipToBoard(entry);
             break;
-          }
           case "rock":
           case "gust":
           case "whirlpool":

@@ -121,6 +121,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           break;
         }
 
+        case "chooseHeading":
+          this.setupChooseHeading(args.args);
+          break;
+
         case "rallyTheFlagsChooseFlag": {
           break;
         }
@@ -207,6 +211,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
         case "treasureSeekerAdjust":
           this.cleanupTreasureSeekerAdjust();
+          break;
+
+        case "chooseHeading":
+          this.cleanupChooseHeading();
           break;
 
         case "resolveCollision":

@@ -76,6 +76,49 @@ define([
       }
     },
 
+    /** A ship's element on the sea grid; one still without a heading is drawn unturned. */
+    addShipToBoard: function (entry) {
+      // A second ship (2 Ship Variant) is "<player id>_2" on the board.
+      const [owner, second] = String(entry.arg).split("_");
+      const ownerInfo = this.gamedatas.playerinfo[owner];
+      const shipid = "player_ship_" + entry.arg;
+      domConstruct.place(
+        this.format_block("jstpl_player_ship", {
+          id: shipid,
+          shipname: second ? ownerInfo.player_ship2 : ownerInfo.player_ship,
+        }),
+        "seaboard",
+      );
+      this.placeOnObject(shipid, "seaboardlocation_" + entry.x + "_" + entry.y);
+      if (Number(entry.heading) !== 0) {
+        domStyle.set(shipid, "rotate", this.getHeadingDegrees(entry.heading) + "deg");
+      }
+    },
+
+    /** Choose Heading: reveal the active player's ship and, for them, an arrow on each side of it. */
+    setupChooseHeading: function (args) {
+      const ship = args.ship;
+      if (!this.getObjectOnSeaboard("player_ship", ship.arg)) {
+        const entry = { type: "player_ship", arg: ship.arg, x: ship.x, y: ship.y, heading: 0 };
+        this.seaboard.push(entry);
+        this.addShipToBoard(entry);
+      }
+      if (!this.isCurrentPlayerActive()) return;
+      // Heading -> step to the neighbouring cell; the grid has a cell of margin all round.
+      const steps = { 1: [0, -1], 2: [1, 0], 3: [0, 1], 4: [-1, 0] };
+      for (const [heading, [dx, dy]] of Object.entries(steps)) {
+        const arrow = domConstruct.create("div", { class: "soh_heading_arrow" }, "seaboard");
+        this.placeOnObject(arrow, "seaboardlocation_" + (ship.x + dx) + "_" + (ship.y + dy));
+        // The glyph points east (heading 2).
+        arrow.style.rotate = (heading - 2) * 90 + "deg";
+        arrow.addEventListener("click", () => this.bgaPerformAction("actChooseHeading", { heading: Number(heading) }));
+      }
+    },
+
+    cleanupChooseHeading: function () {
+      query(".soh_heading_arrow").forEach(domConstruct.destroy);
+    },
+
     getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {

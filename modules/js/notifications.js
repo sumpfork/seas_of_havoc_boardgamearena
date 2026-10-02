@@ -576,6 +576,12 @@ define([
       this.cleanupTreasureSeekerAdjust();
     },
 
+    notif_shipOriented: function (args) {
+      this.cleanupChooseHeading();
+      this.getObjectOnSeaboard("player_ship", args.ship_arg).heading = args.heading;
+      domStyle.set("player_ship_" + args.ship_arg, "rotate", this.getHeadingDegrees(args.heading) + "deg");
+    },
+
     /**
      * Deck reshuffled notification
      */

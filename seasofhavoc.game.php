@@ -63,6 +63,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_FINAL_SCORING", 26);
     define("STATE_HUNT_THE_BOUNTY_EXTRA_PLAY", 27);
     define("STATE_CHAIN_SHOT_LOSS", 28);
+    define("STATE_CHOOSE_HEADING", 29);
     define("STATE_END_GAME", 99);
 }
 
@@ -409,20 +410,18 @@ class SeasOfHavoc extends Table
             // Ships CAN start on gusts and whirlpools
             $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
 
-            // Find a safe random heading that doesn't face rocks or other obstacles
-            $heading = $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]);
-
+            // Each player points their ship(s) in the Choose Heading state, in player order.
             $this->seaboard->placeObject($position["x"], $position["y"], [
                 "type" => "player_ship",
                 "arg" => $playerid,
-                "heading" => $heading,
+                "heading" => Heading::NO_HEADING,
             ]);
             if ($this->hasSecondShip($playerid)) {
                 $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
                 $this->seaboard->placeObject($position["x"], $position["y"], [
                     "type" => "player_ship",
                     "arg" => self::secondShipArg($playerid),
-                    "heading" => $this->findSafeHeadingAtPosition($position["x"], $position["y"], ["rock", "shipwreck"]),
+                    "heading" => Heading::NO_HEADING,
                 ]);
             }
 
@@ -517,9 +516,9 @@ class SeasOfHavoc extends Table
         }
 
         /************ End of the game initialization *****/
-        $this->activeNextPlayer();
+        $this->gamestate->changeActivePlayer($random_first_player);
 
-        return STATE_ISLAND_PHASE_SETUP;
+        return STATE_CHOOSE_HEADING;
     }
 
     function findEmptyBoardPosition(array $collision_types)
@@ -557,6 +556,54 @@ class SeasOfHavoc extends Table
             "Could not find an empty position on the board that doesn't collide with: " .
                 implode(", ", $collision_types),
         );
+    }
+
+    /** The player's next ship still without a heading, or null once all of theirs have one. */
+    function unorientedShip(int $player_id): ?array
+    {
+        foreach ([(string) $player_id, self::secondShipArg($player_id)] as $arg) {
+            $ship = $this->seaboard->findObject("player_ship", $arg);
+            if ($ship !== null && $ship["object"]["heading"] === Heading::NO_HEADING) {
+                return ["arg" => $arg, "x" => $ship["x"], "y" => $ship["y"]];
+            }
+        }
+        return null;
+    }
+
+    function argChooseHeading(): array
+    {
+        return ["ship" => $this->unorientedShip((int) $this->getActivePlayerId())];
+    }
+
+    function actChooseHeading(int $heading): mixed
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        $ship = $this->unorientedShip($player_id);
+        $heading = Heading::from($heading);
+        if ($ship === null || $heading === Heading::NO_HEADING) {
+            throw new \Bga\GameFramework\SystemException("Invalid heading choice: " . $heading->toString());
+        }
+        $this->seaboard->removeObject($ship["x"], $ship["y"], "player_ship", $ship["arg"]);
+        $this->seaboard->placeObject($ship["x"], $ship["y"], [
+            "type" => "player_ship",
+            "arg" => $ship["arg"],
+            "heading" => $heading,
+        ]);
+        $this->bga->notify->all("shipOriented", clienttranslate('${player_name} chooses a heading for their ship'), [
+            "player_id" => $player_id,
+            "player_name" => $this->getPlayerNameById($player_id),
+            "ship_arg" => $ship["arg"],
+            "heading" => $heading->value,
+        ]);
+        if ($this->unorientedShip($player_id) !== null) {
+            return STATE_CHOOSE_HEADING;
+        }
+        $next = (int) $this->activeNextPlayer();
+        if ($this->unorientedShip($next) === null) {
+            return STATE_ISLAND_PHASE_SETUP;
+        }
+        $this->giveExtraTime($next);
+        return STATE_CHOOSE_HEADING;
     }
 
     function findSafeHeadingAtPosition(int $x, int $y, array $avoid_types)
@@ -852,7 +899,13 @@ class SeasOfHavoc extends Table
         $result["discard"] = $this->normalizeCardLocations($this->getPlayerDiscard($current_player_id));
         $result["scrap"] = $this->cards->getCardsInLocation("scrap");
         $result["playerinfo"] = $this->getPlayerInfo();
-        $result["seaboard"] = $this->seaboard->getAllObjectsFlat();
+        // Ships still to be pointed stay hidden until their owner's turn to choose a heading.
+        $active_player_id = $this->getActivePlayerId();
+        $result["seaboard"] = array_values(array_filter(
+            $this->seaboard->getAllObjectsFlat(),
+            fn($o) => $o["type"] !== "player_ship" || $o["heading"] !== Heading::NO_HEADING
+                || explode("_", (string) $o["arg"])[0] == $active_player_id,
+        ));
         $result["non_playable_cards"] = $this->non_playable_cards;
 
         $result["deck_size"] = $this->cards->countCardInLocation($this->playerDeckName($current_player_id));

@@ -512,6 +512,31 @@
   50%       { box-shadow: 0 0 16px rgba(232, 179, 53, 1),  inset 0 0 10px rgba(232, 179, 53, 0.6); }
 }
 
+/* Choose Heading: an arrow on each side of the ship; the glyph points east and is rotated. */
+.soh_heading_arrow {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin-left: -21px;
+  margin-top: -21px;
+  border-radius: 50%;
+  background-color: rgba(232, 179, 53, 0.35);
+  border: 2px solid rgba(201, 140, 20, 0.9);
+  color: #fff;
+  font-size: 26px;
+  line-height: 44px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 5;
+  animation: treasure-seeker-pulse 1.6s ease-in-out infinite;
+}
+.soh_heading_arrow::before {
+  content: "\279C";
+}
+.soh_heading_arrow:hover {
+  background-color: rgba(232, 179, 53, 0.8);
+}
+
 /* Treasure Seeker: highlight on the current shipwreck */
 .soh_treasure_seeker_shipwreck_highlight {
   filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1)) drop-shadow(0 0 12px rgba(201, 140, 20, 0.8));
