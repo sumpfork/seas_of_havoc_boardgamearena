@@ -466,17 +466,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             this.statusBar.addActionButton(
               "<div class='soh_resource soh_pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
-              { color: "secondary" },
+              { color: "secondary", classes: "soh_pivot_button" },
             );
             this.statusBar.addActionButton(
               "<div class='soh_resource soh_nope' role='img' aria-label='" + _("Do not pivot") + "' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
-              { color: "secondary" },
+              { color: "secondary", classes: "soh_pivot_button" },
             );
             this.statusBar.addActionButton(
               "<div class='soh_resource soh_pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
-              { color: "secondary" },
+              { color: "secondary", classes: "soh_pivot_button" },
             );
             break;
 
@@ -676,12 +676,26 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       console.log(pivotElement);
       console.log("pivot picked " + direction);
 
-      if (direction != null) {
-        this.bgaPerformAction("actPivotPickedInDialog", {
-          direction: direction,
-        });
-        this.statusBar.removeActionButtons();
+      if (direction == null) {
+        throw new Error("Pivot button without a data-pivot direction");
       }
+      // Picking a direction only selects it; Confirm (which counts down and fires on its own)
+      // sends it, so a misclick can still be changed.
+      for (const b of document.querySelectorAll("#generalactions .soh_pivot_button")) {
+        b.classList.toggle("bgabutton_blue", b === button);
+        b.classList.toggle("bgabutton_gray", b !== button);
+      }
+      document.getElementById("soh_pivot_confirm")?.remove();
+      document.getElementById("soh_pivot_cancel")?.remove();
+      this.statusBar.addActionButton(_("Confirm"), () => {
+        this.bgaPerformAction("actPivotPickedInDialog", { direction: direction });
+        this.statusBar.removeActionButtons();
+      }, { id: "soh_pivot_confirm", autoclick: true });
+      // Back to the three directions with nothing selected and no countdown running.
+      this.statusBar.addActionButton(_("Cancel"), () => this.restoreServerGameState(), {
+        id: "soh_pivot_cancel",
+        color: "secondary",
+      });
     },
   };
 });
