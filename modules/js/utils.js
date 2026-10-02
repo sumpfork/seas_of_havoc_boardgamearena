@@ -207,13 +207,91 @@ define([
       return node;
     },
 
+    /**
+     * All tooltip text, by kind and then by key. Built on each call so _() runs after the
+     * translations have loaded.
+     */
+    tooltipTexts: function () {
+      return {
+        // What placing a skiff does, keyed by the slot's data-slotname.
+        skiff_slot: {
+          capitol: _("Take the first player token and gain 1 resource of your choice"),
+          bank: _("Gain 1 doubloon and 1 resource of your choice"),
+          shipyard: _("Gain 2 sails and 1 cannonball"),
+          sailmaker: _("Gain 3 sails"),
+          blacksmith: _("Gain 2 cannonballs"),
+          workshop: _("Pay its cost to activate one of your ship upgrades"),
+          trading_post: _("Exchange up to 2 resources"),
+          deep_cove: _("Scrap up to 2 cards from your hand or discard pile and gain their cost in resources"),
+          market: _("Claim this card. You pay for it at the end of the Island Phase and add it to your hand"),
+          green_flag: _("Take the Purser's flag and gain 1 resource of your choice"),
+          tan_flag: _("Take the Bosun's flag and draw 1 card"),
+          red_flag: _("Take the Shipwright's flag and scrap 1 card from your hand or discard pile, gaining its cost"),
+          blue_flag: _("Take the Sailor's flag and place another skiff"),
+        },
+        // Player panel token slots, keyed by data-tokenkey.
+        panel_token: {
+          green_flag: _("Purser's flag: when you play a card showing this flag, you may gain 1 resource of your choice"),
+          tan_flag: _("Bosun's flag: when you play a card showing this flag, you may draw 1 card"),
+          red_flag: _("Shipwright's flag: when you play a card showing this flag, you may scrap a card from your hand or discard pile, including that card"),
+          blue_flag: _("Sailor's flag: when you play a card showing this flag, you may play another card immediately"),
+          first_player_token: _("First player: places the first skiff in the Island Phase and plays the first card in the Sea Phase"),
+        },
+        resource: {
+          sail: _("Sails"),
+          cannonball: _("Cannonballs"),
+          doubloon: _("Doubloons"),
+          skiff: _("Skiffs left to place this Island Phase"),
+        },
+        sea_feature: {
+          rock: _("Rock: a ship that runs into it stops, discards a card and takes a damage card"),
+          whirlpool: _("Whirlpool: a ship on here after a card is resolved pivots 90° counter-clockwise"),
+          gust: _("Gust: a ship on here after a card is resolved is pushed 1 space the way the gust blows, without changing heading"),
+          shipwreck: _("Shipwreck: sail onto it to take its booty token"),
+        },
+        booty_token: _("Booty token: spend it whenever you pay resources, but it is spent whole - any resources left on it are lost"),
+      };
+    },
+
+    /** The tooltip text for one key of one kind; throws if there is none, so a gap shows up. */
+    tooltipText: function (kind, key) {
+      const texts = this.tooltipTexts()[kind];
+      const text = key === undefined ? texts : texts && texts[key];
+      if (typeof text !== "string") {
+        throw new Error(`No tooltip text for ${kind} ${key}`);
+      }
+      return text;
+    },
+
+    /** Player panel flags, first player token and resources. */
+    addPlayerPanelTooltips: function (player_id) {
+      for (const slot of document.querySelectorAll(`#player_token_board_p${player_id} > [data-tokenkey]`)) {
+        this.addTooltip(slot.id, this.tooltipText("panel_token", slot.dataset.tokenkey), "");
+      }
+      for (const resource of ["sail", "cannonball", "doubloon", "skiff"]) {
+        const text = this.tooltipText("resource", resource);
+        this.addTooltip(`${resource}_p${player_id}`, text, "");
+        this.addTooltip(`${resource}count_p${player_id}`, text, "");
+      }
+    },
+
+    addSeaFeatureTooltip: function (node_id, seafeature_type) {
+      this.addTooltip(node_id, this.tooltipText("sea_feature", seafeature_type), "");
+    },
+
+    /** A face-down booty token (another player's): what booty is, without what is on it. */
+    addFacedownBootyTokenTooltip: function (node) {
+      node.id = node.id || "booty_token_view_" + this._nextEffectId();
+      this.addTooltip(node.id, this.tooltipText("booty_token"), "");
+    },
+
     /** A large copy of a face-up booty token on hover, so the resources on it can be read. */
     addBootyTokenTooltip: function (node, imageId) {
       node.id = node.id || "booty_token_view_" + this._nextEffectId();
       const zoom = this.createBootyTokenNode(false, imageId);
       zoom.classList.add("soh_booty-token-zoom");
       this.setBootyTokenPosition(zoom, imageId, 126);
-      this.addTooltipHtml(node.id, zoom.outerHTML);
+      this.addTooltipHtml(node.id, `<p>${this.tooltipText("booty_token")}</p>` + zoom.outerHTML);
     },
 
     updateMyBootyToken: function (typeArgOverride) {
@@ -251,6 +329,7 @@ define([
         console.warn("[booty] typeArg undefined but has tokens, showing facedown as fallback");
         const node = this.createBootyTokenNode(true, null);
         domConstruct.place(node, mySlot);
+        this.addFacedownBootyTokenTooltip(node);
         domClass.add(mySlot, "soh_has-token");
       }
       console.groupEnd();
@@ -262,6 +341,7 @@ define([
       domConstruct.empty(slot);
       const node = this.createBootyTokenNode(true, null);
       domConstruct.place(node, slot);
+      this.addFacedownBootyTokenTooltip(node);
       domClass.add(slot, "soh_has-token");
     },
 
@@ -503,6 +583,7 @@ define([
         });
         domConstruct.place(seafeature, "seaboard");
         this.placeOnObject(shipwreckId, targetId);
+        this.addSeaFeatureTooltip(shipwreckId, "shipwreck");
         let updated = false;
         for (const entry of this.seaboard) {
           if (entry.type === "shipwreck" && entry.arg == event.shipwreck_arg) {

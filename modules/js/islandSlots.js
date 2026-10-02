@@ -21,6 +21,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
   const console = Constants.console;
 
   return {
+    addSkiffSlotTooltips: function () {
+      for (const slot of document.querySelectorAll(".soh_skiff_slot")) {
+        this.addTooltip(slot.id, this.tooltipText("skiff_slot", slot.dataset.slotname), "");
+      }
+    },
+
     isIslandSkiffPlacementActive: function () {
       if (!this.isCurrentPlayerActive()) {
         return false;

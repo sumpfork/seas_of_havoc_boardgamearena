@@ -740,6 +740,7 @@ define([
             }),
           );
           this.addPlayerPanelCards(player);
+          this.addPlayerPanelTooltips(player_id);
         }
       }
 
@@ -809,6 +810,7 @@ define([
             var seafeature = this.format_block("jstpl_seafeature", subs);
             domConstruct.place(seafeature, "seaboard");
             this.placeOnObject(seafeatureid, target_id);
+            this.addSeaFeatureTooltip(seafeatureid, entry.type);
             var isPairedShipwreck = entry.type === "shipwreck" && otherFeatureAtPos[target_id];
             var isPairedPartner = entry.type !== "shipwreck" && shipwreckAtPos[target_id];
             if (entry.type === "gust") {
@@ -841,6 +843,7 @@ define([
 
       var skiffslot_class = query(".soh_skiff_slot");
       var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
+      this.addSkiffSlotTooltips();
 
       console.log("Ending game setup");
       console.groupEnd();
