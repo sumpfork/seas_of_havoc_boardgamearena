@@ -182,6 +182,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
     onLeavingState: function (stateName) {
       console.log("Leaving state: " + stateName);
       this.bga.gameArea.getElement().classList.remove("soh_placing");
+      this.clearPendingSkiffSlot();
 
       switch (stateName) {
         case "client_tradingPostBootyChoice":
@@ -360,13 +361,26 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               }
               break;
             }
+            this.refreshSkiffSlotPlaceability();
+            // Gives the free skiff slots a pointer cursor (see .soh_placing in the CSS).
+            this.bga.gameArea.getElement().classList.add("soh_placing");
+            if (
+              this.player_captain === "corsair" &&
+              this.corsairOccupiedPlacementAvailable &&
+              (this.corsairOccupiedSlotNames || []).length > 0
+            ) {
+              this.showMessage(
+                _("Corsair: you may place one skiff on a highlighted occupied space (resources only)"),
+                "info",
+              );
+            }
             if (args && args.market_restocked) {
               this.statusBar.setTitle(_("${you} must place a skiff on a newly revealed Market card"));
             }
             if (args && args.can_restock_market) {
               this.statusBar.addActionButton(
                 _("Restock Market"),
-                () => { this.bgaPerformAction("actRestockMarket", {}); },
+                () => this.confirmIslandAction(_("Confirm restock"), () => this.bgaPerformAction("actRestockMarket", {})),
                 { color: "secondary" },
               );
             }
@@ -643,21 +657,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             });
             break;
 
-          case "islandTurn":
-            this.refreshSkiffSlotPlaceability();
-            // Makes the free skiff slots pulse (see .soh_placing in the CSS).
-            this.bga.gameArea.getElement().classList.add("soh_placing");
-            if (
-              this.player_captain === "corsair" &&
-              this.corsairOccupiedPlacementAvailable &&
-              (this.corsairOccupiedSlotNames || []).length > 0
-            ) {
-              this.showMessage(
-                _("Corsair: you may place one skiff on a highlighted occupied space (resources only)"),
-                "info",
-              );
-            }
-            break;
         }
       }
     },

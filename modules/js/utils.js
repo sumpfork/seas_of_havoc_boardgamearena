@@ -149,16 +149,14 @@ define([
      * redrawn - that is what lets a transfer animate from the previous owner's panel.
      */
     placeUniqueToken: function (token_key, player_id) {
+      var slot_id = `${token_key}_p${player_id}`;
       var token_element = dom.byId("token_" + token_key);
       if (!token_element) {
-        token_element = domConstruct.place(
-          this.format_block("jstpl_unique_token", { token_key: token_key }),
-          `player_token_board_p${player_id}`,
-        );
+        token_element = domConstruct.place(this.format_block("jstpl_unique_token", { token_key: token_key }), slot_id);
       } else {
-        this.attachToNewParent(token_element, `player_token_board_p${player_id}`);
+        this.attachToNewParent(token_element, slot_id);
       }
-      this.placeOnObject(token_element, `${token_key}_p${player_id}`);
+      domStyle.set(token_element, { left: "0px", top: "0px" });
       return token_element;
     },
 

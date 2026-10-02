@@ -56,6 +56,9 @@
   height: 692px;
   margin: 0 auto 5px; /* centred when the column is wider than the board */
   background-image: url(img/board.jpg);
+  /* Keeps the ships', skiffs' etc. z-indexes inside the board, so they don't draw over the hand
+     when a narrow window makes the two overlap. */
+  isolation: isolate;
 }
 #seaboard {
   position: relative;
@@ -336,8 +339,13 @@
 .soh_flagish[data-tokenkey="first_player_token"] {
   background-position: 0px -200px;
 }
-.soh_no_own_flag {
+.soh_no_own_flag:not(:has(.soh_flagish)) {
   opacity: 0.25;
+}
+/* A held flag / first player token sits inside its panel slot rather than next to it in the row,
+   so holding one doesn't add an item that wraps the row and pushes the rows below down. */
+.soh_flagish > .soh_flagish {
+  position: absolute;
 }
 .soh_seafeature {
   width: 63px;
@@ -1257,18 +1265,23 @@ a.disabled {
   border-bottom: none;
 }
 
-/* Your island turn: free skiff slots pulse so they read as the places to click. */
+/* Your island turn: free skiff slots show a pointer cursor and a faint, slow glow. */
 .soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_workshop_unavailable):not(.soh_occupied_blocked) {
-  background-color: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 0 12px 1px rgba(255, 215, 90, 0.9);
-  outline: 3px solid #fff;
-  animation: soh-slot-pulse 1.6s ease-in-out infinite;
   cursor: pointer;
+}
+.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_workshop_unavailable):not(.soh_occupied_blocked):not(.soh_pending_skiff) {
+  animation: soh-slot-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes soh-slot-pulse {
   50% {
-    outline-color: #ffd75a;
-    box-shadow: 0 0 18px 4px rgba(255, 215, 90, 1);
+    box-shadow: 0 0 6px 1px rgba(255, 215, 90, 0.55);
   }
+}
+
+/* Skiff slot picked but not yet confirmed (confirm skiff placement preference). */
+/* As specific as .soh_unoccupied:hover and later, so it shows while the mouse is still on it. */
+.soh_skiff_slot.soh_unoccupied.soh_pending_skiff {
+  background-color: rgba(255, 215, 90, 0.6);
+  outline: 3px solid #ffd75a;
 }

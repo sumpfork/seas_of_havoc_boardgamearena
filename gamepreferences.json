@@ -1,0 +1,11 @@
+{
+  "100": {
+    "name": "Confirm skiff placement and Market restock",
+    "needReload": false,
+    "values": {
+      "1": { "name": "Yes" },
+      "2": { "name": "No" }
+    },
+    "default": 1
+  }
+}

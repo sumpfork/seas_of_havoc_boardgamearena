@@ -883,13 +883,46 @@ define([
 
       console.log(slotElement.dataset.slotname, slotElement.dataset.number);
 
-      if (this.isCurrentPlayerActive()) {
-        console.log("calling actPlaceSkiff");
+      if (!this.isCurrentPlayerActive()) {
+        return;
+      }
+      this.confirmIslandAction(_("Confirm placement"), () => {
         this.bgaPerformAction("actPlaceSkiff", {
           slotname: slotElement.dataset.slotname,
           number: slotElement.dataset.number,
         });
+      }, slotElement);
+    },
+
+    /**
+     * Swaps the status bar for Confirm / Cancel before an island action is sent, unless the player
+     * turned that off (preference 100: 1 = confirm, 2 = don't). Confirm counts down and fires on
+     * its own (BGA's autoclick); Cancel puts the normal buttons back. slotElement, if given, is
+     * highlighted while waiting.
+     */
+    confirmIslandAction: function (label, action, slotElement) {
+      this.clearPendingSkiffSlot();
+      const confirmed = () => {
+        this.clearPendingSkiffSlot();
+        action();
+      };
+      if (this.getGameUserPreference(100) != 1) {
+        confirmed();
+        return;
       }
+      if (slotElement) {
+        slotElement.classList.add("soh_pending_skiff");
+      }
+      this.statusBar.removeActionButtons();
+      this.statusBar.addActionButton(label, confirmed, { autoclick: true });
+      this.statusBar.addActionButton(_("Cancel"), () => {
+        this.clearPendingSkiffSlot();
+        this.restoreServerGameState();
+      }, { color: "secondary" });
+    },
+
+    clearPendingSkiffSlot: function () {
+      query(".soh_pending_skiff").removeClass("soh_pending_skiff");
     },
 
     onCardSelectedPlayerHand: function () {

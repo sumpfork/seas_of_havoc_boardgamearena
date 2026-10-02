@@ -515,6 +515,11 @@ class SeasOfHavoc extends Table
             }
         }
 
+        // Starting hands are dealt before players choose their ship headings.
+        foreach (array_keys($players) as $player_id) {
+            $this->drawCards((string) $player_id, 4);
+        }
+
         /************ End of the game initialization *****/
         $this->gamestate->changeActivePlayer($random_first_player);
 
@@ -634,13 +639,6 @@ class SeasOfHavoc extends Table
         $this->mytrace("stIslandPhaseSetup");
         $this->bga->tableStats->inc("rounds", 1);
         $this->applyPirateQueenIslandPhaseStartAbilities();
-
-        $player_infos = $this->getPlayerInfo();
-
-        foreach ($player_infos as $playerid => $player) {
-            // Draw 4 new cards
-            $this->drawCards($playerid, 4);
-        }
 
         $rebel_id = $this->applyRebelIslandPhaseStartDraw();
 
@@ -818,9 +816,14 @@ class SeasOfHavoc extends Table
         $this->mytrace("final num cards: $num_cards");
         if ($num_cards == 0) {
             // "The game ends at the end of a Sea Phase when the Damage deck is empty."
-            return $this->cards->countCardInLocation("damage_deck") == 0
-                ? STATE_FINAL_SCORING
-                : "seaPhaseDone";
+            if ($this->cards->countCardInLocation("damage_deck") == 0) {
+                return STATE_FINAL_SCORING;
+            }
+            // Sea Phase cleanup: everyone draws a new hand of 4 for the next Island Phase.
+            foreach (array_keys($this->getPlayerInfo()) as $player_id) {
+                $this->drawCards((string) $player_id, 4);
+            }
+            return "seaPhaseDone";
         }
         $this->giveExtraTime($active_player);
         return "nextPlayer";
