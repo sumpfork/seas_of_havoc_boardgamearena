@@ -33,20 +33,9 @@ class ResolveCollision extends GameState
         );
     }
 
-    public function onEnteringState(int $activePlayerId): void
-    {
-        $this->game->stResolveCollision();
-    }
-
     public function getArgs(): array
     {
         return $this->game->argResolveCollision();
-    }
-
-    #[PossibleAction]
-    public function actResolveCollision(string $card_id, string $action_type): mixed
-    {
-        return $this->game->actResolveCollision($card_id, $action_type);
     }
 
     #[PossibleAction]

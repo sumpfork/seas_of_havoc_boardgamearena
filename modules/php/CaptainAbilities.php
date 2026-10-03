@@ -211,7 +211,7 @@ trait CaptainAbilities
         return true;
     }
 
-    function processCaptainAbility(string $ability)
+    function processCaptainAbility(string $ability): CardActionOutcome|int
     {
         $this->mytrace("processing captain ability: $ability");
         $player_id = $this->getActivePlayerId();
@@ -265,15 +265,14 @@ trait CaptainAbilities
         ));
     }
 
-    protected function beginCaptainCard(string $player_id, string $ability): array|int
+    protected function beginCaptainCard(string $player_id, string $ability): CardActionOutcome|int
     {
-        $empty = ["action_chain" => [], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null];
         if ($ability === "retaliation" || $ability === "improvisation") {
             if (empty($this->captainCardOptions($player_id, $ability))) {
                 if ($ability === "improvisation") {
                     $this->drawCards($player_id);
                 }
-                return $empty;
+                return new CardActionOutcome();
             }
         } elseif ($ability === "spyglass") {
             $deck = $this->playerDeckName($player_id);
@@ -287,7 +286,7 @@ trait CaptainAbilities
                 $this->cards->pickCardsForLocation(3 - count($cards), $deck, "spyglass", (int) $player_id, true);
             }
             if (empty($this->captainCardOptions($player_id, $ability))) {
-                return $empty;
+                return new CardActionOutcome();
             }
         } else {
             $ship = $this->seaboard->findObject("player_ship", $this->activeShipArg($player_id));
@@ -299,11 +298,11 @@ trait CaptainAbilities
                 $rock = $rock || !empty($this->seaboard->getObjectsOfTypes($pos["x"], $pos["y"], ["rock"]));
             }
             if (!$rock) {
-                return $empty;
+                return new CardActionOutcome();
             }
             $token = $this->drawBootyToken((int) $player_id, "captain_reward");
             if ($token === null) {
-                return $empty; // The supply and its discard can both be exhausted by held tokens.
+                return new CardActionOutcome(); // The supply and its discard can both be exhausted by held tokens.
             }
             $this->bga->notify->all("log", clienttranslate('${player_name} reveals a shipwreck token for Unearth Riches'), [
                 "player_name" => $this->getPlayerNameById((int) $player_id), "token" => $token,
@@ -406,7 +405,7 @@ trait CaptainAbilities
         return $result;
     }
 
-    function processGovernmentFunding(string $player_id): array
+    function processGovernmentFunding(string $player_id): CardActionOutcome
     {
         $standard_resources = array_filter($this->resource_types, fn($r) => $r !== "skiff");
         $current = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];
@@ -433,15 +432,10 @@ trait CaptainAbilities
                 ["player_name" => $this->getPlayerNameById($player_id)],
             );
         }
-        return [
-            "action_chain" => [],
-            "collision_occurred" => false,
-            "shipwreck_event" => null,
-            "booty_card" => null,
-        ];
+        return new CardActionOutcome();
     }
 
-    function processInspire(string $player_id): array
+    function processInspire(string $player_id): CardActionOutcome
     {
         $discard_cards = $this->getPlayerDiscard($player_id);
         $damage_cards = array_filter(
@@ -460,12 +454,7 @@ trait CaptainAbilities
             $damage_card = reset($damage_cards);
             $this->scrapCardAndRefund((int) $damage_card["id"], $player_id);
         }
-        return [
-            "action_chain" => [],
-            "collision_occurred" => false,
-            "shipwreck_event" => null,
-            "booty_card" => null,
-        ];
+        return new CardActionOutcome();
     }
 
     protected function getRallyTheFlagsOptions(string $player_id): array
@@ -500,10 +489,10 @@ trait CaptainAbilities
         return array_values(array_unique($available));
     }
 
-    function processRallyTheFlags(string $player_id): mixed
+    function processRallyTheFlags(string $player_id): CardActionOutcome|int
     {
         if (empty($this->getRallyTheFlagsOptions($player_id))) {
-            return ["action_chain" => [], "collision_occurred" => false, "shipwreck_event" => null, "booty_card" => null];
+            return new CardActionOutcome();
         }
         return STATE_RALLY_THE_FLAGS;
     }
@@ -555,7 +544,7 @@ trait CaptainAbilities
     }
 
     /** "Use the action of each flag you control in any order." The player picks the order. */
-    function processExtortion(string $player_id): mixed
+    function processExtortion(string $player_id): int
     {
         $tokens = $this->getUniqueTokens();
         $pending = 0;
@@ -660,7 +649,7 @@ trait CaptainAbilities
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
-    function processBarter(string $player_id): mixed
+    function processBarter(string $player_id): int
     {
         return STATE_BARTER;
     }
@@ -708,7 +697,7 @@ trait CaptainAbilities
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
-    function processTimelyTrading(string $player_id): mixed
+    function processTimelyTrading(string $player_id): int
     {
         return STATE_TIMELY_TRADING;
     }
@@ -800,16 +789,11 @@ trait CaptainAbilities
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
-    function processBoardingParty(string $player_id): mixed
+    function processBoardingParty(string $player_id): CardActionOutcome|int
     {
         $targets = $this->getBoardingPartyTargets($player_id);
         if (empty($targets)) {
-            return [
-                "action_chain" => [],
-                "collision_occurred" => false,
-                "shipwreck_event" => null,
-                "booty_card" => null,
-            ];
+            return new CardActionOutcome();
         }
         return STATE_BOARDING_PARTY;
     }
@@ -893,7 +877,7 @@ trait CaptainAbilities
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
-    function processHuntTheBounty(string $player_id): mixed
+    function processHuntTheBounty(string $player_id): int
     {
         return STATE_HUNT_THE_BOUNTY;
     }
