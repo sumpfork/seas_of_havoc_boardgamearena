@@ -239,6 +239,26 @@ final class SeasOfHavocTest extends TestCase
         $this->assertTrue(is_callable([$this->game, "getGameProgression"]));
     }
 
+    public function testGameProgressionIsAnIntegerFromDamageDeck(): void
+    {
+        $game = new class extends SeasOfHavocUT {
+            function getPlayersNumber(): int
+            {
+                return 3;
+            }
+        };
+        $deck = new MockCardDeck();
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($game, $deck);
+
+        // 3 players: 25 damage cards in total.
+        $deck->locations["damage_deck"] = array_fill(0, 25, []);
+        $this->assertSame(0, $game->getGameProgression());
+        $deck->locations["damage_deck"] = array_fill(0, 17, []);
+        $this->assertSame(32, $game->getGameProgression());
+        $deck->locations["damage_deck"] = [];
+        $this->assertSame(100, $game->getGameProgression());
+    }
+
     // Resource calculation tests
 
     public function testSkiffLogsDescribePlacementAndRetrieval(): void

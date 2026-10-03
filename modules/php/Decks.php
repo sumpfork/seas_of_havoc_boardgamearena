@@ -69,9 +69,6 @@ trait Decks
 
     function calculateNumDamageCards($num_players)
     {
-        if (self::DEBUG_DAMAGE_CARDS > 0) {
-            return self::DEBUG_DAMAGE_CARDS;
-        }
         return 10 + $num_players * 5;
     }
 
