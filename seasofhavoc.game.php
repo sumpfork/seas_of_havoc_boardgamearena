@@ -107,13 +107,6 @@ class SeasOfHavoc extends Table
         "corsair_occupied_green_flag",
     ];
 
-    // Debug flag: give each player a booty token at game start (one with a wild resource)
-    private const DEBUG_START_WITH_BOOTY = false;
-
-    // Debug flag: fix the damage deck size so the end of the game is quick to reach. 0 = play by
-    // the rules (10 + 5 per player). Set back to 0 before release.
-    private const DEBUG_DAMAGE_CARDS = 0;
-
     private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
     private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
@@ -204,24 +197,16 @@ class SeasOfHavoc extends Table
         $values = [];
         $this->mydump("default_colours", $default_colors);
         $this->mydump("players", $players);
-        // TEMP HACK: force the first players onto specific ships for upgrade testing.
-        // Ships decide which two upgrades a player can buy, and a fixed gameinfos order meant a
-        // given player count always produced the same ones. Empty = deal ships at random.
-        $forced_ships_for_testing = []; //["War Junk", "Sloop of War", "Brig"];
-        $ship_index = 0;
         $assignment = $this->bga->tableOptions->get(self::OPTION_CAPTAINS_AND_SHIPS);
         $pairs = self::FIRST_GAME_PAIRS;
         shuffle($pairs);
         $pair_captains = [];
 
+        $player_index = 0;
         foreach ($players as $player_id => $player) {
-            $pair = $pairs[$ship_index];
+            $pair = $pairs[$player_index++];
             $pair_captains[$player_id] = $pair[1];
-            $ship = $forced_ships_for_testing[$ship_index++]
-                ?? ($assignment === self::ASSIGN_FIRST_GAME_PAIRS ? $pair[0] : array_rand($default_colors));
-            if (!isset($default_colors[$ship])) {
-                throw new \Bga\GameFramework\SystemException("Unknown or duplicate forced ship: $ship");
-            }
+            $ship = $assignment === self::ASSIGN_FIRST_GAME_PAIRS ? $pair[0] : array_rand($default_colors);
             $color = $default_colors[$ship];
             unset($default_colors[$ship]);
             // Drafted ships are set on the pick, along with their colour: this one is a placeholder.
@@ -412,15 +397,10 @@ class SeasOfHavoc extends Table
 
         $captain_keys = self::STAT_CAPTAINS;
         shuffle($captain_keys);
-        $forced_captains_for_testing = []; //["corsair", "merchant", "admiral"];
         // Drafted captains and ships are set up once the draft ends (finishDraft).
         if ($assignment !== self::ASSIGN_DRAFT) {
-            foreach (array_keys($player_infos) as $player_index => $playerid) {
-                // TEMP HACK: force first players to specific captains for ability testing.
-                if (isset($forced_captains_for_testing[$player_index])) {
-                    $captain_key = $forced_captains_for_testing[$player_index];
-                    $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
-                } elseif ($assignment === self::ASSIGN_FIRST_GAME_PAIRS) {
+            foreach (array_keys($player_infos) as $playerid) {
+                if ($assignment === self::ASSIGN_FIRST_GAME_PAIRS) {
                     $captain_key = $pair_captains[$playerid];
                 } else {
                     $captain_key = array_pop($captain_keys);
@@ -453,25 +433,6 @@ class SeasOfHavoc extends Table
             ],
             "damage_deck",
         );
-
-        // Debug: give each player a starting booty token
-        if (self::DEBUG_START_WITH_BOOTY) {
-            $player_ids = array_keys($player_infos);
-            // First player gets a token with a wild "choice" resource (image_id 3 = doubloon + choice)
-            // Other players get a regular token (image_id 6 = doubloon + cannonball)
-            $wild_image_id = 3;
-            $regular_image_id = 6;
-            foreach ($player_ids as $i => $pid) {
-                $target_image_id = $i === 0 ? $wild_image_id : $regular_image_id;
-                $card = self::getObjectFromDB(
-                    "SELECT card_id FROM card WHERE card_location = 'booty_deck' AND card_type_arg = '$target_image_id' LIMIT 1",
-                );
-                if ($card) {
-                    $this->cards->moveCard($card["card_id"], "booty_player", $pid);
-                    $this->mytrace("DEBUG: Gave player $pid booty token image_id=$target_image_id");
-                }
-            }
-        }
 
         /************ End of the game initialization *****/
         $this->gamestate->changeActivePlayer($random_first_player);
@@ -939,8 +900,6 @@ class SeasOfHavoc extends Table
         $sql = "SELECT player_id id, player_score score FROM player ";
         $result["players"] = self::getCollectionFromDb($sql);
 
-        // TODO: Gather all information about current game situation (visible by player $current_player_id).
-
         $result["resources"] = $this->getGameResources();
         $result["endScores"] = $this->gamestate->getCurrentMainStateId() === STATE_END_GAME ? $this->getEndScores() : null;
 
@@ -1031,7 +990,12 @@ class SeasOfHavoc extends Table
         $totalDamageCards = $this->calculateNumDamageCards($this->getPlayersNumber());
         $remainingDamageCards = $this->cards->countCardInLocation("damage_deck");
 
-        return (int) 100 * (1 - $remainingDamageCards / $totalDamageCards);
+        if ($totalDamageCards <= 0) {
+            return 0;
+        }
+
+        $progression = (int) round(100 * (1 - $remainingDamageCards / $totalDamageCards));
+        return max(0, min(100, $progression));
     }
 
     function getPlayerInfo(?int $player_id = null)
