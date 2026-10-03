@@ -20,7 +20,7 @@
         "values": {
             "1": { "name": "Random" },
             "2": {
-                "name": "Good for first game",
+                "name": "Random (First Game Pairings)",
                 "tmdisplay": "First game pairings",
                 "description": "Each player is dealt one of the rulebook's suggested ship and captain pairings"
             },

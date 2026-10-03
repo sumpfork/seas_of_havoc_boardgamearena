@@ -139,7 +139,7 @@ define([
     /** Snake draft: every player sees what each captain or ship still on offer brings. */
     setupDraft: function (stateName, args) {
       this.cleanupDraft();
-      const panel = domConstruct.create("div", { id: "soh_draft", class: "whiteblock" }, "myhand_wrap", "before");
+      const panel = domConstruct.create("div", { id: "soh_draft", class: "whiteblock" }, this.bga.gameArea.getElement(), "first");
       for (const choice of stateName === "draftCaptain" ? args.captains : args.ships) {
         const option = domConstruct.create("div", { class: "soh_draft_option" }, panel);
         const title = domConstruct.create("h3", {}, option);
