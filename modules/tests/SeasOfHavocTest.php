@@ -259,6 +259,24 @@ final class SeasOfHavocTest extends TestCase
         $this->assertSame(100, $game->getGameProgression());
     }
 
+    public function testCardActionOutcomeAbsorbAddsCostsAndKeepsFirstPickup(): void
+    {
+        $outcome = new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "move"]], ["sail" => 1]);
+        $outcome->absorb(
+            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "turn"]], ["sail" => 1], false, ["shipwreck_arg" => "a"]),
+            ["cannonball" => 1],
+        );
+        $outcome->absorb(
+            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "collision"]], [], true, ["shipwreck_arg" => "b"], ["id" => 7]),
+        );
+
+        $this->assertSame([["type" => "move"], ["type" => "turn"], ["type" => "collision"]], $outcome->actionChain);
+        $this->assertSame(["sail" => 2, "cannonball" => 1], $outcome->cost);
+        $this->assertTrue($outcome->collisionOccurred);
+        $this->assertSame(["shipwreck_arg" => "a"], $outcome->shipwreckEvent);
+        $this->assertSame(["id" => 7], $outcome->bootyCard);
+    }
+
     // Resource calculation tests
 
     public function testSkiffLogsDescribePlacementAndRetrieval(): void

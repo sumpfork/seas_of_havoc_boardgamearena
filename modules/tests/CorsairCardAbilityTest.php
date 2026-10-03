@@ -1,5 +1,6 @@
 <?php declare(strict_types=1);
 
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
@@ -91,8 +92,8 @@ final class CorsairCardAbilityTest extends TestCase {
 
         $result = $this->game->processBoardingParty("1");
 
-        $this->assertIsArray($result);
-        $this->assertEmpty($result["action_chain"]);
+        $this->assertInstanceOf(CardActionOutcome::class, $result);
+        $this->assertEmpty($result->actionChain);
     }
 
     public function testActBoardingPartyStealResource(): void {

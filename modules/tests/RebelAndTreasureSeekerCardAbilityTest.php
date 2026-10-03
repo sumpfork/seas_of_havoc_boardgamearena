@@ -3,6 +3,7 @@
 use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
 use Bga\Games\SeasOfHavoc\SeaBoard;
 use Bga\Games\SeasOfHavoc\Turn;
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/SeasOfHavocTest.php';
 
@@ -34,9 +35,9 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
     public function getActivePlayerId(): string { return '1'; }
     public function getPlayerNameById(int $player_id): string { return 'Player'; }
     public function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void { $this->paid[] = $cost; }
-    public function applySeafeatureEffects($player_id) {
+    public function applySeafeatureEffects($player_id): CardActionOutcome {
         $this->seaEffects++;
-        return ['moves' => [], 'collision' => false, 'shipwreck_event' => null, 'booty_card' => null];
+        return new CardActionOutcome();
     }
     protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null) {
         $this->resolved = compact('card_type', 'card_id', 'decisions', 'use_booty_card_id', 'actions');
@@ -106,7 +107,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
     }
 
     public function testRetaliationWithoutDamageDoesNotOfferFreeFire(): void {
-        $this->assertIsArray($this->game->start('retaliation'));
+        $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('retaliation'));
     }
 
     public function testRetaliationRejectsAnotherPlayersDamage(): void {
@@ -130,9 +131,9 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
 
     public function testImprovisationDrawsWhenOnlyDamageOrCaptainCardsAreDiscarded(): void {
         $this->game->addCard(0, 'player_discard');
-        $this->assertIsArray($this->game->start('improvisation'));
+        $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('improvisation'));
         $this->assertSame([1], $this->game->draws);
-        $this->assertIsArray($this->game->start('improvisation'));
+        $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('improvisation'));
         $this->assertSame([1, 1], $this->game->draws);
     }
 
@@ -163,7 +164,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
     }
 
     public function testSpyglassWithNoDeckOrDiscardFinishesWithoutChoosing(): void {
-        $this->assertIsArray($this->game->start('spyglass'));
+        $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('spyglass'));
         $this->assertSame(0, $this->game->deck->countCardInLocation('spyglass', 1));
     }
 
@@ -223,7 +224,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
                 ['action' => '2 x fire', 'range' => 2, 'cost' => ['cannonball' => 2]],
             ]],
         ], ['2 x fire', '2 x fire left']);
-        $this->assertSame(['cannonball' => 2], $result['cost']);
+        $this->assertSame(['cannonball' => 2], $result->cost);
     }
 
     /** Final scoring reads these: market cards add infamy, damage subtracts, the rest score none. */
@@ -328,7 +329,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
     public function testUnearthRichesWithoutRockDoesNotDrawToken(): void {
         $this->board(false);
         $this->game->deck->createCards([['type' => 'booty', 'type_arg' => 0, 'nbr' => 1]], 'booty_deck');
-        $this->assertIsArray($this->game->start('unearth_riches'));
+        $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('unearth_riches'));
         $this->assertSame(1, $this->game->deck->countCardInLocation('booty_deck'));
     }
 }

@@ -101,7 +101,7 @@ final class PostCollisionFireTest extends TestCase
     {
         $this->collidingBoard();
         $outcome = $this->game->processCardActions([['action' => 'forward'], self::FIRE], ['skip']);
-        $this->assertTrue($outcome['collision_occurred']);
+        $this->assertTrue($outcome->collisionOccurred);
         $this->assertSame(self::FIRE, json_decode($this->game->stored, true), 'range and cost must survive');
     }
 

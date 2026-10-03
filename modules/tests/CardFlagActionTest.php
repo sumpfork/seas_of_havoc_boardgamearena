@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 use Bga\Games\SeasOfHavoc\SeaBoard;
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/RebelAndTreasureSeekerCardAbilityTest.php';
 
@@ -146,8 +147,8 @@ final class CardFlagActionTest extends TestCase
             public function getTreasureSeekerPlayerId(): ?string { return '2'; }
             public function getPlayerCaptain($player_id): ?string { return $player_id == 2 ? 'treasure_seeker' : null; }
             public function getValidTreasureSeekerShipwreckPositions(int $x, int $y): array { return [['x' => 1, 'y' => 1]]; }
-            public function applySeafeatureEffects($player_id) {
-                return ['moves' => [], 'collision' => false, 'shipwreck_event' => ['shipwreck_arg' => '1', 'new_x' => 0, 'new_y' => 0]];
+            public function applySeafeatureEffects($player_id): CardActionOutcome {
+                return new CardActionOutcome(shipwreckEvent: ['shipwreck_arg' => '1', 'new_x' => 0, 'new_y' => 0]);
             }
         };
         $game->owners['green_flag'] = '1';

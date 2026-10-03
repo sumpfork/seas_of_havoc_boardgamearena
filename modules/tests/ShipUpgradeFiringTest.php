@@ -4,6 +4,7 @@ use Bga\Games\SeasOfHavoc\Heading;
 use Bga\Games\SeasOfHavoc\SeaBoard;
 use Bga\Games\SeasOfHavoc\ShipUpgrades;
 use Bga\Games\SeasOfHavoc\Turn;
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
@@ -117,7 +118,7 @@ final class ShipUpgradeFiringTest extends TestCase
         ];
     }
 
-    private function fire(string $decision, array $upgrades, array $action): array
+    private function fire(string $decision, array $upgrades, array $action): CardActionOutcome
     {
         $this->game->activeUpgrades["1"] = $upgrades;
         $rewritten = ShipUpgrades::rewriteActions([$action], array_fill_keys($upgrades, true))[0];
@@ -132,7 +133,7 @@ final class ShipUpgradeFiringTest extends TestCase
 
         $this->assertSame([["player_id" => "1", "amount" => 2]], $this->game->infamy);
         $this->assertSame(["2"], $this->game->damaged);
-        $this->assertSame(["cannonball" => 1], $result["cost"]);
+        $this->assertSame(["cannonball" => 1], $result->cost);
     }
 
     public function testRakingAShipFacingTheShotScoresThree(): void
@@ -155,7 +156,7 @@ final class ShipUpgradeFiringTest extends TestCase
         ]);
 
         $this->assertSame(1, $this->game->fireCalls[0]["distance"]);
-        $this->assertSame([], $result["cost"]);
+        $this->assertSame([], $result->cost);
     }
 
     public function testHeavyGunsPassThroughShipsButStopAtRocksAndScoreABonus(): void
@@ -186,7 +187,7 @@ final class ShipUpgradeFiringTest extends TestCase
         // 2 for a broadside hit, +1 from heavy guns, for each of the two ships passed through.
         $this->assertSame([3, 3], array_column($this->game->infamy, "amount"));
         $this->assertSame(["2", "3"], $this->game->damaged);
-        $this->assertSame(["cannonball" => 2], $result["cost"]);
+        $this->assertSame(["cannonball" => 2], $result->cost);
     }
 
     public function testRocketExplodesIntoSurroundingShips(): void
@@ -207,7 +208,7 @@ final class ShipUpgradeFiringTest extends TestCase
         // 2 for the direct hit, then 1 for the neighbour; no infamy for catching your own ship.
         $this->assertSame([2, 1], array_column($this->game->infamy, "amount"));
         $this->assertSame(["2", "3", "1"], $this->game->damaged);
-        $explosions = array_values(array_filter($result["action_chain"], fn($e) => $e["type"] === "explosion"));
+        $explosions = array_values(array_filter($result->actionChain, fn($e) => $e["type"] === "explosion"));
         $this->assertCount(2, $explosions);
     }
 
