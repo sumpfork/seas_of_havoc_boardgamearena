@@ -276,7 +276,7 @@ class SeasOfHavoc extends Table
                     $player_resources["doubloon"] += 1;
                     break;
                 default:
-                    throw new Exception("Unknonwn player number" . $player["player_no"]);
+                    throw new \Bga\GameFramework\SystemException("Unknown player number " . $player["player_no"]);
             }
             foreach ($player_resources as $resource_type => $resource_count) {
                 $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";

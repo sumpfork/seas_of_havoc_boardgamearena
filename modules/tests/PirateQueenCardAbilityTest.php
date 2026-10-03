@@ -1,5 +1,6 @@
 <?php declare(strict_types=1);
 
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
@@ -113,7 +114,7 @@ final class PirateQueenCardAbilityTest extends TestCase {
 
         $result = $this->game->processRallyTheFlags("1");
 
-        $this->assertIsArray($result);
+        $this->assertInstanceOf(CardActionOutcome::class, $result);
     }
 
     public function testArgRallyTheFlagsReturnsUnownedFlags(): void {

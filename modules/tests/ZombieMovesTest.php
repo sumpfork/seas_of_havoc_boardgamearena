@@ -2,6 +2,7 @@
 
 use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
 use Bga\Games\SeasOfHavoc\ShipUpgrades;
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/SeasOfHavocTest.php';
 
@@ -9,9 +10,9 @@ require_once __DIR__ . '/SeasOfHavocTest.php';
 class ZombieMovesUT extends SeasOfHavocUT
 {
     public function getActivePlayerId(): string { return '1'; }
-    function processSimpleAction(PrimitiveCardPlayAction $action_type) { return ["action_chain" => [], "collision_occurred" => false]; }
+    function processSimpleAction(PrimitiveCardPlayAction $action_type): CardActionOutcome { return new CardActionOutcome(); }
     function resolveFireAction(array $variant, string $side): array { return []; }
-    function processCaptainAbility(string $ability) { return ["action_chain" => []]; }
+    function processCaptainAbility(string $ability): CardActionOutcome|int { return new CardActionOutcome(); }
     function useNimbleHull($player_id): void {}
 
     public array $placed = [];
@@ -51,8 +52,8 @@ final class ZombieMovesTest extends TestCase
                         $decisions = $game->randomCardDecisions($actions, $budget);
                         $outcome = $game->processCardActions($actions, $decisions);
                         $this->assertTrue(
-                            $game->canPayFor($outcome["cost"], $resources),
-                            "card $type: " . json_encode($decisions) . " costs " . json_encode($outcome["cost"]),
+                            $game->canPayFor($outcome->cost, $resources),
+                            "card $type: " . json_encode($decisions) . " costs " . json_encode($outcome->cost),
                         );
                     }
                 }

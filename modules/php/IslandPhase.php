@@ -446,7 +446,6 @@ trait IslandPhase
         // Check if slot is disabled
         if ($occupancies[$slotname][$number]["disabled"]) {
             throw new \Bga\GameFramework\UserException(clienttranslate("This slot is not available for the current number of players"));
-            return;
         }
 
         // Check if slot is already occupied

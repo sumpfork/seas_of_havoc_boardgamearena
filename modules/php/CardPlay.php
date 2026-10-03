@@ -44,46 +44,36 @@ trait CardPlay
         return (int) $this->getGameStateValue("active_ship") === 2 ? self::secondShipArg($player_id) : (string) $player_id;
     }
 
-    function processSimpleAction(PrimitiveCardPlayAction $action_type)
+    function processSimpleAction(PrimitiveCardPlayAction $action_type): CardActionOutcome
     {
         $player_id = $this->getActivePlayerId();
         $ship = $this->activeShipArg($player_id);
-        $outcome = [];
-        $collision_occurred = false;
-        $shipwreck_event = null;
-        $booty_card = null;
+        $outcome = new CardActionOutcome();
         switch ($action_type) {
             case PrimitiveCardPlayAction::FORWARD:
                 $result = $this->seaboard->moveObjectForward("player_ship", $ship, ["rock", "player_ship"]);
-                $outcome[] = $result;
+                $outcome->actionChain[] = $result;
                 if ($result["type"] == "collision") {
-                    $collision_occurred = true;
+                    $outcome->collisionOccurred = true;
                     $this->applyCollisionPenalty((string) $player_id, $result["colliders"]);
                 } else {
-                    $pickup = $this->collectShipwrecksAtPlayer($player_id);
-                    $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
-                    $booty_card = $pickup["booty_card"] ?? $booty_card;
+                    $outcome->addPickup($this->collectShipwrecksAtPlayer($player_id));
                 }
                 break;
             case PrimitiveCardPlayAction::PIVOT_LEFT:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::LEFT);
+                $outcome->actionChain[] = $this->seaboard->turnObject("player_ship", $ship, Turn::LEFT);
                 break;
             case PrimitiveCardPlayAction::PIVOT_AROUND:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::AROUND);
+                $outcome->actionChain[] = $this->seaboard->turnObject("player_ship", $ship, Turn::AROUND);
                 break;
             case PrimitiveCardPlayAction::PIVOT_RIGHT:
-                $outcome[] = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
+                $outcome->actionChain[] = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
                 break;
             default:
                 throw new \Bga\GameFramework\SystemException("Unknown action type: " . $action_type->value);
         }
         $this->mydump("processSimpleAction outcome", $outcome);
-        return [
-            "action_chain" => $outcome,
-            "collision_occurred" => $collision_occurred,
-            "shipwreck_event" => $shipwreck_event,
-            "booty_card" => $booty_card,
-        ];
+        return $outcome;
     }
 
     /**
@@ -116,46 +106,18 @@ trait CardPlay
         }
     }
 
-    function merge_results(
-        array $result,
-        $cost,
-        array &$to_send,
-        array &$total_cost,
-        bool &$collision_occurred,
-        ?array &$shipwreck_event,
-        ?array &$booty_card,
-    ) {
-        // Nested calls (choice/sequence/left/right) accumulate their own costs; without adding
-        // $result["cost"] here, anything paid for inside a choice or sequence was free.
-        $total_cost = $this->sum_array_by_key($total_cost, $cost, $result["cost"] ?? []);
-        if (array_key_exists("collision_occurred", $result)) {
-            $collision_occurred = $collision_occurred || $result["collision_occurred"];
-        }
-        if ($shipwreck_event == null && array_key_exists("shipwreck_event", $result)) {
-            $shipwreck_event = $result["shipwreck_event"];
-        }
-        if ($booty_card == null && array_key_exists("booty_card", $result)) {
-            $booty_card = $result["booty_card"];
-        }
-        $to_send = array_merge($to_send, $result["action_chain"]);
-    }
-
-    function processCardActions(array $actions, array $decisions)
+    function processCardActions(array $actions, array $decisions): CardActionOutcome
     {
-        $to_send = [];
-        $total_cost = [];
+        $outcome = new CardActionOutcome();
         $this->mytrace("processing card actions");
         $this->mydump("actions", $actions);
-        $collision_occurred = false;
-        $shipwreck_event = null;
-        $booty_card = null;
         foreach ($actions as $i => $action) {
             $typed_action =
                 gettype($action["action"]) == "string"
                     ? PrimitiveCardPlayAction::from($action["action"])
                     : $action["action"];
             $this->mytrace("handling " . $typed_action->value);
-            $this->mydump("to_send", $to_send);
+            $this->mydump("action_chain", $outcome->actionChain);
             if (array_key_exists("cost", $action)) {
                 $decision = $decisions[0];
                 if ($decision == "skip") {
@@ -168,15 +130,7 @@ trait CardPlay
             $cost = $action["cost"] ?? [];
             switch ($typed_action) {
                 case PrimitiveCardPlayAction::SEQUENCE:
-                    $this->merge_results(
-                        $this->processCardActions($action["actions"], $decisions),
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    $outcome->absorb($this->processCardActions($action["actions"], $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::CHOICE:
                     $decision = array_shift($decisions);
@@ -189,54 +143,20 @@ trait CardPlay
                     if ($decision === self::NIMBLE_HULL_CHOICE) {
                         $this->useNimbleHull($this->getActivePlayerId());
                     }
-                    $result = $this->processCardActions([$choices[array_keys($choices)[$decision_index]]], $decisions);
-                    $this->merge_results(
-                        $result,
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    $chosen = [$choices[array_keys($choices)[$decision_index]]];
+                    $outcome->absorb($this->processCardActions($chosen, $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::LEFT:
-                    $result = $this->processCardActions(
-                        [
-                            ["action" => PrimitiveCardPlayAction::FORWARD],
-                            ["action" => PrimitiveCardPlayAction::PIVOT_LEFT],
-                            ["action" => PrimitiveCardPlayAction::FORWARD],
-                        ],
-                        $decisions,
-                    );
-                    $this->merge_results(
-                        $result,
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
-                    break;
                 case PrimitiveCardPlayAction::RIGHT:
-                    $result = $this->processCardActions(
-                        [
-                            ["action" => PrimitiveCardPlayAction::FORWARD],
-                            ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT],
-                            ["action" => PrimitiveCardPlayAction::FORWARD],
-                        ],
-                        $decisions,
-                    );
-                    $this->merge_results(
-                        $result,
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    $pivot = $typed_action === PrimitiveCardPlayAction::LEFT
+                        ? PrimitiveCardPlayAction::PIVOT_LEFT
+                        : PrimitiveCardPlayAction::PIVOT_RIGHT;
+                    $maneuver = [
+                        ["action" => PrimitiveCardPlayAction::FORWARD],
+                        ["action" => $pivot],
+                        ["action" => PrimitiveCardPlayAction::FORWARD],
+                    ];
+                    $outcome->absorb($this->processCardActions($maneuver, $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::FIRE:
                 case PrimitiveCardPlayAction::FIRE2:
@@ -245,61 +165,24 @@ trait CardPlay
                     $decision = array_shift($decisions);
                     $this->mytrace("decision: $decision");
                     [$variant, $side] = ShipUpgrades::parseFireDecision($action, $decision);
-                    // The chosen shot, not the action, decides what firing costs.
-                    $cost = $variant["cost"];
-                    $fire_chain = $this->resolveFireAction($variant, $side);
-                    // FIRE actions never cause movement collisions - explicitly set collision_occurred to false
-                    $this->merge_results(
-                        [
-                            "action_chain" => $fire_chain,
-                            "collision_occurred" => false,
-                            "shipwreck_event" => null,
-                            "booty_card" => null,
-                        ],
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    // The chosen shot, not the action, decides what firing costs. Firing never
+                    // causes a movement collision.
+                    $outcome->absorb(new CardActionOutcome($this->resolveFireAction($variant, $side)), $variant["cost"]);
                     break;
                 case PrimitiveCardPlayAction::CAPTAIN_ABILITY:
                     $result = $this->processCaptainAbility($action["ability"]);
                     if (is_int($result)) {
-                        return [
-                            "cost" => $total_cost,
-                            "action_chain" => $to_send,
-                            "collision_occurred" => false,
-                            "shipwreck_event" => null,
-                            "booty_card" => null,
-                            "captain_state" => $result,
-                        ];
+                        // The ability needs the player's input; nothing after it on the card resolves.
+                        $outcome->captainState = $result;
+                        return $outcome;
                     }
-                    $this->merge_results(
-                        $result,
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    $outcome->absorb($result, $cost);
                     break;
                 default:
-                    $result = $this->processSimpleAction($typed_action);
-                    $this->merge_results(
-                        $result,
-                        $cost,
-                        $to_send,
-                        $total_cost,
-                        $collision_occurred,
-                        $shipwreck_event,
-                        $booty_card,
-                    );
+                    $outcome->absorb($this->processSimpleAction($typed_action), $cost);
                     break;
             }
-            if ($collision_occurred) {
+            if ($outcome->collisionOccurred) {
                 // "After resolving the collision, Cannon fire depicted at the next ship outline may
                 // be resolved." Nested calls record their own next action first; the outer level
                 // overwrites it, so what survives is the next outline on the card itself.
@@ -312,13 +195,7 @@ trait CardPlay
                 break;
             }
         }
-        return [
-            "cost" => $total_cost,
-            "action_chain" => $to_send,
-            "collision_occurred" => $collision_occurred,
-            "shipwreck_event" => $shipwreck_event,
-            "booty_card" => $booty_card,
-        ];
+        return $outcome;
     }
 
     /** Actions are kept whole (range, cost, upgrade variants), so they are stored as JSON. */
@@ -391,86 +268,70 @@ trait CardPlay
 
         // processCardActions understands "skip" for a costed action, so declining runs the same path.
         $outcome = $this->processCardActions([$action], [$decision]);
-        if (!empty($outcome["cost"])) {
-            $this->payWithOptionalBooty($player_id, $outcome["cost"], $use_booty_card_id);
+        if (!empty($outcome->cost)) {
+            $this->payWithOptionalBooty($player_id, $outcome->cost, $use_booty_card_id);
         }
-        if (!empty($outcome["action_chain"])) {
+        if (!empty($outcome->actionChain)) {
             $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} fires after the collision'), [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "ship" => $this->activeShipArg($player_id),
-                "moveChain" => $outcome["action_chain"],
-                "cost" => $outcome["cost"],
+                "moveChain" => $outcome->actionChain,
+                "cost" => $outcome->cost,
                 "shipwreck_event" => null,
             ]);
         }
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
-    function applyWhirlpoolRotation($player_id)
+    /** The whirlpool's quarter turn, or null when the ship is not on a whirlpool. */
+    function applyWhirlpoolRotation($player_id): ?array
     {
-        // Check if the ship is on a whirlpool
         $ship = $this->activeShipArg($player_id);
-        if ($this->seaboard->isObjectOnWhirlpool("player_ship", $ship)) {
-            $this->mytrace("Ship is on whirlpool - rotating 90 degrees clockwise");
-            $turn_result = $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
-            return ["result" => $turn_result, "occurred" => true];
+        if (!$this->seaboard->isObjectOnWhirlpool("player_ship", $ship)) {
+            return null;
         }
-        return ["result" => null, "occurred" => false];
+        $this->mytrace("Ship is on whirlpool - rotating 90 degrees clockwise");
+        return $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
     }
 
-    function applyGustPush($player_id)
+    /** The gust's push (a move or a collision), or null when the ship is not on a gust. */
+    function applyGustPush($player_id): ?array
     {
-        // Check if the ship is on a gust
         $ship = $this->activeShipArg($player_id);
         $gust = $this->seaboard->getGustAtObjectLocation("player_ship", $ship);
-        if ($gust) {
-            $this->mytrace("Ship is on gust - pushing in direction " . $gust["heading"]->toString());
-            $push_result = $this->seaboard->pushObjectInDirection("player_ship", $ship, $gust["heading"], [
-                "rock",
-                "player_ship",
-            ]);
-
-            // Return the result and whether a collision occurred
-            return ["result" => $push_result, "collision" => $push_result["type"] == "collision"];
+        if (!$gust) {
+            return null;
         }
-        return ["result" => null, "collision" => false];
+        $this->mytrace("Ship is on gust - pushing in direction " . $gust["heading"]->toString());
+        return $this->seaboard->pushObjectInDirection("player_ship", $ship, $gust["heading"], [
+            "rock",
+            "player_ship",
+        ]);
     }
 
-    function applySeafeatureEffects($player_id)
+    /** Whirlpool rotation first, then the gust push, which can collide. */
+    function applySeafeatureEffects($player_id): CardActionOutcome
     {
-        $seafeature_moves = [];
-        $collision = false;
-        $shipwreck_event = null;
-        $booty_card = null;
+        $outcome = new CardActionOutcome();
 
-        // Apply whirlpool rotation first
-        $whirlpool_result = $this->applyWhirlpoolRotation($player_id);
-        if ($whirlpool_result["occurred"]) {
-            $seafeature_moves[] = $whirlpool_result["result"];
+        $turn = $this->applyWhirlpoolRotation($player_id);
+        if ($turn !== null) {
+            $outcome->actionChain[] = $turn;
         }
 
-        // Then apply gust push (which can cause collision)
-        $gust_result = $this->applyGustPush($player_id);
-        if ($gust_result["result"] !== null) {
-            $seafeature_moves[] = $gust_result["result"];
-            $collision = $gust_result["collision"];
-            if ($collision) {
-                $this->applyCollisionPenalty((string) $player_id, $gust_result["result"]["colliders"]);
-            }
-            if ($gust_result["result"]["type"] != "collision") {
-                $pickup = $this->collectShipwrecksAtPlayer($player_id);
-                $shipwreck_event = $pickup["shipwreck_event"] ?? $shipwreck_event;
-                $booty_card = $pickup["booty_card"] ?? $booty_card;
+        $push = $this->applyGustPush($player_id);
+        if ($push !== null) {
+            $outcome->actionChain[] = $push;
+            if ($push["type"] == "collision") {
+                $outcome->collisionOccurred = true;
+                $this->applyCollisionPenalty((string) $player_id, $push["colliders"]);
+            } else {
+                $outcome->addPickup($this->collectShipwrecksAtPlayer($player_id));
             }
         }
 
-        return [
-            "moves" => $seafeature_moves,
-            "collision" => $collision,
-            "shipwreck_event" => $shipwreck_event,
-            "booty_card" => $booty_card,
-        ];
+        return $outcome;
     }
 
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null, int $ship = 1)
@@ -516,21 +377,13 @@ trait CardPlay
             // A passed card resolves no maneuver, so Swift Hull does not trigger.
             $this->setGameStateValue("swift_hull_card_type", 0);
             // Pass: skip all actions, but still discard the card
-            $outcome = [
-                "action_chain" => [],
-                "cost" => [],
-                "collision_occurred" => false,
-            ];
+            $outcome = new CardActionOutcome();
             $notification_message = clienttranslate('${player_name} has passed (played a card without actions)');
-            $all_moves = [];
-            $seafeature_collision = false;
-            $shipwreck_event = null;
-            $booty_card = null;
         } else {
             $outcome = $this->processCardActions($actions ?? $this->upgradedCardActions($card, $player_id), $decisions);
 
-            if (isset($outcome["captain_state"])) {
-                if ($outcome["captain_state"] === STATE_CAPTAIN_CARD) {
+            if ($outcome->captainState !== null) {
+                if ($outcome->captainState === STATE_CAPTAIN_CARD) {
                     $this->setGameStateValue("pending_captain_card", $card_id);
                 }
                 $this->discardCardToPlayer($card_id, $player_id);
@@ -542,56 +395,37 @@ trait CardPlay
                     "cost" => [],
                     "shipwreck_event" => null,
                 ]);
-                return $outcome["captain_state"];
+                return $outcome->captainState;
             }
 
             $this->mydump("final card play outcome", $outcome);
 
             // Pay the total cost from all actions (optionally using booty token)
-            if (!empty($outcome["cost"])) {
-                $this->payWithOptionalBooty($player_id, $outcome["cost"], $use_booty_card_id);
+            if (!empty($outcome->cost)) {
+                $this->payWithOptionalBooty($player_id, $outcome->cost, $use_booty_card_id);
             }
 
-            // Apply seafeature effects (whirlpool rotation and gust push) if no collision occurred
-            // If collision occurred, seafeature effects will be applied after collision resolution
-            $seafeature_collision = false;
-            $all_moves = $outcome["action_chain"];
             $notification_message = clienttranslate('${player_name} has played a card');
-            $shipwreck_event = $outcome["shipwreck_event"] ?? null;
-            $booty_card = $outcome["booty_card"] ?? null;
 
             // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
             $this->setGameStateValue("seafeature_effects_attempted", 0);
 
-            if (!$outcome["collision_occurred"]) {
-                $seafeature_effects = $this->applySeafeatureEffects($player_id);
-                $seafeature_collision = $seafeature_effects["collision"];
+            // Whirlpools and gusts apply now unless the card collided; then they apply once the
+            // collision is resolved (actPivotPickedInDialog).
+            if (!$outcome->collisionOccurred) {
+                $seafeature = $this->applySeafeatureEffects($player_id);
                 $this->setGameStateValue("seafeature_effects_attempted", 1);
-                if ($shipwreck_event == null) {
-                    $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
-                }
-                if ($booty_card == null) {
-                    $booty_card = $seafeature_effects["booty_card"] ?? null;
-                }
+                // Appended to the moveChain for sequential animation
+                $outcome->absorb($seafeature);
 
-                // Append seafeature moves to the moveChain for sequential animation
-                if (!empty($seafeature_effects["moves"])) {
-                    $all_moves = array_merge($all_moves, $seafeature_effects["moves"]);
-
-                    // Update notification message to mention seafeature effects
-                    if (count($seafeature_effects["moves"]) == 2) {
-                        $notification_message = clienttranslate(
-                            '${player_name} has played a card and is affected by the whirlpool and gust',
-                        );
-                    } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
-                        $notification_message = clienttranslate(
-                            '${player_name} has played a card and is rotated by the whirlpool',
-                        );
-                    } else {
-                        $notification_message = clienttranslate(
-                            '${player_name} has played a card and is pushed by the gust',
-                        );
-                    }
+                if (count($seafeature->actionChain) == 2) {
+                    $notification_message = clienttranslate(
+                        '${player_name} has played a card and is affected by the whirlpool and gust',
+                    );
+                } elseif (!empty($seafeature->actionChain)) {
+                    $notification_message = $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))
+                        ? clienttranslate('${player_name} has played a card and is rotated by the whirlpool')
+                        : clienttranslate('${player_name} has played a card and is pushed by the gust');
                 }
             }
         }
@@ -602,35 +436,34 @@ trait CardPlay
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "ship" => $this->activeShipArg($player_id),
-            "moveChain" => $all_moves,
-            "cost" => $outcome["cost"],
-            "shipwreck_event" => $shipwreck_event,
+            "moveChain" => $outcome->actionChain,
+            "cost" => $outcome->cost,
+            "shipwreck_event" => $outcome->shipwreckEvent,
         ]);
 
-        if ($booty_card != null) {
-            $this->mydump("booty collected", $booty_card);
-            $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
-                "player_name" => $this->getPlayerNameById($player_id),
-                "player_id" => $player_id,
-            ]);
-            $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
-                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                "new_token" => $booty_card,
-            ]);
-        }
+        $this->notifyBootyCollected($player_id, $outcome->bootyCard);
 
-        if (
-            $this->maybeDeferSeaPhaseForTreasureSeeker(
-                $shipwreck_event,
-                $outcome["collision_occurred"] || $seafeature_collision,
-            )
-        ) {
+        if ($this->maybeDeferSeaPhaseForTreasureSeeker($outcome->shipwreckEvent, $outcome->collisionOccurred)) {
             return STATE_TREASURE_SEEKER_ADJUST;
         }
 
-        return $outcome["collision_occurred"] || $seafeature_collision
-            ? $this->collisionPenaltyState()
-            : "seaTurnDone";
+        return $outcome->collisionOccurred ? $this->collisionPenaltyState() : "seaTurnDone";
+    }
+
+    private function notifyBootyCollected($player_id, ?array $booty_card): void
+    {
+        if ($booty_card === null) {
+            return;
+        }
+        $this->mydump("booty collected", $booty_card);
+        $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => $player_id,
+        ]);
+        $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
+            "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+            "new_token" => $booty_card,
+        ]);
     }
 
     /**
@@ -656,23 +489,6 @@ trait CardPlay
         return "cardDiscarded";
     }
 
-    function stResolveCollision()
-    {
-        $this->mytrace("stResolveCollision");
-    }
-
-    function actResolveCollision(string $card_id, string $action_type)
-    {
-        $this->mytrace("actResolveCollision");
-        $this->mydump("card_id", $card_id);
-        #$this->gamestate->nextState("seaTurnDone");
-    }
-
-    function argResolveCollision()
-    {
-        $this->mytrace("argResolveCollision");
-    }
-
     function actPivotPickedInDialog(string $direction)
     {
         $this->mytrace("actPivotPickedInDialog");
@@ -682,102 +498,69 @@ trait CardPlay
         // after any card. Doing it the other way round still produced the right final heading for a
         // rotation, but each move carried headings from the opposite order to the one the client
         // animates them in, so the ship was drawn facing the wrong way until the next reload.
-        $pivot_outcome = ["action_chain" => [], "cost" => [], "shipwreck_event" => null, "booty_card" => null];
+        $outcome = new CardActionOutcome();
         if ($direction != "no pivot") {
             $typed_action = PrimitiveCardPlayAction::from($direction);
-            $pivot_outcome = $this->processCardActions([["action" => $typed_action]], []);
-            $this->mydump("final pivot outcome", $pivot_outcome);
+            $outcome = $this->processCardActions([["action" => $typed_action]], []);
+            $this->mydump("final pivot outcome", $outcome);
 
             // Pay the cost for pivot actions (pivots are free, but just in case)
-            if (!empty($pivot_outcome["cost"])) {
-                $this->payWithOptionalBooty($player_id, $pivot_outcome["cost"]);
+            if (!empty($outcome->cost)) {
+                $this->payWithOptionalBooty($player_id, $outcome->cost);
             }
         }
 
         // Only apply seafeature effects if they haven't been attempted yet (once per card play)
-        $seafeature_effects = ["moves" => [], "collision" => false];
-        $seafeature_collision = false;
-        $shipwreck_event = null;
-        $booty_card = null;
-
-        $seafeature_effects_attempted = $this->getGameStateValue("seafeature_effects_attempted");
-        if ($seafeature_effects_attempted == 0) {
-            $seafeature_effects = $this->applySeafeatureEffects($player_id);
-            $seafeature_collision = $seafeature_effects["collision"];
+        $seafeature = new CardActionOutcome();
+        if ($this->getGameStateValue("seafeature_effects_attempted") == 0) {
+            $seafeature = $this->applySeafeatureEffects($player_id);
             $this->setGameStateValue("seafeature_effects_attempted", 1);
         } else {
             $this->mytrace("Seafeature effects already attempted, skipping");
         }
+        // Pivot moves, then seafeature moves, for sequential animation
+        $outcome->absorb($seafeature);
+        $seafeature_moves = count($seafeature->actionChain);
+        // A single seafeature move is either the whirlpool's turn or the gust's push.
+        $on_whirlpool = $seafeature_moves == 1
+            && $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id));
 
+        $notification_message = null;
         if ($direction != "no pivot") {
-            $outcome = $pivot_outcome;
-
-            // Combine pivot moves with seafeature moves for sequential animation
-            $all_moves = array_merge($outcome["action_chain"], $seafeature_effects["moves"]);
             $notification_message = clienttranslate('${player_name} pivots');
-            $shipwreck_event = $outcome["shipwreck_event"] ?? null;
-            if ($shipwreck_event == null) {
-                $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
+            if ($seafeature_moves == 2) {
+                $notification_message = clienttranslate(
+                    '${player_name} pivots and is affected by the whirlpool and gust',
+                );
+            } elseif ($seafeature_moves == 1) {
+                $notification_message = $on_whirlpool
+                    ? clienttranslate('${player_name} pivots and is rotated by the whirlpool')
+                    : clienttranslate('${player_name} pivots and is pushed by the gust');
             }
-            $booty_card = $outcome["booty_card"] ?? null;
-            if ($booty_card == null) {
-                $booty_card = $seafeature_effects["booty_card"] ?? null;
-            }
+        } elseif ($seafeature_moves == 2) {
+            $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
+        } elseif ($seafeature_moves == 1) {
+            $notification_message = $on_whirlpool
+                ? clienttranslate('${player_name} is rotated by the whirlpool')
+                : clienttranslate('${player_name} is pushed by the gust');
+        }
 
-            if (!empty($seafeature_effects["moves"])) {
-                if (count($seafeature_effects["moves"]) == 2) {
-                    $notification_message = clienttranslate(
-                        '${player_name} pivots and is affected by the whirlpool and gust',
-                    );
-                } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
-                    $notification_message = clienttranslate('${player_name} pivots and is rotated by the whirlpool');
-                } else {
-                    $notification_message = clienttranslate('${player_name} pivots and is pushed by the gust');
-                }
-            }
-
+        // With no pivot and no whirlpool or gust there is nothing to show.
+        if ($notification_message !== null) {
             $this->bga->notify->all("cardPlayed", $notification_message, [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "ship" => $this->activeShipArg($player_id),
-                "moveChain" => $all_moves,
-                "cost" => $outcome["cost"],
-                "shipwreck_event" => $shipwreck_event,
-            ]);
-        } elseif (!empty($seafeature_effects["moves"])) {
-            // No pivot, but we still need to notify about seafeature effects
-            $notification_message = clienttranslate('${player_name} resolves collision');
-            $shipwreck_event = $seafeature_effects["shipwreck_event"] ?? null;
-            $booty_card = $seafeature_effects["booty_card"] ?? null;
-
-            if (count($seafeature_effects["moves"]) == 2) {
-                $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
-            } elseif ($this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))) {
-                $notification_message = clienttranslate('${player_name} is rotated by the whirlpool');
-            } else {
-                $notification_message = clienttranslate('${player_name} is pushed by the gust');
-            }
-
-            $this->bga->notify->all("cardPlayed", $notification_message, [
-                "player_name" => $this->getPlayerNameById($player_id),
-                "player_id" => $player_id,
-                "ship" => $this->activeShipArg($player_id),
-                "moveChain" => $seafeature_effects["moves"],
-                "cost" => [],
-                "shipwreck_event" => $shipwreck_event,
+                "moveChain" => $outcome->actionChain,
+                "cost" => $outcome->cost,
+                "shipwreck_event" => $outcome->shipwreckEvent,
             ]);
         }
 
-        if ($booty_card != null) {
-            $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
-                "player_name" => $this->getPlayerNameById($player_id),
-                "player_id" => $player_id,
-            ]);
-            $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
-                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                "new_token" => $booty_card,
-            ]);
-        }
+        $this->notifyBootyCollected($player_id, $outcome->bootyCard);
+
+        $shipwreck_event = $outcome->shipwreckEvent;
+        $seafeature_collision = $seafeature->collisionOccurred;
 
         if ($shipwreck_event !== null) {
             $resume = $seafeature_collision
