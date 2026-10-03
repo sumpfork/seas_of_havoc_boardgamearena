@@ -59,12 +59,12 @@ $this->non_playable_cards = [
     "card_back" => [
         "image_id" => 0,
     ],
-    "pirate_queen" => ["image_id" => 1, "category" => "captain"],
-    "rebel" => ["image_id" => 2, "category" => "captain"],
-    "admiral" => ["image_id" => 3, "category" => "captain"],
-    "merchant" => ["image_id" => 4, "category" => "captain"],
-    "corsair" => ["image_id" => 5, "category" => "captain"],
-    "treasure_seeker" => ["image_id" => 6, "category" => "captain"],
+    "pirate_queen" => ["name" => clienttranslate("Pirate Queen"), "image_id" => 1, "category" => "captain"],
+    "rebel" => ["name" => clienttranslate("Rebel"), "image_id" => 2, "category" => "captain"],
+    "admiral" => ["name" => clienttranslate("Admiral"), "image_id" => 3, "category" => "captain"],
+    "merchant" => ["name" => clienttranslate("Merchant"), "image_id" => 4, "category" => "captain"],
+    "corsair" => ["name" => clienttranslate("Corsair"), "image_id" => 5, "category" => "captain"],
+    "treasure_seeker" => ["name" => clienttranslate("Treasure Seeker"), "image_id" => 6, "category" => "captain"],
     "player_aid_front" => ["image_id" => 7, "category" => "player_aid"],
     "player_aid_back" => ["image_id" => 8, "category" => "player_aid"],
     "war_junk_rockets" => [

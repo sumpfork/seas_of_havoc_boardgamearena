@@ -520,7 +520,7 @@
   50%       { box-shadow: 0 0 16px rgba(232, 179, 53, 1),  inset 0 0 10px rgba(232, 179, 53, 0.6); }
 }
 
-/* Choose Heading: an arrow on each side of the ship; the glyph points east and is rotated. */
+/* Choose a direction: an arrow on each side of the ship; the glyph points east and is rotated. */
 .soh_heading_arrow {
   position: absolute;
   width: 44px;
@@ -1284,4 +1284,42 @@ a.disabled {
 .soh_skiff_slot.soh_unoccupied.soh_pending_skiff {
   background-color: rgba(255, 215, 90, 0.6);
   outline: 3px solid #ffd75a;
+}
+
+/* Snake draft: what each captain or ship still on offer brings. */
+#soh_draft {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.soh_draft_option h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+.soh_draft_cards {
+  display: flex;
+  gap: 4px;
+}
+.soh_draft_card {
+  position: relative;
+  width: 72px;
+  height: 99px;
+  overflow: hidden;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.soh_draft_card .soh_panel_card_art {
+  transform: scale(0.5);
+}
+.soh_draft_count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-weight: bold;
 }

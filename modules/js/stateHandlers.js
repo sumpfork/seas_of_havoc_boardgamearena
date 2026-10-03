@@ -125,6 +125,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           this.setupChooseHeading(args.args);
           break;
 
+        case "draftCaptain":
+        case "draftShip":
+          this.setupDraft(stateName, args.args);
+          break;
+
         case "rallyTheFlagsChooseFlag": {
           break;
         }
@@ -218,6 +223,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           this.cleanupChooseHeading();
           break;
 
+        case "draftCaptain":
+        case "draftShip":
+          this.cleanupDraft();
+          break;
+
         case "resolveCollision":
           var w = document.getElementById("pivot_booty_wrap");
           if (w) domConstruct.destroy(w);
@@ -241,6 +251,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
+          case "draftCaptain":
+            args.captains.forEach(captain => this.statusBar.addActionButton(this.draftChoiceName(stateName, captain),
+              () => this.bgaPerformAction("actDraftCaptain", { captain })));
+            break;
+
+          case "draftShip":
+            args.ships.forEach(ship => this.statusBar.addActionButton(this.draftChoiceName(stateName, ship),
+              () => this.bgaPerformAction("actDraftShip", { ship })));
+            break;
+
           case "captainCard":
             // Here rather than onEnteringState: the framework clears the status bar buttons before this.
             this.setupCaptainCardSelection(args);

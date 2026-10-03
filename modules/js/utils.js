@@ -119,6 +119,53 @@ define([
       query(".soh_heading_arrow").forEach(domConstruct.destroy);
     },
 
+    /** The cards a draft choice brings: a captain's card and deck cards, or a ship's upgrades and starting deck. */
+    draftChoiceCards: function (stateName, choice) {
+      const cards = Object.values(this.playable_cards);
+      if (stateName === "draftCaptain") {
+        return [{ image_id: this.non_playable_cards[choice].image_id, nonPlayable: true }].concat(
+          cards.filter(c => c.category === "captain" && c.captain_key === choice));
+      }
+      return Object.values(this.non_playable_cards)
+        .filter(c => c.category === "ship_upgrade" && c.ship_name === choice)
+        .map(c => ({ image_id: c.image_id, nonPlayable: true }))
+        .concat(cards.filter(c => c.category === "starting_card" && c.ship_name === choice));
+    },
+
+    draftChoiceName: function (stateName, choice) {
+      return stateName === "draftCaptain" ? _(this.non_playable_cards[choice].name) : _(choice);
+    },
+
+    /** Snake draft: every player sees what each captain or ship still on offer brings. */
+    setupDraft: function (stateName, args) {
+      this.cleanupDraft();
+      const panel = domConstruct.create("div", { id: "soh_draft", class: "whiteblock" }, "myhand_wrap", "before");
+      for (const choice of stateName === "draftCaptain" ? args.captains : args.ships) {
+        const option = domConstruct.create("div", { class: "soh_draft_option" }, panel);
+        const title = domConstruct.create("h3", {}, option);
+        if (stateName === "draftShip") {
+          domConstruct.create("div", { class: "soh_player_ship soh_panel_ship", "data-shipname": choice }, title);
+        }
+        title.append(this.draftChoiceName(stateName, choice));
+        const row = domConstruct.create("div", { class: "soh_draft_cards" }, option);
+        for (const card of this.draftChoiceCards(stateName, choice)) {
+          const thumb = domConstruct.create("div", { class: "soh_draft_card" }, row);
+          const art = domConstruct.create("div", {
+            class: (card.nonPlayable ? "soh_non-playable-card-front" : "soh_playable-card-front") + " soh_panel_card_art",
+            style: `width: 144px; height: 198px; background-position: -${(card.image_id % 6) * 144}px -${Math.floor(card.image_id / 6) * 198}px`,
+          }, thumb);
+          this.setupCardPreview(art);
+          if (card.count > 1) {
+            domConstruct.create("span", { class: "soh_draft_count", innerHTML: "&times;" + card.count }, thumb);
+          }
+        }
+      }
+    },
+
+    cleanupDraft: function () {
+      domConstruct.destroy("soh_draft");
+    },
+
     getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {

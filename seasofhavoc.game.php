@@ -64,6 +64,8 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_HUNT_THE_BOUNTY_EXTRA_PLAY", 27);
     define("STATE_CHAIN_SHOT_LOSS", 28);
     define("STATE_CHOOSE_HEADING", 29);
+    define("STATE_DRAFT_CAPTAIN", 30);
+    define("STATE_DRAFT_SHIP", 31);
     define("STATE_END_GAME", 99);
 }
 
@@ -74,6 +76,20 @@ class SeasOfHavoc extends Table
 
     /** Table option (gameoptions.jsonc): 1 = off, 2 = 2 Ship Variant. */
     private const OPTION_TWO_SHIPS = 100;
+    /** Table option: how captains and ships are handed out. 1 = at random. */
+    private const OPTION_CAPTAINS_AND_SHIPS = 101;
+    private const ASSIGN_FIRST_GAME_PAIRS = 2;
+    private const ASSIGN_DRAFT = 3;
+
+    /** The rulebook's ship and captain pairings for players' first games. */
+    const FIRST_GAME_PAIRS = [
+        ["Xebec", "corsair"],
+        ["Galleon", "treasure_seeker"],
+        ["Sloop of War", "rebel"],
+        ["Ship-of-the-Line", "admiral"],
+        ["War Junk", "pirate_queen"],
+        ["Brig", "merchant"],
+    ];
 
     /** Captain and ship stats store 1-based indexes into these (stats.jsonc value_labels match). */
     const STAT_CAPTAINS = ["pirate_queen", "rebel", "admiral", "merchant", "corsair", "treasure_seeker"];
@@ -193,14 +209,23 @@ class SeasOfHavoc extends Table
         // given player count always produced the same ones. Empty = deal ships at random.
         $forced_ships_for_testing = []; //["War Junk", "Sloop of War", "Brig"];
         $ship_index = 0;
+        $assignment = $this->bga->tableOptions->get(self::OPTION_CAPTAINS_AND_SHIPS);
+        $pairs = self::FIRST_GAME_PAIRS;
+        shuffle($pairs);
+        $pair_captains = [];
 
         foreach ($players as $player_id => $player) {
-            $ship = $forced_ships_for_testing[$ship_index++] ?? array_rand($default_colors);
+            $pair = $pairs[$ship_index];
+            $pair_captains[$player_id] = $pair[1];
+            $ship = $forced_ships_for_testing[$ship_index++]
+                ?? ($assignment === self::ASSIGN_FIRST_GAME_PAIRS ? $pair[0] : array_rand($default_colors));
             if (!isset($default_colors[$ship])) {
                 throw new \Bga\GameFramework\SystemException("Unknown or duplicate forced ship: $ship");
             }
             $color = $default_colors[$ship];
             unset($default_colors[$ship]);
+            // Drafted ships are set on the pick, along with their colour: this one is a placeholder.
+            $ship_value = $assignment === self::ASSIGN_DRAFT ? "NULL" : "'$ship'";
             $values[] =
                 "('" .
                 $player_id .
@@ -210,20 +235,11 @@ class SeasOfHavoc extends Table
                 addslashes($player["player_name"]) .
                 "','" .
                 addslashes($player["player_avatar"]) .
-                "','$ship'" .
+                "',$ship_value" .
                 ")";
         }
         $sql .= implode(",", $values);
         self::DbQuery($sql);
-        // 2 Ship Variant: each player also sails a second ship, of a type nobody else has. "No cards
-        // or upgrades from the 2nd ship are used", so it only needs its name, for its sprite.
-        if ($this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2) {
-            foreach (array_keys($players) as $player_id) {
-                $ship = array_rand($default_colors);
-                unset($default_colors[$ship]);
-                self::DbQuery("UPDATE player SET player_ship2 = '$ship' WHERE player_id = $player_id");
-            }
-        }
         //self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
         self::reloadPlayersBasicInfos();
 
@@ -314,14 +330,6 @@ class SeasOfHavoc extends Table
         $player_infos = $this->getPlayerInfo();
         uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
 
-        // Get all captain cards for random assignment
-        $captain_cards = array_filter(
-            $this->non_playable_cards,
-            fn($card) => isset($card["category"]) && $card["category"] == "captain",
-        );
-        $captain_keys = array_keys($captain_cards);
-        shuffle($captain_keys);
-
         // Place seafeatures on the board based on player count
         $num_players = count($player_infos);
         $num_rocks = $num_players <= 3 ? 3 : 2;
@@ -402,74 +410,24 @@ class SeasOfHavoc extends Table
         $this->cards->createCards($booty_deck, "booty_deck");
         $this->cards->shuffle("booty_deck");
 
+        $captain_keys = self::STAT_CAPTAINS;
+        shuffle($captain_keys);
         $forced_captains_for_testing = []; //["corsair", "merchant", "admiral"];
-        $player_index = 0;
-
-        foreach ($player_infos as $playerid => $player) {
-            // Find an empty position for the ship (avoiding other ships, rocks, and sea monster parts)
-            // Ships CAN start on gusts and whirlpools
-            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
-
-            // Each player points their ship(s) in the Choose Heading state, in player order.
-            $this->seaboard->placeObject($position["x"], $position["y"], [
-                "type" => "player_ship",
-                "arg" => $playerid,
-                "heading" => Heading::NO_HEADING,
-            ]);
-            if ($this->hasSecondShip($playerid)) {
-                $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
-                $this->seaboard->placeObject($position["x"], $position["y"], [
-                    "type" => "player_ship",
-                    "arg" => self::secondShipArg($playerid),
-                    "heading" => Heading::NO_HEADING,
-                ]);
+        // Drafted captains and ships are set up once the draft ends (finishDraft).
+        if ($assignment !== self::ASSIGN_DRAFT) {
+            foreach (array_keys($player_infos) as $player_index => $playerid) {
+                // TEMP HACK: force first players to specific captains for ability testing.
+                if (isset($forced_captains_for_testing[$player_index])) {
+                    $captain_key = $forced_captains_for_testing[$player_index];
+                    $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
+                } elseif ($assignment === self::ASSIGN_FIRST_GAME_PAIRS) {
+                    $captain_key = $pair_captains[$playerid];
+                } else {
+                    $captain_key = array_pop($captain_keys);
+                }
+                $this->assignCaptainToPlayer($playerid, $captain_key);
+                $this->setupPlayerFleet((string) $playerid);
             }
-
-            // TEMP HACK: force first players to specific captains for ability testing.
-            if (isset($forced_captains_for_testing[$player_index])) {
-                $captain_key = $forced_captains_for_testing[$player_index];
-                $captain_keys = array_values(array_filter($captain_keys, fn($k) => $k !== $captain_key));
-            } else {
-                $captain_key = array_pop($captain_keys);
-            }
-            $this->assignCaptainToPlayer($playerid, $captain_key);
-            $this->bga->playerStats->set("captain", $this->captainStatValue($captain_key), (int) $playerid);
-            $this->bga->playerStats->set("ship", $this->shipStatValue($player["player_ship"]), (int) $playerid);
-
-            // Assign ship upgrade cards matching player's ship
-            $this->assignShipUpgradesToPlayer($playerid, $player["player_ship"]);
-
-            // Get ship starting cards
-            $player_starting_cards = array_filter(
-                array_filter($this->playable_cards, fn($x) => $x["category"] == "starting_card"),
-                function ($v) use ($player) {
-                    return $v["ship_name"] == $player["player_ship"];
-                },
-            );
-
-            // Get captain starting cards
-            $captain_starting_cards = array_filter(
-                array_filter($this->playable_cards, fn($x) => $x["category"] == "captain"),
-                function ($v) use ($captain_key) {
-                    return isset($v["captain_key"]) && $v["captain_key"] == $captain_key;
-                },
-            );
-
-            // Combine ship and captain starting cards
-            $all_starting_cards = array_merge($player_starting_cards, $captain_starting_cards);
-
-            $start_deck = [];
-            foreach ($all_starting_cards as $starting_card) {
-                $start_deck[] = [
-                    "type" => $starting_card["card_type"],
-                    "type_arg" => 0,
-                    "nbr" => $starting_card["count"],
-                ];
-            }
-            $this->cards->createCards($start_deck, $this->playerDeckName($playerid));
-            $this->cards->shuffle($this->playerDeckName($playerid));
-
-            $player_index++;
         }
 
         $market_deck = [];
@@ -515,14 +473,146 @@ class SeasOfHavoc extends Table
             }
         }
 
-        // Starting hands are dealt before players choose their ship headings.
-        foreach (array_keys($players) as $player_id) {
-            $this->drawCards((string) $player_id, 4);
-        }
-
         /************ End of the game initialization *****/
         $this->gamestate->changeActivePlayer($random_first_player);
 
+        return $assignment === self::ASSIGN_DRAFT ? STATE_DRAFT_CAPTAIN : STATE_CHOOSE_HEADING;
+    }
+
+    /**
+     * Puts the player's ship(s) on the board and gives them what their captain and ship bring:
+     * upgrades, starting deck and starting hand (dealt before players choose their ship headings).
+     */
+    function setupPlayerFleet(string $player_id): void
+    {
+        $ship_name = self::getUniqueValueFromDB("SELECT player_ship FROM player WHERE player_id = $player_id");
+        $captain_key = $this->getPlayerCaptain($player_id);
+        if ($ship_name === null || $captain_key === null) {
+            throw new \Bga\GameFramework\SystemException("Player $player_id has no ship or captain to set up");
+        }
+        // 2 Ship Variant: each player also sails a second ship, of a type nobody else has. "No cards
+        // or upgrades from the 2nd ship are used", so it only needs its name, for its sprite.
+        if ($this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2) {
+            $taken = self::getObjectListFromDB("SELECT player_ship FROM player UNION SELECT player_ship2 FROM player", true);
+            $free = array_values(array_diff(self::STAT_SHIPS, $taken));
+            $ship2 = $free[array_rand($free)];
+            self::DbQuery("UPDATE player SET player_ship2 = '$ship2' WHERE player_id = $player_id");
+        }
+
+        // Ships CAN start on gusts and whirlpools. Each player points their ship(s) in the Choose
+        // Heading state, in player order.
+        $ship_args = $this->hasSecondShip($player_id) ? [$player_id, self::secondShipArg($player_id)] : [$player_id];
+        foreach ($ship_args as $arg) {
+            $position = $this->findEmptyBoardPosition(["player_ship", "rock", "shipwreck", "sea_monster_part"]);
+            $this->seaboard->placeObject($position["x"], $position["y"], [
+                "type" => "player_ship",
+                "arg" => $arg,
+                "heading" => Heading::NO_HEADING,
+            ]);
+        }
+
+        $this->bga->playerStats->set("captain", $this->captainStatValue($captain_key), (int) $player_id);
+        $this->bga->playerStats->set("ship", $this->shipStatValue($ship_name), (int) $player_id);
+        $this->assignShipUpgradesToPlayer($player_id, $ship_name);
+
+        // Starting deck: the ship's starting cards plus the captain's two cards.
+        $start_deck = [];
+        foreach ($this->playable_cards as $card) {
+            if (($card["category"] === "starting_card" && $card["ship_name"] === $ship_name)
+                || ($card["category"] === "captain" && $card["captain_key"] === $captain_key)) {
+                $start_deck[] = ["type" => $card["card_type"], "type_arg" => 0, "nbr" => $card["count"]];
+            }
+        }
+        $this->cards->createCards($start_deck, $this->playerDeckName($player_id));
+        $this->cards->shuffle($this->playerDeckName($player_id));
+        $this->drawCards($player_id, 4);
+    }
+
+    protected function draftedCaptains(): array
+    {
+        return self::getObjectListFromDB("SELECT captain_key FROM player_captain", true);
+    }
+
+    protected function draftedShips(): array
+    {
+        return self::getObjectListFromDB("SELECT player_ship FROM player WHERE player_ship IS NOT NULL", true);
+    }
+
+    /** Each ship has its own colour, which becomes the player's colour. */
+    protected function setDraftedShip(int $player_id, string $ship): void
+    {
+        $color = $this->getGameinfos()["player_colors"][$ship];
+        self::DbQuery("UPDATE player SET player_ship = '$ship', player_color = '$color' WHERE player_id = $player_id");
+    }
+
+    /** Snake draft, first half: captains still to be picked. */
+    function argDraftCaptain(): array
+    {
+        return ["captains" => array_values(array_diff(self::STAT_CAPTAINS, $this->draftedCaptains()))];
+    }
+
+    /** Captains are picked in player order from the first player; then the last to pick a captain picks the first ship. */
+    function actDraftCaptain(string $captain): int
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        if (!in_array($captain, $this->argDraftCaptain()["captains"], true)) {
+            throw new \Bga\GameFramework\SystemException("Captain not available to draft: $captain");
+        }
+        $this->assignCaptainToPlayer($player_id, $captain);
+        $this->bga->notify->all("captainDrafted", clienttranslate('${player_name} picks the ${captain_name}'), [
+            "player_id" => $player_id,
+            "player_name" => $this->getPlayerNameById($player_id),
+            "captain" => $captain,
+            "captain_name" => $this->non_playable_cards[$captain]["name"],
+            "i18n" => ["captain_name"],
+        ]);
+        if (count($this->draftedCaptains()) === $this->getPlayersNumber()) {
+            $this->giveExtraTime($player_id);
+            return STATE_DRAFT_SHIP;
+        }
+        $this->giveExtraTime((int) $this->activeNextPlayer());
+        return STATE_DRAFT_CAPTAIN;
+    }
+
+    /** Snake draft, second half: ships still to be picked. */
+    function argDraftShip(): array
+    {
+        return ["ships" => array_values(array_diff(self::STAT_SHIPS, $this->draftedShips()))];
+    }
+
+    function actDraftShip(string $ship): int
+    {
+        $player_id = (int) $this->getActivePlayerId();
+        if (!in_array($ship, $this->argDraftShip()["ships"], true)) {
+            throw new \Bga\GameFramework\SystemException("Ship not available to draft: $ship");
+        }
+        $this->setDraftedShip($player_id, $ship);
+        $this->bga->notify->all("log", clienttranslate('${player_name} picks the ${ship_name}'), [
+            "player_id" => $player_id,
+            "player_name" => $this->getPlayerNameById($player_id),
+            "ship_name" => $ship,
+            "i18n" => ["ship_name"],
+        ]);
+        if (count($this->draftedShips()) < $this->getPlayersNumber()) {
+            $this->activePrevPlayer();
+            $this->giveExtraTime((int) $this->getActivePlayerId());
+            return STATE_DRAFT_SHIP;
+        }
+        return $this->finishDraft();
+    }
+
+    /** Everyone has a captain and a ship: set up their fleets and move on to pointing the ships. */
+    function finishDraft(): int
+    {
+        $this->reloadPlayersBasicInfos();
+        $player_infos = $this->getPlayerInfo();
+        uasort($player_infos, fn($a, $b) => ((int) $a["player_no"]) <=> ((int) $b["player_no"]));
+        foreach (array_keys($player_infos) as $player_id) {
+            $this->setupPlayerFleet((string) $player_id);
+        }
+        // Colours, ships, decks and hands all changed: clients reload to pick them up.
+        $this->bga->notify->all("draftComplete", "", []);
+        $this->gamestate->changeActivePlayer($this->getFirstPlayerTokenOwner());
         return STATE_CHOOSE_HEADING;
     }
 
@@ -594,7 +684,7 @@ class SeasOfHavoc extends Table
             "arg" => $ship["arg"],
             "heading" => $heading,
         ]);
-        $this->bga->notify->all("shipOriented", clienttranslate('${player_name} chooses a heading for their ship'), [
+        $this->bga->notify->all("shipOriented", clienttranslate('${player_name} chooses a direction for their ship'), [
             "player_id" => $player_id,
             "player_name" => $this->getPlayerNameById($player_id),
             "ship_arg" => $ship["arg"],

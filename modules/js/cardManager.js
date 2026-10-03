@@ -173,7 +173,10 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
           `<div class="soh_player_ship soh_panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`,
         );
       }
-      this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
+      // No captain yet while the snake draft runs.
+      if (player.captain) {
+        this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
+      }
       for (const upgrade of player.ship_upgrades) {
         this.addPanelCard(row, `panel_upgrade_p${player.id}_${upgrade.upgrade_key}`, upgrade.upgrade_key, upgrade.is_activated == 1);
       }

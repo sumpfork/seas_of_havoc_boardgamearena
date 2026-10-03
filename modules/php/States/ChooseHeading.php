@@ -25,8 +25,8 @@ class ChooseHeading extends GameState
             id: STATE_CHOOSE_HEADING,
             type: StateType::ACTIVE_PLAYER,
             name: 'chooseHeading',
-            description: clienttranslate('${actplayer} must choose a heading for their ship'),
-            descriptionMyTurn: clienttranslate('${you} must choose a heading for your ship'),
+            description: clienttranslate('${actplayer} must choose a direction for their ship'),
+            descriptionMyTurn: clienttranslate('${you} must choose a direction for your ship'),
             transitions: [],
         );
     }

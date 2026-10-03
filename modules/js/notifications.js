@@ -576,6 +576,14 @@ define([
       this.cleanupTreasureSeekerAdjust();
     },
 
+    /** Snake draft over: player colours, ships, decks and hands all changed, so start from a fresh page. */
+    notif_draftComplete: function () {
+      // ponytail: a replay can't reload, so it keeps the pre-draft board; rebuild in place if replays matter.
+      if (!g_archive_mode) {
+        window.location.reload();
+      }
+    },
+
     notif_shipOriented: function (args) {
       this.cleanupChooseHeading();
       this.getObjectOnSeaboard("player_ship", args.ship_arg).heading = args.heading;
