@@ -17,8 +17,8 @@ def main():
     )
     parser.add_argument(
         "--card-resolution",
-        type=int,
-        default=1.5,
+        type=float,
+        default=2,
         help="Resolution of the extracted cards in DPI, 72dpi per",
     )
     parser.add_argument(
@@ -27,7 +27,7 @@ def main():
     parser.add_argument(
         "--max-histogram-distance",
         type=int,
-        default=120,
+        default=150,
         help="Maximum histogram distance to consider a card the same",
     )
     parser.add_argument(
@@ -44,8 +44,6 @@ def main():
     n_pages = len(pdf)  # get the number of pages in the document
     print(f"Found {n_pages} pages in {args.pdf_file}")
     images = []
-    row = 0
-    col = 0
     for p in range(n_pages):
         if args.card_index_to_extract and p not in args.card_index_to_extract:
             continue
@@ -61,10 +59,6 @@ def main():
                 print(f"abs image dist: {np.linalg.norm(h - s)} between {p+1} and {p2+1}")
                 break
         else:
-            col += 1
-            if col >= args.num_columns:
-                col = 0
-                row += 1
             seen.append((h, p))
             images.append(pil_image)
 
@@ -73,7 +67,7 @@ def main():
         "RGB",
         (
             pil_image.width * min(args.num_columns, len(images)),
-            pil_image.height * (row + 1),
+            pil_image.height * -(-len(images) // args.num_columns),
         ),
     )
     row = 0
@@ -85,7 +79,7 @@ def main():
             col = 0
             row += 1
 
-    full_image.save(args.outfile)
+    full_image.save(args.outfile, quality=85)
     full_image.show()
 
 
