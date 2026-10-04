@@ -317,7 +317,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
 
     public function testUnearthRichesRewardsWrappedDiagonalRockAndDiscardsToken(): void {
         $this->board(true);
-        $this->game->deck->createCards([['type' => 'booty', 'type_arg' => 3, 'nbr' => 1]], 'booty_deck');
+        $this->game->deck->createCards([['type' => 'booty', 'type_arg' => 1, 'nbr' => 1]], 'booty_deck');
         $this->assertSame(STATE_CAPTAIN_CARD, $this->game->start('unearth_riches'));
         $this->game->actResolveCaptainCard(['resource' => 'sail']);
         $this->assertSame([['doubloon' => 1, 'sail' => 1]], $this->game->gains);

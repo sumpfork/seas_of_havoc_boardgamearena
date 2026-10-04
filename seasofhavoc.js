@@ -333,6 +333,7 @@ define([
       </div>`;
 
       window.jstpl_seaboard_location = `<div class="soh_seaboardlocation" id="\${id}"></div>`;
+      window.jstpl_score_location = `<div class="soh_score_location" id="\${id}"></div>`;
       window.jstpl_unique_token = `<div id="token_\${token_key}" class="soh_flagish" data-tokenkey="\${token_key}"></div>`;
       window.jstpl_player_ship = `<div class="soh_player_ship" id="\${id}" data-shipname="\${shipname}"></div>`;
       window.jstpl_seafeature = `<div class="soh_seafeature" id="\${id}" data-seafeature="\${seafeature_type}"></div>`;
@@ -834,6 +835,24 @@ define([
       }
 
       this.refreshSeaFeatureBadges();
+
+      // Infamy track: one anchor per space, 0 in the top left corner, running clockwise.
+      for (var s = 0; s < 60; s++) {
+        var spot = this.getScoreSpot(s);
+        domConstruct.place(this.format_block("jstpl_score_location", { id: "score_location_" + s }), "board");
+        var loc = $("score_location_" + s);
+        loc.dataset.fan = spot.fan;
+        domStyle.set(loc, { left: spot.x + "px", top: spot.y + "px" });
+      }
+      for (var player_id in gamedatas.players) {
+        var player = gamedatas.players[player_id];
+        domConstruct.place(
+          `<div id="score_marker_${player_id}" class="soh_score_marker" data-color="${player.color}" data-score="${player.score | 0}"></div>`,
+          this.scoreLocationId(player.score | 0),
+        );
+      }
+      document.querySelectorAll(".soh_score_location").forEach((loc) => this.fanScoreMarkers(loc));
+
       if (gamedatas.endScores) {
         this.showScoreSheet(gamedatas.endScores, false);
       }
@@ -851,6 +870,92 @@ define([
 
     ///////////////////////////////////////////////////
     //// Event Handlers
+
+    /**
+     * Centre of infamy track space s (0-59) in board.jpg pixels. Corner spaces (0/15/30/45) are
+     * ~48px squares, the 14 spaces along each side are ~30px wide. "fan" is the axis along which
+     * markers sharing the space get spread: across the track, or diagonally in corners.
+     */
+    getScoreSpot: function (s) {
+      const L = 264, R = 736, T = 60, B = 532.5; // corner centres
+      const X0 = 288, X1 = 711.5, Y0 = 85, Y1 = 508; // inner edges of the corners
+      const PX = (X1 - X0) / 14, PY = (Y1 - Y0) / 14;
+      if (s % 15 == 0) {
+        const [x, y] = [[L, T], [R, T], [R, B], [L, B]][s / 15];
+        return { x, y, fan: "diag" };
+      }
+      const i = (s % 15) - 0.5;
+      if (s < 15) return { x: X0 + PX * i, y: T, fan: "y" };
+      if (s < 30) return { x: R, y: Y0 + PY * i, fan: "x" };
+      if (s < 45) return { x: X1 - PX * i, y: B, fan: "y" };
+      return { x: L, y: Y1 - PY * i, fan: "x" };
+    },
+
+    /** Track space for a score; the track loops every 60 (rulebook: add 60 per lap). */
+    scoreLocationId: function (score) {
+      return "score_location_" + (((score % 60) + 60) % 60);
+    },
+
+    /**
+     * Move a player's infamy marker along the track. It slides through every corner it passes
+     * instead of cutting across, and markers re-fanned around it glide aside; resolves when done.
+     */
+    moveScoreMarker: function (player_id, score) {
+      const marker = $("score_marker_" + player_id);
+      const oldScore = Number(marker.dataset.score);
+      marker.dataset.score = score;
+      const oldLoc = marker.parentNode;
+      const newLoc = $(this.scoreLocationId(score));
+      const step = Math.sign(score - oldScore);
+      const corners = [];
+      for (let s = oldScore + step; s !== score; s += step) {
+        if ((((s % 60) + 60) % 60) % 15 == 0) corners.push($(this.scoreLocationId(s)).getBoundingClientRect());
+      }
+      const affected = [...oldLoc.children, ...newLoc.children, marker];
+      const before = new Map(affected.map((m) => [m, m.getBoundingClientRect()]));
+      newLoc.appendChild(marker);
+      this.fanScoreMarkers(oldLoc);
+      this.fanScoreMarkers(newLoc);
+      if (!this.bgaAnimationsActive()) return Promise.resolve();
+      // Moving to the top: keep the travelling skull above the ones it passes or lands on.
+      marker.style.zIndex = 1;
+      return Promise.all(
+        affected.map((m) => {
+          const from = before.get(m), to = m.getBoundingClientRect();
+          // Waypoints as offsets from where the marker ends up; corner anchors are 0x0 points.
+          const points = [{ x: from.left - to.left, y: from.top - to.top }];
+          if (m === marker) {
+            const cx = to.left + to.width / 2, cy = to.top + to.height / 2;
+            corners.forEach((c) => points.push({ x: c.left - cx, y: c.top - cy }));
+          }
+          points.push({ x: 0, y: 0 });
+          const legs = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y));
+          const length = legs.reduce((a, b) => a + b, 0);
+          if (!length) return null;
+          let travelled = 0;
+          const keyframes = points.map((p, i) => {
+            if (i > 0) travelled += legs[i - 1];
+            return { translate: `${p.x}px ${p.y}px`, offset: travelled / length };
+          });
+          return m.animate(keyframes, {
+            duration: m === marker ? Math.max(600, length * 2) : 300,
+            easing: "ease-in-out",
+          }).finished;
+        }),
+      ).then(() => (marker.style.zIndex = ""));
+    },
+
+    /** Spread the markers sharing a space along its fan axis, centred on the space. */
+    fanScoreMarkers: function (loc) {
+      const markers = loc.querySelectorAll(".soh_score_marker");
+      const step = loc.dataset.fan == "diag" ? 6 : Math.min(8, 24 / Math.max(1, markers.length - 1));
+      markers.forEach((m, k) => {
+        const d = (k - (markers.length - 1) / 2) * step;
+        const dx = loc.dataset.fan == "y" ? 0 : d;
+        const dy = loc.dataset.fan == "x" ? 0 : d;
+        m.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      });
+    },
 
     onClickSkiffSlot: function (event) {
       console.log("$$$$ Event : onClickSkiffSlot");

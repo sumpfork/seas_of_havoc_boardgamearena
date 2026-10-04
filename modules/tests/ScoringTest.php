@@ -71,6 +71,23 @@ final class ScoringTest extends TestCase
         $this->assertSame(2, $this->counter->get(1));
     }
 
+    public function testInfamyScoredWhileACardResolvesIsAppliedAfterIt(): void
+    {
+        // The score marker must move after the ship's cardPlayed animation, not before it.
+        $during = null;
+        $result = $this->game->withInfamyAfterNotifications(function () use (&$during) {
+            $this->game->scoreInfamy("1", 2, "shots");
+            $this->game->withInfamyAfterNotifications(fn() => $this->game->scoreInfamy("1", 1, "captain"));
+            $during = $this->counter->get(1);
+            return "seaTurnDone";
+        });
+
+        $this->assertSame(0, $during, "nothing is scored until the resolution has finished");
+        $this->assertSame(3, $this->counter->get(1));
+        $this->assertSame("seaTurnDone", $result);
+        $this->assertCount(2, $this->counter->messages);
+    }
+
     public function testGetPlayerInfamyReadsTheCounterBack(): void
     {
         $this->game->scoreInfamy("1", 4, "shots");

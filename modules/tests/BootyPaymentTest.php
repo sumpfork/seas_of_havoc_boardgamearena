@@ -68,10 +68,14 @@ class BootyPaymentUT extends SeasOfHavocUT
         $r->setValue($this, $deck);
     }
 
-    public function callResolveBootyResources(array $resources, array $cost, ?string $player_choice = null): array
-    {
+    public function callResolveBootyResources(
+        array $resources,
+        array $cost,
+        ?string $player_choice = null,
+        array $held = [],
+    ): array {
         $m = new ReflectionMethod(SeasOfHavoc::class, "resolveBootyResourcesForPayment");
-        return $m->invoke($this, $resources, $cost, $player_choice);
+        return $m->invoke($this, $resources, $cost, $player_choice, $held);
     }
 
     public function callGetBootyTokenConfig(int $type_arg): ?array
@@ -139,9 +143,9 @@ final class BootyPaymentTest extends TestCase
         // sail × 3
         $this->assertEquals(["sail" => 3], $this->game->callGetBootyTokenConfig(0)["resources"]);
         // doubloon:1 + choice:1
-        $this->assertEquals(["doubloon" => 1, "choice" => 1], $this->game->callGetBootyTokenConfig(3)["resources"]);
+        $this->assertEquals(["doubloon" => 1, "choice" => 1], $this->game->callGetBootyTokenConfig(1)["resources"]);
         // cannonball × 2
-        $this->assertEquals(["cannonball" => 2], $this->game->callGetBootyTokenConfig(8)["resources"]);
+        $this->assertEquals(["cannonball" => 2], $this->game->callGetBootyTokenConfig(7)["resources"]);
     }
 
     // =========================================================================
@@ -194,6 +198,33 @@ final class BootyPaymentTest extends TestCase
         );
         $this->assertEquals(2, $result["cannonball"]);
         $this->assertArrayNotHasKey("sail", $result);
+    }
+
+    public function testResolveChoiceGoesWhereThePlayerIsShort(): void
+    {
+        // cannonball:1 + choice:1 against sail:1 + cannonball:2, holding 1 sail and no cannonballs.
+        // Both are 1 short of the cost, but the player can pay the sail: the choice must be a
+        // cannonball, or the cost is unaffordable even with the token.
+        $result = $this->game->callResolveBootyResources(
+            ["cannonball" => 1, "choice" => 1],
+            ["sail" => 1, "cannonball" => 2],
+            null,
+            ["sail" => 1, "cannonball" => 0],
+        );
+        $this->assertEquals(2, $result["cannonball"]);
+        $this->assertArrayNotHasKey("sail", $result);
+    }
+
+    public function testResolveChoiceStillSparesStockWhenNothingIsShort(): void
+    {
+        // Holding plenty, the choice still pays for the biggest remaining need instead of going unused.
+        $result = $this->game->callResolveBootyResources(
+            ["choice" => 1],
+            ["sail" => 3, "cannonball" => 1],
+            null,
+            ["sail" => 5, "cannonball" => 5],
+        );
+        $this->assertEquals(1, $result["sail"]);
     }
 
     public function testResolveMultipleChoiceUnitsSpreadAcross(): void
@@ -259,25 +290,25 @@ final class BootyPaymentTest extends TestCase
         $this->assertEquals(3, $res["sail"]);
     }
 
-    public function testRealToken3WildForMultiCost(): void
+    public function testRealToken1WildForMultiCost(): void
     {
-        $cfg = $this->game->callGetBootyTokenConfig(3); // doubloon:1, choice:1
+        $cfg = $this->game->callGetBootyTokenConfig(1); // doubloon:1, choice:1
         $res = $this->game->callResolveBootyResources($cfg["resources"], ["sail" => 2, "doubloon" => 1]);
         $this->assertEquals(1, $res["doubloon"]);
         $this->assertEquals(1, $res["sail"]); // choice auto-assigned to sail
     }
 
-    public function testRealToken4WildForMultiCost(): void
+    public function testRealToken5WildForMultiCost(): void
     {
-        $cfg = $this->game->callGetBootyTokenConfig(4); // cannonball:1, choice:1
+        $cfg = $this->game->callGetBootyTokenConfig(5); // cannonball:1, choice:1
         $res = $this->game->callResolveBootyResources($cfg["resources"], ["sail" => 2, "cannonball" => 1]);
         $this->assertEquals(1, $res["cannonball"]);
         $this->assertEquals(1, $res["sail"]); // choice → sail (need 2 > 0)
     }
 
-    public function testRealToken8PureCannonball(): void
+    public function testRealToken7PureCannonball(): void
     {
-        $cfg = $this->game->callGetBootyTokenConfig(8); // cannonball:2
+        $cfg = $this->game->callGetBootyTokenConfig(7); // cannonball:2
         $res = $this->game->callResolveBootyResources($cfg["resources"], ["cannonball" => 1]);
         $this->assertEquals(2, $res["cannonball"]); // excess stays
     }
@@ -381,7 +412,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyFullyCoveringCost(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 100, 2); // sail:1, cannonball:1
+        $this->addBootyCard($deck, 100, 8); // sail:1, cannonball:1
         $this->game->mockPlayerResources = ["sail" => 0, "cannonball" => 0, "doubloon" => 0];
         $this->game->paidCosts = [];
         $this->game->debugLastNotif = null;
@@ -417,7 +448,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyPartialCoverage(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 101, 1); // sail:1, doubloon:1
+        $this->addBootyCard($deck, 101, 4); // sail:1, doubloon:1
         $this->game->mockPlayerResources = ["sail" => 5, "cannonball" => 3, "doubloon" => 2];
         $this->game->paidCosts = [];
 
@@ -465,7 +496,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyChoiceAutoResolved(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 104, 3); // doubloon:1, choice:1
+        $this->addBootyCard($deck, 104, 1); // doubloon:1, choice:1
         $this->game->mockPlayerResources = ["sail" => 0, "cannonball" => 0, "doubloon" => 0];
         $this->game->paidCosts = [];
 
@@ -480,7 +511,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyChoiceGoesToHigherNeed(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 105, 4); // cannonball:1, choice:1
+        $this->addBootyCard($deck, 105, 5); // cannonball:1, choice:1
         $this->game->mockPlayerResources = ["sail" => 1, "cannonball" => 0, "doubloon" => 0];
         $this->game->paidCosts = [];
 
@@ -498,7 +529,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyCannotAffordRemainder(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 200, 2); // sail:1, cannonball:1
+        $this->addBootyCard($deck, 200, 8); // sail:1, cannonball:1
         $this->game->mockPlayerResources = ["sail" => 0, "cannonball" => 0, "doubloon" => 0];
 
         // Cost: sail:3, cannonball:2. Booty covers sail:1, cannonball:1.
@@ -519,7 +550,7 @@ final class BootyPaymentTest extends TestCase
     public function testPayWithBootyNotOwnedByPlayer(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 201, 2, 2); // belongs to player 2
+        $this->addBootyCard($deck, 201, 8, 2); // belongs to player 2
         $this->game->mockPlayerResources = ["sail" => 5];
 
         $this->expectException(\Bga\GameFramework\UserException::class);
@@ -532,7 +563,7 @@ final class BootyPaymentTest extends TestCase
         $deck->cards[202] = [
             "id" => 202,
             "type" => "booty",
-            "type_arg" => 2,
+            "type_arg" => 8,
             "location" => "booty_discard",
             "location_arg" => 1,
         ];
@@ -547,7 +578,7 @@ final class BootyPaymentTest extends TestCase
     public function testBootyNotificationDescribesUsedResources(): void
     {
         $deck = $this->setupMockCards();
-        $this->addBootyCard($deck, 300, 2); // sail:1, cannonball:1
+        $this->addBootyCard($deck, 300, 8); // sail:1, cannonball:1
         $this->game->mockPlayerResources = ["sail" => 0, "cannonball" => 0];
         $this->game->debugLastNotif = null;
 

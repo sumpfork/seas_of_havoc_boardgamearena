@@ -135,11 +135,41 @@ trait ScoringAndStats
         $this->bga->tableStats->set("winning_margin", $winner["score"] - ($standings[1]["score"] ?? 0));
     }
 
+    /** Infamy held back by withInfamyAfterNotifications; null when not deferring. */
+    private ?array $deferred_infamy = null;
+
+    /**
+     * Run a card resolution, holding back the infamy it scores (hits, rams) until it has sent its
+     * cardPlayed notification, so the score marker moves after the ship has sailed and fired.
+     * Only the notification order changes: nothing reads infamy while a card resolves.
+     */
+    function withInfamyAfterNotifications(callable $resolve): mixed
+    {
+        if ($this->deferred_infamy !== null) {
+            return $resolve();
+        }
+        $this->deferred_infamy = [];
+        try {
+            $result = $resolve();
+            $deferred = $this->deferred_infamy;
+        } finally {
+            $this->deferred_infamy = null;
+        }
+        foreach ($deferred as $args) {
+            $this->scoreInfamy(...$args);
+        }
+        return $result;
+    }
+
     /** @param string $source one of INFAMY_SOURCES: where the infamy came from, for the stats. */
     function scoreInfamy(string $player_id, int $amount, string $source, string $message = "")
     {
         if (!in_array($source, self::INFAMY_SOURCES, true)) {
             throw new \Bga\GameFramework\SystemException("Unknown infamy source: $source");
+        }
+        if ($this->deferred_infamy !== null) {
+            $this->deferred_infamy[] = [$player_id, $amount, $source, $message];
+            return;
         }
         $this->bga->playerStats->inc("infamy_from_$source", $amount, (int) $player_id);
         if ($message === "") {

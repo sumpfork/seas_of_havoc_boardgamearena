@@ -36,15 +36,16 @@ $this->card_types = [
 $this->resource_types = ["sail", "cannonball", "doubloon", "skiff"];
 
 $this->booty_tokens = [
+    // Resources as printed on each token, by its cell in img/booty_seafeatures.jpg (see setBootyTokenPosition).
     "booty_token_1" => ["image_id" => 0, "resources" => ["sail" => 3]],
-    "booty_token_2" => ["image_id" => 1, "resources" => ["sail" => 1, "doubloon" => 1]],
-    "booty_token_3" => ["image_id" => 2, "resources" => ["sail" => 1, "cannonball" => 1]],
-    "booty_token_4" => ["image_id" => 3, "resources" => ["doubloon" => 1, "choice" => 1]],
-    "booty_token_5" => ["image_id" => 4, "resources" => ["cannonball" => 1, "choice" => 1]],
-    "booty_token_6" => ["image_id" => 5, "resources" => ["doubloon" => 2]],
+    "booty_token_2" => ["image_id" => 1, "resources" => ["doubloon" => 1, "choice" => 1]],
+    "booty_token_3" => ["image_id" => 2, "resources" => ["doubloon" => 2]],
+    "booty_token_4" => ["image_id" => 3, "resources" => ["sail" => 1, "choice" => 1]],
+    "booty_token_5" => ["image_id" => 4, "resources" => ["sail" => 1, "doubloon" => 1]],
+    "booty_token_6" => ["image_id" => 5, "resources" => ["cannonball" => 1, "choice" => 1]],
     "booty_token_7" => ["image_id" => 6, "resources" => ["doubloon" => 1, "cannonball" => 1]],
-    "booty_token_8" => ["image_id" => 7, "resources" => ["sail" => 1, "choice" => 1]],
-    "booty_token_9" => ["image_id" => 8, "resources" => ["cannonball" => 2]],
+    "booty_token_8" => ["image_id" => 7, "resources" => ["cannonball" => 2]],
+    "booty_token_9" => ["image_id" => 8, "resources" => ["sail" => 1, "cannonball" => 1]],
 ];
 
 $this->token_names = [

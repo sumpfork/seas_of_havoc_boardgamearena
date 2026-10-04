@@ -382,6 +382,11 @@ trait CardPlay
 
     function actPostCollisionFire(string $decision, ?int $use_booty_card_id = null): mixed
     {
+        return $this->withInfamyAfterNotifications(fn() => $this->postCollisionFireNow($decision, $use_booty_card_id));
+    }
+
+    private function postCollisionFireNow(string $decision, ?int $use_booty_card_id): mixed
+    {
         $player_id = (int) $this->getActivePlayerId();
         $action = $this->getPendingFireAction($player_id);
         if ($action === null) {
@@ -490,6 +495,13 @@ trait CardPlay
     }
 
     protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null)
+    {
+        return $this->withInfamyAfterNotifications(
+            fn() => $this->resolvePlayedCardNow($card_type, $card_id, $decisions, $use_booty_card_id, $actions),
+        );
+    }
+
+    private function resolvePlayedCardNow(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id, ?array $actions)
     {
         $this->setGameStateValue("pending_card_flag_type", isset($this->playable_cards[$card_type]["flag"]) ? $card_type : 0);
         $this->setGameStateValue(
@@ -674,6 +686,11 @@ trait CardPlay
     }
 
     function actPivotPickedInDialog(string $direction)
+    {
+        return $this->withInfamyAfterNotifications(fn() => $this->pivotPickedInDialogNow($direction));
+    }
+
+    private function pivotPickedInDialogNow(string $direction)
     {
         $this->mytrace("actPivotPickedInDialog");
         $player_id = $this->getActivePlayerId();

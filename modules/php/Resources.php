@@ -82,13 +82,15 @@ trait Resources
     /**
      * Resolve booty "resources" for payment.
      * If $player_choice is set, all "choice" units are assigned to that resource type.
-     * Otherwise, auto-assign each "choice" unit to whichever cost resource has the
-     * highest remaining need after fixed resources are applied.
+     * Otherwise, auto-assign each "choice" unit to whichever cost resource the player is shortest
+     * of once the fixed resources and what they already hold ($held) are counted. Going by the cost
+     * alone can spend the choice on something they have, leaving them unable to pay for the rest.
      */
     private function resolveBootyResourcesForPayment(
         array $resources,
         array $cost,
         ?string $player_choice = null,
+        array $held = [],
     ): array {
         // First, collect fixed (non-choice) resources
         $out = [];
@@ -116,15 +118,19 @@ trait Resources
             return $out;
         }
 
-        // Auto-assign each "choice" unit to the cost resource with the highest remaining need
+        // Auto-assign each "choice" unit to the cost resource with the biggest shortfall; when the
+        // player can cover everything, to the one with the most left to pay, sparing their own stock.
         for ($i = 0; $i < $choiceAmount; $i++) {
             $bestRes = null;
-            $bestNeed = 0;
+            $best = null;
             foreach ($cost as $res => $need) {
-                $coveredByFixed = $out[$res] ?? 0;
-                $remaining = $need - $coveredByFixed;
-                if ($remaining > $bestNeed) {
-                    $bestNeed = $remaining;
+                $remaining = $need - ($out[$res] ?? 0);
+                if ($remaining <= 0) {
+                    continue;
+                }
+                $rank = [$remaining - ($held[$res] ?? 0), $remaining];
+                if ($best === null || $rank > $best) {
+                    $best = $rank;
                     $bestRes = $res;
                 }
             }
@@ -167,7 +173,12 @@ trait Resources
             if (!$config || empty($config["resources"])) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid booty token"));
             }
-            $booty_resources = $this->resolveBootyResourcesForPayment($config["resources"], $cost, $booty_choice);
+            $booty_resources = $this->resolveBootyResourcesForPayment(
+                $config["resources"],
+                $cost,
+                $booty_choice,
+                $player_resources,
+            );
             // Reduce cost by booty (no refund: only subtract up to cost amount per resource)
             $remaining_cost = [];
             foreach ($cost as $res => $need) {

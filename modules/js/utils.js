@@ -341,45 +341,23 @@ define([
       this.addTooltipHtml(node.id, `<p>${this.tooltipText("booty_token")}</p>` + zoom.outerHTML);
     },
 
-    updateMyBootyToken: function (typeArgOverride) {
-      console.groupCollapsed("[booty] updateMyBootyToken");
+    /**
+     * Draw the player's own hold from the tokens they actually hold. (lastBootyTokenTypeArg is only
+     * for showing a just-collected token face up as it flies in: drawing the hold from it showed a
+     * token the player had just chosen to discard.)
+     */
+    updateMyBootyToken: function () {
       const tokens = this.booty_tokens || [];
       const mySlot = dom.byId(`booty_token_p${this.player_id}`);
-      // Use override if provided, otherwise use lastBootyTokenTypeArg, otherwise use first token
-      let typeArg = typeArgOverride;
-      if (typeArg === undefined && this.lastBootyTokenTypeArg !== undefined) {
-        typeArg = this.lastBootyTokenTypeArg;
-      }
-      if (typeArg === undefined && tokens.length > 0) {
-        typeArg = tokens[0].type_arg;
-      }
-      console.log("[booty] typeArg:", typeArg, "tokens:", tokens);
       domConstruct.empty(mySlot);
-      domClass.remove(mySlot, "soh_has-token");
-      if (tokens.length > 1) {
-        // Galleon Treasure Hold: the hold can carry two tokens, so show them all.
-        tokens.forEach((token) => {
-          const node = this.createBootyTokenNode(false, token.type_arg);
-          this.setBootyTokenImageForSlot(node, token.type_arg);
-          domConstruct.place(node, mySlot);
-          this.addBootyTokenTooltip(node, token.type_arg);
-        });
-        domClass.add(mySlot, "soh_has-token");
-      } else if (typeArg !== undefined) {
-        const node = this.createBootyTokenNode(false, typeArg);
-        this.setBootyTokenImageForSlot(node, typeArg);
+      // The Galleon's Treasure Hold can carry two tokens, so show them all.
+      tokens.forEach((token) => {
+        const node = this.createBootyTokenNode(false, token.type_arg);
+        this.setBootyTokenImageForSlot(node, token.type_arg);
         domConstruct.place(node, mySlot);
-        this.addBootyTokenTooltip(node, typeArg);
-        domClass.add(mySlot, "soh_has-token");
-      } else if (tokens.length > 0) {
-        // Fallback: show facedown token only if we KNOW player has tokens
-        console.warn("[booty] typeArg undefined but has tokens, showing facedown as fallback");
-        const node = this.createBootyTokenNode(true, null);
-        domConstruct.place(node, mySlot);
-        this.addFacedownBootyTokenTooltip(node);
-        domClass.add(mySlot, "soh_has-token");
-      }
-      console.groupEnd();
+        this.addBootyTokenTooltip(node, token.type_arg);
+      });
+      domClass.toggle(mySlot, "soh_has-token", tokens.length > 0);
     },
 
     renderFacedownTokenForPlayer: function (playerId) {
@@ -791,9 +769,11 @@ define([
 
     /**
      * Client-side mirror of PHP resolveBootyResourcesForPayment.
-     * Resolves fixed resources and auto-assigns "choice" to highest-need cost resource.
+     * Resolves fixed resources and auto-assigns "choice" to the cost resource the player is
+     * shortest of (counting what they hold), else the one with the most left to pay.
      */
     resolveBootyResources: function (tokenRes, cost) {
+      var held = this.getPlayerResources();
       var out = {};
       var choiceAmount = 0;
       for (var key in tokenRes) {
@@ -805,11 +785,14 @@ define([
       }
       for (var i = 0; i < choiceAmount; i++) {
         var bestRes = null;
+        var bestShort = 0;
         var bestNeed = 0;
         for (var res in cost) {
-          var covered = out[res] || 0;
-          var remaining = cost[res] - covered;
-          if (remaining > bestNeed) {
+          var remaining = cost[res] - (out[res] || 0);
+          if (remaining <= 0) continue;
+          var short = remaining - (held[res] || 0);
+          if (!bestRes || short > bestShort || (short === bestShort && remaining > bestNeed)) {
+            bestShort = short;
             bestNeed = remaining;
             bestRes = res;
           }

@@ -35,6 +35,14 @@ define([
       this.bgaSetupPromiseNotifications();
     },
 
+    /** Sent by the framework's playerScore->inc/set; it updates the panel score itself. */
+    notif_setPlayerCounter: function (args) {
+      // The framework registers the panel score counter as "player_score" (ly_studio.js).
+      if (args.name === "player_score") {
+        return this.moveScoreMarker(args.playerId, args.value);
+      }
+    },
+
     notif_endScores: function (args) {
       return this.showScoreSheet(args.endScores, true);
     },
