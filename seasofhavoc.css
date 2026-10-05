@@ -367,15 +367,17 @@
   border-radius: 50%;
   background-position: 0px -189px;
 }
-/* When a shipwreck sits atop a rock/gust/whirlpool, shrink both to 70% and
-   split them into opposite corners of the space instead of stacking them. */
+/* When a shipwreck sits atop a gust/whirlpool, shrink both to 70% and split them into
+   opposite corners of the space instead of stacking them. Individual translate/scale
+   properties, so a gust's own "rotate" doesn't turn the corner offset. */
 .soh_seafeature_paired_shipwreck {
-  transform: translate(9.45px, -9.45px) scale(0.7);
+  translate: 9.45px -9.45px;
+  scale: 0.7;
   z-index: 2;
 }
 .soh_seafeature_hidden_partner {
-  transform: translate(-9.45px, 9.45px) scale(0.7);
-  z-index: 1;
+  translate: -9.45px 9.45px;
+  scale: 0.7;
 }
 .soh_seafeature[data-seafeature="gust"] {
   background-position: 0px -126px;

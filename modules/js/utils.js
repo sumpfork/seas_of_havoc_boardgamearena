@@ -93,6 +93,25 @@ define([
       }
     },
 
+    /**
+     * A shipwreck on a whirlpool or gust would hide it: shrink both and split them into opposite
+     * corners of the space. Rerun whenever a shipwreck is placed or moved.
+     */
+    refreshShipwreckPairs: function () {
+      const wrecks = this.seaboard.filter((e) => e.type === "shipwreck");
+      for (const entry of this.seaboard) {
+        const isWreck = entry.type === "shipwreck";
+        if (!isWreck && entry.type !== "whirlpool" && entry.type !== "gust") continue;
+        const paired = isWreck
+          ? this.seaboard.some((f) => (f.type === "whirlpool" || f.type === "gust") && f.x == entry.x && f.y == entry.y)
+          : wrecks.some((w) => w.x == entry.x && w.y == entry.y);
+        $(entry.type + "_" + entry.arg).classList.toggle(
+          isWreck ? "soh_seafeature_paired_shipwreck" : "soh_seafeature_hidden_partner",
+          paired,
+        );
+      }
+    },
+
     /** A ship's element on the sea grid; one still without a heading is drawn unturned. */
     addShipToBoard: function (entry) {
       // A second ship (2 Ship Variant) is "<player id>_2" on the board.
@@ -645,6 +664,7 @@ define([
           });
         }
       }
+      this.refreshShipwreckPairs();
       console.groupEnd();
     },
 

@@ -781,18 +781,6 @@ define([
       }
 
       this.seaboard = gamedatas.seaboard;
-      // Pre-scan for positions where a shipwreck coexists with a rock/gust/whirlpool, so both
-      // icons can be shrunk into opposite corners instead of stacking on top of each other.
-      var shipwreckAtPos = {};
-      var otherFeatureAtPos = {};
-      for (const entry of gamedatas.seaboard) {
-        var pos_id = "seaboardlocation_" + entry.x + "_" + entry.y;
-        if (entry.type === "shipwreck") {
-          shipwreckAtPos[pos_id] = true;
-        } else if (entry.type === "rock" || entry.type === "gust" || entry.type === "whirlpool") {
-          otherFeatureAtPos[pos_id] = true;
-        }
-      }
       for (const entry of gamedatas.seaboard) {
         var target_id = "seaboardlocation_" + entry.x + "_" + entry.y;
         switch (entry.type) {
@@ -812,29 +800,15 @@ define([
             domConstruct.place(seafeature, "seaboard");
             this.placeOnObject(seafeatureid, target_id);
             this.addSeaFeatureTooltip(seafeatureid, entry.type);
-            var isPairedShipwreck = entry.type === "shipwreck" && otherFeatureAtPos[target_id];
-            var isPairedPartner = entry.type !== "shipwreck" && shipwreckAtPos[target_id];
             if (entry.type === "gust") {
-              var gustDeg = this.getHeadingDegrees(entry.heading) - 90;
-              if (isPairedPartner) {
-                // The individual "rotate" CSS property is applied before "transform", which would
-                // rotate our corner-shift offset too. Combine everything into one transform instead.
-                $(seafeatureid).classList.add("soh_seafeature_hidden_partner");
-                domStyle.set(seafeatureid, "transform", `translate(-9.45px, 9.45px) scale(0.7) rotate(${gustDeg}deg)`);
-              } else {
-                domStyle.set(seafeatureid, "rotate", gustDeg + "deg");
-              }
-            }
-            if (isPairedShipwreck) {
-              $(seafeatureid).classList.add("soh_seafeature_paired_shipwreck");
-            } else if (isPairedPartner && entry.type !== "gust") {
-              $(seafeatureid).classList.add("soh_seafeature_hidden_partner");
+              domStyle.set(seafeatureid, "rotate", this.getHeadingDegrees(entry.heading) - 90 + "deg");
             }
             break;
         }
       }
 
       this.refreshSeaFeatureBadges();
+      this.refreshShipwreckPairs();
 
       // Infamy track: one anchor per space, 0 in the top left corner, running clockwise.
       for (var s = 0; s < 60; s++) {
