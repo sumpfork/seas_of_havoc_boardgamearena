@@ -218,6 +218,14 @@ class SeaBoard
         ];
     }
 
+    /** Rowing backwards: one space against the heading, without turning. */
+    public function moveObjectBackward(string $object_type, string $arg, array $collision_types)
+    {
+        $this->syncFromDB();
+        $heading = $this->findObject($object_type, $arg)["object"]["heading"];
+        return $this->pushObjectInDirection($object_type, $arg, self::turnHeading($heading, Turn::AROUND), $collision_types);
+    }
+
     public static function turnHeading(Heading $heading, Turn $direction)
     {
         switch ($direction) {

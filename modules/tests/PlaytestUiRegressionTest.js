@@ -569,6 +569,9 @@ assert.equal(nodes.skip.checked, false);
   marks = simulateCardPlay(bothSides, ["both sides left"], { x: 2, y: 2, heading: N }, open);
   assert.deepEqual(only(marks, "chevron"), [[1, 2, W], [3, 2, E]], "both sides fires one shot each way");
 
+  marks = simulateCardPlay([{ action: "backward" }], [], { x: 2, y: 0, heading: S }, open);
+  assert.deepEqual(only(marks, "ghost"), [[2, 5, S]], "rowing backward moves astern, wrapping, without turning");
+
   assert.deepEqual(simulateCardPlay([{ action: "forward" }], ["pass"], { x: 0, y: 0, heading: N }, open), [],
     "passing the card shows nothing");
 }

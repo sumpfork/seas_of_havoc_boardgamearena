@@ -144,6 +144,14 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           case "forward":
             forward();
             break;
+          case "backward": {
+            // Rowing: one space astern, still facing the same way.
+            const heading = state.heading;
+            state.heading = TURNS["pivot 180"][heading];
+            forward();
+            state.heading = heading;
+            break;
+          }
           case "left":
           case "right":
             forward();

@@ -39,7 +39,7 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
         $this->seaEffects++;
         return new CardActionOutcome();
     }
-    protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null) {
+    protected function resolvePlayedCard(int $card_type, ?int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null) {
         $this->resolved = compact('card_type', 'card_id', 'decisions', 'use_booty_card_id', 'actions');
         return $this->runEngine ? parent::resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id, $actions) : 'seaTurnDone';
     }

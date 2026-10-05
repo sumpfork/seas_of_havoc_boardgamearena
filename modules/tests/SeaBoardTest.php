@@ -363,6 +363,17 @@ final class SeaBoardTest extends TestCase
         $this->assertCount(1, $this->seaBoard->getObjects(3, 2));
     }
 
+    public function testMoveObjectBackwardMovesAsternWithoutTurning(): void
+    {
+        $this->seaBoard->placeObject(2, 0, ["type" => "player_ship", "arg" => "player1", "heading" => Heading::SOUTH]);
+
+        $result = $this->seaBoard->moveObjectBackward("player_ship", "player1", []);
+
+        $this->assertEquals("move", $result["type"]);
+        $this->assertEquals([2, 5], [$result["new_x"], $result["new_y"]], "astern of a south-facing ship is north, wrapping");
+        $this->assertEquals(Heading::SOUTH, $this->seaBoard->findObject("player_ship", "player1")["object"]["heading"]);
+    }
+
     public function testMoveObjectForwardWithTeleportation(): void
     {
         // Test teleportation when moving off the board

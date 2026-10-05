@@ -51,7 +51,10 @@ trait CardPlay
         $outcome = new CardActionOutcome();
         switch ($action_type) {
             case PrimitiveCardPlayAction::FORWARD:
-                $result = $this->seaboard->moveObjectForward("player_ship", $ship, ["rock", "player_ship"]);
+            case PrimitiveCardPlayAction::BACKWARD:
+                $result = $action_type === PrimitiveCardPlayAction::FORWARD
+                    ? $this->seaboard->moveObjectForward("player_ship", $ship, ["rock", "player_ship"])
+                    : $this->seaboard->moveObjectBackward("player_ship", $ship, ["rock", "player_ship"]);
                 $outcome->actionChain[] = $result;
                 if ($result["type"] == "collision") {
                     $outcome->collisionOccurred = true;
@@ -347,23 +350,62 @@ trait CardPlay
             (int) $held["type"] !== $card_type) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card from your hand"));
         }
+        $this->setActiveShip($ship);
+        return $this->resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id);
+    }
+
+    private function setActiveShip(int $ship): void
+    {
         if ($ship !== 1 && ($ship !== 2 || !$this->hasSecondShip($this->getActivePlayerId()))) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose one of your ships"));
         }
         // Everything this card goes on to do - including a captain card it opens, the shot after a
         // collision, and the sea features at the end - applies to this ship.
         $this->setGameStateValue("active_ship", $ship);
-        return $this->resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id);
     }
 
-    protected function resolvePlayedCard(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null)
+    /** The playable_cards entry describing rowing's maneuvers; never dealt as a card. */
+    function rowingCardType(): int
+    {
+        foreach ($this->playable_cards as $type => $card) {
+            if (($card["category"] ?? "") === "rowing") {
+                return (int) $type;
+            }
+        }
+        throw new \Bga\GameFramework\SystemException("No rowing card defined");
+    }
+
+    /** "Instead of passing or resolving a card, a player may instead row their ship by discarding 2 cards." */
+    function actRow(int $discard_card_id_1, int $discard_card_id_2, string $decision, int $ship = 1)
+    {
+        if ($discard_card_id_1 === $discard_card_id_2) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose two different cards to discard"));
+        }
+        $type = $this->rowingCardType();
+        $maneuvers = array_column($this->playable_cards[$type]["actions"][0]["choices"], "action");
+        if (!in_array($decision, $maneuvers, true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a rowing maneuver"));
+        }
+        $this->setActiveShip($ship);
+        $player_id = (string) $this->getActivePlayerId();
+        $this->bga->notify->all("log", clienttranslate('${player_name} rows'), [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => $player_id,
+        ]);
+        // Validates both cards are in the player's hand.
+        $this->discardCards($player_id, [$discard_card_id_1, $discard_card_id_2]);
+        return $this->resolvePlayedCard($type, null, [$decision]);
+    }
+
+    protected function resolvePlayedCard(int $card_type, ?int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null)
     {
         return $this->withInfamyAfterNotifications(
             fn() => $this->resolvePlayedCardNow($card_type, $card_id, $decisions, $use_booty_card_id, $actions),
         );
     }
 
-    private function resolvePlayedCardNow(int $card_type, int $card_id, array $decisions, ?int $use_booty_card_id, ?array $actions)
+    /** $card_id is null for rowing, whose discards have already been made. */
+    private function resolvePlayedCardNow(int $card_type, ?int $card_id, array $decisions, ?int $use_booty_card_id, ?array $actions)
     {
         $this->setGameStateValue("pending_card_flag_type", isset($this->playable_cards[$card_type]["flag"]) ? $card_type : 0);
         $this->setGameStateValue(
@@ -443,7 +485,9 @@ trait CardPlay
             }
         }
 
-        $this->discardCardToPlayer($card_id, $player_id);
+        if ($card_id !== null) {
+            $this->discardCardToPlayer($card_id, $player_id);
+        }
 
         $this->bga->notify->all("cardPlayed", $notification_message, [
             "player_name" => $this->getPlayerNameById($player_id),

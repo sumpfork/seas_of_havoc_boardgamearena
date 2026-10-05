@@ -1310,4 +1310,24 @@ $this->playable_cards = [
         "captain_key" => "treasure_seeker",
         "category" => "captain",
     ],
+    // Rowing: discard 2 cards to take one of these maneuvers instead of playing a card. Not a real
+    // card - never dealt - but the play dialog shows it like one. No "sailing" type: Swift Hull and
+    // Nimble Hull do not apply.
+    [
+        "cost" => [],
+        "actions" => [
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                    ["action" => PrimitiveCardPlayAction::BACKWARD->value],
+                ],
+            ],
+        ],
+        "image_id" => null,
+        "type" => [],
+        "category" => "rowing",
+    ],
 ];

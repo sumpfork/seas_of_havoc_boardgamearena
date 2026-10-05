@@ -272,6 +272,15 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               () => this.bgaPerformAction("actDraftShip", { ship })));
             break;
 
+          case "seaTurn":
+            this.statusBar.addActionButton(_("Row (discard 2 cards)"), () => this.startRowing(), {
+              id: "soh_row_button",
+              color: "secondary",
+              disabled: this.playerHand.getCards().length < 2,
+            });
+            this.addTooltipHtml("soh_row_button", this.tooltipText("row_button"));
+            break;
+
           case "captainCard":
             // Here rather than onEnteringState: the framework clears the status bar buttons before this.
             this.setupCaptainCardSelection(args);
