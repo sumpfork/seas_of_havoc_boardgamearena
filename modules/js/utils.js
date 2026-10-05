@@ -333,6 +333,7 @@ define([
           shipwreck: _("Shipwreck: sail onto it to take its booty token"),
         },
         booty_token: _("Booty token: spend it whenever you pay resources, but it is spent whole - any resources left on it are lost"),
+        row_button: _("Instead of playing a card you can Row by discarding two cards. This gives you a choice of sailing forward, left, right or <i>backwards</i>."),
       };
     },
 

@@ -15,6 +15,7 @@ namespace Bga\Games\SeasOfHavoc;
 enum PrimitiveCardPlayAction: string
 {
     case FORWARD = "forward";
+    case BACKWARD = "backward";
     case PIVOT_LEFT = "pivot left";
     case PIVOT_RIGHT = "pivot right";
     case PIVOT_AROUND = "pivot 180";

@@ -59,6 +59,48 @@ define([
     },
 
     /**
+     * Rowing: "Instead of passing or resolving a card, a player may instead row their ship by
+     * discarding 2 cards." First the two discards are picked from the hand; picking the second
+     * opens the play dialog with rowing's maneuvers (see onCardSelectedPlayerHand).
+     */
+    startRowing: function () {
+      this.cleanupCardPlayDialog();
+      this.playerHand.unselectAll();
+      this._rowing = true;
+      this.playerHand.setSelectionMode("multiple");
+      this.statusBar.setTitle(_("${you} must select 2 cards to discard for rowing"));
+      this.statusBar.removeActionButtons();
+      this.statusBar.addActionButton(_("Cancel"), () => this.cancelRowing(), { color: "secondary" });
+    },
+
+    cancelRowing: function () {
+      this.cleanupCardPlayDialog();
+      this.updateHandSelectionMode(); // ends rowing
+      this.playerHand.unselectAll();
+      this.updatePageTitle(); // the seaTurn title and buttons
+    },
+
+    showRowingDialog: function () {
+      const card = Object.values(this.playable_cards).find((c) => c.category === "rowing");
+      if (!card) throw new Error("No rowing card in playable_cards");
+      this.showCardPlayDialog(card, null);
+      dom.byId("play_card_button").textContent = _("Row");
+      dom.byId("pass_card_button").textContent = _("Cancel");
+    },
+
+    _sendRow: function (decisions) {
+      const [first, second] = this.playerHand.getSelection();
+      const params = { discard_card_id_1: first.id, discard_card_id_2: second.id, decision: decisions[0] };
+      const shipChoice = document.querySelector('input[name="card_ship"]:checked');
+      if (shipChoice) {
+        params.ship = Number(shipChoice.value);
+      }
+      // Back to the plain turn first, so a rejected row leaves the player able to try again.
+      this.cancelRowing();
+      this.bgaPerformAction("actRow", params);
+    },
+
+    /**
      * Show card play dialog with choices
      */
     showCardPlayDialog: function (card, card_id, captainCopyId = null) {
@@ -106,6 +148,11 @@ define([
           console.groupCollapsed("card play button clicked");
           event.preventDefault();
           var decisionSummary = this._decisionSummary(this.dep_tree);
+          if (this._rowing) {
+            this._sendRow(decisionSummary);
+            console.groupEnd();
+            return;
+          }
           var totalCost = this._computeTotalPlayCost(this.dep_tree);
           var captainCopyId = this._captainCopyId;
 
@@ -123,6 +170,10 @@ define([
         "click",
         lang.hitch(this, (event) => {
           console.groupCollapsed("pass card button clicked");
+          if (this._rowing) {
+            this.cancelRowing();
+            return;
+          }
           if (this._captainCopyId !== null) {
             this.cleanupCardPlayDialog();
             return;
@@ -494,6 +545,7 @@ define([
       var sides = { left: "\u25C0", right: "\u25B6", fore: "\u25B2", aft: "\u25BC" };
       var moves = {
         forward: "\u2191",
+        backward: "\u2193",
         left: "\u21B0",
         right: "\u21B1",
         "pivot left": "\u21BA",

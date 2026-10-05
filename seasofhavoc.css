@@ -973,6 +973,7 @@ a.disabled {
   border-radius: 5px;
   padding: 10px;
   background: rgba(128, 128, 128, 0.2);
+  box-sizing: border-box; /* as #scrap: the cards sit at the corner, so padding only grows the box */
 }
 
 /* Piles open in a bounded dialog on click. The library also fans them out on hover, to
@@ -994,6 +995,13 @@ a.disabled {
 #mydiscard,
 #scrap {
   cursor: pointer;
+}
+
+/* bga-cards sizes the hand at 1.5 card heights (297px) for a big hand's fan; 4-6 cards fill ~220px,
+   leaving a gap under the whole player row. ponytail: 240px fits up to 8 cards; bigger hands hang
+   a little below the box (not clipped) - raise this if that ever looks wrong. */
+#myhand {
+  --bga-cards_hand-stock-height: 240px !important;
 }
 
 #myhand_wrap {
@@ -1358,3 +1366,14 @@ a.disabled {
   color: #fff;
   font-weight: bold;
 }
+
+/* Rowing has no card art yet: a plain card with its name. */
+.soh_playable-card-blank {
+  background: #efe3c4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 20px;
+}
+

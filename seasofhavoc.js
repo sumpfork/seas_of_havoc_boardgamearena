@@ -127,6 +127,7 @@ define([
       }
       // Don't use checkAction() here — it returns false during state transitions
       // because the BGA framework locks the interface. Instead check possibleactions directly.
+      this._rowing = false;
       const possibleActions = this.gamedatas.gamestate.possibleactions || [];
       const canSelect = this.isCurrentPlayerActive() && possibleActions.indexOf("actPlayCard") !== -1;
       const selectionMode = canSelect ? "single" : "none";
@@ -418,6 +419,12 @@ define([
           div.classList.add("soh_playable-card-front");
           const cardData = this.playable_cards[card.type];
           image_id = cardData.image_id;
+          if (image_id === null) {
+            // ponytail: rowing has no art yet; give it an image_id in material.inc.php when it does.
+            div.classList.add("soh_playable-card-blank");
+            div.textContent = _("Rowing");
+            return;
+          }
         } else {
           image_id = gamedatas.non_playable_cards.card_back.image_id;
           div.classList.add("soh_playable-card-back");
@@ -1008,6 +1015,15 @@ define([
     },
 
     onCardSelectedPlayerHand: function () {
+      if (this._rowing) {
+        // The hand is picking rowing's two discards; the maneuver dialog is up while there are two.
+        if (this.playerHand.getSelection().length === 2) {
+          this.showRowingDialog();
+        } else {
+          this.cleanupCardPlayDialog();
+        }
+        return;
+      }
       console.groupCollapsed("player card selected");
       var selection = this.playerHand.getSelection();
       console.log("player hand selection:", selection);

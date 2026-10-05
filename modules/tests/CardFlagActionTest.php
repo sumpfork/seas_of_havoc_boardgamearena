@@ -159,6 +159,40 @@ final class CardFlagActionTest extends TestCase
         $this->assertSame(STATE_CARD_FLAG, $game->stNextPlayerSeaPhase());
     }
 
+    public function testRowingDiscardsTwoCardsAndMovesBackward(): void {
+        $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()
+            ->onlyMethods(['moveObjectBackward', 'moveObjectForward'])->getMock();
+        $board->expects($this->never())->method('moveObjectForward');
+        $board->expects($this->once())->method('moveObjectBackward')->willReturn(
+            ['type' => 'collision', 'colliders' => [['type' => 'rock', 'arg' => 0]]],
+        );
+        (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+        $this->game->runEngine = true;
+        $a = $this->game->addCard(1, 'hand');
+        $b = $this->game->addCard(1, 'hand');
+        $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->actRow($a, $b, 'backward'));
+        $this->assertSame('player_discard_1', $this->game->deck->getCard($a)['location']);
+        $this->assertSame('player_discard_1', $this->game->deck->getCard($b)['location']);
+        $this->assertSame(['1'], $this->game->damaged);
+        $this->assertSame(0, $this->game->getGameStateValue('pending_card_flag_type'));
+    }
+
+    public function testRowingNeedsTwoDifferentCardsFromHand(): void {
+        $a = $this->game->addCard(1, 'hand');
+        try {
+            $this->game->actRow($a, $a, 'forward');
+            $this->fail('one card cannot pay for rowing twice');
+        } catch (\Bga\GameFramework\UserException) {}
+        $other = $this->game->addCard(1, 'hand', 2);
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actRow($a, $other, 'forward');
+    }
+
+    public function testRowingRejectsManeuversRowingDoesNotHave(): void {
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actRow($this->game->addCard(1, 'hand'), $this->game->addCard(1, 'hand'), 'pivot 180');
+    }
+
     public function testExtortionScrappingAlsoRefundsTheCardCost(): void {
         $id = $this->game->addCard($this->game->flagType('red'), 'hand');
         $this->game->setGameStateValue('extortion_pending_flags', 2);

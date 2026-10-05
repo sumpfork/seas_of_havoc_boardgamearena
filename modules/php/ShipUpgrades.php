@@ -35,7 +35,7 @@ class ShipUpgrades
             clienttranslate("heavy guns"), clienttranslate("chaser"), clienttranslate("both sides"),
             clienttranslate("heavy guns both sides"),
             clienttranslate("left"), clienttranslate("right"), clienttranslate("fore"), clienttranslate("aft"),
-            clienttranslate("forward"), clienttranslate("pivot left"), clienttranslate("pivot right"),
+            clienttranslate("forward"), clienttranslate("backward"), clienttranslate("pivot left"), clienttranslate("pivot right"),
             clienttranslate("pivot 180"), clienttranslate("scrap self"), clienttranslate("skip"), clienttranslate("pass"),
         ];
     }

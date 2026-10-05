@@ -50,4 +50,10 @@ class SeaTurn extends GameState
     {
         return $this->game->actPlayCard($card_type, $card_id, $decisions, $use_booty_card_id, $ship);
     }
+
+    #[PossibleAction]
+    public function actRow(int $discard_card_id_1, int $discard_card_id_2, string $decision, int $ship = 1): mixed
+    {
+        return $this->game->actRow($discard_card_id_1, $discard_card_id_2, $decision, $ship);
+    }
 }
