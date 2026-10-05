@@ -377,7 +377,8 @@ trait CardPlay
         if ($action === null) {
             throw new \Bga\GameFramework\SystemException("No firing action is pending after the collision");
         }
-        return ["action" => $action];
+        // Which ship fires, for the client's board preview (two ships in the 2 Ship Variant).
+        return ["action" => $action, "ship" => $this->activeShipArg($this->getActivePlayerId())];
     }
 
     function actPostCollisionFire(string $decision, ?int $use_booty_card_id = null): mixed
@@ -680,9 +681,10 @@ trait CardPlay
         #$this->gamestate->nextState("seaTurnDone");
     }
 
-    function argResolveCollision()
+    /** Which ship is pivoting, for the client's board preview. */
+    function argResolveCollision(): array
     {
-        $this->mytrace("argResolveCollision");
+        return ["ship" => $this->activeShipArg($this->getActivePlayerId())];
     }
 
     function actPivotPickedInDialog(string $direction)

@@ -40,7 +40,7 @@ class ResolveCollision extends GameState
 
     public function getArgs(): array
     {
-        return $this->game->argResolveCollision() ?? [];
+        return $this->game->argResolveCollision();
     }
 
     #[PossibleAction]

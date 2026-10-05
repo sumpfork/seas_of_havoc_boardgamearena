@@ -326,7 +326,8 @@ trait CaptainAbilities
         if ($ability === "unearth_riches") {
             $private["resources"] = $this->getBootyTokenConfigByTypeArg((int) $options[0]["type_arg"])["resources"];
         }
-        return ["ability" => $ability, "_private" => [$player_id => $private]];
+        // Which ship acts, for the client's board preview (Retaliation's shot).
+        return ["ability" => $ability, "ship" => $this->activeShipArg($player_id), "_private" => [$player_id => $private]];
     }
 
     function actResolveCaptainCard(array $choices, array $decisions = [], ?int $use_booty_card_id = null): mixed

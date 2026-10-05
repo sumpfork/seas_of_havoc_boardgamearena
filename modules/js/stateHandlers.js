@@ -188,6 +188,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       console.log("Leaving state: " + stateName);
       this.bga.gameArea.getElement().classList.remove("soh_placing");
       this.clearPendingSkiffSlot();
+      // A hovered status bar button's board preview: the button goes away without a mouseleave.
+      // (The card play dialog's own preview stays while the dialog is open.)
+      if (!this._previewActions) this.clearCardPreview();
 
       switch (stateName) {
         case "client_tradingPostBootyChoice":
@@ -268,11 +271,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "cardFlag":
             if (args.flag === "green") {
-              ["sail", "cannonball", "doubloon"].forEach(resource => {
-                this.statusBar.addActionButton(this.resourceIcon(resource), () => {
-                  this.bgaPerformAction("actResolveCardFlag", { resource });
-                }, { color: "secondary" });
-              });
+              this.addResourceButtons((resource) => this.bgaPerformAction("actResolveCardFlag", { resource }));
             } else if (args.flag === "tan" || args.flag === "blue") {
               this.statusBar.addActionButton(args.flag === "tan" ? _("Draw a card") : _("Take another turn"), () => {
                 this.bgaPerformAction("actResolveCardFlag", {});
@@ -300,9 +299,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               if (!this.canPlayerAfford(shot.cost, true, false)) {
                 return;
               }
-              this.statusBar.addActionButton(
+              this.addPreviewedActionButton(
                 this._choiceLabelHtml(shot),
                 () => { this.fireAfterCollision(shot); },
+                { actions: [fireAction], decisions: [shot.name], ship: args.ship },
               );
             });
             this.statusBar.addActionButton(
@@ -360,13 +360,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             // restores it.
             if (args.pending_resource_choice) {
               this.statusBar.setTitle(_("${you} must select a resource"));
-              for (const resource of ["sail", "cannonball", "doubloon"]) {
-                this.statusBar.addActionButton(
-                  this.resourceIcon(resource),
-                  () => this.bgaPerformAction("actResourcePickedInDialog", { resource: resource }),
-                  { color: "secondary" },
-                );
-              }
+              this.addResourceButtons((resource) => this.bgaPerformAction("actResourcePickedInDialog", { resource }));
               break;
             }
             if (args.pending_workshop) {
@@ -483,9 +477,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             break;
 
           case "resolveCollision":
-            this.statusBar.addActionButton(
+            this.addPreviewedActionButton(
               "<div class='soh_resource soh_pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
+              { actions: [{ action: "pivot left" }], decisions: [], ship: args.ship },
               { color: "secondary", classes: "soh_pivot_button" },
             );
             this.statusBar.addActionButton(
@@ -493,9 +488,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               this.onPivotButtonClicked.bind(this),
               { color: "secondary", classes: "soh_pivot_button" },
             );
-            this.statusBar.addActionButton(
+            this.addPreviewedActionButton(
               "<div class='soh_resource soh_pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
+              { actions: [{ action: "pivot right" }], decisions: [], ship: args.ship },
               { color: "secondary", classes: "soh_pivot_button" },
             );
             break;
@@ -540,11 +536,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "client_extortionGreenResource": {
-            ["sail", "cannonball", "doubloon"].forEach((resource) => {
-              this.statusBar.addActionButton(this.resourceIcon(resource), () => {
-                this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource });
-              }, { color: "secondary" });
-            });
+            this.addResourceButtons((resource) => this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource }));
             this.statusBar.addActionButton(_("Back"), () => { this.restoreServerGameState(); }, {
               color: "secondary",
             });
@@ -563,14 +555,14 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                 barterSelf.statusBar.addActionButton(
                   "1 " + barterSelf.resourceIcon(res) + " → " + amount + " " + barterSelf.resourceIcon("infamy"),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "resource_to_infamy" }); },
-                  {},
+                  { color: "secondary" },
                 );
               }
               if (infamy >= amount) {
                 barterSelf.statusBar.addActionButton(
                   amount + " " + barterSelf.resourceIcon("infamy") + " → 1 " + barterSelf.resourceIcon(res),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
-                  {},
+                  { color: "secondary" },
                 );
               }
             });
@@ -581,12 +573,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "chainShotLoss": {
-            for (const resource of args.options) {
-              this.statusBar.addActionButton(
-                _("Lose 1") + " " + this.resourceIcon(resource),
-                () => { this.bgaPerformAction("actChainShotLose", { resource: resource }); },
-              );
-            }
+            this.addResourceButtons((resource) => this.bgaPerformAction("actChainShotLose", { resource }), args.options);
             break;
           }
 
@@ -598,7 +585,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             this.statusBar.addActionButton(
               _("Gain") + " 2 " + this.resourceIcon("doubloon"),
               function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
-              {},
+              { color: "secondary" },
             );
             var ttMarketArr = Array.isArray(ttMarket) ? ttMarket : Object.values(ttMarket);
             ttMarketArr.forEach(function (card) {
@@ -617,40 +604,41 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                     doubloons_as_sails: 0,
                   });
                 },
-                { disabled: !canAfford },
+                { color: "secondary", disabled: !canAfford },
               );
             });
             break;
           }
 
           case "boardingParty": {
-            var bpArgs = args || {};
-            var bpTargets = bpArgs.targets || [];
-            var bpSelf = this;
-            bpTargets.forEach(function (target) {
-              var tid = target.player_id;
-              var tname = bpSelf.gamedatas.players[tid].name;
-              var res = target.resources || {};
-              ["sail", "cannonball", "doubloon"].forEach(function (r) {
-                if ((res[r] || 0) > 0) {
-                  bpSelf.statusBar.addActionButton(
-                    _("Steal") + " 1 " + bpSelf.resourceIcon(r) + " " + _("from") + " " + tname,
-                    function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: r }); },
-                    {},
-                  );
-                }
-              });
+            const targets = (args || {}).targets || [];
+            const name = (target) => this.gamedatas.players[target.player_id].name;
+            // With one ship to board the title names it; with several, each button says whose it is.
+            this.statusBar.setTitle(
+              targets.length === 1
+                ? _("${you} may steal 1 resource or a booty token from ${player}")
+                : _("${you} may steal 1 resource or a booty token"),
+              targets.length === 1 ? { player: name(targets[0]) } : undefined,
+            );
+            targets.forEach((target) => {
+              const owner = targets.length === 1 ? "" : " " + name(target);
+              const held = target.resources || {};
+              this.addResourceButtons(
+                (item) => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item }),
+                Object.keys(held).filter((r) => held[r] > 0),
+                owner,
+              );
               if ((target.booty_token_count || 0) > 0) {
-                bpSelf.statusBar.addActionButton(
-                  _("Steal booty token from") + " " + tname,
-                  function () { bpSelf.bgaPerformAction("actBoardingPartySteal", { target_player_id: tid, item: "booty_token" }); },
-                  {},
+                this.statusBar.addActionButton(
+                  _("Booty token") + owner,
+                  () => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item: "booty_token" }),
+                  { color: "secondary" },
                 );
               }
             });
-            this.statusBar.addActionButton(_("Skip (No Steal)"), function () {
-              bpSelf.bgaPerformAction("actSkipBoardingParty", {});
-            }, { color: "secondary" });
+            this.statusBar.addActionButton(_("Skip (No Steal)"), () => this.bgaPerformAction("actSkipBoardingParty", {}), {
+              color: "secondary",
+            });
             break;
           }
 

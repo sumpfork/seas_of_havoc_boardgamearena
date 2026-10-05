@@ -61,15 +61,23 @@ const handlers = loadModule("stateHandlers.js");
 const utils = loadModule("utils.js");
 const buttons = [];
 let action;
+let title;
 handlers.onUpdateActionButtons.call({
   resourceIcon: utils.resourceIcon,
+  addResourceButtons: utils.addResourceButtons,
   isCurrentPlayerActive: () => true,
   gamedatas: { players: { 2389208: { name: "pgorniak4" } } },
-  statusBar: { addActionButton: (label, callback) => buttons.push({ label, callback }) },
+  statusBar: {
+    addActionButton: (label, callback, options) => buttons.push({ label, callback, options }),
+    setTitle: (text, args) => { title = { text, args }; },
+  },
   bgaPerformAction: (name, args) => { action = { name, args }; },
-}, "boardingParty", { targets: [{ player_id: "2389208", resources: { sail: 1 }, booty_token_count: 1 }] });
-assert.equal(buttons[0].label, "Steal 1 " + utils.resourceIcon("sail") + " from pgorniak4");
-assert.equal(buttons[1].label, "Steal booty token from pgorniak4");
+}, "boardingParty", { targets: [{ player_id: "2389208", resources: { sail: 1, cannonball: 0 }, booty_token_count: 1 }] });
+// One target: the title names it and the resources are the usual grey icon-only buttons.
+assert.equal(title.args.player, "pgorniak4");
+assert.equal(buttons[0].label, utils.resourceIcon("sail"), "Only resources the target holds are offered");
+assert.equal(buttons[0].options.color, "secondary");
+assert.equal(buttons[1].label, "Booty token");
 buttons[0].callback();
 assert.equal(action.name, "actBoardingPartySteal");
 assert.equal(action.args.target_player_id, "2389208", "Actions must still send the target ID");
@@ -80,6 +88,7 @@ for (const resource of ["sail", "cannonball", "doubloon", "infamy"]) {
 assert.throws(() => utils.resourceIcon("unknown"), /Unknown resource icon/);
 const iconGame = {
   resourceIcon: utils.resourceIcon,
+  addResourceButtons: utils.addResourceButtons,
   isCurrentPlayerActive: () => true,
   statusBar: { addActionButton: (label, callback) => buttons.push({ label, callback }) },
   bgaPerformAction: (name, args) => { action = { name, args }; },
@@ -104,6 +113,28 @@ for (const button of buttons.slice(0, 6)) {
   button.callback();
   assert.equal(action.name, "actBarterExchange");
 }
+// Every "pick a resource" prompt uses the same grey icon buttons, in sail / cannonball / doubloon order.
+buttons.length = 0;
+handlers.onUpdateActionButtons.call(iconGame, "chainShotLoss", { options: ["doubloon", "sail"] });
+assert.deepEqual(buttons.map((b) => b.label), [utils.resourceIcon("sail"), utils.resourceIcon("doubloon")]);
+buttons[1].callback();
+assert.equal(action.name, "actChainShotLose");
+assert.equal(action.args.resource, "doubloon");
+
+// Status bar movement and firing choices preview on the board like the card play dialog.
+const previewed = [];
+const fireAction = { action: "fire", range: 2, cost: { cannonball: 1 } };
+handlers.onUpdateActionButtons.call({
+  ...iconGame,
+  canPlayerAfford: (cost) => cost === fireAction.cost,
+  _choiceLabelHtml: (shot) => shot.name,
+  addPreviewedActionButton: (label, callback, preview) => previewed.push({ label, preview }),
+}, "postCollisionFire", { action: fireAction, ship: "7_2" });
+assert.deepEqual(previewed.map((b) => b.label), ["fire left", "fire right"]);
+assert.equal(previewed[1].preview.actions[0], fireAction);
+assert.equal(previewed[1].preview.decisions[0], "fire right");
+assert.equal(previewed[1].preview.ship, "7_2", "the preview is drawn for the ship that fires");
+
 buttons.length = 0;
 handlers.onUpdateActionButtons.call(iconGame, "timelyTrading", { market: [{ id: 42, type: 1 }] });
 assert.match(buttons[0].label, /Gain 2 <span/);
@@ -487,3 +518,4 @@ assert.equal(nodes.skip.checked, false);
   assert.deepEqual(simulateCardPlay([{ action: "forward" }], ["pass"], { x: 0, y: 0, heading: N }, open), [],
     "passing the card shows nothing");
 }
+

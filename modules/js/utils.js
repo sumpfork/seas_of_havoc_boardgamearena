@@ -26,6 +26,23 @@ define([
   const console = Constants.console;
 
   return {
+    /**
+     * The one way to ask for a resource: a grey, icon-only status bar button per resource, always
+     * in sail / cannonball / doubloon order. The title says what the choice is for.
+     * @param {function(string)} onPick called with the chosen resource
+     * @param {string[]} [offered] the resources to offer, if not all three
+     * @param {string} [suffix] html after each icon, e.g. whose resource it is
+     */
+    addResourceButtons: function (onPick, offered = ["sail", "cannonball", "doubloon"], suffix = "") {
+      ["sail", "cannonball", "doubloon"]
+        .filter((resource) => offered.includes(resource))
+        .forEach((resource) =>
+          this.statusBar.addActionButton(this.resourceIcon(resource) + suffix, () => onPick(resource), {
+            color: "secondary",
+          }),
+        );
+    },
+
     resourceIcon: function (resource) {
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
       if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);

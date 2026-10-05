@@ -780,9 +780,10 @@ define([
       });
       const button = (label, action, color = "primary") => this.statusBar.addActionButton(label, action, { color });
       if (ability === "unearth_riches") {
-        this.statusBar.setTitle(_("Unearth Riches — gain:") + " " + Object.entries(data.resources).map(([r, n]) => n + " " + r).join(", "));
+        const gains = Object.entries(data.resources).map(([r, n]) => n + " " + (r === "choice" ? _("resource of your choice") : this.resourceIcon(r)));
+        this.statusBar.setTitle(_("Unearth Riches — gain:") + " " + gains.join(" + "));
         if (data.resources.choice) {
-          ["sail", "cannonball", "doubloon"].forEach(r => button(this.resourceIcon(r), () => send({ resource: r }), "secondary"));
+          this.addResourceButtons((resource) => send({ resource }));
         } else {
           button(_("Gain rewards"), () => send({}));
         }
@@ -791,8 +792,15 @@ define([
       if (ability === "retaliation") {
         // Every damage card is identical, so there is nothing to pick between: go straight to the shot.
         this.statusBar.setTitle(_("Retaliation: scrap a damage card, then you may fire."));
-        button(_("Fire left (free, range 3)"), () => send({ fire: "fire left" }));
-        button(_("Fire right (free, range 3)"), () => send({ fire: "fire right" }));
+        // The free shot the server resolves (see actResolveCaptainCard), previewed on the board.
+        const shot = [{ action: "fire", range: 3 }];
+        ["left", "right"].forEach((side) =>
+          this.addPreviewedActionButton(
+            side === "left" ? _("Fire left (free, range 3)") : _("Fire right (free, range 3)"),
+            () => send({ fire: "fire " + side }),
+            { actions: shot, decisions: ["fire " + side], ship: args.ship },
+          ),
+        );
         button(_("Scrap without firing"), () => send({ fire: "skip" }), "secondary");
         return;
       }

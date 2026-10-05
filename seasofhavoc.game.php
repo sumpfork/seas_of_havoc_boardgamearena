@@ -189,6 +189,30 @@ class SeasOfHavoc extends Table
         In this method, you must setup the game according to the game rules, so that
         the game is ready to be played.
     */
+    /**
+     * "All players receive 1 of each resource plus additional resources based on play order."
+     * Play order runs clockwise (seat order) from $first_seat, the first player token's holder.
+     */
+    static function startingResources(int $seat, int $first_seat, int $player_count): array
+    {
+        $resources = ["sail" => 1, "cannonball" => 1, "doubloon" => 1, "skiff" => 3];
+        $bonus = [
+            1 => [],
+            2 => ["sail" => 1],
+            3 => ["cannonball" => 1],
+            4 => ["sail" => 1, "cannonball" => 1],
+            5 => ["cannonball" => 1, "doubloon" => 1],
+        ];
+        $play_order = (($seat - $first_seat + $player_count) % $player_count) + 1;
+        if (!isset($bonus[$play_order])) {
+            throw new \Bga\GameFramework\SystemException("No starting resources for play order $play_order");
+        }
+        foreach ($bonus[$play_order] as $resource => $amount) {
+            $resources[$resource] += $amount;
+        }
+        return $resources;
+    }
+
     protected function setupNewGame($players, $options = [])
     {
         // Set the colors of the players with HTML color code
@@ -263,36 +287,16 @@ class SeasOfHavoc extends Table
         /************ Start the game initialization *****/
 
         $sql = "INSERT INTO resource (player_id, resource_key, resource_count) VALUES ";
-        $base_resources = array_fill_keys($this->resource_types, 1);
-        $base_resources["skiff"] = 3;
-
-        $this->mydump("base resources", $base_resources);
         $player_infos = $this->loadPlayersBasicInfos();
+
+        // The first player is drawn at random; the starting bonuses go by play order from them.
+        $player_ids = array_keys($player_infos);
+        $random_first_player = $player_ids[array_rand($player_ids)];
+        $first_seat = (int) $player_infos[$random_first_player]["player_no"];
 
         $values = [];
         foreach ($player_infos as $playerid => $player) {
-            $player_resources = $base_resources;
-
-            switch ($player["player_no"]) {
-                case 1:
-                    break;
-                case 2:
-                    $player_resources["sail"] += 1;
-                    break;
-                case 3:
-                    $player_resources["cannonball"] += 1;
-                    break;
-                case 4:
-                    $player_resources["sail"] += 1;
-                    $player_resources["cannonball"] += 1;
-                    break;
-                case 5:
-                    $player_resources["cannonball"] += 1;
-                    $player_resources["doubloon"] += 1;
-                    break;
-                default:
-                    throw new Exception("Unknonwn player number" . $player["player_no"]);
-            }
+            $player_resources = self::startingResources((int) $player["player_no"], $first_seat, count($player_infos));
             foreach ($player_resources as $resource_type => $resource_count) {
                 $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
             }
@@ -300,9 +304,7 @@ class SeasOfHavoc extends Table
         $sql .= implode(",", $values);
         self::DbQuery($sql);
 
-        // Assign first player token to a random player
-        $player_ids = array_keys($player_infos);
-        $random_first_player = $player_ids[array_rand($player_ids)];
+        // Give the first player token to the player drawn above
         self::DbQuery(
             "INSERT INTO unique_tokens (player_id, token_key) VALUES ('$random_first_player', 'first_player_token')",
         );

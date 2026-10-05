@@ -279,8 +279,8 @@
   margin: 0 2px;
   display: inline-block;
 }
-/* The brown glyphs vanish on BGA's dark blue buttons: sit them on a parchment disc there. */
-.bgabutton .soh_resource {
+/* The brown glyphs vanish on BGA's dark blue buttons: sit them on a parchment disc there (grey buttons read fine as they are). */
+.bgabutton_blue .soh_resource {
   background-color: #f5ead8;
   border-radius: 50%;
   box-shadow: 0 0 0 2px #f5ead8;

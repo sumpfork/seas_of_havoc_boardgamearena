@@ -213,11 +213,32 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       if (!this._previewActions || !this.dep_tree) return;
       const shipChoice = document.querySelector('input[name="card_ship"]:checked');
       const shipArg = shipChoice && shipChoice.value === "2" ? this.player_id + "_2" : String(this.player_id);
+      this.showActionPreview(this._previewActions, this._decisionSummary(this.dep_tree), shipArg);
+    },
+
+    /**
+     * A status bar button that shows what it would do on the board while hovered or focused,
+     * like the card play dialog does. `preview` is {actions, decisions, ship} in the card's terms.
+     */
+    addPreviewedActionButton: function (label, onClick, preview, options = {}) {
+      const button = this.statusBar.addActionButton(label, onClick, options);
+      const show = () => this.showActionPreview(preview.actions, preview.decisions, preview.ship);
+      const hide = () => this.clearCardPreview();
+      button.addEventListener("mouseenter", show);
+      button.addEventListener("focus", show);
+      button.addEventListener("mouseleave", hide);
+      button.addEventListener("blur", hide);
+      return button;
+    },
+
+    /** Draw on the board what `actions` with `decisions` would do for ship `shipArg`. */
+    showActionPreview: function (actions, decisions, shipArg) {
+      this.clearCardPreview();
       const ship = this.getObjectOnSeaboard("player_ship", shipArg);
-      if (!ship) return;
+      if (!ship) throw new Error("No ship " + shipArg + " on the board to preview");
       const blocked = (x, y) =>
         this.seaboard.some((e) => e.x == x && e.y == y && (e.type === "rock" || e.type === "player_ship"));
-      const marks = simulateCardPlay(this._previewActions, this._decisionSummary(this.dep_tree), ship, blocked);
+      const marks = simulateCardPlay(actions, decisions, ship, blocked);
 
       // Cell centres in the board's own pixels, measured from the cell anchors (and unscaled, in
       // case the page is zoomed).
