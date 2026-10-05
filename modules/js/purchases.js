@@ -180,6 +180,56 @@ define([
     },
 
     /**
+     * Timely Trading: the island phase purchase button on each market card, buying straight away.
+     * A booty token can help pay; the Merchant's doubloons stand in for whatever is still short.
+     */
+    addTimelyTradingPurchaseButtons: function () {
+      query(".soh_purchase_card_button").forEach(domConstruct.destroy);
+      const have = this.getPlayerResources();
+      // Doubloons to substitute for what `cost` (after any booty) leaves short, or null if even that falls short.
+      const substitutions = (cost) => {
+        const subs = {
+          doubloons_as_cannonballs: Math.max(0, (cost.cannonball || 0) - (have.cannonball || 0)),
+          doubloons_as_sails: Math.max(0, (cost.sail || 0) - (have.sail || 0)),
+        };
+        const doubloons = (cost.doubloon || 0) + subs.doubloons_as_cannonballs + subs.doubloons_as_sails;
+        return doubloons <= (have.doubloon || 0) ? subs : null;
+      };
+      for (const slot_card of this.market.getCards()) {
+        const cost = this.playable_cards[slot_card.type].cost || {};
+        const tokenRes = this.getMyBootyTokenRes(cost);
+        const withBooty = this.bootyOverlapsCost(tokenRes, cost)
+          ? substitutions(this.computeEffectiveCost(cost, this.resolveBootyResources(tokenRes, cost)))
+          : null;
+        const withoutBooty = substitutions(cost);
+        const slot_id = this.marketSlotMap[slot_card.id];
+        const button = domConstruct.place(
+          this.format_block("jstpl_card_purchase_button", {
+            id: "purchase_button_" + slot_id,
+            slotnumber: slot_id.replace("market_slot_", ""),
+            cardid: String(slot_card.id),
+          }),
+          this.market.slots[slot_id],
+        );
+        if (!withBooty && !withoutBooty) {
+          button.classList.add("disabled");
+          button.textContent = _("Cannot Afford");
+          continue;
+        }
+        const send = (useBooty) => {
+          const args = { card_id: slot_card.id, ...(useBooty ? withBooty : withoutBooty) };
+          if (useBooty) args.use_booty_card_id = this.getMyBootyTokenId(cost);
+          this.bgaPerformAction("actTimelyTradingPurchaseCard", args);
+        };
+        button.addEventListener("click", () =>
+          withBooty
+            ? this._sendWithOptionalBooty(cost, send, _("Use your booty token to help pay for this card?"), !!withoutBooty)
+            : send(false),
+        );
+      }
+    },
+
+    /**
      * Handle purchase button click
      */
     onClickPurchaseButton: function (event) {

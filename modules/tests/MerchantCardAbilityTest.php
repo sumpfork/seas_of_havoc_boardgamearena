@@ -243,6 +243,23 @@ final class MerchantCardAbilityTest extends TestCase {
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
     }
 
+    public function testTimelyTradingPurchasePassesBootyToPayment(): void {
+        $game = new class extends MerchantCardUT {
+            public array $paid = [];
+            public function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void {
+                $this->paid[] = [$cost, $use_booty_card_id];
+            }
+        };
+        $game->mockCaptains = [1 => "merchant"];
+        $game->getMockCards()->cards[42] = [
+            "id" => 42, "type" => $this->firstMarketCardType, "location" => "market", "location_arg" => "0",
+        ];
+
+        $game->actTimelyTradingPurchaseCard(42, 0, 0, 7);
+
+        $this->assertSame([[$this->firstMarketCardCost, 7]], $game->paid, "the booty token helps pay, as for any market purchase");
+    }
+
     public function testActSkipTimelyTrading(): void {
         $result = $this->game->actSkipTimelyTrading();
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);

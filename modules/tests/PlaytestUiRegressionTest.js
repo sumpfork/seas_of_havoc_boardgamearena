@@ -136,12 +136,65 @@ assert.equal(previewed[1].preview.decisions[0], "fire right");
 assert.equal(previewed[1].preview.ship, "7_2", "the preview is drawn for the ship that fires");
 
 buttons.length = 0;
+// Timely Trading: the status bar only offers the doubloons; purchases are buttons on the market cards.
+let marketButtonsAdded = false;
+iconGame.addTimelyTradingPurchaseButtons = () => { marketButtonsAdded = true; };
 handlers.onUpdateActionButtons.call(iconGame, "timelyTrading", { market: [{ id: 42, type: 1 }] });
+assert.equal(buttons.length, 1);
 assert.match(buttons[0].label, /Gain 2 <span/);
-assert.equal((buttons[1].label.match(/role="img"/g) || []).length, 3);
-buttons[1].callback();
-assert.equal(action.args.card_id, 42);
+assert.ok(marketButtonsAdded);
 buttons.length = 0;
+// Each market card gets a purchase button; the Merchant's doubloons cover only what they're short of.
+const placed = [];
+const purchases = loadModule("purchases.js", {
+  query: () => [],
+  "dom-construct": {
+    destroy() {},
+    place(html, slot) {
+      const node = {
+        slot, classList: { add(c) { node.disabledClass = c; } }, textContent: "",
+        addEventListener(_, cb) { node.onclick = cb; },
+      };
+      placed.push(node);
+      return node;
+    },
+  },
+});
+const timelyGame = (bootyRes) => ({
+  ...iconGame,
+  format_block: () => "",
+  getPlayerResources: () => ({ sail: 1, cannonball: 1, doubloon: 5 }),
+  getMyBootyTokenRes: () => bootyRes,
+  getMyBootyTokenId: () => 7,
+  bootyOverlapsCost: utils.bootyOverlapsCost,
+  resolveBootyResources: (res) => res,
+  computeEffectiveCost: utils.computeEffectiveCost,
+  _sendWithOptionalBooty: loadModule("dialogs.js")._sendWithOptionalBooty,
+  playable_cards: {
+    1: { cost: { sail: 2, cannonball: 1, doubloon: 3 } },
+    2: { cost: { doubloon: 99 } },
+    3: { cost: { sail: 2, doubloon: 5 } },
+  },
+  market: {
+    getCards: () => [{ id: 42, type: 1 }, { id: 43, type: 2 }, { id: 44, type: 3 }],
+    slots: { market_slot_n1: "s1", market_slot_n3: "s3", market_slot_n4: "s4" },
+  },
+  marketSlotMap: { 42: "market_slot_n1", 43: "market_slot_n3", 44: "market_slot_n4" },
+});
+purchases.addTimelyTradingPurchaseButtons.call(timelyGame(null));
+assert.deepEqual(placed.map((b) => b.slot), ["s1", "s3", "s4"]);
+placed[0].onclick();
+assert.equal(action.name, "actTimelyTradingPurchaseCard");
+assert.deepEqual({ ...action.args }, { card_id: 42, doubloons_as_cannonballs: 0, doubloons_as_sails: 1 });
+assert.equal(placed[1].disabledClass, "disabled");
+assert.equal(placed[1].onclick, undefined, "an unaffordable card can't be bought");
+assert.equal(placed[2].disabledClass, "disabled", "6 doubloons short of 5 without booty");
+// A booty sail makes card 3 affordable, and the only way to pay for it is with the token.
+placed.length = 0;
+purchases.addTimelyTradingPurchaseButtons.call(timelyGame({ sail: 1 }));
+assert.equal(placed[2].disabledClass, undefined);
+placed[2].onclick();
+assert.deepEqual({ ...action.args }, { card_id: 44, doubloons_as_cannonballs: 0, doubloons_as_sails: 0, use_booty_card_id: 7 });
 // Extortion uses every flag you control, in an order you choose: one button per flag, plus skip.
 let chosenFlag = null;
 iconGame.onExtortionFlagChosen = flag => { chosenFlag = flag; };

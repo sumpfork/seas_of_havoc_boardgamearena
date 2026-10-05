@@ -236,6 +236,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           if (w) domConstruct.destroy(w);
           break;
 
+        case "timelyTrading":
+          query(".soh_purchase_card_button").forEach(domConstruct.destroy);
+          break;
+
         case "dummmy":
           break;
       }
@@ -578,35 +582,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "timelyTrading": {
-            var ttArgs = args || {};
-            var ttMarket = ttArgs.market || [];
-            var ttResources = ttArgs.resources || {};
             var ttSelf = this;
             this.statusBar.addActionButton(
               _("Gain") + " 2 " + this.resourceIcon("doubloon"),
               function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
               { color: "secondary" },
             );
-            var ttMarketArr = Array.isArray(ttMarket) ? ttMarket : Object.values(ttMarket);
-            ttMarketArr.forEach(function (card) {
-              var cardDef = ttSelf.playable_cards ? ttSelf.playable_cards[card.type] : null;
-              if (!cardDef) return;
-              var cost = cardDef.cost || {};
-              var canAfford = ttSelf.canPlayerAfford(cost, false, false);
-              var costStr = Object.entries(cost).map(function (e) { return e[1] + " " + ttSelf.resourceIcon(e[0]); }).join(", ");
-              var label = _("Buy") + (costStr ? " (" + costStr + ")" : "");
-              ttSelf.statusBar.addActionButton(
-                label,
-                function () {
-                  ttSelf.bgaPerformAction("actTimelyTradingPurchaseCard", {
-                    card_id: card.id,
-                    doubloons_as_cannonballs: 0,
-                    doubloons_as_sails: 0,
-                  });
-                },
-                { color: "secondary", disabled: !canAfford },
-              );
-            });
+            this.addTimelyTradingPurchaseButtons();
             break;
           }
 
