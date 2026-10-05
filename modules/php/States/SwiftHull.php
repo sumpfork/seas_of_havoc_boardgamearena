@@ -40,9 +40,9 @@ class SwiftHull extends GameState
     }
 
     #[PossibleAction]
-    public function actUseSwiftHull(): mixed
+    public function actUseSwiftHull(?int $use_booty_card_id = null): mixed
     {
-        return $this->game->actUseSwiftHull();
+        return $this->game->actUseSwiftHull($use_booty_card_id);
     }
 
     #[PossibleAction]

@@ -93,7 +93,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
       var nonPlayableCards = this.non_playable_cards || {};
       return !inactiveUpgrades.some((upgrade) => {
         var card = nonPlayableCards[upgrade.upgrade_key] || {};
-        return this.canPlayerAfford(card.cost, false, false);
+        return this.canPlayerAfford(card.cost, true, false);
       });
     },
 

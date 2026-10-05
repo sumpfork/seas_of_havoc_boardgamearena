@@ -18,10 +18,15 @@ class ShipUpgradeActivationUT extends SeasOfHavocUT
         ],
     ];
     public array $infamyAwards = [];
+    public array $booty_tokens = [];
+    public MockCardDeck $mockCards;
 
     public function __construct()
     {
         parent::__construct();
+        $this->mockCards = new MockCardDeck();
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this, $this->mockCards);
+        (new ReflectionProperty(SeasOfHavoc::class, "booty_tokens"))->setValue($this, $this->booty_tokens);
         $this->setGameStateValue("pending_workshop_player", 0);
         $this->setGameStateValue("pending_workshop_slot", 0);
     }
@@ -193,6 +198,23 @@ final class ShipUpgradeActivationTest extends TestCase
         $this->assertSame(0, $this->game->getGameStateValue("pending_workshop_player"));
         $this->assertSame(0, $this->game->getGameStateValue("pending_workshop_slot"));
         $this->assertSame("shipUpgradeActivated", $this->game->debugLastNotif["type"]);
+    }
+
+    public function testActivateShipUpgradeCanBePaidWithBooty(): void
+    {
+        $this->game->setGameStateValue("pending_workshop_player", 1);
+        $this->game->setGameStateValue("pending_workshop_slot", 1);
+        $this->game->mockPlayerResources["sail"] = 0;
+        $token = ["id" => 90, "type" => "booty", "type_arg" => 0, "location" => "booty_player", "location_arg" => 1];
+        $this->game->mockCards->cards[90] = $token;
+        $this->game->mockCards->locations["booty_player_1"] = [$token];
+
+        $this->assertSame("xebec_lateen_rigging", $this->game->getPendingWorkshopChoice()["upgrades"][0]["upgrade_key"],
+            "a booty token of 3 sails makes the 2 sail upgrade affordable");
+        $this->game->actActivateShipUpgrade("xebec_lateen_rigging", 90);
+
+        $this->assertSame([["player_id" => "1", "upgrade_key" => "xebec_lateen_rigging"]], $this->game->activatedUpgrades);
+        $this->assertSame("booty_discard", $this->game->mockCards->cards[90]["location"]);
     }
 
     public function testAwardShipUpgradeEndgameInfamySumsActivatedUpgrades(): void

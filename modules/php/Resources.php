@@ -143,6 +143,31 @@ trait Resources
         return $out;
     }
 
+    /** Whether the player can pay a cost from their resources, helped by one of their booty tokens if need be. */
+    function canPayWithOptionalBooty(int $player_id, array $cost): bool
+    {
+        $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
+        if ($this->canPayFor($cost, $player_resources)) {
+            return true;
+        }
+        foreach ($this->getBootyTokensForPlayer($player_id) as $token) {
+            $booty = $this->resolveBootyResourcesForPayment(
+                $this->getBootyTokenConfigByTypeArg((int) $token["type_arg"])["resources"],
+                $cost,
+                null,
+                $player_resources,
+            );
+            $remaining_cost = [];
+            foreach ($cost as $res => $need) {
+                $remaining_cost[$res] = max(0, $need - ($booty[$res] ?? 0));
+            }
+            if ($this->canPayFor($remaining_cost, $player_resources)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Pay a cost, optionally using the player's booty token to cover some or all of it.
      * If use_booty_card_id is set, that booty card is applied to reduce the cost (no refund for excess), then discarded to booty_discard.

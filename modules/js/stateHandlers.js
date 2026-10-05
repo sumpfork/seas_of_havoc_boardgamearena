@@ -193,6 +193,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       if (!this._previewActions) this.clearCardPreview();
 
       switch (stateName) {
+        case "islandTurn":
+          this.clearUpgradeActivationButtons();
+          break;
+
         case "client_tradingPostBootyChoice":
         case "client_tradingPostSpend":
         case "client_tradingPostGain":
@@ -350,7 +354,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           case "swiftHull": {
             this.statusBar.addActionButton(
               _("Pay 1") + " " + this.resourceIcon("sail") + " " + _("to play another card"),
-              () => { this.bgaPerformAction("actUseSwiftHull", {}); },
+              () => this.payWithOptionalBooty({ sail: 1 }, "actUseSwiftHull"),
               {},
             );
             this.statusBar.addActionButton(_("End turn"), () => {
@@ -367,16 +371,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               this.addResourceButtons((resource) => this.bgaPerformAction("actResourcePickedInDialog", { resource }));
               break;
             }
+            this.clearUpgradeActivationButtons();
             if (args.pending_workshop) {
               this.statusBar.setTitle(_("${you} must choose a ship upgrade to activate"));
-              for (const upgrade of args.pending_workshop.upgrades) {
-                const cost = Object.entries(upgrade.cost).map(([resource, amount]) => amount + " " + this.resourceIcon(resource));
-                this.statusBar.addActionButton(
-                  _(upgrade.name) + " (" + cost.join(" ") + ")",
-                  () => this.bgaPerformAction("actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key }),
-                  {},
-                );
-              }
+              this.addUpgradeActivationButtons(args.pending_workshop.upgrades);
               break;
             }
             this.refreshSkiffSlotPlaceability();
@@ -405,7 +403,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             if (args && args.can_use_extra_rations) {
               this.statusBar.addActionButton(
                 _("Extra Rations") + ": " + _("pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
-                () => { this.bgaPerformAction("actExtraRations", {}); },
+                () => this.payWithOptionalBooty({ doubloon: 1 }, "actExtraRations"),
                 {},
               );
             }
@@ -549,16 +547,17 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "barter": {
             var barterArgs = args || {};
-            var resources = barterArgs.resources || {};
             var infamy = barterArgs.infamy || 0;
             var rates = [["sail", 1], ["cannonball", 2], ["doubloon", 3]];
             var barterSelf = this;
             rates.forEach(function (pair) {
               var res = pair[0], amount = pair[1];
-              if ((resources[res] || 0) > 0) {
+              if (barterSelf.canPlayerAfford({ [res]: 1 }, true, false)) {
                 barterSelf.statusBar.addActionButton(
                   "1 " + barterSelf.resourceIcon(res) + " → " + amount + " " + barterSelf.resourceIcon("infamy"),
-                  function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "resource_to_infamy" }); },
+                  function () {
+                    barterSelf.payWithOptionalBooty({ [res]: 1 }, "actBarterExchange", { resource: res, direction: "resource_to_infamy" });
+                  },
                   { color: "secondary" },
                 );
               }

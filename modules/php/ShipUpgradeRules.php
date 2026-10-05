@@ -191,7 +191,7 @@ trait ShipUpgradeRules
         return $pending;
     }
 
-    function actExtraRations(): mixed
+    function actExtraRations(?int $use_booty_card_id = null): mixed
     {
         $player_id = self::getActivePlayerId();
         if (!$this->hasShipUpgrade($player_id, "brig_extra_rations")) {
@@ -202,7 +202,7 @@ trait ShipUpgradeRules
                 clienttranslate("You have already used Extra Rations this Island Phase"),
             );
         }
-        $this->pay($player_id, ["doubloon" => 1]);
+        $this->payWithOptionalBooty((int) $player_id, ["doubloon" => 1], $use_booty_card_id);
         $this->markUpgradeUsedThisPhase($player_id, "brig_extra_rations");
         $this->bga->notify->all("log", clienttranslate('${player_name} uses Extra Rations to draw a card'), [
             "player_name" => $this->getPlayerNameById($player_id),
@@ -223,11 +223,10 @@ trait ShipUpgradeRules
         if ($this->hasUsedUpgradeThisPhase($player_id, "brig_extra_rations")) {
             return false;
         }
-        $resources = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];
-        return ($resources["doubloon"] ?? 0) >= 1;
+        return $this->canPayWithOptionalBooty((int) $player_id, ["doubloon" => 1]);
     }
 
-    function actActivateShipUpgrade(string $upgrade_key): mixed
+    function actActivateShipUpgrade(string $upgrade_key, ?int $use_booty_card_id = null): mixed
     {
         $player_id = self::getActivePlayerId();
         $pending = $this->assertPendingWorkshopSelection((int) $player_id);
@@ -244,7 +243,7 @@ trait ShipUpgradeRules
         }
 
         $card = $this->non_playable_cards[$upgrade_key];
-        $this->pay($player_id, $card["cost"] ?? []);
+        $this->payWithOptionalBooty((int) $player_id, $card["cost"] ?? [], $use_booty_card_id);
         $this->playerGainResources($player_id, ["skiff" => -1]);
 
         $this->markShipUpgradeActivated($player_id, $upgrade_key);
@@ -303,11 +302,10 @@ trait ShipUpgradeRules
     /** The inactive ship upgrades the player can afford to activate at the workshop. */
     private function workshopUpgradeOptions(int $player_id): array
     {
-        $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
         $options = [];
         foreach ($this->getPlayerShipUpgrades($player_id) as $upgrade) {
             $card = $this->non_playable_cards[$upgrade["upgrade_key"]];
-            if (!$upgrade["is_activated"] && $this->canPayFor($card["cost"] ?? [], $player_resources)) {
+            if (!$upgrade["is_activated"] && $this->canPayWithOptionalBooty($player_id, $card["cost"] ?? [])) {
                 $options[] = [
                     "upgrade_key" => $upgrade["upgrade_key"],
                     "name" => $card["name"],
@@ -328,8 +326,7 @@ trait ShipUpgradeRules
         if ($this->cards->countCardInLocation("hand", $player_id) == 0) {
             return false;
         }
-        $resources = $this->getGameResourcesHierarchical((int) $player_id)[$player_id] ?? [];
-        return ($resources["sail"] ?? 0) >= 1;
+        return $this->canPayWithOptionalBooty((int) $player_id, ["sail" => 1]);
     }
 
     function argSwiftHull(): array
@@ -337,13 +334,13 @@ trait ShipUpgradeRules
         return ["card_type" => (int) $this->getGameStateValue("swift_hull_card_type")];
     }
 
-    function actUseSwiftHull(): int
+    function actUseSwiftHull(?int $use_booty_card_id = null): int
     {
         $player_id = $this->getActivePlayerId();
         if (!$this->canUseSwiftHull($player_id)) {
             throw new \Bga\GameFramework\UserException(clienttranslate("You cannot use Swift Hull right now"));
         }
-        $this->pay($player_id, ["sail" => 1]);
+        $this->payWithOptionalBooty((int) $player_id, ["sail" => 1], $use_booty_card_id);
         $this->setGameStateValue("swift_hull_card_type", 0);
         $this->bga->notify->all("log", clienttranslate('${player_name}\'s Swift Hull: plays another card immediately'), [
             "player_name" => $this->getPlayerNameById($player_id),
