@@ -72,9 +72,9 @@ class IslandTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actActivateShipUpgrade(string $upgrade_key): mixed
+    public function actActivateShipUpgrade(string $upgrade_key, ?int $use_booty_card_id = null): mixed
     {
-        return $this->game->actActivateShipUpgrade($upgrade_key);
+        return $this->game->actActivateShipUpgrade($upgrade_key, $use_booty_card_id);
     }
 
     #[PossibleAction]
@@ -84,8 +84,8 @@ class IslandTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actExtraRations(): mixed
+    public function actExtraRations(?int $use_booty_card_id = null): mixed
     {
-        return $this->game->actExtraRations();
+        return $this->game->actExtraRations($use_booty_card_id);
     }
 }

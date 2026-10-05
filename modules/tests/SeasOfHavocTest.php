@@ -150,9 +150,9 @@ class SeasOfHavocUT extends SeasOfHavoc
         return $this->runAction(fn() => parent::actTradingPostExchange($resources_spent, $resources_gained, $slot_number, $use_booty_card_id));
     }
 
-    public function actActivateShipUpgrade(string $upgrade_key): mixed
+    public function actActivateShipUpgrade(string $upgrade_key, ?int $use_booty_card_id = null): mixed
     {
-        return $this->runAction(fn() => parent::actActivateShipUpgrade($upgrade_key));
+        return $this->runAction(fn() => parent::actActivateShipUpgrade($upgrade_key, $use_booty_card_id));
     }
 
     public function actRebelDiscardCard(int $card_id): mixed

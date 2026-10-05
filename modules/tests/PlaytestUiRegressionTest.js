@@ -93,6 +93,7 @@ const iconGame = {
   statusBar: { addActionButton: (label, callback) => buttons.push({ label, callback }) },
   bgaPerformAction: (name, args) => { action = { name, args }; },
   canPlayerAfford: () => true,
+  payWithOptionalBooty: (cost, name, args) => { action = { name, args }; },
   restoreServerGameState() {},
   setClientState() {},
   playable_cards: { 1: { cost: { sail: 2, cannonball: 1, doubloon: 3 } } },

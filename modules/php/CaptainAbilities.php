@@ -662,7 +662,7 @@ trait CaptainAbilities
         return ["resources" => $resources, "infamy" => $infamy];
     }
 
-    function actBarterExchange(string $resource, string $direction): mixed
+    function actBarterExchange(string $resource, string $direction, ?int $use_booty_card_id = null): mixed
     {
         $player_id = $this->getActivePlayerId();
         if ($this->getPlayerCaptain($player_id) !== "merchant") {
@@ -673,7 +673,7 @@ trait CaptainAbilities
         }
         $infamy_amount = self::BARTER_RATES[$resource];
         if ($direction === "resource_to_infamy") {
-            $this->pay((int) $player_id, [$resource => 1]);
+            $this->payWithOptionalBooty((int) $player_id, [$resource => 1], $use_booty_card_id);
             $this->scoreInfamy($player_id, $infamy_amount, "captain",
                 clienttranslate('${player_name}\'s Barter: gains ${score_increment} infamy'),
             );

@@ -41,9 +41,9 @@ class Barter extends GameState
     }
 
     #[PossibleAction]
-    public function actBarterExchange(string $resource, string $direction): mixed
+    public function actBarterExchange(string $resource, string $direction, ?int $use_booty_card_id = null): mixed
     {
-        return $this->game->actBarterExchange($resource, $direction);
+        return $this->game->actBarterExchange($resource, $direction, $use_booty_card_id);
     }
 
     #[PossibleAction]

@@ -230,6 +230,32 @@ define([
     },
 
     /**
+     * Workshop: an "Activate" button under each upgrade the player can afford (the server only
+     * offers those), with the upgrade cards scrolled into view.
+     */
+    addUpgradeActivationButtons: function (upgrades) {
+      for (const upgrade of upgrades) {
+        const card = this.nonPlayableCardsManager.getCardElement({ id: `upgrade-${upgrade.upgrade_key}` });
+        domStyle.set(card.parentElement, "position", "relative");
+        const button = domConstruct.create(
+          "a",
+          { class: "bgabutton bgabutton_blue soh_purchase_card_button soh_upgrade_activation_button", innerHTML: _("Activate") },
+          card.parentElement,
+        );
+        button.addEventListener("click", () =>
+          this.payWithOptionalBooty(upgrade.cost, "actActivateShipUpgrade", { upgrade_key: upgrade.upgrade_key }),
+        );
+      }
+      $("upgrades_stock").classList.add("soh_choosing_upgrade");
+      $("upgrades_wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+    },
+
+    clearUpgradeActivationButtons: function () {
+      query(".soh_upgrade_activation_button").forEach(domConstruct.destroy);
+      $("upgrades_stock").classList.remove("soh_choosing_upgrade");
+    },
+
+    /**
      * Handle purchase button click
      */
     onClickPurchaseButton: function (event) {

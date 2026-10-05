@@ -303,6 +303,16 @@ define([
       this.setClientState("client_bootyPlayConfirm", { descriptionmyturn: question });
     },
 
+    /** Perform `action` paying `cost`, with the booty token if it helps (asking when it is optional). */
+    payWithOptionalBooty: function (cost, action, args = {}) {
+      this._sendWithOptionalBooty(
+        cost,
+        (useBooty) =>
+          this.bgaPerformAction(action, useBooty ? { ...args, use_booty_card_id: this.getMyBootyTokenId(cost) } : args),
+        _("Use your booty token to help pay?"),
+      );
+    },
+
     _resolveBootyChoice: function (useBooty) {
       var send = this._pendingBootySend;
       this._pendingBootySend = null;

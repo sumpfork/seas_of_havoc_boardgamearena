@@ -1012,6 +1012,11 @@ a.disabled {
   background: rgba(128, 128, 128, 0.2);
 }
 
+/* Room under the upgrade cards for their "Activate" buttons at the workshop. */
+#upgrades_stock.soh_choosing_upgrade {
+  padding-bottom: 50px;
+}
+
 /* SlotStock will handle layout with its own settings */
 
 /* Non-playable card styling */
