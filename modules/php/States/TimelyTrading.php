@@ -47,9 +47,13 @@ class TimelyTrading extends GameState
     }
 
     #[PossibleAction]
-    public function actTimelyTradingPurchaseCard(int $card_id, int $doubloons_as_cannonballs = 0, int $doubloons_as_sails = 0): mixed
-    {
-        return $this->game->actTimelyTradingPurchaseCard($card_id, $doubloons_as_cannonballs, $doubloons_as_sails);
+    public function actTimelyTradingPurchaseCard(
+        int $card_id,
+        int $doubloons_as_cannonballs = 0,
+        int $doubloons_as_sails = 0,
+        ?int $use_booty_card_id = null,
+    ): mixed {
+        return $this->game->actTimelyTradingPurchaseCard($card_id, $doubloons_as_cannonballs, $doubloons_as_sails, $use_booty_card_id);
     }
 
     #[PossibleAction]

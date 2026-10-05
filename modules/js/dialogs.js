@@ -286,15 +286,16 @@ define([
     /**
      * Spend a booty token on a cost when it helps: pay with it outright if the player cannot afford
      * the cost otherwise, ask when either way works, and stay out of the way when it does not apply.
-     * `send(useBooty)` performs the action.
+     * `send(useBooty)` performs the action. `canAffordWithout` overrides the plain affordability
+     * check, for payments with other ways round a shortfall (the Merchant's doubloons).
      */
-    _sendWithOptionalBooty: function (cost, send, question) {
+    _sendWithOptionalBooty: function (cost, send, question, canAffordWithout) {
       var tokenRes = this.getMyBootyTokenRes(cost);
       if (!tokenRes || !this.bootyOverlapsCost(tokenRes, cost)) {
         send(false);
         return;
       }
-      if (!this.canPlayerAfford(cost, false, false)) {
+      if (!(canAffordWithout ?? this.canPlayerAfford(cost, false, false))) {
         send(true);
         return;
       }

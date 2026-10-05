@@ -727,6 +727,7 @@ trait CaptainAbilities
         int $card_id,
         int $doubloons_as_cannonballs = 0,
         int $doubloons_as_sails = 0,
+        ?int $use_booty_card_id = null,
     ): mixed {
         $player_id = $this->getActivePlayerId();
         if ($this->getPlayerCaptain($player_id) !== "merchant") {
@@ -760,7 +761,7 @@ trait CaptainAbilities
             $cost["doubloon"] = ($cost["doubloon"] ?? 0) + $doubloons_as_sails;
         }
 
-        $this->pay((int) $player_id, $cost);
+        $this->payWithOptionalBooty((int) $player_id, $cost, $use_booty_card_id);
         $this->cards->moveCard($card_id, "hand", $player_id);
         $this->bga->playerStats->inc("cards_bought", 1, (int) $player_id);
 
