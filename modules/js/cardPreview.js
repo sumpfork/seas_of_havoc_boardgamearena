@@ -11,10 +11,11 @@
  * Seas of Havoc - Card Play Preview
  * While the card play dialog is open, draws what the card will do on the sea board: the route the
  * ship sails as one arrow (bending round corners, as on the cards), a ghost ship where it ends
- * up, a cross where it would ram something, and chevrons out to a shot's range.
+ * up, a cross where it would ram something, and chevrons along a shot up to what it would hit.
  *
  * The movement rules mirror SeaBoard::computeForwardMovement / turnHeading and the action walk in
- * processCardActions on the server; keep them in step (PlaytestUiRegressionTest.js checks both).
+ * processCardActions on the server, and the shots SeaBoard::resolveCannonFire and
+ * Firing::resolveOneShot; keep them in step (PlaytestUiRegressionTest.js checks both).
  */
 
 define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants.js"], function (dom, domConstruct, Constants) {
@@ -41,7 +42,8 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
 
   /**
    * The marks a card would leave, walking its actions with the decisions made so far.
-   * `ship` is {x, y, heading}; `blocked(x, y)` says whether a rock or ship is there.
+   * `ship` is {x, y, heading}; `blocked(x, y)` gives "rock" or "player_ship" if one is there
+   * (other than the ship playing the card, which the simulation tracks itself), else null.
    * Stops where the decisions run out, and at a collision, as the server does.
    */
   function simulateCardPlay(actions, decisions, ship, blocked) {
@@ -79,6 +81,8 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       state.y = ny;
       state.moved = true;
     };
+    // What a shot would hit: the ship playing the card where it now is, or whatever else is there.
+    const objectAt = (x, y) => (x === state.x && y === state.y ? "player_ship" : blocked(x, y));
     const pivot = (turn) => {
       lastPivot = { type: "pivot", x: state.x, y: state.y, turn: turn, from: state.heading, afterMove: state.lastForward };
       marks.push(lastPivot);
@@ -88,7 +92,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
     };
     const fire = (action, decision) => {
       const variants = action.variants || [{
-        name: action.action, range: action.range, count: FIRE_COUNTS[action.action],
+        name: action.action, range: action.range, count: FIRE_COUNTS[action.action], shot: "cannon",
         sides: ["left", "right"], both_sides: false,
       }];
       for (const variant of variants) {
@@ -102,9 +106,11 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
             const [dx, dy] = STEP[heading];
             // The shot's line: from just outside the ship through each cell in range, to the far
             // edge of the last one. Like a route, it breaks where it crosses the board edge.
+            // It stops at the first rock or ship, except heavy guns, which go on through ships.
             const lines = [[[state.x + dx * 0.35, state.y + dy * 0.35]]];
             let [x, y] = [state.x, state.y];
-            for (let d = 0; d < variant.range; d++) {
+            let stopped = false;
+            for (let d = 0; d < variant.range && !stopped; d++) {
               const [nx, ny] = forwardOf(x, y, heading);
               if (nx !== x + dx || ny !== y + dy) {
                 lines[lines.length - 1].push([x + dx / 2, y + dy / 2]);
@@ -112,10 +118,24 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
               }
               lines[lines.length - 1].push([nx, ny]);
               [x, y] = [nx, ny];
-              marks.push({ type: "chevron", x: x, y: y, heading: heading });
+              const target = objectAt(x, y);
+              if (!target) {
+                marks.push({ type: "chevron", x: x, y: y, heading: heading });
+                continue;
+              }
+              marks.push({ type: "hit", x: x, y: y });
+              stopped = variant.shot !== "heavy" || target === "rock";
+              if (variant.shot === "rocket") {
+                // Rockets explode into all eight surrounding spaces, hitting every ship there.
+                for (const [ex, ey] of [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]]) {
+                  const [bx, by] = [(x + ex + SIZE) % SIZE, (y + ey + SIZE) % SIZE];
+                  if (objectAt(bx, by) === "player_ship") marks.push({ type: "hit", x: bx, y: by });
+                }
+              }
             }
-            lines[lines.length - 1].push([x + dx * 0.45, y + dy * 0.45]);
-            marks.push({ type: "shot", lines: lines, heading: heading, from: [state.x, state.y] });
+            // A shot that hits ends on its target; one that runs its range ends at the cell's far edge.
+            if (!stopped) lines[lines.length - 1].push([x + dx * 0.45, y + dy * 0.45]);
+            marks.push({ type: "shot", lines: lines, heading: heading, from: [state.x, state.y], stopped: stopped });
           }
           return;
         }
@@ -244,8 +264,12 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       this.clearCardPreview();
       const ship = this.getObjectOnSeaboard("player_ship", shipArg);
       if (!ship) throw new Error("No ship " + shipArg + " on the board to preview");
-      const blocked = (x, y) =>
-        this.seaboard.some((e) => e.x == x && e.y == y && (e.type === "rock" || e.type === "player_ship"));
+      // The ship playing the card is left out: the simulation moves it.
+      const blocked = (x, y) => {
+        const entry = this.seaboard.find((e) =>
+          e.x == x && e.y == y && (e.type === "rock" || (e.type === "player_ship" && e !== ship)));
+        return entry ? entry.type : null;
+      };
       const marks = simulateCardPlay(actions, decisions, ship, blocked);
 
       // Cell centres in the board's own pixels, measured from the cell anchors (and unscaled, in
@@ -299,6 +323,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           for (const line of lines) {
             paths.push(`<path class="soh_card_preview_shot" d="M ${line.map((p) => p.join(" ")).join(" L ")}"/>`);
           }
+          if (shot.stopped) continue; // the hit's cross marks where it ends
           const [ex, ey] = lines[lines.length - 1][lines[lines.length - 1].length - 1];
           const [dx, dy] = STEP[shot.heading];
           const half = cell * 0.3;
@@ -342,11 +367,15 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           origin.classList.add("soh_card_preview_origin");
           html = `<div class="soh_player_ship soh_card_preview_ghost" data-shipname="${shipName}"></div>`;
           rotate = this.getHeadingDegrees(mark.heading);
+        } else if (mark.type === "hit") {
+          // The explosion the shot animation shows on a hit, held still.
+          html = this.format_block("jstpl_explosion", { id: "card_preview_hit_" + marks.indexOf(mark) });
         } else {
           const glyph = { chevron: CHEVRON, collision: CROSS }[mark.type];
           html = `<div class="soh_card_preview_mark soh_card_preview_${mark.type}">${glyph}</div>`;
         }
         const node = domConstruct.place(html, anchor);
+        if (mark.type === "hit") node.classList.add("soh_card_preview_hit");
         node.style.rotate = rotate + "deg";
         if (mark.type === "ghost" && turnsInPlace.length > 0) {
           // Start at the heading before the pivots and turn through them: left is anticlockwise,
@@ -362,7 +391,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
     },
 
     clearCardPreview: function () {
-      document.querySelectorAll(".soh_card_preview_mark, .soh_card_preview_ghost, .soh_card_preview_route, .soh_card_preview_flash")
+      document.querySelectorAll(".soh_card_preview_mark, .soh_card_preview_hit, .soh_card_preview_ghost, .soh_card_preview_route, .soh_card_preview_flash")
         .forEach((node) => node.remove());
       document.querySelectorAll(".soh_card_preview_origin").forEach((node) => node.classList.remove("soh_card_preview_origin"));
     },
