@@ -623,6 +623,8 @@
 
 /* Treasure Seeker: highlight on the current shipwreck */
 .soh_treasure_seeker_shipwreck_highlight {
+  /* The seafeature mask is applied after the filter and would cut the glow off. */
+  mask-image: none;
   filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1)) drop-shadow(0 0 12px rgba(201, 140, 20, 0.8));
   animation: treasure-seeker-shipwreck-pulse 1.6s ease-in-out infinite;
 }
@@ -816,6 +818,11 @@ a.disabled {
   color: #f2f2f2;
   filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.8));
   scale: 1.2;
+}
+/* A predicted hit in the card play preview: the hit's explosion, a little smaller. */
+.soh_explosion.soh_card_preview_hit {
+  scale: 0.8;
+  pointer-events: none;
 }
 /* A shot that fell short: a small pale splash where it landed. */
 .soh_explosion.soh_splash {

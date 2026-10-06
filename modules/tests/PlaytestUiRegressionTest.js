@@ -569,6 +569,36 @@ assert.equal(nodes.skip.checked, false);
   marks = simulateCardPlay(bothSides, ["both sides left"], { x: 2, y: 2, heading: N }, open);
   assert.deepEqual(only(marks, "chevron"), [[1, 2, W], [3, 2, E]], "both sides fires one shot each way");
 
+  // Shots stop at what they hit, as SeaBoard::resolveCannonFire and Firing::resolveOneShot do.
+  const board = (objects) => (x, y) => objects[x + "," + y] || null;
+  const hits = (marks) => only(marks, "hit").map(([x, y]) => [x, y]);
+  marks = simulateCardPlay(fire, ["fire left"], { x: 2, y: 2, heading: N }, board({ "0,2": "player_ship" }));
+  assert.deepEqual(only(marks, "chevron"), [[1, 2, W]], "no chevrons past the ship hit");
+  assert.deepEqual(hits(marks), [[0, 2]], "the first ship in line is hit");
+  assert.deepEqual(marks.find(m => m.type === "shot").lines, [[[1.65, 2], [1, 2], [0, 2]]], "the shot line ends on its target");
+  marks = simulateCardPlay(fire, ["fire left"], { x: 2, y: 2, heading: N }, board({ "1,2": "rock", "0,2": "player_ship" }));
+  assert.deepEqual(hits(marks), [[1, 2]], "a rock stops the shot");
+
+  const upgraded = (variant) => [{ action: "fire", range: 3, variants: [{ count: 1, sides: ["left", "right"], both_sides: false, ...variant }] }];
+  const heavy = upgraded({ name: "heavy guns", range: 5, shot: "heavy" });
+  marks = simulateCardPlay(heavy, ["heavy guns right"], { x: 0, y: 0, heading: N },
+    board({ "1,0": "player_ship", "3,0": "player_ship", "4,0": "rock", "5,0": "player_ship" }));
+  assert.deepEqual(hits(marks), [[1, 0], [3, 0], [4, 0]], "heavy guns go through ships and stop at a rock");
+
+  const rocket = upgraded({ name: "rocket", range: 3, shot: "rocket" });
+  marks = simulateCardPlay(rocket, ["rocket right"], { x: 0, y: 3, heading: N },
+    board({ "2,3": "rock", "3,3": "player_ship", "2,2": "player_ship", "1,4": "rock", "4,3": "player_ship" }));
+  assert.deepEqual(hits(marks), [[2, 3], [2, 2], [3, 3]], "a rocket explodes even on a rock, hitting ships all round");
+
+  // The ship playing the card moves: its old square is empty and the shot can come back to it.
+  marks = simulateCardPlay([{ action: "forward" }, ...upgraded({ name: "fire", range: 3, sides: ["aft"] })], ["fire aft"],
+    { x: 2, y: 2, heading: N }, open);
+  assert.deepEqual(hits(marks), [], "a shot back over the ship's starting square misses");
+  marks = simulateCardPlay(rocket, ["rocket left"], { x: 2, y: 2, heading: N }, board({ "0,2": "rock" }));
+  assert.deepEqual(hits(marks), [[0, 2]], "a rocket two squares off does not blast its own ship");
+  marks = simulateCardPlay(rocket, ["rocket left"], { x: 2, y: 2, heading: N }, board({ "1,2": "rock" }));
+  assert.deepEqual(hits(marks), [[1, 2], [2, 2]], "a rocket right alongside blasts its own ship");
+
   marks = simulateCardPlay([{ action: "backward" }], [], { x: 2, y: 0, heading: S }, open);
   assert.deepEqual(only(marks, "ghost"), [[2, 5, S]], "rowing backward moves astern, wrapping, without turning");
 
