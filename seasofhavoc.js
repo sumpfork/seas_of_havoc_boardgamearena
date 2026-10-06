@@ -813,6 +813,7 @@ define([
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
       this.updateUniqueTokens(gamedatas.unique_tokens);
       this.updateMyBootyToken();
+      this.setupMyResourcesPanel();
       // Render facedown tokens for other players who have booty
       for (var i = 0; i < this.players_with_booty.length; i++) {
         var pid = this.players_with_booty[i];
