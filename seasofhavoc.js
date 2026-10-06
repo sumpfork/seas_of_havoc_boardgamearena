@@ -114,6 +114,14 @@ define([
             }
           };
           walk(args);
+          // The played card's type becomes a thumbnail that zooms on click (see setup).
+          if (args.card_image !== undefined) {
+            const art = document.createElement("div");
+            this.setupHelper({ type: args.card_image }, art);
+            art.classList.add("soh_panel_card_art");
+            Object.assign(art.style, { width: "144px", height: "198px" });
+            args.card_image = `<div class="soh_panel_card soh_log_card">${art.outerHTML}</div>`;
+          }
         }
       } catch (e) {
         console.error(log, args, "bgaFormatText exception", e.stack);
@@ -414,6 +422,15 @@ define([
       this.player_ship_upgrades = gamedatas.player_ship_upgrades || [];
       this.corsairOccupiedPlacementAvailable = !!gamedatas.corsair_occupied_placement_available;
       this.corsairOccupiedSlotNames = gamedatas.corsair_occupied_slot_names || [];
+
+      // Log thumbnails are HTML strings, so they get their zoom handler on first click.
+      document.addEventListener("click", (event) => {
+        const art = event.target.closest(".soh_log_card .soh_panel_card_art");
+        if (art && !art.dataset.previewReady) {
+          this.setupCardPreview(art);
+          art.click();
+        }
+      });
 
       // Card setup helper for playable cards
       this.setupHelper = (card, div) => {

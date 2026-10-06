@@ -186,7 +186,7 @@ define([
             card_type: card.card_type,
             card_id: card_id,
             decisions: JSON.stringify(["pass"]),
-          }).then(() => this.movePlayedCardToDiscard(card_id, card.card_type));
+          });
           this.cleanupCardPlayDialog();
           console.groupEnd();
         }),
@@ -307,20 +307,17 @@ define([
         }
         this.consumeBootyToken(params.use_booty_card_id);
       }
-      this.bgaPerformAction("actPlayCard", params)
-        .then(() => this.movePlayedCardToDiscard(card_id, card.card_type));
+      this.bgaPerformAction("actPlayCard", params);
       this.cleanupCardPlayDialog();
     },
 
     /**
-     * Hand to discard, once the server has accepted the play. Doing it optimistically loses the
-     * card from the hand whenever the server rejects the action, leaving a player who looks like
-     * they have nothing to play. A card the server moved elsewhere itself - a damage card, which
-     * is scrapped rather than discarded - is already gone from the hand, so leave it alone.
+     * Hand to discard, driven by the server's cardPlayed notification rather than the action's
+     * promise, so plays this tab did not send (another tab, a timeout's zombie play) also leave it.
      */
     movePlayedCardToDiscard: function (card_id, card_type) {
       if (!this.playerHand.getCards().some(c => c.id == card_id)) {
-        return;
+        throw new Error(`Played card ${card_id} is not in the hand`);
       }
       this.playerDiscard.addCard({
         id: card_id,
