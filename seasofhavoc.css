@@ -625,12 +625,7 @@
 .soh_treasure_seeker_shipwreck_highlight {
   /* The seafeature mask is applied after the filter and would cut the glow off. */
   mask-image: none;
-  filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1)) drop-shadow(0 0 12px rgba(201, 140, 20, 0.8));
-  animation: treasure-seeker-shipwreck-pulse 1.6s ease-in-out infinite;
-}
-@keyframes treasure-seeker-shipwreck-pulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(232, 179, 53, 1))  drop-shadow(0 0 12px rgba(201, 140, 20, 0.8)); }
-  50%       { filter: drop-shadow(0 0 12px rgba(232, 179, 53, 1)) drop-shadow(0 0 20px rgba(201, 140, 20, 1)); }
+  filter: drop-shadow(0 0 8px rgba(232, 179, 53, 1)) drop-shadow(0 0 16px rgba(201, 140, 20, 0.9));
 }
 .soh_card-zoom-dialog {
   border: 0;
@@ -1491,6 +1486,9 @@ a.disabled {
   align-self: stretch;
   display: flex;
   align-items: center;
+  justify-content: center;
+  min-width: 32px; /* BGA's minimum tap target */
+  min-height: 32px;
   border: none;
   border-right: 1px solid rgba(0, 0, 0, 0.3);
   background: none;
@@ -1504,7 +1502,6 @@ a.disabled {
 }
 .soh_my_resources.soh_collapsed .soh_my_resources_toggle {
   border-right: none;
-  padding: 0 2px;
 }
 .soh_my_resources_toggle::before {
   content: "\25C0"; /* ◀ collapse */

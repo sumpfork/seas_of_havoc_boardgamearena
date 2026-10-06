@@ -699,9 +699,9 @@ $this->playable_cards = [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
                 "choices" => [
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::LEFT->value]], "name" => "forward-left"],
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::FORWARD->value]], "name" => "forward-forward"],
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "name" => "forward-right"],
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
                 ],
                 "cost" => ["sail" => 1],
             ],
@@ -908,9 +908,9 @@ $this->playable_cards = [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
                 "choices" => [
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::LEFT->value]], "name" => "forward-left"],
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::FORWARD->value]], "name" => "forward-forward"],
-                    ["action" => PrimitiveCardPlayAction::SEQUENCE->value, "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "name" => "forward-right"],
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
                 ],
                 "cost" => ["sail" => 1],
             ],
