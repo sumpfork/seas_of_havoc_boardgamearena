@@ -633,17 +633,12 @@ trait IslandPhase
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid booty token"));
             }
             $this->cards->moveCard($use_booty_card_id, "booty_discard", 0);
-            $this->bga->notify->all(
-                "bootyTokenUsed",
-                clienttranslate('${player_name} uses a booty token at the trading post'),
-                [
-                    "player_id" => $player_id,
-                    "player_name" => self::getPlayerNameById($player_id),
-                    "booty_card" => $booty_card,
-                    "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                    "booty_usage" => "trading post",
-                ],
-            );
+            $this->bga->notify->all("log", clienttranslate('${player_name} uses a booty token ${booty_image} at the trading post'), [
+                "player_id" => $player_id,
+                "player_name" => self::getPlayerNameById($player_id),
+                "booty_image" => (int) $booty_card["type_arg"],
+            ]);
+            $this->notifyBootyTokensChanged((int) $player_id);
         } else {
             // Normal trade: spend 1-2 resources, gain the same number
             if (count($resources_spent) < 1 || count($resources_spent) > 2) {
@@ -820,6 +815,15 @@ trait IslandPhase
             "purchases" => $purchases_by_player,
             "purchased_card_ids" => $purchased_card_ids,
         ]);
+        // The buyer's other tabs only learn about the new hand cards from this.
+        foreach ($purchases_by_player as $buyer_id => $card_ids) {
+            $this->bga->notify->player((int) $buyer_id, "cardDrawn", "", [
+                "player_id" => $buyer_id,
+                "cards" => array_values($this->cards->getCards($card_ids)),
+                "num_cards" => count($card_ids),
+                "deck_size" => $this->cards->countCardInLocation($this->playerDeckName($buyer_id)),
+            ]);
+        }
 
         // Clear pending purchases table
         self::DbQuery("DELETE FROM pending_purchases");

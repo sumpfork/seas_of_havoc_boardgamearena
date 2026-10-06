@@ -79,6 +79,12 @@ trait BootyAndShipwrecks
             clienttranslate('${player_name} has no room in their hold and discards a booty token'),
             ["player_name" => $this->getPlayerNameById($player_id), "player_id" => $player_id],
         );
+        $this->notifyBootyTokensChanged($player_id);
+    }
+
+    /** The held tokens are secret: only their owner gets the updated list. */
+    function notifyBootyTokensChanged(int $player_id): void
+    {
         $this->bga->notify->player($player_id, "bootyTokenUsed", "", [
             "player_id" => $player_id,
             "booty_tokens" => $this->getBootyTokensForPlayer($player_id),

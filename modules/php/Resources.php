@@ -224,17 +224,14 @@ trait Resources
                 }
             }
             $booty_desc = implode(" + ", $booty_parts);
-            $this->bga->notify->all(
-                "bootyTokenUsed",
-                clienttranslate('${player_name} uses a booty token as ${booty_usage}'),
-                [
-                    "player_id" => $player_id,
-                    "player_name" => $this->getPlayerNameById($player_id),
-                    "booty_card" => $booty_card,
-                    "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-                    "booty_usage" => $booty_desc,
-                ],
-            );
+            // The spent token is public; the rest of the hold stays secret (notifyBootyTokensChanged).
+            $this->bga->notify->all("log", clienttranslate('${player_name} uses a booty token ${booty_image} as ${booty_usage}'), [
+                "player_id" => $player_id,
+                "player_name" => $this->getPlayerNameById($player_id),
+                "booty_image" => (int) $booty_card["type_arg"],
+                "booty_usage" => $booty_desc,
+            ]);
+            $this->notifyBootyTokensChanged((int) $player_id);
             return;
         }
 

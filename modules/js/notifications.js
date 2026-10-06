@@ -513,6 +513,8 @@ define([
         let fromElement = dom.byId("mydeck");
         console.log("fromElement: " + fromElement);
 
+        // The tab that bought a market card already put it in the hand.
+        cards = cards.filter((card) => !this.playerHand.getCards().some((c) => c.id == card.id));
         cards.forEach((card) => {
           this.playerHand.addCard(
             {

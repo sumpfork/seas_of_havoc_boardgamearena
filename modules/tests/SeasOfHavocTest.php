@@ -177,6 +177,8 @@ if (!class_exists("CapturingMockNotify")) {
         private object $game;
         /** @var callable|null */
         private $onAll;
+        /** Every notification sent, in order, shaped like debugLastNotif. */
+        public array $sent = [];
 
         public function __construct(object $game, ?callable $onAll = null)
         {
@@ -187,6 +189,7 @@ if (!class_exists("CapturingMockNotify")) {
         public function all(string $notifName, string|\Bga\GameFramework\NotificationMessage $message = '', array $args = []): void
         {
             $this->game->debugLastNotif = ["type" => $notifName, "message" => $message, "args" => $args];
+            $this->sent[] = $this->game->debugLastNotif;
             if ($this->onAll !== null) {
                 ($this->onAll)($notifName, $message, $args);
             }
@@ -195,6 +198,7 @@ if (!class_exists("CapturingMockNotify")) {
         public function player(int $playerId, string $notifName, string|\Bga\GameFramework\NotificationMessage $message = '', array $args = []): void
         {
             $this->game->debugLastNotif = array_merge(["type" => $notifName, "message" => $message, "player_id" => $playerId], $args);
+            $this->sent[] = $this->game->debugLastNotif;
         }
     }
 }
