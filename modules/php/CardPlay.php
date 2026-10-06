@@ -417,6 +417,9 @@ trait CardPlay
         $card = $this->playable_cards[$card_type];
         $this->mydump("card played", $card);
         $player_id = $this->getActivePlayerId();
+        // The cardPlayed notification moves this card out of the client's hand. A captain card's
+        // second resolution (actResolveCaptainCard) finds it already discarded.
+        $hand_card_id = $card_id !== null && $this->cards->getCard($card_id)["location"] === "hand" ? $card_id : null;
 
         // Damage card, "Repair: When you would play this card, scrap it instead." The repair is
         // the whole play - no maneuver, no flag action, and the card leaves the deck for good.
@@ -433,7 +436,7 @@ trait CardPlay
             $this->setGameStateValue("swift_hull_card_type", 0);
             // Pass: skip all actions, but still discard the card
             $outcome = new CardActionOutcome();
-            $notification_message = clienttranslate('${player_name} has passed (played a card without actions)');
+            $notification_message = clienttranslate('${player_name} has passed (played a card without actions) ${card_image}');
         } else {
             $outcome = $this->processCardActions($actions ?? $this->upgradedCardActions($card, $player_id), $decisions);
 
@@ -442,10 +445,13 @@ trait CardPlay
                     $this->setGameStateValue("pending_captain_card", $card_id);
                 }
                 $this->discardCardToPlayer($card_id, $player_id);
-                $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} has played a card'), [
+                $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} has played a card ${card_image}'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                     "player_id" => $player_id,
                     "ship" => $this->activeShipArg($player_id),
+                    "card_id" => $hand_card_id,
+                    "card_type" => $card_type,
+                    "card_image" => $card_type,
                     "moveChain" => [],
                     "cost" => [],
                     "shipwreck_event" => null,
@@ -460,7 +466,7 @@ trait CardPlay
                 $this->payWithOptionalBooty($player_id, $outcome->cost, $use_booty_card_id);
             }
 
-            $notification_message = clienttranslate('${player_name} has played a card');
+            $notification_message = clienttranslate('${player_name} has played a card ${card_image}');
 
             // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
             $this->setGameStateValue("seafeature_effects_attempted", 0);
@@ -475,12 +481,12 @@ trait CardPlay
 
                 if (count($seafeature->actionChain) == 2) {
                     $notification_message = clienttranslate(
-                        '${player_name} has played a card and is affected by the whirlpool and gust',
+                        '${player_name} has played a card and is affected by the whirlpool and gust ${card_image}',
                     );
                 } elseif (!empty($seafeature->actionChain)) {
                     $notification_message = $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))
-                        ? clienttranslate('${player_name} has played a card and is rotated by the whirlpool')
-                        : clienttranslate('${player_name} has played a card and is pushed by the gust');
+                        ? clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}')
+                        : clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}');
                 }
             }
         }
@@ -493,6 +499,9 @@ trait CardPlay
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => $player_id,
             "ship" => $this->activeShipArg($player_id),
+            "card_id" => $hand_card_id, // null when rowing
+            "card_type" => $card_type,
+            "card_image" => $card_type,
             "moveChain" => $outcome->actionChain,
             "cost" => $outcome->cost,
             "shipwreck_event" => $outcome->shipwreckEvent,

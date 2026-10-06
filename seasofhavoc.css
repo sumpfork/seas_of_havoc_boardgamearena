@@ -1419,3 +1419,9 @@ a.disabled {
   background-size: 144px 198px;
 }
 
+
+/* Played-card thumbnail in the game log (card_image arg). */
+.soh_log_card {
+  display: inline-block;
+  vertical-align: middle;
+}

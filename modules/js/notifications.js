@@ -356,6 +356,9 @@ define([
       // Which of the player's ships the card moved: they have two in the 2 Ship Variant.
       var shipArg = args.ship ?? args.player_id;
       var shipid = "player_ship_" + shipArg;
+      if (args.card_id != null && args.player_id == this.player_id) {
+        this.movePlayedCardToDiscard(args.card_id, args.card_type);
+      }
 
       var anims = [];
       for (var move of args.moveChain) {
