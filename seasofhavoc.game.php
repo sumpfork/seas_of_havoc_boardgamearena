@@ -167,6 +167,13 @@ class SeasOfHavoc extends Table
 
         $this->cards = $this->deckFactory->createDeck("card");
         $this->cards->autoreshuffle = true;
+        // Every notification carries each player's hand size for the panel counters, rather than every
+        // place a card enters or leaves a hand notifying it separately.
+        // ponytail: one COUNT query per notification; send only on hand changes if that ever matters.
+        $this->bga->notify->addDecorator(function (string $message, array $args): array {
+            $args["hand_counts"] = $this->cards->countCardsByLocationArgs("hand");
+            return $args;
+        });
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", $this);
 
@@ -950,6 +957,7 @@ class SeasOfHavoc extends Table
 
         // Send player's actual hand - frontend will add pending purchases to hand display
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
+        $result["hand_counts"] = $this->cards->countCardsByLocationArgs("hand");
         $result["discard"] = $this->normalizeCardLocations($this->getPlayerDiscard($current_player_id));
         $result["scrap"] = $this->cards->getCardsInLocation("scrap");
         $result["playerinfo"] = $this->getPlayerInfo();

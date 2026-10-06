@@ -32,7 +32,10 @@ define([
      */
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
-      this.bgaSetupPromiseNotifications();
+      this.bgaSetupPromiseNotifications({
+        // The server attaches hand_counts to every game notification (see the decorator in the game constructor).
+        onEnd: (notifName, msg, args) => args.hand_counts && this.updateHandCounts(args.hand_counts),
+      });
     },
 
     /** Sent by the framework's playerScore->inc/set; it updates the panel score itself. */

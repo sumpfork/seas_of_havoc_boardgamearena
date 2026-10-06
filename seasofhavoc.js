@@ -261,7 +261,10 @@ define([
                               <div id="red_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="red_flag"></div>
                               <div id="first_player_token_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="first_player_token"></div>
                               <div id="booty_token_p\${player_id}" class="soh_booty-token-slot"></div>
+                              \${hand_count}
                           </div>`;
+
+      window.jstpl_hand_count = `<div class="soh_hand_count"><span></span><span></span><span></span><span id="handcount_p\${player_id}" class="soh_hand_count_number">0</span></div>`;
 
       window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue soh_purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">${_("Purchase Card")}</a>`;
 
@@ -745,6 +748,7 @@ define([
             this.format_block("jstpl_resources_playerboard", {
               player_id: player.id,
               skiff: skiff,
+              hand_count: this.format_block("jstpl_hand_count", { player_id: player_id }),
             }),
           );
           this.addPlayerPanelCards(player);
@@ -762,6 +766,7 @@ define([
       this.players_with_booty = gamedatas.players_with_booty || [];
 
       this.updateResources(gamedatas.resources);
+      this.updateHandCounts(gamedatas.hand_counts);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
       this.updateUniqueTokens(gamedatas.unique_tokens);
       this.updateMyBootyToken();
