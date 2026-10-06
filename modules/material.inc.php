@@ -1311,7 +1311,8 @@ $this->playable_cards = [
         "category" => "captain",
     ],
     // Rowing: discard 2 cards to take one of these maneuvers instead of playing a card. Not a real
-    // card - never dealt - but the play dialog shows it like one. No "sailing" type: Swift Hull and
+    // card - never dealt - but the play dialog shows it like one, with img/rowing_card.jpg (no
+    // image_id: it is not in the sprite sheet). No "sailing" type: Swift Hull and
     // Nimble Hull do not apply.
     [
         "cost" => [],
