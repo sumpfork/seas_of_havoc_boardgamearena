@@ -425,6 +425,47 @@
 .soh_booty-token-slot.soh_has-token {
   opacity: 1;
 }
+/* Hand size: three cards fanned from a common bottom pivot, the count in a bga-cards style badge.
+   Cards are filled with the panel colour so each hides the outline of the one behind it. */
+.soh_hand_count {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  margin-left: 10px;
+}
+.soh_hand_count > span:not(.soh_hand_count_number) {
+  position: absolute;
+  left: 13px;
+  top: 6px;
+  width: 24px;
+  height: 36px;
+  box-sizing: border-box;
+  border: 2px solid #222;
+  border-radius: 3px;
+  background: rgb(235, 213, 189);
+  transform-origin: 50% 100%;
+}
+.soh_hand_count > span:nth-child(1) {
+  transform: rotate(-22deg);
+}
+.soh_hand_count > span:nth-child(3) {
+  transform: rotate(22deg);
+}
+.soh_hand_count_number {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 0 2px 1px #000;
+  font: bold 15px/22px Roboto, Arial, sans-serif;
+  text-align: center;
+}
 /* Token inside slot - smaller size to fit */
 .soh_booty-token-slot .soh_booty-token {
   width: 50px;

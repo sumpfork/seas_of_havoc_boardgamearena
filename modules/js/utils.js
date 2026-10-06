@@ -683,6 +683,13 @@ define([
       }
     },
 
+    /** Panel hand counters. Players with an empty hand are absent from counts. */
+    updateHandCounts: function (counts) {
+      for (const el of document.querySelectorAll("[id^=handcount_p]")) {
+        el.innerText = counts[el.id.slice("handcount_p".length)] ?? 0;
+      }
+    },
+
     /**
      * Update deck card count display
      */
