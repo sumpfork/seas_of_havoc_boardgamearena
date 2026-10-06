@@ -353,6 +353,11 @@
 .soh_flagish > .soh_flagish {
   position: absolute;
 }
+/* Frame a held flag so it reads clearly against the faded placeholders. Inset, so no layout shift. */
+.soh_flagish > .soh_flagish:not([data-tokenkey="first_player_token"]) {
+  box-shadow: inset 0 0 0 3px gold, inset 0 0 0 4px black;
+  border-radius: 4px;
+}
 .soh_seafeature {
   width: 63px;
   height: 63px;
