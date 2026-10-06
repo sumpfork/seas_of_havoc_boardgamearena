@@ -283,6 +283,22 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         }
     }
 
+    /** The printed extended maneuver goes one more space, then left, forward or right - no further. */
+    public function testExtendedForkManeuverMovesAsPrinted(): void {
+        foreach ([37, 50] as $image_id) {
+            $type = array_key_first(array_filter($this->game->playable_cards, fn($c) => $c['image_id'] === $image_id));
+            foreach (['skip' => [1, 0], 'forward' => [2, 0], 'left' => [3, 1], 'right' => [3, 1]] as $decision => [$forwards, $turns]) {
+                $this->game = new RebelAndTreasureSeekerCardUT();
+                $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()
+                    ->onlyMethods(['moveObjectForward', 'turnObject', 'findObject'])->getMock();
+                $board->expects($this->exactly($forwards))->method('moveObjectForward')->willReturn(['type' => 'move']);
+                $board->expects($this->exactly($turns))->method('turnObject')->willReturn(['type' => 'turn']);
+                (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+                $this->game->processCardActions($this->game->playable_cards[$type]['actions'], [$decision]);
+            }
+        }
+    }
+
     public function testInvalidPivotChoiceIsRejected(): void {
         $this->expectException(\Bga\GameFramework\SystemException::class);
         $this->game->processCardActions($this->game->playable_cards[12]['actions'], ['pivot_right']);

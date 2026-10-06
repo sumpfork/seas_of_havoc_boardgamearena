@@ -120,7 +120,20 @@ define([
             this.setupHelper({ type: args.card_image }, art);
             art.classList.add("soh_panel_card_art");
             Object.assign(art.style, { width: "144px", height: "198px" });
-            args.card_image = `<div class="soh_panel_card soh_log_card">${art.outerHTML}</div>`;
+            // Most cards have no printed name, so the alt text is the kind of card (and a market
+            // card's printed type: sailing, firing, pivot).
+            const card = this.playable_cards[args.card_image];
+            const typeNames = { sailing: _("Sailing"), firing: _("Firing"), pivot: _("Pivot") };
+            const unknownType = (card.type ?? []).find((t) => !typeNames[t]);
+            if (unknownType) throw new Error(`No log label for card type ${unknownType}`);
+            const label =
+              card.category === "captain"
+                ? _("${captain} card").replace("${captain}", _(this.gamedatas.non_playable_cards[card.captain_key].name))
+                : card.category === "market_card"
+                  ? _("${types} market card").replace("${types}", card.type.map((t) => typeNames[t]).join(" / "))
+                  : { starting_card: _("Starting card"), damage: _("Damage card"), rowing: _("Rowing card") }[card.category];
+            if (label === undefined) throw new Error(`No log label for card category ${card.category}`);
+            args.card_image = `<div class="soh_panel_card soh_log_card" role="img" aria-label="${label}">${art.outerHTML}</div>`;
           }
           // A spent booty token's image id becomes an inline token that enlarges on hover (see setup).
           if (args.booty_image !== undefined) {
