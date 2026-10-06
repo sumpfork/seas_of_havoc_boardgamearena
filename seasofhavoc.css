@@ -1413,13 +1413,9 @@ a.disabled {
   font-weight: bold;
 }
 
-/* Rowing has no card art yet: a plain card with its name. */
-.soh_playable-card-blank {
-  background: #efe3c4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 20px;
+/* Rowing: its own image (misc/tools/extract_cards/make_rowing_card.py), at the sprite's card scale. */
+.soh_playable-card-front.soh_rowing-card {
+  background-image: url("img/rowing_card.jpg");
+  background-size: 144px 198px;
 }
 

@@ -423,9 +423,8 @@ define([
           const cardData = this.playable_cards[card.type];
           image_id = cardData.image_id;
           if (image_id === null) {
-            // ponytail: rowing has no art yet; give it an image_id in material.inc.php when it does.
-            div.classList.add("soh_playable-card-blank");
-            div.textContent = _("Rowing");
+            // Rowing: its own image, not a sprite slot (see make_rowing_card.py).
+            div.classList.add("soh_rowing-card");
             return;
           }
         } else {
