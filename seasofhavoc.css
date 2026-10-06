@@ -1443,3 +1443,72 @@ a.disabled {
   pointer-events: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
+
+/* My resources and booty, pinned under the status bar while my player panel is scrolled away. */
+.soh_my_resources {
+  position: fixed;
+  left: 8px;
+  z-index: 880;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.soh_my_resources.soh_visible {
+  display: flex;
+}
+/* Only the icons take the mouse, for their tooltips; clicks elsewhere reach the board. */
+.soh_my_resources_content :is(.soh_resource, .soh_resource_count, .soh_skiff, .soh_booty-token) {
+  pointer-events: auto;
+}
+.soh_my_resources_content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap; /* the fixed panel is shrink-to-fit, which otherwise wraps every icon */
+}
+/* Centre the icons rather than sitting them on the text baseline, as the player panel does. */
+.soh_my_resources_content .soh_cp_board {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.soh_my_resources_content .soh_resource_count {
+  top: 0;
+  margin-right: 6px;
+}
+.soh_my_resources.soh_collapsed .soh_my_resources_content {
+  display: none;
+}
+/* Full height with a divider, so it reads as a control rather than another resource. */
+.soh_my_resources_toggle {
+  pointer-events: auto;
+  cursor: pointer;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  border: none;
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+  background: none;
+  padding: 0 8px 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: #666;
+}
+.soh_my_resources_toggle:hover {
+  color: #000;
+}
+.soh_my_resources.soh_collapsed .soh_my_resources_toggle {
+  border-right: none;
+  padding: 0 2px;
+}
+.soh_my_resources_toggle::before {
+  content: "\25C0"; /* ◀ collapse */
+}
+.soh_my_resources.soh_collapsed .soh_my_resources_toggle::before {
+  content: "\25B6"; /* ▶ expand */
+}

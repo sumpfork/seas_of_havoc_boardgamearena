@@ -391,10 +391,82 @@ define([
       tokens.forEach((token) => {
         const node = this.createBootyTokenNode(false, token.type_arg);
         this.setBootyTokenImageForSlot(node, token.type_arg);
+        node.dataset.imageId = token.type_arg; // for the pinned panel's hover zoom
         domConstruct.place(node, mySlot);
         this.addBootyTokenTooltip(node, token.type_arg);
       });
       domClass.toggle(mySlot, "soh_has-token", tokens.length > 0);
+    },
+
+    /**
+     * A copy of my resources and booty, pinned under the status bar once my player panel scrolls
+     * out of view. Mirrored from the panel on every change, so the panel stays the one source.
+     */
+    setupMyResourcesPanel: function () {
+      if (this.isSpectator) {
+        return;
+      }
+      const sources = [
+        dom.byId(`player_resource_board_p${this.player_id}`),
+        dom.byId(`booty_token_p${this.player_id}`),
+      ];
+      const panel = domConstruct.place(
+        `<div id="soh_my_resources" class="soh_my_resources">
+           <button type="button" class="soh_my_resources_toggle" title="${_("Show/hide my resources")}"
+             aria-label="${_("Show/hide my resources")}" aria-expanded="true"></button>
+           <div class="soh_my_resources_content" aria-hidden="true"></div>
+         </div>`,
+        document.body,
+      );
+      const content = panel.querySelector(".soh_my_resources_content");
+      const toggle = panel.querySelector(".soh_my_resources_toggle");
+      const setCollapsed = (collapsed) => {
+        domClass.toggle(panel, "soh_collapsed", collapsed);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        localStorage.setItem("soh_my_resources_collapsed", collapsed ? "1" : "");
+      };
+      toggle.addEventListener("click", () => setCollapsed(!domClass.contains(panel, "soh_collapsed")));
+      setCollapsed(localStorage.getItem("soh_my_resources_collapsed") === "1");
+      // Copies keep their ids, prefixed, so they can carry the same tooltips as the panel.
+      const copyOf = (source) => {
+        const copy = source.cloneNode(true);
+        [copy, ...copy.querySelectorAll("[id]")].forEach((el) => (el.id = "soh_mr_" + el.id));
+        return copy;
+      };
+      const [board, slot] = sources;
+      content.append(copyOf(board), copyOf(slot));
+      for (const resource of ["sail", "cannonball", "doubloon", "skiff"]) {
+        const text = this.tooltipText("resource", resource);
+        this.addTooltip(`soh_mr_${resource}_p${this.player_id}`, text, "");
+        this.addTooltip(`soh_mr_${resource}count_p${this.player_id}`, text, "");
+      }
+      new MutationObserver(() => {
+        for (const count of board.querySelectorAll(".soh_resource_count")) {
+          dom.byId("soh_mr_" + count.id).textContent = count.textContent;
+        }
+      }).observe(board, { childList: true, subtree: true, characterData: true });
+      // The hold is redrawn whole (updateMyBootyToken), with fresh token ids, so copy it whole.
+      const mirrorSlot = () => {
+        const copy = copyOf(slot);
+        dom.byId("soh_mr_" + slot.id).replaceWith(copy);
+        copy.querySelectorAll(".soh_booty-token").forEach((token) => this.addBootyTokenTooltip(token, token.dataset.imageId));
+      };
+      new MutationObserver(mirrorSlot).observe(slot, { childList: true, attributes: true });
+      mirrorSlot();
+
+      const title = dom.byId("page-title");
+      const place = () => {
+        // Narrow layouts put the player panels above the status bar, so test against it only
+        // once BGA has pinned it.
+        const top = title.getBoundingClientRect().bottom;
+        panel.style.top = `${top}px`;
+        const pinned = domClass.contains(title, "fixed-page-title");
+        domClass.toggle(panel, "soh_visible", pinned && sources[0].getBoundingClientRect().bottom < top);
+      };
+      window.addEventListener("scroll", place, { passive: true });
+      window.addEventListener("resize", place);
+      new ResizeObserver(place).observe(title);
+      place();
     },
 
     renderFacedownTokenForPlayer: function (playerId) {
