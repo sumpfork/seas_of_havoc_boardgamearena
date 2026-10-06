@@ -1425,3 +1425,14 @@ a.disabled {
   display: inline-block;
   vertical-align: middle;
 }
+
+/* Spent booty token in the game log (booty_image arg), and its enlarged copy on hover. */
+.soh_log_booty {
+  margin: 0 2px;
+}
+.soh_log_booty_zoom {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}

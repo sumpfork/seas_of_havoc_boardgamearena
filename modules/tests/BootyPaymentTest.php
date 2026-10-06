@@ -112,6 +112,21 @@ final class BootyPaymentTest extends TestCase
         $this->game = new BootyPaymentUT();
     }
 
+    /** The public log line for a booty payment: the held-token list must not be in it. */
+    private function bootyLogNotification(): array
+    {
+        $public = array_values(array_filter(
+            $this->game->bga->notify->sent,
+            fn($n) => isset($n["args"]["booty_usage"]),
+        ));
+        $this->assertCount(1, $public);
+        $this->assertArrayNotHasKey("booty_tokens", $public[0]["args"]);
+        $private = $this->lastNotification();
+        $this->assertEquals("bootyTokenUsed", $private["type"]);
+        $this->assertEquals(1, $private["player_id"]);
+        return $public[0];
+    }
+
     private function lastNotification(): array
     {
         $this->assertIsArray($this->game->debugLastNotif);
@@ -584,9 +599,7 @@ final class BootyPaymentTest extends TestCase
 
         $this->game->payWithOptionalBooty(1, ["sail" => 1, "cannonball" => 1], 300);
 
-        $notif = $this->lastNotification();
-        $this->assertEquals("bootyTokenUsed", $notif["type"]);
-        $usage = $notif["args"]["booty_usage"];
+        $usage = $this->bootyLogNotification()["args"]["booty_usage"];
         $this->assertStringContainsString("[sail]", $usage);
         $this->assertStringContainsString("[cannonball]", $usage);
     }
@@ -601,7 +614,7 @@ final class BootyPaymentTest extends TestCase
         // Cost: sail:1. Booty resolved = sail:3, but usage caps at cost.
         $this->game->payWithOptionalBooty(1, ["sail" => 1], 301);
 
-        $usage = $this->lastNotification()["args"]["booty_usage"];
+        $usage = $this->bootyLogNotification()["args"]["booty_usage"];
         // Should contain exactly one [sail] (min(3,1) = 1)
         $this->assertEquals("[sail]", $usage);
     }

@@ -122,6 +122,16 @@ define([
             Object.assign(art.style, { width: "144px", height: "198px" });
             args.card_image = `<div class="soh_panel_card soh_log_card">${art.outerHTML}</div>`;
           }
+          // A spent booty token's image id becomes an inline token that enlarges on hover (see setup).
+          if (args.booty_image !== undefined) {
+            const token = this.createBootyTokenNode(false, args.booty_image);
+            token.classList.add("soh_booty-token-button-icon", "soh_log_booty");
+            this.setBootyTokenPosition(token, args.booty_image, 36);
+            token.dataset.imageId = args.booty_image;
+            token.setAttribute("role", "img");
+            token.setAttribute("aria-label", _("Booty token"));
+            args.booty_image = token.outerHTML;
+          }
         }
       } catch (e) {
         console.error(log, args, "bgaFormatText exception", e.stack);
@@ -430,6 +440,23 @@ define([
           this.setupCardPreview(art);
           art.click();
         }
+      });
+
+      // Log booty tokens are HTML strings too, so their enlarged copy is placed on hover. Fixed
+      // positioning keeps it from being clipped by the log panel.
+      document.addEventListener("mouseover", (event) => {
+        const token = event.target.closest(".soh_log_booty");
+        if (!token || token.contains(event.relatedTarget)) return;
+        const zoom = this.createBootyTokenNode(false, token.dataset.imageId);
+        zoom.classList.add("soh_booty-token-zoom", "soh_log_booty_zoom");
+        this.setBootyTokenPosition(zoom, token.dataset.imageId, 126);
+        const rect = token.getBoundingClientRect();
+        Object.assign(zoom.style, {
+          left: Math.max(0, rect.left - 134) + "px",
+          top: Math.max(0, rect.top + rect.height / 2 - 63) + "px",
+        });
+        document.body.appendChild(zoom);
+        token.addEventListener("mouseleave", () => zoom.remove(), { once: true });
       });
 
       // Card setup helper for playable cards
