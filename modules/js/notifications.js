@@ -50,6 +50,15 @@ define([
       return this.showScoreSheet(args.endScores, true);
     },
 
+    /** Answer to actViewDeck: the current player's deck, shuffled server-side. */
+    notif_deckContents: function (args) {
+      this.showPileDialog(
+        _("My Deck"),
+        args.cards,
+        _("Shown in random order - this is not the order you will draw them in."),
+      );
+    },
+
     /**
      * Deck size changed notification
      */
@@ -487,6 +496,12 @@ define([
       let damage_card = args.damage_card;
       let player_id = args.player_id;
       var shipid = "player_ship_" + args.player_id;
+      // With the damage deck empty the card comes from the scrap pile. Deck's own count update on
+      // removal would put a fake (face-down) card on top, so take it out and recount without one.
+      if (this.scrapPile.contains(damage_card)) {
+        this.scrapPile.removeCard(damage_card, { autoUpdateCardNumber: false });
+        this.scrapPile.setCardNumber(this.scrapPile.getCards().length, null);
+      }
       if (player_id == this.player_id) {
         // addCard takes the card, not (type, id): passing the type alone left the stock holding a
         // typeless card, which isCardVisible renders face down.

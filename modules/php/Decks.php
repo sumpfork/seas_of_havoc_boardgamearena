@@ -10,6 +10,8 @@
 
 namespace Bga\Games\SeasOfHavoc;
 
+use Bga\GameFramework\Actions\CheckAction;
+
 /**
  * Decks: each player's deck, hand and discard pile, drawing and discarding, scrapping, and damage cards.
  * Part of the SeasOfHavoc game class, split out by theme.
@@ -91,6 +93,18 @@ trait Decks
             array_values($this->cards->getCardsInLocation("hand", $player_id)),
             array_values($this->cards->getCardsInLocation($this->playerDiscardName($player_id))),
         );
+    }
+
+    /**
+     * Read-only peek at your own deck, allowed any time. Shuffled so it never leaks the draw order.
+     */
+    #[CheckAction(false)]
+    function actViewDeck()
+    {
+        $player_id = $this->getCurrentPlayerId();
+        $cards = array_values($this->cards->getCardsInLocation($this->playerDeckName($player_id)));
+        shuffle($cards);
+        $this->bga->notify->player($player_id, "deckContents", "", ["cards" => $cards]);
     }
 
     function notifyDeckSizeChanged(string $player_id, string $message = "")
@@ -217,7 +231,7 @@ trait Decks
         ]);
 
         if ($bulkheads) {
-            $this->cards->moveCard((int) $damage_card["id"], "scrap");
+            $this->cards->insertCardOnExtremePosition((int) $damage_card["id"], "scrap", true);
             $this->bga->notify->all(
                 "cardScrapped",
                 clienttranslate('${player_name}\'s Watertight Bulkheads: the damage card is scrapped immediately'),
@@ -270,7 +284,7 @@ trait Decks
         $original_location = $from_hand ? "hand" : "player_discard";
 
         // Move card to scrap pile
-        $this->cards->moveCard($card_id, "scrap");
+        $this->cards->insertCardOnExtremePosition($card_id, "scrap", true);
         $this->bga->playerStats->inc("cards_scrapped", 1, (int) $player_id);
 
         // Ensure card ID is properly formatted

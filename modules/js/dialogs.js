@@ -1041,11 +1041,11 @@ define([
     },
 
     /**
-     * Open a pile (discard, scrap) in a read-only dialog when it is clicked. The pile itself is an
+     * Open a pile (deck, discard, scrap) in a read-only dialog when it is clicked. The discard is an
      * AllVisibleDeck, whose expanded layout is (card height + shift) x card count tall - past a
      * handful of cards that runs off the bottom of the screen and over everything under it.
      */
-    bindPileViewer: function (element, title, getStock) {
+    bindPileViewer: function (element, title, show) {
       element.tabIndex = 0;
       element.setAttribute("role", "button");
       element.setAttribute("aria-label", title);
@@ -1053,7 +1053,7 @@ define([
         // Capture phase: the top card's own click handler would otherwise zoom just that card.
         event.stopPropagation();
         event.preventDefault();
-        this.showPileDialog(title, getStock().getCards());
+        show();
       };
       element.addEventListener("click", open, true);
       element.addEventListener("keydown", (event) => {
@@ -1066,7 +1066,7 @@ define([
     /**
      * Read-only view of a pile. Shows previews, so the real cards stay in the pile.
      */
-    showPileDialog: function (title, cards) {
+    showPileDialog: function (title, cards, note = null) {
       this.cleanupPileDialog();
       if (!cards.length) {
         return;
@@ -1079,6 +1079,9 @@ define([
         "div", { id: "pile_view_dialog", className: "soh_scrap_card_dialog" }, document.body,
       );
       domConstruct.create("h3", { textContent: title + " (" + cards.length + ")" }, dialog);
+      if (note) {
+        domConstruct.create("p", { className: "soh_pile_view_note", textContent: note }, dialog);
+      }
       const wrapper = domConstruct.create(
         "div", { id: "pile_view_wrapper", className: "soh_card_selection_wrapper" }, dialog,
       );

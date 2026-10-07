@@ -615,8 +615,16 @@ define([
         },
       });
 
-      this.bindPileViewer($("mydiscard"), _("My Discard"), () => this.playerDiscard);
-      this.bindPileViewer($("scrap"), _("Scrap Pile"), () => this.scrapPile);
+      this.bindPileViewer($("mydiscard"), _("My Discard"), () =>
+        this.showPileDialog(_("My Discard"), this.playerDiscard.getCards()),
+      );
+      this.bindPileViewer($("scrap"), _("Scrap Pile"), () => this.showPileDialog(_("Scrap Pile"), this.scrapPile.getCards()));
+      if (!this.isSpectator) {
+        // The client only has card backs for the deck; the server answers with notif_deckContents.
+        this.bindPileViewer($("mydeck"), _("My Deck"), () =>
+          this.bgaPerformAction("actViewDeck", {}, { checkAction: false }),
+        );
+      }
 
       // Create SlotStock for market
       this.market = new BgaCards.SlotStock(this.cardsManager, $("market"), {
@@ -736,8 +744,9 @@ define([
         this.playerDiscard.addCard({ id: card.id, type: card.type, location: card.location || "discard" });
       }
 
-      for (var i in gamedatas.scrap) {
-        var card = this.gamedatas.scrap[i];
+      // Keyed by id, so restore the scrap order (location_arg) or the wrong card ends up on top.
+      const scrapCards = Object.values(gamedatas.scrap).sort((a, b) => a.location_arg - b.location_arg);
+      for (var card of scrapCards) {
         console.log("adding card type: " + card.type + " id: " + card.id + " to scrap pile");
         this.scrapPile.addCard({ id: card.id, type: card.type, location: card.location || "scrap" });
       }
