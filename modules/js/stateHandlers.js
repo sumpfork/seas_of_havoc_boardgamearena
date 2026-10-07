@@ -422,8 +422,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           case "cardPurchases":
           case "cardPurchasesPrivate":
           case "cardPurchasesMaking":
-            console.log("Adding Complete Purchases button for state: " + stateName);
-            this.statusBar.addActionButton(_("Complete Purchases"), this.onCompletePurchasesClicked.bind(this));
+            console.log("Adding End Purchase Phase button for state: " + stateName);
+            this.statusBar.addActionButton(_("End Purchase Phase"), this.onCompletePurchasesClicked.bind(this));
             this.statusBar.addActionButton(_("Restart Purchases"), this.onRestartPurchasesClicked.bind(this), {
               color: "secondary",
             });

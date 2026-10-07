@@ -273,7 +273,7 @@ trait ShipUpgradeRules
                 if (!$upgrade["is_activated"]) {
                     continue;
                 }
-                $infamy_total += $this->non_playable_cards[$upgrade["upgrade_key"]]["infamy"] ?? 0;
+                $infamy_total += $this->non_playable_cards[$upgrade["upgrade_key"]]["infamy"];
             }
             if ($infamy_total > 0) {
                 $this->scoreInfamy(

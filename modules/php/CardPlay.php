@@ -388,10 +388,6 @@ trait CardPlay
         }
         $this->setActiveShip($ship);
         $player_id = (string) $this->getActivePlayerId();
-        $this->bga->notify->all("log", clienttranslate('${player_name} rows'), [
-            "player_name" => $this->getPlayerNameById($player_id),
-            "player_id" => $player_id,
-        ]);
         // Validates both cards are in the player's hand.
         $this->discardCards($player_id, [$discard_card_id_1, $discard_card_id_2]);
         return $this->resolvePlayedCard($type, null, [$decision]);
@@ -466,7 +462,11 @@ trait CardPlay
                 $this->payWithOptionalBooty($player_id, $outcome->cost, $use_booty_card_id);
             }
 
-            $notification_message = clienttranslate('${player_name} has played a card ${card_image}');
+            // Rowing is not a card play; the rowing card image still shows the maneuver.
+            $rowing = $card_id === null;
+            $notification_message = $rowing
+                ? clienttranslate('${player_name} has rowed ${card_image}')
+                : clienttranslate('${player_name} has played a card ${card_image}');
 
             // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
             $this->setGameStateValue("seafeature_effects_attempted", 0);
@@ -480,13 +480,19 @@ trait CardPlay
                 $outcome->absorb($seafeature);
 
                 if (count($seafeature->actionChain) == 2) {
-                    $notification_message = clienttranslate(
-                        '${player_name} has played a card and is affected by the whirlpool and gust ${card_image}',
-                    );
+                    $notification_message = $rowing
+                        ? clienttranslate('${player_name} has rowed and is affected by the whirlpool and gust ${card_image}')
+                        : clienttranslate(
+                            '${player_name} has played a card and is affected by the whirlpool and gust ${card_image}',
+                        );
                 } elseif (!empty($seafeature->actionChain)) {
-                    $notification_message = $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id))
-                        ? clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}')
-                        : clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}');
+                    $whirlpool = $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id));
+                    $notification_message = match (true) {
+                        $rowing && $whirlpool => clienttranslate('${player_name} has rowed and is rotated by the whirlpool ${card_image}'),
+                        $rowing => clienttranslate('${player_name} has rowed and is pushed by the gust ${card_image}'),
+                        $whirlpool => clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}'),
+                        default => clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}'),
+                    };
                 }
             }
         }

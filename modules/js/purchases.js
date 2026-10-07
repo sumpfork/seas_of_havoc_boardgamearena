@@ -478,12 +478,27 @@ define([
     },
 
     /**
-     * Handle complete purchases button click
+     * End Purchase Phase. If a market card the player could still afford is left unbought, warn
+     * first: the confirm button counts down and fires on its own, Cancel goes back to buying
+     * without losing the purchases made so far.
      */
     onCompletePurchasesClicked: function (event) {
       console.log("onCompletePurchasesClicked");
       console.log(this.cards_purchased);
-      this._submitCompletePurchases(this.cards_purchased);
+      const submit = () => this._submitCompletePurchases(this.cards_purchased);
+      // The market purchase buttons are kept "disabled" exactly when the card is unaffordable.
+      if (query(".soh_purchase_card_button:not(.disabled):not(.soh_upgrade_activation_button)").length === 0) {
+        submit();
+        return;
+      }
+      this.statusBar.removeActionButtons();
+      this.statusBar.setTitle(_("You can still afford cards you have not purchased. They will not be bought."));
+      this.statusBar.addActionButton(_("End Purchase Phase"), submit, { color: "alert", autoclick: true });
+      this.statusBar.addActionButton(_("Keep purchasing"), () => {
+        this._restoringFromBootyConfirm = true;
+        this.restoreServerGameState();
+        this._restoringFromBootyConfirm = false;
+      }, { color: "secondary" });
     },
 
     _submitCompletePurchases: function (cardsPayload) {

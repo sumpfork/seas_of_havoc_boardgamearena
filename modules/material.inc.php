@@ -74,6 +74,7 @@ $this->non_playable_cards = [
         "category" => "ship_upgrade",
         "ship_name" => "War Junk",
         "cost" => ["cannonball" => 2, "doubloon" => 1],
+        "infamy" => 3,
     ],
     "war_junk_bulwark" => [
         "name" => clienttranslate("Watertight Bulkheads"),
@@ -81,6 +82,7 @@ $this->non_playable_cards = [
         "category" => "ship_upgrade",
         "ship_name" => "War Junk",
         "cost" => ["sail" => 1, "doubloon" => 1],
+        "infamy" => 3,
     ],
     "xebec_lateen_rigging" => [
         "name" => clienttranslate("Lateen Rigging"),
