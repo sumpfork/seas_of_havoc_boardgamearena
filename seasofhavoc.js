@@ -606,8 +606,10 @@ define([
         },
       });
 
-      this.scrapPile = new BgaCards.AllVisibleDeck(this.cardsManager, $("scrap"), {
-        shift: "8px",
+      // Top card only, like the damage deck: the fanned pile outgrew its box late in the game.
+      // Earlier cards stay in the stock (public anyway) so the pile viewer can still list them.
+      this.scrapPile = new BgaCards.Deck(this.cardsManager, $("scrap"), {
+        autoRemovePreviousCards: false,
         counter: {
           hideWhenEmpty: true,
         },
