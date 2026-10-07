@@ -207,7 +207,7 @@ trait IslandPhase
         $scrapped = [];
         foreach ($this->getMarketSlots() as $i => $card) {
             if ($card !== null && $market_slots["n" . ($i + 1)]["occupying_player_id"] === null) {
-                $this->cards->moveCard((int) $card["id"], "scrap");
+                $this->cards->insertCardOnExtremePosition((int) $card["id"], "scrap", true);
                 $card["location"] = "scrap";
                 $scrapped[] = $card;
             }

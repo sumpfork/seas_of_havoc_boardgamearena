@@ -959,7 +959,7 @@ class SeasOfHavoc extends Table
         $result["hand"] = $this->cards->getPlayerHand($current_player_id);
         $result["hand_counts"] = $this->cards->countCardsByLocationArgs("hand");
         $result["discard"] = $this->normalizeCardLocations($this->getPlayerDiscard($current_player_id));
-        $result["scrap"] = $this->cards->getCardsInLocation("scrap");
+        $result["scrap"] = $this->cards->getCardsInLocation("scrap", null, "location_arg");
         $result["playerinfo"] = $this->getPlayerInfo();
         // Ships still to be pointed stay hidden until their owner's turn to choose a heading.
         $active_player_id = $this->getActivePlayerId();

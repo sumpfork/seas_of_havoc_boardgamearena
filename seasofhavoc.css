@@ -176,24 +176,22 @@
 .soh_skiff_slot.soh_occupied_blocked {
   pointer-events: none;
   cursor: default;
-  background-color: rgba(90, 90, 90, 0.2) !important;
+  background-color: rgba(90, 90, 90, 0.14) !important;
   box-shadow: none;
-  opacity: 0.7;
 }
 .soh_skiff_slot.soh_occupied_blocked:hover {
   outline: none;
-  background-color: rgba(90, 90, 90, 0.2) !important;
+  background-color: rgba(90, 90, 90, 0.14) !important;
 }
 .soh_skiff_slot.soh_workshop_unavailable {
   pointer-events: none;
   cursor: default;
-  background-color: rgba(90, 90, 90, 0.2) !important;
+  background-color: rgba(90, 90, 90, 0.14) !important;
   box-shadow: none;
-  opacity: 0.7;
 }
 .soh_skiff_slot.soh_workshop_unavailable:hover {
   outline: none;
-  background-color: rgba(90, 90, 90, 0.2) !important;
+  background-color: rgba(90, 90, 90, 0.14) !important;
 }
 .soh_skiff_slot.soh_corsair_selectable {
   background-color: rgba(232, 179, 53, 0.45) !important;
@@ -512,6 +510,17 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   height: 40px;
   display: inline-block;
   position: relative;
+}
+.soh_skiff_slot .soh_skiff svg {
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.65));
+}
+.soh_skiff_slot .soh_skiff path {
+  /* Override the template's inline stroke; paint underneath to preserve the player colour. */
+  stroke: #fff5dc !important;
+  stroke-width: 3px !important;
+  vector-effect: non-scaling-stroke;
+  paint-order: stroke fill;
 }
 .soh_skiff.soh_corsair_overlay {
   position: absolute;
@@ -893,6 +902,12 @@ a.disabled {
   color: #5a3a00;
   font-size: 1.15em;
   letter-spacing: 0.02em;
+}
+
+.soh_pile_view_note {
+  margin: -8px 0 12px;
+  text-align: center;
+  font-style: italic;
 }
 
 .soh_scrap_card_dialog .soh_card_selection_wrapper {

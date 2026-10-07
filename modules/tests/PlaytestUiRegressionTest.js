@@ -368,8 +368,7 @@ assert.equal(previews.size, 1);
 let opened = null;
 let stopped = false;
 const pileEl = { listeners: {}, setAttribute() {}, addEventListener(type, fn, capture) { this.listeners[type] = { fn, capture }; } };
-dialogs.bindPileViewer.call({ showPileDialog: (title, cards) => { opened = { title, cards }; } },
-  pileEl, "My Discard", () => ({ getCards: () => [{ id: "7", type: "3" }] }));
+dialogs.bindPileViewer.call({}, pileEl, "My Discard", () => { opened = { title: "My Discard", cards: [{ id: "7", type: "3" }] }; });
 assert.equal(pileEl.listeners.click.capture, true, "capture phase, or the card zoom wins the click");
 pileEl.listeners.click.fn({ stopPropagation: () => { stopped = true; }, preventDefault() {} });
 assert.equal(stopped, true);
@@ -410,11 +409,28 @@ const damageAdded = [];
 notifications.notif_damageReceived.call({
   player_id: "1",
   playerDiscard: { addCard: card => damageAdded.push(card) },
+  scrapPile: { contains: () => false },
   updateDamageDeckCount() {},
 }, { player_id: "1", damage_card: { id: "88", type: "0" }, damage_deck_size: 17 });
 assert.equal(damageAdded.length, 1);
 assert.equal(damageAdded[0].id, "88");
 assert.equal(damageAdded[0].type, "0", "the card keeps its type, or the pile shows a card back");
+
+// Damage taken from the scrap pile (damage deck empty) must not leave a fake face-down top card.
+let scrapCards = [{ id: "5" }, { id: "88" }];
+const scrapCalls = [];
+notifications.notif_damageReceived.call({
+  player_id: "1",
+  playerDiscard: { addCard() {} },
+  scrapPile: {
+    contains: card => scrapCards.some(c => c.id == card.id),
+    removeCard(card, settings) { scrapCalls.push(["remove", settings]); scrapCards = scrapCards.filter(c => c.id != card.id); },
+    getCards: () => scrapCards,
+    setCardNumber(n, top) { scrapCalls.push(["count", n, top]); },
+  },
+  updateDamageDeckCount() {},
+}, { player_id: "2", damage_card: { id: "88", type: "0" }, damage_deck_size: 0 });
+assert.equal(JSON.stringify(scrapCalls), JSON.stringify([["remove", { autoUpdateCardNumber: false }], ["count", 1, null]]));
 
 
 // A card that moves and then fires must show the shot after the move: every effect is queued into
