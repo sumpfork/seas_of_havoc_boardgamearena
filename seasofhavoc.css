@@ -532,7 +532,8 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   width: 60px;
   height: 45.5px;
   background-image: url("img/bga_ships.png");
-  background-size: 60px;
+  /* The sheet stacks 8 ships; sizing it to the element keeps percentage positions exact at any scale. */
+  background-size: 100% 800%;
   position: absolute;
   z-index: 2;
 }
@@ -540,19 +541,19 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   background-position: 0% 0%;
 }
 .soh_player_ship[data-shipname="Sloop of War"] {
-  background-position: 0% -100%;
+  background-position: 0% calc(100% / 7);
 }
 .soh_player_ship[data-shipname="Ship-of-the-Line"] {
-  background-position: 0% -200%;
+  background-position: 0% calc(200% / 7);
 }
 .soh_player_ship[data-shipname="War Junk"] {
-  background-position: 0% -300%;
+  background-position: 0% calc(300% / 7);
 }
 .soh_player_ship[data-shipname="Xebec"] {
-  background-position: 0% -400%;
+  background-position: 0% calc(400% / 7);
 }
 .soh_player_ship[data-shipname="Brig"] {
-  background-position: 0% -500%;
+  background-position: 0% calc(500% / 7);
 }
 
 .soh_seaboardlocation {
@@ -1226,7 +1227,6 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   align-self: center;
   width: 40px;
   height: 30.33px;
-  background-size: 40px;
 }
 
 /* The active player's ship(s), glowing in their colour. */

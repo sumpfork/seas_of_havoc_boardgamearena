@@ -224,11 +224,11 @@ final class ShipUpgradeActivationTest extends TestCase
             ["upgrade_key" => "xebec_swift_hull", "is_activated" => 0],
         ];
         $this->game->mockPlayerShipUpgrades["2"] = [
-            ["upgrade_key" => "war_junk_rockets", "is_activated" => 1], // no infamy defined
+            ["upgrade_key" => "war_junk_rockets", "is_activated" => 1], // infamy 3
         ];
 
         $this->game->awardShipUpgradeEndgameInfamy();
 
-        $this->assertSame([["player_id" => "1", "amount" => 3]], $this->game->infamyAwards);
+        $this->assertSame([["player_id" => "1", "amount" => 3], ["player_id" => "2", "amount" => 3]], $this->game->infamyAwards);
     }
 }
