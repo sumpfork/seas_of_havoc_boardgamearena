@@ -1034,16 +1034,12 @@ a.disabled {
 /* Piles open in a bounded dialog on click. The library also fans them out on hover, to
    (card height + shift) x card count - off the screen and over the page. Pin them shut. */
 #mydiscard.all-visible-deck:hover,
-#mydiscard.all-visible-deck:active,
-#scrap.all-visible-deck:hover,
-#scrap.all-visible-deck:active {
+#mydiscard.all-visible-deck:active {
   height: calc(var(--height) + (var(--tile-count) - 1) * var(--vertical-shift));
   width: calc(var(--width) + (var(--tile-count) - 1) * var(--horizontal-shift));
 }
 #mydiscard.all-visible-deck:hover > .bga-cards_card,
-#mydiscard.all-visible-deck:active > .bga-cards_card,
-#scrap.all-visible-deck:hover > .bga-cards_card,
-#scrap.all-visible-deck:active > .bga-cards_card {
+#mydiscard.all-visible-deck:active > .bga-cards_card {
   top: calc(var(--vertical-shift) * var(--order));
   left: calc(var(--horizontal-shift) * var(--order));
 }
