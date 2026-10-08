@@ -532,28 +532,29 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   width: 60px;
   height: 45.5px;
   background-image: url("img/bga_ships.png");
-  /* The sheet stacks 8 ships; sizing it to the element keeps percentage positions exact at any scale. */
+  /* The sheet stacks 8 ships about 151.6px apart, but not on an exact grid (the War Junk runs past
+     its slot). Each position centres its ship in a slot that height: start / (7 * 151.625). */
   background-size: 100% 800%;
   position: absolute;
   z-index: 2;
 }
 .soh_player_ship[data-shipname="Galleon"] {
-  background-position: 0% 0%;
+  background-position: 0% 0.112%;
 }
 .soh_player_ship[data-shipname="Sloop of War"] {
-  background-position: 0% calc(100% / 7);
+  background-position: 0% 14.48%;
 }
 .soh_player_ship[data-shipname="Ship-of-the-Line"] {
-  background-position: 0% calc(200% / 7);
+  background-position: 0% 28.942%;
 }
 .soh_player_ship[data-shipname="War Junk"] {
-  background-position: 0% calc(300% / 7);
+  background-position: 0% 43.216%;
 }
 .soh_player_ship[data-shipname="Xebec"] {
-  background-position: 0% calc(400% / 7);
+  background-position: 0% 57.585%;
 }
 .soh_player_ship[data-shipname="Brig"] {
-  background-position: 0% calc(500% / 7);
+  background-position: 0% 71.906%;
 }
 
 .soh_seaboardlocation {
