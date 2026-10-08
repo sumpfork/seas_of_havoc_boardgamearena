@@ -384,6 +384,9 @@ define([
      * token the player had just chosen to discard.)
      */
     updateMyBootyToken: function () {
+      if (this.isSpectator) {
+        return; // spectators have no hold
+      }
       const tokens = this.booty_tokens || [];
       const mySlot = dom.byId(`booty_token_p${this.player_id}`);
       domConstruct.empty(mySlot);
