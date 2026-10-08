@@ -87,16 +87,24 @@ final class CorsairAbilityTest extends TestCase {
         $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
 
-    public function testCorsairCanPlaceOnOccupiedBankAndGainShownResourcesOnly(): void {
+    public static function bankResourceChoices(): array {
+        return [
+            'sail' => ['sail', ['sail' => 1, 'cannonball' => 0, 'doubloon' => 1, 'skiff' => 0]],
+            'cannonball' => ['cannonball', ['sail' => 0, 'cannonball' => 1, 'doubloon' => 1, 'skiff' => 0]],
+            'doubloon' => ['doubloon', ['sail' => 0, 'cannonball' => 0, 'doubloon' => 2, 'skiff' => 0]],
+        ];
+    }
+
+    /** @dataProvider bankResourceChoices */
+    public function testCorsairCanPlaceOnOccupiedBankAndGainShownResourcesOnly(string $resource, array $expected): void {
         $this->game->actPlaceSkiff('bank', 'n1');
         $this->assertSame(2, $this->game->gamestate->getCurrentMainStateId());
         $this->assertSame(0, $this->game->getGameStateValue('corsair_occupied_placement_used'));
 
-        $this->game->actResourcePickedInDialog('sail');
+        $this->game->actResourcePickedInDialog($resource);
 
-        $this->assertSame(1, $this->game->mockPlayerResources['sail']);
-        $this->assertSame(1, $this->game->mockPlayerResources['doubloon']);
-        $this->assertSame(0, $this->game->mockPlayerResources['skiff']);
+        $this->assertSame($expected, $this->game->mockPlayerResources);
+        $this->assertNull($this->game->getPendingResourceChoice());
         $this->assertSame(2, $this->game->mockIslandSlots['bank']['n1']['occupying_player_id']);
         $this->assertSame(1, $this->game->mockIslandSlots['bank']['n1']['corsair_occupying_player_id']);
         $this->assertSame(1, $this->game->getGameStateValue('corsair_occupied_placement_used'));
