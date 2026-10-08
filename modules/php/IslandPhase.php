@@ -583,7 +583,12 @@ trait IslandPhase
                 $this->finalizeCorsairOccupiedPlacement($player_id, "capitol", $number, [$resource => 1]);
                 return "islandTurnDone";
             case "corsair_occupied_bank":
-                $this->finalizeCorsairOccupiedPlacement($player_id, "bank", $number, ["doubloon" => 1, $resource => 1]);
+                $this->finalizeCorsairOccupiedPlacement(
+                    $player_id,
+                    "bank",
+                    $number,
+                    $this->sum_array_by_key(["doubloon" => 1], [$resource => 1]),
+                );
                 return "islandTurnDone";
             case "corsair_occupied_green_flag":
                 $this->finalizeCorsairOccupiedPlacement($player_id, "green_flag", $number, [$resource => 1]);
