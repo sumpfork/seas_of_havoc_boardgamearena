@@ -851,6 +851,8 @@ trait CaptainAbilities
             }
             $card = reset($booty_cards);
             $this->cards->moveCard((int) $card["id"], "booty_player", $player_id);
+            $this->notifyBootyTokensChanged((int) $target_player_id);
+            $this->notifyBootyTokensChanged((int) $player_id);
         } else {
             if (!in_array($item, ["sail", "cannonball", "doubloon"])) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Invalid resource for Boarding Party"));

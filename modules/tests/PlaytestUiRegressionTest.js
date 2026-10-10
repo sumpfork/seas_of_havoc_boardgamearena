@@ -25,6 +25,16 @@ function loadModule(name, deps = {}) {
 }
 
 const notifications = loadModule("notifications.js");
+// Boarding Party sends each owner their new hold; render it without waiting for a pickup animation.
+for (const tokens of [[{ id: 55, type_arg: 1 }], [], [{ id: 56, type_arg: 2 }]]) {
+  let renderedBooty;
+  const bootyGame = {
+    player_id: "1",
+    updateMyBootyToken() { renderedBooty = this.booty_tokens; },
+  };
+  notifications.notif_bootyTokenUsed.call(bootyGame, { player_id: 1, booty_tokens: tokens });
+  assert.equal(renderedBooty, tokens, "A booty transfer immediately redraws the owner's current hold");
+}
 let lastSeaPhaseBanner = null;
 const bannerUtils = loadModule("utils.js");
 const bannerGame = {
