@@ -559,6 +559,7 @@ define([
      * @private
      */
     _choiceName: function (name) {
+      if (name === "nimble hull maneuver twice") return _("Nimble Hull: maneuver twice");
       var words = name.split(" ");
       var side = words.pop();
       return ["left", "right", "fore", "aft"].includes(side) && words.length > 0 && !name.startsWith("pivot")

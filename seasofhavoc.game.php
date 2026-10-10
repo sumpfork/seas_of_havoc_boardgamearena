@@ -113,7 +113,8 @@ class SeasOfHavoc extends Table
     private const TREASURE_SEEKER_RESUME_COLLISION = 3;
     private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
 
-    public const NIMBLE_HULL_CHOICE = "nimble hull: maneuver twice";
+    // Decision values pass through BGA's alphanumeric JsonParam validation.
+    public const NIMBLE_HULL_CHOICE = "nimble hull maneuver twice";
 
     private const EXTORTION_FLAG_BITS = ["green" => 1, "red" => 2, "tan" => 4, "blue" => 8];
 
