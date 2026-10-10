@@ -30,6 +30,21 @@ class NimbleHullUT extends RebelAndTreasureSeekerCardUT
 
 final class NimbleHullTest extends TestCase
 {
+    public function testUpgradedCardDecisionNamesAreSafeForJsonParam(): void {
+        $game = new NimbleHullUT();
+        // The BGA stub doesn't validate JsonParam strings; keep submitted names punctuation-free.
+        $check = function (array $actions) use (&$check): void {
+            foreach ($actions as $action) {
+                $this->assertMatchesRegularExpression('/^[a-zA-Z0-9 _-]+$/D', $action['name'] ?? $action['action']);
+                $check($action['choices'] ?? []);
+                $check($action['actions'] ?? []);
+            }
+        };
+        foreach ($game->upgradedPlayableCards('1') as $card) {
+            $check($card['actions']);
+        }
+    }
+
     private function card(NimbleHullUT $game, int $imageId): array {
         return array_values(array_filter($game->playable_cards, fn($c) => $c['image_id'] === $imageId))[0];
     }

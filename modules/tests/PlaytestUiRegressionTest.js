@@ -450,9 +450,11 @@ const forkManeuver = { action: "choice", choices: [
 ] };
 const nimbleActions = [{ action: "choice", choices: [
   { action: "sequence", name: "resolve once", actions: [forkManeuver] },
-  { action: "sequence", name: "nimble hull: maneuver twice", actions: [forkManeuver, forkManeuver] },
+  { action: "sequence", name: "nimble hull maneuver twice", actions: [forkManeuver, forkManeuver] },
 ] }];
 const nimbleRows = renderRows(nimbleActions);
+assert.match(nimbleRows[0], /Nimble Hull: maneuver twice/, "The display label keeps its punctuation");
+assert.match(nimbleRows[0], /value="nimble hull maneuver twice"/, "The submitted decision contains no colon");
 const nimbleIds = [...nimbleRows.join("").matchAll(/id="([^"]+)"/g)].map(match => match[1]);
 assert.equal(new Set(nimbleIds).size, nimbleIds.length, "Nested Nimble Hull choices must have unique radio IDs");
 assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows");
@@ -501,7 +503,7 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
     controlGame._updateCardPlayControls();
     return options.find(option => option.name === name).children;
   };
-  const twice = choose(tree, "nimble hull: maneuver twice");
+  const twice = choose(tree, "nimble hull maneuver twice");
   assert.equal(ready, false, "The maneuver choices must be answered before playing");
   assert.equal(inputs.card_choices_remaining.textContent, "2 choices remaining");
   const highlightedRows = () => new Set(Object.values(inputs)
@@ -515,7 +517,7 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
   assert.equal(ready, true, "Both chosen maneuvers enable Play Card");
   assert.equal(inputs.card_choices_remaining.textContent, "");
   assert.equal(highlightedRows(), 0);
-  assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["nimble hull: maneuver twice", "forward", "skip", "right"]);
+  assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["nimble hull maneuver twice", "forward", "skip", "right"]);
   const once = choose(tree, "resolve once");
   assert.equal(inputs.card_choices_remaining.textContent, "1 choice remaining", "Hidden branches no longer count");
   assert.equal(highlightedRows(), 1);
@@ -531,9 +533,9 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
   const preview = loadModule("cardPreview.js");
   const forward = [{ action: "forward" }, { action: "forward", cost: { sail: 1 } }];
   const actions = [{ action: "choice", choices: [
-    { action: "sequence", name: "nimble hull: maneuver twice", actions: [...forward, ...forward] },
+    { action: "sequence", name: "nimble hull maneuver twice", actions: [...forward, ...forward] },
   ] }];
-  const marks = preview.simulateCardPlay(actions, ["nimble hull: maneuver twice", "forward", "skip"],
+  const marks = preview.simulateCardPlay(actions, ["nimble hull maneuver twice", "forward", "skip"],
     { x: 0, y: 0, heading: 2 }, () => null);
   const ghost = marks.find(mark => mark.type === "ghost");
   assert.equal(ghost.x, 3, "The preview also consumes the first paid move before the second maneuver's skip");
