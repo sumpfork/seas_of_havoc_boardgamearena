@@ -184,6 +184,9 @@ trait ScoringAndStats
                 "score_increment" => $amount,
             ]),
         );
+        if ($this->infamyTarget() !== null && !in_array($source, ["cards", "upgrades"], true)) {
+            $this->announceLastSeaPhase();
+        }
     }
 
     protected function getPlayerInfamy(string $player_id): int

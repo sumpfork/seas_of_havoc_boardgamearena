@@ -80,6 +80,8 @@ class SeasOfHavoc extends Table
     private const OPTION_CAPTAINS_AND_SHIPS = 101;
     private const ASSIGN_FIRST_GAME_PAIRS = 2;
     private const ASSIGN_DRAFT = 3;
+    /** Table option (First Mates): 1 = standard, 2 = Extended Game, 3 = Epic Game. */
+    private const OPTION_GAME_LENGTH = 102;
 
     /** The rulebook's ship and captain pairings for players' first games. */
     const FIRST_GAME_PAIRS = [
@@ -163,6 +165,7 @@ class SeasOfHavoc extends Table
             // or the Corsair on one of those): RESOURCE_CHOICE_CONTEXTS index + 1, and slot number.
             "pending_resource_context" => 34,
             "pending_resource_slot" => 35,
+            "last_sea_phase" => 36,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -437,7 +440,7 @@ class SeasOfHavoc extends Table
                 [
                     "type" => $damage_card["card_type"],
                     "type_arg" => 0,
-                    "nbr" => $this->calculateNumDamageCards(count($player_infos)),
+                    "nbr" => $this->calculateNumDamageCards(),
                 ],
             ],
             "damage_deck",
@@ -849,7 +852,8 @@ class SeasOfHavoc extends Table
         $type = (int) $this->getGameStateValue("pending_card_flag_type");
         if ($type !== 0) {
             $flag = $this->playable_cards[$type]["flag"];
-            if ($this->getTokenOwner($flag . "_flag") == $this->getActivePlayerId()) {
+            if ($this->getTokenOwner($flag . "_flag") == $this->getActivePlayerId()
+                && ($flag !== "blue" || $this->cards->countCardInLocation("hand", $this->getActivePlayerId()) > 0)) {
                 return STATE_CARD_FLAG;
             }
             $this->setGameStateValue("pending_card_flag_type", 0);
@@ -875,8 +879,7 @@ class SeasOfHavoc extends Table
         }
         $this->mytrace("final num cards: $num_cards");
         if ($num_cards == 0) {
-            // "The game ends at the end of a Sea Phase when the Damage deck is empty."
-            if ($this->cards->countCardInLocation("damage_deck") == 0) {
+            if ($this->isLastSeaPhase()) {
                 return STATE_FINAL_SCORING;
             }
             // Sea Phase cleanup: everyone draws a new hand of 4 for the next Island Phase.
@@ -887,6 +890,43 @@ class SeasOfHavoc extends Table
         }
         $this->giveExtraTime($active_player);
         return "nextPlayer";
+    }
+
+    /**
+     * Standard: "The game ends at the end of a Sea Phase when the Damage deck is empty."
+     * Extended/Epic (First Mates): "The game ends at the end of the Sea Phase during which a player
+     * reached the Infamy target." Only track infamy counts: card and upgrade infamy is added at
+     * final scoring, so the score is the track until then.
+     */
+    function isLastSeaPhase(): bool
+    {
+        if ($this->getGameStateValue("last_sea_phase")) {
+            return true;
+        }
+        $target = $this->infamyTarget();
+        if ($target === null) {
+            return $this->cards->countCardInLocation("damage_deck") == 0;
+        }
+        return $this->bga->playerScore->getMax() >= $target;
+    }
+
+    function announceLastSeaPhase(): void
+    {
+        if (!$this->getGameStateValue("last_sea_phase") && $this->isLastSeaPhase()) {
+            // Once triggered, spending infamy cannot undo the final phase.
+            $this->setGameStateValue("last_sea_phase", 1);
+            $this->bga->notify->all("lastSeaPhase", clienttranslate('Last Sea Phase: the game ends after this phase.'), []);
+        }
+    }
+
+    /** The infamy track target for the Extended/Epic Game, or null for the standard game. */
+    function infamyTarget(): ?int
+    {
+        return match ($this->bga->tableOptions->get(self::OPTION_GAME_LENGTH)) {
+            null, 1 => null, // null: a table created before the option existed
+            2 => 45,
+            3 => 60,
+        };
     }
 
     /*
@@ -911,6 +951,7 @@ class SeasOfHavoc extends Table
 
         $result["resources"] = $this->getGameResources();
         $result["endScores"] = $this->gamestate->getCurrentMainStateId() === STATE_END_GAME ? $this->getEndScores() : null;
+        $result["last_sea_phase"] = $this->gamestate->getCurrentMainStateId() !== STATE_END_GAME && $this->isLastSeaPhase();
 
         // Get pending purchases for current player ONLY
         // Pending purchases are private per-player and not visible to other players until all players commit
@@ -997,7 +1038,11 @@ class SeasOfHavoc extends Table
     */
     function getGameProgression()
     {
-        $totalDamageCards = $this->calculateNumDamageCards($this->getPlayersNumber());
+        $target = $this->infamyTarget();
+        if ($target !== null) {
+            return max(0, min(100, intdiv(100 * $this->bga->playerScore->getMax(), $target)));
+        }
+        $totalDamageCards = $this->calculateNumDamageCards();
         $remainingDamageCards = $this->cards->countCardInLocation("damage_deck");
 
         if ($totalDamageCards <= 0) {

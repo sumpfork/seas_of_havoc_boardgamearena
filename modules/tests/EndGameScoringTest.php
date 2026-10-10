@@ -200,12 +200,81 @@ final class EndGameScoringTest extends TestCase
         $this->assertSame(STATE_FINAL_SCORING, $game->stNextPlayerSeaPhase());
     }
 
+    public function testDamageDeckHas10PlusFivePerShip(): void
+    {
+        $game = new class extends EndGameUT {
+            public function getPlayersNumber(): int { return 2; }
+        };
+        $this->assertSame(20, $game->calculateNumDamageCards());
+        $game->bga->tableOptions->values[100] = 2;
+        $this->assertSame(30, $game->calculateNumDamageCards(), '2 Ship Variant: four ships');
+    }
+
+    public function testExtendedGameEndsWhenAPlayerReachesTheInfamyTarget(): void
+    {
+        $game = new class extends EndGameUT {
+            public function getActivePlayerId(): string { return '1'; }
+            public function activeNextPlayer(): int|string { return 1; }
+            public function giveExtraTime(int $playerId, ?int $specificTime = null): void {}
+            public function canUseSwiftHull($player_id): bool { return false; }
+        };
+        $game->bga->tableOptions->values[102] = 2;
+        $game->bga->playerScore->set(2, 44);
+        $this->assertSame('seaPhaseDone', $game->stNextPlayerSeaPhase(), 'an empty damage deck no longer ends it');
+        $this->assertSame(97, $game->getGameProgression());
+
+        $game->bga->playerScore->set(2, 45);
+        $this->assertSame(STATE_FINAL_SCORING, $game->stNextPlayerSeaPhase());
+
+        $game->bga->tableOptions->values[102] = 3;
+        $this->assertSame('seaPhaseDone', $game->stNextPlayerSeaPhase(), 'Epic Game needs 60');
+    }
+
+    public function testExtendedGameReturnsScrappedDamageCardsToTheDamageDeck(): void
+    {
+        $this->game->deck->add(1, $this->game->damageCardType(), 'hand', 1);
+        $this->game->deck->add(2, $this->game->marketCardTypeWithInfamy(1), 'hand', 1);
+        $this->game->bga->tableOptions->values[102] = 2;
+        $this->game->scrapCardAndRefund(1, '1');
+        $this->game->scrapCardAndRefund(2, '1');
+        $this->assertSame('damage_deck', $this->game->deck->getCard(1)['location']);
+        $this->assertSame('scrap', $this->game->deck->getCard(2)['location']);
+
+        $this->game->bga->tableOptions->values[102] = 1;
+        $this->game->deck->moveCard(1, 'hand', 1);
+        $this->game->scrapCardAndRefund(1, '1');
+        $this->assertSame('scrap', $this->game->deck->getCard(1)['location'], 'standard game scraps them');
+    }
+
     public function testTheLastSeaPhaseKeepsDealingDamageFromTheScrapPile(): void
     {
         $this->game->deck->add(7, $this->game->damageCardType(), 'scrap');
         $this->game->dealDamageCard('1');
         $this->assertSame('player_discard_1', $this->game->deck->getCard(7)['location']);
         $this->assertSame(0, $this->game->deck->countCardInLocation('damage_deck'), 'the deck stays empty');
+    }
+
+    public function testLastDamageCardAnnouncesFinalPhaseToEveryoneOnlyOnce(): void
+    {
+        $this->game->deck->add(1, $this->game->damageCardType(), 'damage_deck');
+        $this->game->deck->add(2, $this->game->damageCardType(), 'damage_deck');
+        $this->game->dealDamageCard('1');
+        $this->assertSame(0, $this->game->getGameStateValue('last_sea_phase'));
+        $this->game->dealDamageCard('1');
+        $this->game->dealDamageCard('1');
+
+        $announcements = array_values(array_filter($this->game->bga->notify->sent, fn($n) => $n['type'] === 'lastSeaPhase'));
+        $this->assertCount(1, $announcements);
+        $this->assertArrayNotHasKey('player_id', $announcements[0], 'the notification is public');
+        $this->assertSame(1, $this->game->getGameStateValue('last_sea_phase'));
+    }
+
+    public function testEmptyDamageDeckDoesNotAnnounceFinalPhaseInExtendedGame(): void
+    {
+        $this->game->bga->tableOptions->values[102] = 2;
+        $this->game->dealDamageCard('1');
+        $this->assertSame(0, $this->game->getGameStateValue('last_sea_phase'));
+        $this->assertFalse($this->game->isLastSeaPhase());
     }
 
     public function testWithNothingInTheScrapPileASpareDamageCardIsMade(): void

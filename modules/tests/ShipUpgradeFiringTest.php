@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 
 use Bga\Games\SeasOfHavoc\Heading;
+use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
 use Bga\Games\SeasOfHavoc\SeaBoard;
 use Bga\Games\SeasOfHavoc\ShipUpgrades;
 use Bga\Games\SeasOfHavoc\Turn;
@@ -41,7 +42,8 @@ class ShipUpgradeFiringUT extends SeasOfHavocUT
     public string $activePlayer = "1";
     public function getActivePlayerId(): string { return $this->activePlayer; }
     public function getPlayerNameById(int $player_id): string { return "Player$player_id"; }
-    public function getPlayerCaptain($player_id) { return "admiral"; }
+    public string $captain = "admiral";
+    public function getPlayerCaptain($player_id) { return $this->captain; }
     public function getPlayerShipUpgrades($player_id) {
         return array_map(
             fn($key) => ["upgrade_key" => $key, "is_activated" => 1],
@@ -243,6 +245,62 @@ final class ShipUpgradeFiringTest extends TestCase
 
         $this->assertSame([["player_id" => "1", "amount" => 2]], $this->game->infamy);
         $this->assertSame(["2"], $this->game->damaged);
+    }
+
+    public function testBountyRewardsOnlyTheSelectedShipForEachDamageCard(): void
+    {
+        $this->game->captain = "corsair";
+        foreach ([2, -2] as $target) {
+            $this->game->setGameStateValue("hunt_the_bounty_target", $target);
+            foreach (["2", "2_2"] as $victim) {
+                $this->game->infamy = [];
+                $this->game->fireResults = [
+                    self::hit(2, 2, 1, $victim, Heading::EAST),
+                    self::hit(2, 2, 1, $victim, Heading::EAST),
+                ];
+                $this->fire("2 x fire left", [], ["action" => "2 x fire", "range" => 2, "cost" => ["cannonball" => 2]]);
+                $selected = $victim === ($target < 0 ? "2_2" : "2");
+                $this->assertSame($selected ? [2, 1, 2, 1] : [2, 2], array_column($this->game->infamy, "amount"));
+            }
+        }
+    }
+
+    public function testBountyDoesNotRewardOtherCaptainsOrAnExpiredTarget(): void
+    {
+        foreach ([["admiral", -2], ["corsair", 0]] as [$captain, $target]) {
+            $this->game->captain = $captain;
+            $this->game->setGameStateValue("hunt_the_bounty_target", $target);
+            $this->game->infamy = [];
+            $this->game->fireResults = [self::hit(2, 2, 1, "2_2", Heading::EAST)];
+            $this->fire("fire left", [], ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]);
+            $this->assertSame([2], array_column($this->game->infamy, "amount"));
+        }
+    }
+
+    public function testRocketSplashAwardsBountyOnlyForTheSelectedShip(): void
+    {
+        $this->game->captain = "corsair";
+        $this->game->setGameStateValue("hunt_the_bounty_target", -2);
+        $this->game->fireResults = [self::hit(2, 2, 1, "2", Heading::EAST)];
+        $this->game->surrounding = [["x" => 2, "y" => 1]];
+        $this->game->shipsAt = ["2,1" => [["type" => "player_ship", "arg" => "2_2", "heading" => Heading::EAST]]];
+        $this->fire("rocket left", ["war_junk_rockets"], ["action" => "fire", "range" => 3, "cost" => ["cannonball" => 1]]);
+        $this->assertSame([2, 1, 1], array_column($this->game->infamy, "amount"));
+        $this->assertSame(["2", "2"], $this->game->damaged);
+    }
+
+    public function testRammingAwardsBountyOnlyForTheSelectedShip(): void
+    {
+        $this->game->captain = "corsair";
+        $this->game->setGameStateValue("hunt_the_bounty_target", -2);
+        $board = new SeaBoard(fn($sql) => [], $this->game);
+        (new ReflectionProperty(SeasOfHavoc::class, "seaboard"))->setValue($this->game, $board);
+        $board->placeObject(1, 1, ["type" => "player_ship", "arg" => "1", "heading" => Heading::EAST]);
+        $board->placeObject(2, 1, ["type" => "player_ship", "arg" => "2", "heading" => Heading::EAST]);
+        $board->placeObject(2, 1, ["type" => "player_ship", "arg" => "2_2", "heading" => Heading::EAST]);
+        $this->game->processSimpleAction(PrimitiveCardPlayAction::FORWARD);
+        $this->assertSame([1, 1, 1], array_column($this->game->infamy, "amount"));
+        $this->assertSame(["2", "2"], $this->game->damaged);
     }
 
     public function testHittingYourOwnOtherShipDamagesYouWithoutInfamy(): void

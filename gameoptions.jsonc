@@ -31,5 +31,25 @@
             }
         },
         "default": 1
+    },
+    "102": {
+        "name": "Game length",
+        "values": {
+            "1": {
+                "name": "Standard (Damage Card Based)",
+                "description": "The game ends at the end of the Sea Phase in which the damage deck runs out. The damage deck holds 10 damage cards plus 5 per ship"
+            },
+            "2": {
+                "name": "Extended Game (45 infamy)",
+                "tmdisplay": "Extended Game",
+                "description": "First Mates variant: play until a player reaches 45 infamy on the track; scrapped damage cards return to the damage deck"
+            },
+            "3": {
+                "name": "Epic Game (60 infamy)",
+                "tmdisplay": "Epic Game",
+                "description": "First Mates variant: play until a player reaches 60 infamy on the track; scrapped damage cards return to the damage deck"
+            }
+        },
+        "default": 1
     }
 }

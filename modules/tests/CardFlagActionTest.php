@@ -84,6 +84,27 @@ final class CardFlagActionTest extends TestCase
         $this->assertSame(STATE_SEA_TURN, $this->game->actResolveCardFlag());
     }
 
+    public function testBluePromptIsSkippedWhenHandIsEmpty(): void {
+        $this->game->addCard(1, 'hand', 2);
+        $this->game->playFlag('blue');
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(0, $this->game->getGameStateValue('pending_card_flag_type'));
+    }
+
+    public function testBluePromptRemainsWhenAnotherCardCanBePlayed(): void {
+        $this->game->addCard(1, 'hand');
+        $this->game->playFlag('blue');
+        $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());
+    }
+
+    public function testBluePromptIsSkippedAfterCollisionDiscardsTheLastCard(): void {
+        $this->game->addCard(1, 'hand', 2);
+        $last = $this->game->addCard(1, 'hand');
+        $this->game->playFlag('blue');
+        $this->game->actCollisionDiscardCard($last);
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+    }
+
     public function testRedCanScrapThePlayedCardAndRefundItsCost(): void {
         $id = $this->game->playFlag('red');
         $args = $this->game->argCardFlag();

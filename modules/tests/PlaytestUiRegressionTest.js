@@ -25,6 +25,24 @@ function loadModule(name, deps = {}) {
 }
 
 const notifications = loadModule("notifications.js");
+let lastSeaPhaseBanner = null;
+const bannerUtils = loadModule("utils.js");
+const bannerGame = {
+  bga: { gameArea: {
+    addLastTurnBanner: message => { lastSeaPhaseBanner = message; },
+    removeLastTurnBanner: () => { lastSeaPhaseBanner = null; },
+  } },
+  updateLastSeaPhaseBanner: bannerUtils.updateLastSeaPhaseBanner,
+  showScoreSheet() {},
+};
+bannerGame.updateLastSeaPhaseBanner(false);
+assert.equal(lastSeaPhaseBanner, null);
+notifications.notif_lastSeaPhase.call(bannerGame);
+assert.equal(lastSeaPhaseBanner, "Last Sea Phase: the game ends after this phase.", "the public notification shows the BGA banner");
+bannerGame.updateLastSeaPhaseBanner(true);
+assert.equal(lastSeaPhaseBanner, "Last Sea Phase: the game ends after this phase.", "setup restores a triggered banner");
+notifications.notif_endScores.call(bannerGame, { endScores: {} });
+assert.equal(lastSeaPhaseBanner, null, "the banner disappears for final scoring");
 const occupied = { shipyard: { n1: { occupying_player_id: "1", corsair_occupying_player_id: "2" } } };
 const cleared = { shipyard: { n1: { occupying_player_id: null, corsair_occupying_player_id: null } } };
 let renderedSlots;
@@ -101,6 +119,17 @@ const iconGame = {
   onMerchantSubstituteChosen: (cb, sail) => { action = { cb, sail }; },
   onMerchantSubstituteCancel() {},
 };
+buttons.length = 0;
+handlers.onUpdateActionButtons.call(iconGame, "huntTheBounty", { targets: [
+  { ship: "2", ship_name: "Xebec", player_name: "Opponent" },
+  { ship: "2_2", ship_name: "War Junk", player_name: "Opponent" },
+] });
+assert.deepEqual(buttons.map(b => b.label), ["Target Xebec (Opponent)", "Target War Junk (Opponent)", "Skip (No Target)"]);
+for (const [index, ship] of ["2", "2_2"].entries()) {
+  buttons[index].callback();
+  assert.equal(action.name, "actHuntTheBountyChooseTarget");
+  assert.equal(action.args.target_ship, ship);
+}
 buttons.length = 0;
 handlers.onUpdateActionButtons.call(iconGame, "client_merchantSubstitute", {});
 assert.equal(buttons[0].label, '2 ' + utils.resourceIcon('doubloon') + ' → 2 ' + utils.resourceIcon('cannonball') + ', 1 ' + utils.resourceIcon('doubloon') + ' → 1 ' + utils.resourceIcon('sail'));
@@ -257,6 +286,7 @@ handlers.onEnteringState.call({
 assert.equal(shownScraps, privateScraps, "Red flag must use only the active player's private scrap choices");
 let gameMethods;
 const templates = {};
+const scoreNodes = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../seasofhavoc.js"), "utf8"), {
   define: (dependencies, factory) => factory(...dependencies.map(name =>
     name === "dojo/_base/declare" ? (name, base, methods) => {
@@ -267,10 +297,52 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../seasofhavoc.js"),
   g_gamethemeurl: "",
   ebg: { core: { gamegui: {} } },
   window: templates,
+  $: id => scoreNodes[id],
   _: text => text,
   console,
 });
 gameMethods.setupGameArea.call({ bga: { gameArea: { getElement: () => ({ insertAdjacentHTML() {} }) } } });
+
+// A skull is both a child of its old space and the moving marker: animate it only once.
+for (const [from, to, corners] of [[0, 44, [15, 30]], [44, 0, [30, 15]], [59, 61, [0]], [0, 60, [15, 30, 45]]]) {
+  for (let s = 0; s < 60; s++) {
+    const spot = gameMethods.getScoreSpot(s);
+    scoreNodes[gameMethods.scoreLocationId(s)] = {
+      children: [],
+      getBoundingClientRect: () => ({ left: spot.x, top: spot.y, width: 0, height: 0 }),
+      appendChild(marker) {
+        marker.parentNode.children = marker.parentNode.children.filter(m => m !== marker);
+        marker.parentNode = this;
+        this.children.push(marker);
+      },
+    };
+  }
+  const animations = [];
+  const marker = {
+    dataset: { score: from }, style: {},
+    parentNode: scoreNodes[gameMethods.scoreLocationId(from)],
+    getBoundingClientRect() {
+      const anchor = this.parentNode.getBoundingClientRect();
+      return { left: anchor.left - 12, top: anchor.top - 12, width: 24, height: 24 };
+    },
+    animate(keyframes) { animations.push(keyframes); return { finished: Promise.resolve() }; },
+  };
+  scoreNodes.score_marker_1 = marker;
+  marker.parentNode.children.push(marker);
+  gameMethods.moveScoreMarker.call({
+    scoreLocationId: gameMethods.scoreLocationId,
+    fanScoreMarkers() {},
+    bgaAnimationsActive: () => true,
+  }, '1', to);
+  assert.equal(animations.length, 1, `${from} → ${to} must start exactly one skull animation`);
+  const destination = gameMethods.getScoreSpot(to % 60);
+  const expected = [from % 60, ...corners, to % 60].map(s => {
+    const spot = gameMethods.getScoreSpot(s);
+    return `${spot.x - destination.x}px ${spot.y - destination.y}px`;
+  });
+  assert.deepEqual(Array.from(animations[0], frame => frame.translate), expected, "waypoints stay on the track");
+  assert.equal(marker.parentNode, scoreNodes[gameMethods.scoreLocationId(to)]);
+}
 const formatBlock = (name, args) => templates[name].replace(/\$\{(\w+)\}/g, (_, key) => args[key]);
 const logArgs = { resource_change: "gains 3 [skiff]", booty_usage: "1 [cannonball]" };
 gameMethods.bgaFormatText.call({ format_block: formatBlock }, "resources", logArgs);
@@ -621,4 +693,3 @@ assert.equal(nodes.skip.checked, false);
   assert.deepEqual(simulateCardPlay([{ action: "forward" }], ["pass"], { x: 0, y: 0, heading: N }, open), [],
     "passing the card shows nothing");
 }
-

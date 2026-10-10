@@ -69,9 +69,11 @@ trait Decks
         return substr($location, strlen("player_discard_")) ?: "0";
     }
 
-    function calculateNumDamageCards($num_players)
+    /** "A Damage Card deck consisting of 10 Damage cards plus 5 additional Damage cards per ship." */
+    function calculateNumDamageCards(): int
     {
-        return 10 + $num_players * 5;
+        $ships_per_player = $this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2 ? 2 : 1;
+        return 10 + $this->getPlayersNumber() * $ships_per_player * 5;
     }
 
     /** The card type used for damage cards. */
@@ -229,9 +231,12 @@ trait Decks
             // The damage deck running out ends the game, so its size is public information.
             "damage_deck_size" => $this->cards->countCardInLocation("damage_deck"),
         ]);
+        if ($this->infamyTarget() === null) {
+            $this->announceLastSeaPhase();
+        }
 
         if ($bulkheads) {
-            $this->cards->insertCardOnExtremePosition((int) $damage_card["id"], "scrap", true);
+            $to_damage_deck = $this->scrapCard($damage_card);
             $this->bga->notify->all(
                 "cardScrapped",
                 clienttranslate('${player_name}\'s Watertight Bulkheads: the damage card is scrapped immediately'),
@@ -245,9 +250,22 @@ trait Decks
                         "location_arg" => (int) $hit_player_id,
                     ],
                     "original_location" => "player_discard",
+                    "to_damage_deck" => $to_damage_deck,
+                    "damage_deck_size" => $this->cards->countCardInLocation("damage_deck"),
                 ],
             );
         }
+    }
+
+    /**
+     * Moves a card to the scrap pile. Extended/Epic Game: "Whenever damage cards are scrapped,
+     * return them to the damage deck." Returns whether it went to the damage deck.
+     */
+    private function scrapCard(array $card): bool
+    {
+        $to_damage_deck = $this->infamyTarget() !== null && (int) $card["type"] === $this->damageCardType();
+        $this->cards->insertCardOnExtremePosition((int) $card["id"], $to_damage_deck ? "damage_deck" : "scrap", true);
+        return $to_damage_deck;
     }
 
     /** A damage card from the scrap pile, or a fresh one from "the box" if the scrap has none. */
@@ -283,8 +301,7 @@ trait Decks
         // Store the original location before moving ("player_discard" is the client's name for it)
         $original_location = $from_hand ? "hand" : "player_discard";
 
-        // Move card to scrap pile
-        $this->cards->insertCardOnExtremePosition($card_id, "scrap", true);
+        $to_damage_deck = $this->scrapCard($card);
         $this->bga->playerStats->inc("cards_scrapped", 1, (int) $player_id);
 
         // Ensure card ID is properly formatted
@@ -301,6 +318,8 @@ trait Decks
             "player_id" => intval($player_id),
             "card" => $card_for_notification,
             "original_location" => $original_location,
+            "to_damage_deck" => $to_damage_deck,
+            "damage_deck_size" => $this->cards->countCardInLocation("damage_deck"),
         ]);
 
         $cost = $this->playable_cards[$card["type"]]["cost"] ?? [];
