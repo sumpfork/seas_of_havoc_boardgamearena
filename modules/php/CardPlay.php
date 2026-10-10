@@ -115,6 +115,43 @@ trait CardPlay
         return $this->processCardActionsWithDecisions($actions, $decisions);
     }
 
+    /**
+     * The decisions a card action accepts, as [name, cost, choice] (mirrors actionOptions in
+     * constants.js). A choice offers its options by name, at the choice's cost, with the option's
+     * action as `choice`; fire offers each shot to each side; anything else offers itself. A cost
+     * makes the action optional: "skip".
+     */
+    public static function actionOptions(array $action): array
+    {
+        $name = ShipUpgrades::actionName($action);
+        $cost = $action["cost"] ?? [];
+        $options = [];
+        if ($name === PrimitiveCardPlayAction::CHOICE->value) {
+            foreach ($action["choices"] as $choice) {
+                $options[] = ["name" => $choice["name"] ?? ShipUpgrades::actionName($choice), "cost" => $cost, "choice" => $choice];
+            }
+        } elseif (isset(ShipUpgrades::FIRE_COUNTS[$name])) {
+            foreach ($action["variants"] ?? ShipUpgrades::fireVariants($action, []) as $variant) {
+                foreach ($variant["sides"] as $side) {
+                    $options[] = ["name" => $variant["name"] . " " . $side, "cost" => $variant["cost"], "choice" => null];
+                }
+            }
+        } else {
+            $options[] = ["name" => $action["name"] ?? $name, "cost" => $cost, "choice" => null];
+        }
+        if (array_key_exists("cost", $action)) {
+            $options[] = ["name" => "skip", "cost" => [], "choice" => null];
+        }
+        return $options;
+    }
+
+    /** Whether an action takes a decision: a choice, or more than one option to pick from. */
+    public static function needsDecision(array $action): bool
+    {
+        return ShipUpgrades::actionName($action) === PrimitiveCardPlayAction::CHOICE->value
+            || count(self::actionOptions($action)) > 1;
+    }
+
     /** Nested maneuvers consume the same decision list as the actions that follow them. */
     private function processCardActionsWithDecisions(array $actions, array &$decisions): CardActionOutcome
     {
@@ -128,23 +165,23 @@ trait CardPlay
                     : $action["action"];
             $this->mytrace("handling " . $typed_action->value);
             $this->mydump("action_chain", $outcome->actionChain);
-            $optional = array_key_exists("cost", $action);
-            $has_options = $typed_action === PrimitiveCardPlayAction::CHOICE || isset(ShipUpgrades::FIRE_COUNTS[$typed_action->value]);
             $decision = null;
+            $chosen = null;
             // Consume once before dispatch; fixed moves and sequence wrappers need no decision.
-            if ($optional || $has_options) {
+            if (self::needsDecision($action)) {
                 if (empty($decisions)) {
                     throw new \Bga\GameFramework\SystemException("Missing card action choice: " . $typed_action->value);
                 }
                 $decision = array_shift($decisions);
-                if ($optional && $decision === "skip") {
-                    $this->mytrace("skipping action with cost due to decision == 'skip': " . $typed_action->value);
-                    $this->mytrace("decisions after skipping: " . implode(", ", $decisions));
-                    continue;
-                }
-                if (!$has_options && $decision !== ($action["name"] ?? $typed_action->value)) {
+                $options = self::actionOptions($action);
+                $index = array_search($decision, array_column($options, "name"), true);
+                if ($index === false) {
                     throw new \Bga\GameFramework\SystemException("Invalid card action choice: " . $decision);
                 }
+                if ($decision === "skip") {
+                    continue;
+                }
+                $chosen = $options[$index]["choice"];
             }
             $cost = $action["cost"] ?? [];
             switch ($typed_action) {
@@ -152,17 +189,10 @@ trait CardPlay
                     $outcome->absorb($this->processCardActionsWithDecisions($action["actions"], $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::CHOICE:
-                    $choices = $action["choices"];
-                    $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
-                    $decision_index = array_search($decision, $choice_names, true);
-                    if ($decision_index === false) {
-                        throw new \Bga\GameFramework\SystemException("Invalid card action choice: " . $decision);
-                    }
                     if ($decision === self::NIMBLE_HULL_CHOICE) {
                         $this->useNimbleHull($this->getActivePlayerId());
                     }
-                    $chosen = [$choices[array_keys($choices)[$decision_index]]];
-                    $outcome->absorb($this->processCardActionsWithDecisions($chosen, $decisions), $cost);
+                    $outcome->absorb($this->processCardActionsWithDecisions([$chosen], $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                 case PrimitiveCardPlayAction::RIGHT:

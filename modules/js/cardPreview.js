@@ -32,7 +32,6 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
   };
   // Which way each side fires, as a turn from the ship's heading (the server's fireTurn).
   const SIDE_TURN = { left: "pivot left", right: "pivot right", aft: "pivot 180", fore: null };
-  const FIRE_COUNTS = { fire: 1, "2 x fire": 2, "3 x fire": 3 };
   const OPPOSITE = { left: "right", right: "left", fore: "aft", aft: "fore" };
 
   const forwardOf = (x, y, heading) => {
@@ -91,11 +90,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       state.lastForward = false;
     };
     const fire = (action, decision) => {
-      const variants = action.variants || [{
-        name: action.action, range: action.range, count: FIRE_COUNTS[action.action], shot: "cannon",
-        sides: ["left", "right"], both_sides: false,
-      }];
-      for (const variant of variants) {
+      for (const variant of Constants.fireVariants(action)) {
         for (const side of variant.sides) {
           if (decision !== variant.name + " " + side) continue;
           // The server's ShipUpgrades::shotSides: both-sides shots split across the two sides.
@@ -146,13 +141,11 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       for (const action of list) {
         if (state.done) return;
         // Consume once before dispatch; fixed moves and sequence wrappers need no decision.
-        const optional = action.cost !== undefined;
-        const needsDecision = optional || action.action === "choice" || Object.hasOwn(FIRE_COUNTS, action.action);
         let decision;
-        if (needsDecision) {
+        if (Constants.needsDecision(action)) {
           if (decisions.length === 0) { state.done = true; return; }
           decision = decisions.shift();
-          if (optional && decision === "skip") continue;
+          if (decision === "skip") continue;
         }
         switch (action.action) {
           case "sequence":

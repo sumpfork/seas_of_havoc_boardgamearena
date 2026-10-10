@@ -423,123 +423,47 @@ define([
      * @private
      */
     _makeCardDependencyTree: function (actions, counter = { next: 0 }, topLevel = true) {
-      var bga = this;
-      var tree = new Map();
-
+      const tree = new Map();
       for (const action of actions) {
-        console.log("tree considering action:");
-        console.log(action);
-        var option_count = 0;
-
-        switch (action.action) {
-          case "choice":
-            var choice_count = counter.next++;
-            var tree_choices = [];
-            for (const option of action.choices) {
-              var choice_name = option.name || option.action;
-              var id = "card_choice_" + choice_count + "_option_" + option_count;
-              // Inside a choice the option's chip already names its move: no fixed rows for it.
-              var children = this._makeCardDependencyTree([option], counter, false);
-              var entry = {
-                name: choice_name,
-                id: id,
-                children: children,
-              };
-              // Only carry the option's own cost when it has no children: a fire option's cost is
-              // re-declared on the shot rows it generates, and counting it here too doubles it.
-              if (typeof option.cost !== "undefined" && children.size === 0) {
-                entry.cost = option.cost;
-              }
-              if (typeof action.cost !== "undefined") {
-                if (typeof entry.cost !== "undefined") {
-                  console.warn("overwriting cost for " + choice_name);
-                }
-                entry.cost = action.cost;
-              }
-              tree_choices.push(entry);
-              console.log("choice added: " + choice_name + " " + id);
-              option_count++;
-            }
-            if (typeof action.cost !== "undefined") {
-              tree_choices.push({
-                name: "skip",
-                id: "card_choice_" + choice_count + "_option_" + option_count,
-                children: new Map(),
-              });
-              option_count++;
-            }
-            tree.set("choice_" + choice_count, tree_choices);
-            break;
-
-          case "sequence":
-            var children = this._makeCardDependencyTree(action.actions, counter, topLevel);
-            children.forEach((value, key) => {
-              tree.set(key, value);
-            });
-            break;
-
-          default: {
-            let choice_names = [];
-            let choice_costs = [];
-            let choice_ranges = [];
-            let choice_name = action.name || action.action;
-            if (action.variants) {
-              // Ship upgrades turn a fire action into a list of shot types, each with its own
-              // range, cost and firing sides. Names must match ShipUpgrades::parseFireDecision.
-              for (const variant of action.variants) {
-                for (const side of variant.sides) {
-                  choice_names.push(variant.name + " " + side);
-                  choice_costs.push(variant.cost);
-                  choice_ranges.push(variant.range);
-                }
-              }
-            } else if (choice_name == "fire" || choice_name == "2 x fire" || choice_name == "3 x fire") {
-              choice_names.push(choice_name + " left", choice_name + " right");
-              choice_costs.push(action.cost, action.cost);
-              choice_ranges.push(action.range, action.range);
-            } else {
-              choice_names.push(choice_name);
-              choice_costs.push(action.cost);
-              choice_ranges.push(action.range);
-            }
-            if (typeof action.cost !== "undefined") {
-              choice_names.push("skip");
-              choice_costs.push(undefined);
-              choice_ranges.push(undefined);
-            }
-            if (choice_names.length > 1) {
-              var choice_count = counter.next++;
-              var tree_choices = [];
-              for (let i = 0; i < choice_names.length; i++) {
-                var to_push = {
-                  name: choice_names[i],
-                  id: "card_choice_" + choice_count + "_option_" + i,
-                  children: new Map(),
-                };
-                if (choice_names[i] != "skip") {
-                  to_push["cost"] = choice_costs[i];
-                  to_push["range"] = choice_ranges[i];
-                }
-                tree_choices.push(to_push);
-              }
-              tree.set("choice_" + choice_count, tree_choices);
-            } else if (topLevel && FIXED_MOVES.includes(choice_name)) {
-              // A move the card always makes: shown as its own row, ticked and locked, so the dialog
-              // lists everything the card does. The server takes no decision for it.
-              var choice_count = counter.next++;
-              tree.set("choice_" + choice_count, [{
-                name: choice_name,
-                id: "card_choice_" + choice_count + "_option_0",
-                fixed: true,
-                children: new Map(),
-              }]);
-            }
+        if (action.action === "sequence") {
+          for (const [key, row] of this._makeCardDependencyTree(action.actions, counter, topLevel)) {
+            tree.set(key, row);
           }
+          continue;
         }
+        if (!Constants.needsDecision(action)) {
+          // A move the card always makes: shown as its own row, ticked and locked, so the dialog
+          // lists everything the card does. The server takes no decision for it. Inside a choice
+          // the option's chip already names the move.
+          if (topLevel && FIXED_MOVES.includes(action.name || action.action)) {
+            const rowNumber = counter.next++;
+            tree.set("choice_" + rowNumber, [{
+              name: action.name || action.action,
+              id: "card_choice_" + rowNumber + "_option_0",
+              fixed: true,
+              children: new Map(),
+            }]);
+          }
+          continue;
+        }
+        const rowNumber = counter.next++;
+        tree.set("choice_" + rowNumber, Constants.actionOptions(action).map((option, i) => {
+          const entry = { name: option.name, id: "card_choice_" + rowNumber + "_option_" + i, children: new Map() };
+          if (option.name === "skip") return entry;
+          if (option.choice) {
+            entry.children = this._makeCardDependencyTree([option.choice], counter, false);
+            // A choice's cost is paid whichever option is taken. Otherwise an option carries its
+            // own cost only without children: a fire option's cost is re-declared on the shot rows
+            // it generates, and counting it here too doubles it.
+            const cost = action.cost !== undefined ? action.cost : entry.children.size === 0 ? option.choice.cost : undefined;
+            if (cost !== undefined) entry.cost = cost;
+            return entry;
+          }
+          entry.cost = option.cost;
+          entry.range = option.range;
+          return entry;
+        }));
       }
-
-      console.log("returning tree");
-      console.log(tree);
       return tree;
     },
 
