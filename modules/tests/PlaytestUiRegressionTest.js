@@ -458,8 +458,11 @@ assert.equal(new Set(nimbleIds).size, nimbleIds.length, "Nested Nimble Hull choi
 assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows");
 {
   const inputs = {};
+  inputs.card_choices_remaining = { textContent: "" };
+  inputs.play_card_button = {};
   const controls = loadModule("dialogs.js", {
     dom: { byId: id => inputs[id] },
+    "dom-class": { toggle: (node, name, enabled) => { (typeof node === "string" ? inputs[node] : node)[name] = enabled; } },
     "dom-style": { get: row => row.display, set: (row, key, value) => { row[key] = value; } },
     "dom-attr": {
       set: input => { input.disabled = true; }, remove: input => { input.disabled = false; },
@@ -482,7 +485,10 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
     addResources: (a, b) => ({ sail: (a.sail || 0) + (b.sail || 0) }),
     canPlayerAfford: cost => (cost.sail || 0) <= 0,
     updateCardPreview() {},
-    _updatePlayCardButton() { ready = Boolean(this._checkIsCardReadyToBePlayed(this.dep_tree)); },
+    _updatePlayCardButton() {
+      controls._updatePlayCardButton.call(this);
+      ready = !inputs.play_card_button.disabled;
+    },
     _showHideCardPlayControls(branch, ...args) {
       if (branch === tree) assert.ok(++passes < 20, "Updating nested choices must settle without freezing");
       controls._showHideCardPlayControls.call(this, branch, ...args);
@@ -497,15 +503,29 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
   };
   const twice = choose(tree, "nimble hull: maneuver twice");
   assert.equal(ready, false, "The maneuver choices must be answered before playing");
+  assert.equal(inputs.card_choices_remaining.textContent, "2 choices remaining");
+  const highlightedRows = () => new Set(Object.values(inputs)
+    .map(input => input.parentNode?.parentNode).filter(row => row?.soh_needs_choice)).size;
+  assert.equal(highlightedRows(), 2, "Only the two visible unanswered rows are highlighted");
   const maneuvers = [...twice.entries()];
   choose(new Map([maneuvers[0]]), "forward"); // The unaffordable extension automatically skips.
+  assert.equal(inputs.card_choices_remaining.textContent, "1 choice remaining");
+  assert.equal(highlightedRows(), 1, "An automatic skip does not need another choice");
   choose(new Map([maneuvers[1]]), "right");
   assert.equal(ready, true, "Both chosen maneuvers enable Play Card");
+  assert.equal(inputs.card_choices_remaining.textContent, "");
+  assert.equal(highlightedRows(), 0);
   assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["nimble hull: maneuver twice", "forward", "skip", "right"]);
   const once = choose(tree, "resolve once");
+  assert.equal(inputs.card_choices_remaining.textContent, "1 choice remaining", "Hidden branches no longer count");
+  assert.equal(highlightedRows(), 1);
   choose(once, "left");
   assert.equal(ready, true, "Switching back to resolve once remains playable");
   assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["resolve once", "left"], "Hidden maneuvers do not leak decisions");
+  const fixedOnly = dialogs._makeCardDependencyTree([{ action: "forward" }]);
+  makeInputs(fixedOnly);
+  assert.equal(controlGame._updateCardChoiceHints(fixedOnly), 0, "Fixed moves never ask for a choice");
+  assert.equal(controlGame._updateCardChoiceHints(new Map()), 0, "Cards without choice rows are ready");
 }
 {
   const preview = loadModule("cardPreview.js");

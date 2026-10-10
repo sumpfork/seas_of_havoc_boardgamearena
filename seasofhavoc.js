@@ -273,6 +273,7 @@ define([
                           <div id="card_ship_choice"></div>
                           <div id="card_choices"></div>
                           <div id="card_play_buttons">
+                            <span id="card_choices_remaining" role="status" aria-live="polite"></span>
                             <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">${_("Pass whole card")}</div>
                             <div id="play_card_button" class="bgabutton bgabutton_blue play_card_button">${_("Play card")}</div>
                           </div>
@@ -322,7 +323,7 @@ define([
                           </div>
                       </div>`;
 
-      window.jstpl_card_choices_row = `<div class="soh_card_choices_row">\${card_choices}</div>`;
+      window.jstpl_card_choices_row = `<div class="soh_card_choices_row"><span class="soh_card_choice_hint">${_("Choose one")}</span>\${card_choices}</div>`;
 
       window.jstpl_card_choice_radio = `<div class="soh_card_choice_radio_container"><input type="radio" class="soh_card_choice_radio" id="\${id}" name="\${name}" value="\${value}"/><label class="soh_card_choice_chip" for="\${id}">\${label}</label></div>`;
 

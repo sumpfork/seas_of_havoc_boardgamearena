@@ -759,68 +759,30 @@ define([
       return changed;
     },
 
-    /**
-     * Check if card is ready to be played (all choices made)
-     * @private
-     */
-    _checkIsCardReadyToBePlayed: function (tree) {
-      var isReady = true;
-      if (tree.length == 0) {
-        return true;
-      }
-      console.log("starting ready to play check");
-
+    /** Highlight unanswered visible rows and return how many still need a choice. */
+    _updateCardChoiceHints: function (tree) {
+      let remaining = 0;
       tree.forEach((options) => {
-        if (!isReady) {
-          return;
+        const row = dom.byId(options[0].id).parentNode.parentNode;
+        const unanswered = domStyle.get(row, "display") !== "none" &&
+          !options.every(option => option.fixed) &&
+          !options.some(option => dom.byId(option.id).checked);
+        domClass.toggle(row, "soh_needs_choice", unanswered);
+        if (unanswered) remaining++;
+        for (const option of options) {
+          remaining += this._updateCardChoiceHints(option.children);
         }
-        var anythingChecked = false;
-        for (var option of options) {
-          var checkbox = dom.byId(option.id);
-          console.log("starting to check option:");
-          console.log(option);
-          console.log("parent display: " + domStyle.get(checkbox.parentNode.parentNode, "display"));
-          if (domStyle.get(checkbox.parentNode.parentNode, "display") != "none") {
-            console.log("checking children:");
-            console.log(option.children);
-            if (!this._checkIsCardReadyToBePlayed(option.children)) {
-              console.log("nothing checked in children");
-              isReady = false;
-              return;
-            }
-            anythingChecked |= checkbox.checked;
-            console.log("checkbox is checked: " + checkbox.checked);
-            console.log("anything checked now: " + anythingChecked);
-          } else {
-            console.log("skipping because option is hidden:");
-            console.log(option);
-            return;
-          }
-          console.log("anything checked at end of loop " + anythingChecked);
-        }
-        console.log("after options anything checked: " + anythingChecked);
-        isReady &= anythingChecked;
-        console.log("updated isReady to " + isReady);
       });
-
-      console.log("final ready to play: " + isReady);
-      return isReady;
+      return remaining;
     },
 
-    /**
-     * Update play card button enabled state
-     * @private
-     */
+    /** The hints, count and Play Card button all use the same unanswered rows. */
     _updatePlayCardButton: function () {
-      const button_id = "play_card_button";
-      console.groupCollapsed("check whether card is ready to be played");
-      let ready = this._checkIsCardReadyToBePlayed(this.dep_tree);
-      console.groupEnd();
-      if (ready) {
-        domClass.remove(button_id, "disabled");
-      } else {
-        domClass.add(button_id, "disabled");
-      }
+      const remaining = this._updateCardChoiceHints(this.dep_tree);
+      domClass.toggle("play_card_button", "disabled", remaining > 0);
+      dom.byId("card_choices_remaining").textContent = remaining === 0 ? "" :
+        remaining === 1 ? _("1 choice remaining") :
+          _("${count} choices remaining").replace("${count}", remaining);
     },
 
     /**
@@ -887,6 +849,9 @@ define([
           this.showCardPlayDialog(this.playable_cards[card.type], Number(card.id), Number(card.id));
         }
       };
+      if (ability === "improvisation") {
+        panel.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     },
 
     cleanupCaptainCardSelection: function () {
