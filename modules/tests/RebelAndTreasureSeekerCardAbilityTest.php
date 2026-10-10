@@ -15,6 +15,8 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
     public array $resolved = [];
     public bool $runEngine = false;
     public int $seaEffects = 0;
+    public array $seaEffectShips = [];
+    public bool $secondShip = false;
     public array $paid = [];
 
     public function __construct()
@@ -33,10 +35,12 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
     public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "") { $this->infamy[] = [$player_id, $amount]; }
     public function playerGainResources($player_id, $resources) { $this->gains[] = $resources; }
     public function getActivePlayerId(): string { return '1'; }
+    public function hasSecondShip($player_id): bool { return $this->secondShip; }
     public function getPlayerNameById(int $player_id): string { return 'Player'; }
     public function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void { $this->paid[] = $cost; }
     public function applySeafeatureEffects($player_id): CardActionOutcome {
         $this->seaEffects++;
+        $this->seaEffectShips[] = $this->activeShipArg($player_id);
         return new CardActionOutcome();
     }
     protected function resolvePlayedCard(int $card_type, ?int $card_id, array $decisions, ?int $use_booty_card_id = null, ?array $actions = null) {
@@ -135,6 +139,44 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame([1], $this->game->draws);
         $this->assertInstanceOf(CardActionOutcome::class, $this->game->start('improvisation'));
         $this->assertSame([1, 1], $this->game->draws);
+    }
+
+    public function testImprovisationCanChangeShipsAfterChoosingTheCopiedCard(): void {
+        foreach ([1, 2] as $ship) {
+            $this->game = new RebelAndTreasureSeekerCardUT();
+            $this->game->secondShip = true;
+            $this->game->runEngine = true;
+            $this->game->setGameStateValue('active_ship', 3 - $ship);
+            $shipArg = $ship === 2 ? '1_2' : '1';
+            $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['resolveCannonFire'])->getMock();
+            $board->expects($this->once())->method('resolveCannonFire')
+                ->with($shipArg, Turn::LEFT, 3, ['rock', 'player_ship'])->willReturn(['type' => 'fire_miss']);
+            (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+            $id = $this->game->addCard(19, 'player_discard');
+            $this->game->start('improvisation');
+
+            $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $id], ['fire left'], null, $ship));
+
+            $this->assertSame([$shipArg], $this->game->seaEffectShips);
+            $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
+            $played = array_values(array_filter($this->game->bga->notify->sent, fn($n) => $n['type'] === 'cardPlayed'));
+            $this->assertSame($shipArg, $played[0]['args']['ship']);
+        }
+    }
+
+    public function testImprovisationRejectsAnUnavailableSecondShip(): void {
+        $id = $this->game->addCard(19, 'player_discard');
+        $this->game->start('improvisation');
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actResolveCaptainCard(['card_id' => $id], ['fire left'], null, 2);
+    }
+
+    public function testImprovisationRejectsAnInvalidShipNumber(): void {
+        $this->game->secondShip = true;
+        $id = $this->game->addCard(19, 'player_discard');
+        $this->game->start('improvisation');
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actResolveCaptainCard(['card_id' => $id], ['fire left'], null, 3);
     }
 
     public function testSpyglassKeepsOneAndReturnsOthersInChosenOrderPrivately(): void {

@@ -329,7 +329,7 @@ trait CaptainAbilities
         return ["ability" => $ability, "ship" => $this->activeShipArg($player_id), "_private" => [$player_id => $private]];
     }
 
-    function actResolveCaptainCard(array $choices, array $decisions = [], ?int $use_booty_card_id = null): mixed
+    function actResolveCaptainCard(array $choices, array $decisions = [], ?int $use_booty_card_id = null, ?int $ship = null): mixed
     {
         $player_id = $this->getActivePlayerId();
         $args = $this->argCaptainCard();
@@ -359,6 +359,10 @@ trait CaptainAbilities
                     $decisions = [$fire];
                 }
             } else {
+                // Improvisation chooses its ship after the player can preview the copied card.
+                if ($ship !== null) {
+                    $this->setActiveShip($ship);
+                }
                 $actions = $this->upgradedCardActions($this->playable_cards[$chosen["type"]], $player_id);
             }
         } elseif ($ability === "spyglass") {
