@@ -244,32 +244,46 @@ define([
       this.cardPlayDialogShown = true;
     },
 
+    /**
+     * The tree's rows, each followed by the rows its options unlock: the order the dialog shows
+     * them and the server consumes decisions. With activeOnly, only rows whose parent option is
+     * ticked - the rows on screen.
+     * @private
+     */
+    _rows: function* (tree, activeOnly = false) {
+      for (const [choiceId, options] of tree.entries()) {
+        yield [choiceId, options];
+        for (const option of options) {
+          if (!activeOnly || dom.byId(option.id).checked) yield* this._rows(option.children, activeOnly);
+        }
+      }
+    },
+
+    /** The element holding a row's radios. */
+    _choiceRow: function (options) {
+      return dom.byId(options[0].id).parentNode.parentNode;
+    },
+
     /** Tick the rows for moves the card always makes, and stop them being changed. */
     _lockFixedRows: function (tree) {
-      tree.forEach((options) => {
-        for (const option of options) {
-          if (option.fixed) {
-            const radio = dom.byId(option.id);
-            radio.checked = true;
-            radio.disabled = true;
-            radio.classList.add("soh_card_choice_fixed");
-          }
-          this._lockFixedRows(option.children);
+      for (const [, options] of this._rows(tree)) {
+        for (const option of options.filter(o => o.fixed)) {
+          const radio = dom.byId(option.id);
+          radio.checked = true;
+          radio.disabled = true;
+          radio.classList.add("soh_card_choice_fixed");
         }
-      });
+      }
     },
 
     /** The decisions ticked in the dialog so far, in the order the server consumes them. */
-    _decisionSummary: function (tree, decisionSummary = []) {
-      tree.forEach((options) => {
-        for (const option of options) {
-          if (dom.byId(option.id).checked && !option.fixed) {
-            decisionSummary.push(option.name);
-            this._decisionSummary(option.children, decisionSummary);
-          }
-        }
-      });
-      return decisionSummary;
+    _decisionSummary: function (tree) {
+      const decisions = [];
+      for (const [, options] of this._rows(tree, true)) {
+        const ticked = options.find(o => !o.fixed && dom.byId(o.id).checked);
+        if (ticked) decisions.push(ticked.name);
+      }
+      return decisions;
     },
 
     /**
@@ -592,110 +606,64 @@ define([
      * @private
      */
     _renderCardChoiceRows: function (tree) {
-      var bga = this;
-      var rendered_choices = [];
-
-      tree.forEach((options, choice_id) => {
-        var rendered_options = [];
-        var child_rows = [];
-        for (var option of options) {
-          rendered_options.push(
-            bga.format_block("jstpl_card_choice_radio", {
-              id: option.id,
-              name: choice_id,
-              value: option.name,
-              label: bga._choiceLabelHtml(option),
-            }),
-          );
-          child_rows = child_rows.concat(this._renderCardChoiceRows(option.children));
-        }
-        rendered_choices.push(bga.format_block("jstpl_card_choices_row", { card_choices: rendered_options.join("\n") }));
-        rendered_choices = rendered_choices.concat(child_rows);
-      });
-
-      return rendered_choices;
+      return Array.from(this._rows(tree), ([choiceId, options]) => this.format_block("jstpl_card_choices_row", {
+        card_choices: options.map(option => this.format_block("jstpl_card_choice_radio", {
+          id: option.id,
+          name: choiceId,
+          value: option.name,
+          label: this._choiceLabelHtml(option),
+        })).join("\n"),
+      }));
     },
 
     /**
-     * Compute total play cost from selected choices
+     * Total cost of the ticked options. Rows under an unticked option are unticked too, so
+     * walking every row counts only what will be played.
      * @private
      */
-    _computeTotalPlayCost: function (tree, costAcc) {
-      var bga = this;
-      if (typeof costAcc === "undefined") {
-        costAcc = {};
-      }
-      console.log("computing total play cost " + costAcc);
-
-      tree.forEach((options) => {
-        for (var option of options) {
-          console.log(option);
-          var checkbox = dom.byId(option.id);
-          console.log("checked: " + checkbox.checked);
-          console.log(option.cost);
-          console.log(costAcc);
-          if (checkbox.checked && typeof option.cost !== "undefined") {
-            costAcc = bga.addResources(option.cost, costAcc);
+    _computeTotalPlayCost: function (tree) {
+      let cost = {};
+      for (const [, options] of this._rows(tree)) {
+        for (const option of options) {
+          if (option.cost !== undefined && dom.byId(option.id).checked) {
+            cost = this.addResources(option.cost, cost);
           }
-          costAcc = this._computeTotalPlayCost(option.children, costAcc);
         }
-      });
-
-      return costAcc;
+      }
+      return cost;
     },
 
     /**
-     * Show/hide controls based on current selections
+     * Show the rows under ticked options, hide and untick the rest, and disable what the player
+     * cannot afford.
      * @private
      */
-    _showHideCardPlayControls: function (tree, hide, totalCost) {
-      var bga = this;
-      console.log("showing/hiding controls " + hide);
-
-      if (typeof totalCost === "undefined") {
-        console.groupCollapsed("compute total play cost");
-        totalCost = this._computeTotalPlayCost(tree);
-        console.groupEnd();
-        console.log("total play cost is:");
-        console.log(totalCost);
-      }
-
-      tree.forEach((options) => {
-        // Options in a row are exclusive: judge each against the total without this row's current pick,
-        // or a selected option is charged twice and disables itself.
-        var rowCost = this._computeTotalPlayCost([options]);
-        var costWithoutRow = bga.addResources(totalCost,
+    _showHideCardPlayControls: function (tree) {
+      const totalCost = this._computeTotalPlayCost(tree);
+      const active = new Set(Array.from(this._rows(tree, true), ([, options]) => options));
+      for (const [choiceId, options] of this._rows(tree)) {
+        const row = this._choiceRow(options);
+        if (!active.has(options)) {
+          for (const option of options) dom.byId(option.id).checked = false;
+          domStyle.set(row, "display", "none");
+          continue;
+        }
+        domStyle.set(row, "display", "");
+        // Options in a row are exclusive: judge each against the total without this row's current
+        // pick (and what it unlocks), or a selected option is charged twice and disables itself.
+        const rowCost = this._computeTotalPlayCost(new Map([[choiceId, options]]));
+        const costWithoutRow = this.addResources(totalCost,
           Object.fromEntries(Object.entries(rowCost).map(([r, n]) => [r, -n])));
-        for (var option of options) {
-          var checkbox = dom.byId(option.id);
-          console.log(option);
-          console.log(checkbox);
-          console.log(checkbox.checked);
-          if (hide) {
-            checkbox.checked = false;
-            domStyle.set(checkbox.parentNode.parentNode, "display", "none");
-            this._showHideCardPlayControls(option.children, true, totalCost);
+        for (const option of options.filter(o => o.cost)) {
+          const checkbox = dom.byId(option.id);
+          // Merchant doubloon substitution is a market-purchase rule only; the server will not honour it here.
+          if (this.canPlayerAfford(this.addResources(option.cost, costWithoutRow), true, false)) {
+            attr.remove(checkbox, "disabled");
           } else {
-            domStyle.set(checkbox.parentNode.parentNode, "display", "");
-            if (typeof option.cost !== "undefined" && option.cost) {
-              console.log("option cost:");
-              console.log(option.cost);
-              console.log("totalCost:");
-              console.log(totalCost);
-              var adjustedCost = bga.addResources(option.cost, costWithoutRow);
-              console.log("adjusted cost:");
-              console.log(adjustedCost);
-              // Merchant doubloon substitution is a market-purchase rule only; the server will not honour it here.
-              if (bga.canPlayerAfford(adjustedCost, true, false)) {
-                attr.remove(checkbox, "disabled");
-              } else {
-                attr.set(checkbox, "disabled", "true");
-              }
-            }
-            this._showHideCardPlayControls(option.children, !checkbox.checked, totalCost);
+            attr.set(checkbox, "disabled", "true");
           }
         }
-      });
+      }
     },
 
     /**
@@ -729,12 +697,12 @@ define([
      */
     _markUnaffordableRows: function (tree) {
       var changed = false;
-      tree.forEach((options) => {
+      for (const [, options] of this._rows(tree)) {
         var optOut = options.find(o => o.name === "skip");
         var paid = options.filter(o => o.cost && Object.keys(o.cost).some(r => o.cost[r] > 0));
         if (optOut && paid.length) {
           var checkbox = dom.byId(optOut.id);
-          var stuck = domStyle.get(checkbox.parentNode.parentNode, "display") !== "none" &&
+          var stuck = domStyle.get(this._choiceRow(options), "display") !== "none" &&
             // A free alternative (e.g. carronade) keeps the row open even when every paid shot is out of reach.
             options.every(o => o === optOut || dom.byId(o.id).disabled);
           var chipText = query(".chip_text", checkbox.parentNode)[0];
@@ -753,27 +721,20 @@ define([
             changed = true;
           }
         }
-        for (var option of options) {
-          changed = this._markUnaffordableRows(option.children) || changed;
-        }
-      });
+      }
       return changed;
     },
 
     /** Highlight unanswered visible rows and return how many still need a choice. */
     _updateCardChoiceHints: function (tree) {
       let remaining = 0;
-      tree.forEach((options) => {
-        const row = dom.byId(options[0].id).parentNode.parentNode;
-        const unanswered = domStyle.get(row, "display") !== "none" &&
+      for (const [, options] of this._rows(tree)) {
+        const unanswered = domStyle.get(this._choiceRow(options), "display") !== "none" &&
           !options.every(option => option.fixed) &&
           !options.some(option => dom.byId(option.id).checked);
-        domClass.toggle(row, "soh_needs_choice", unanswered);
+        domClass.toggle(this._choiceRow(options), "soh_needs_choice", unanswered);
         if (unanswered) remaining++;
-        for (const option of options) {
-          remaining += this._updateCardChoiceHints(option.children);
-        }
-      });
+      }
       return remaining;
     },
 

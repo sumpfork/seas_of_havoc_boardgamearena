@@ -424,6 +424,7 @@ const dialogGame = {
       : '<input id="${id}" name="${name}" value="${value}"/><label>${label}</label>'),
   _makeCardDependencyTree: dialogs._makeCardDependencyTree,
   _renderCardChoiceRows: dialogs._renderCardChoiceRows,
+  _rows: dialogs._rows,
   _choiceLabelHtml: dialogs._choiceLabelHtml,
   _choiceGlyph: dialogs._choiceGlyph,
   _choiceName: dialogs._choiceName,
