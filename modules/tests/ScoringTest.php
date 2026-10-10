@@ -71,6 +71,30 @@ final class ScoringTest extends TestCase
         $this->assertSame(2, $this->counter->get(1));
     }
 
+    public function testInfamyTargetsAnnounceOnceAndRemainTriggeredAfterSpendingInfamy(): void
+    {
+        foreach ([2 => 45, 3 => 60] as $option => $target) {
+            $game = new ScoringUT();
+            $game->bga->tableOptions->values[102] = $option;
+            $game->scoreInfamy('1', $target - 1, 'shots');
+            $this->assertFalse($game->isLastSeaPhase());
+            $game->scoreInfamy('1', 1, 'rams');
+            $game->scoreInfamy('1', -3, 'captain');
+            $this->assertTrue($game->isLastSeaPhase());
+            $announcements = array_filter($game->bga->notify->sent, fn($n) => $n['type'] === 'lastSeaPhase');
+            $this->assertCount(1, $announcements);
+        }
+    }
+
+    public function testFinalScoringDoesNotAnnounceAnotherSeaPhase(): void
+    {
+        $this->game->bga->tableOptions->values[102] = 2;
+        $this->game->scoreInfamy('1', 45, 'cards');
+        $this->game->scoreInfamy('1', 3, 'upgrades');
+        $this->assertSame(0, $this->game->getGameStateValue('last_sea_phase'));
+        $this->assertSame([], $this->game->bga->notify->sent);
+    }
+
     public function testInfamyScoredWhileACardResolvesIsAppliedAfterIt(): void
     {
         // The score marker must move after the ship's cardPlayed animation, not before it.

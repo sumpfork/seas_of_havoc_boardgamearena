@@ -26,6 +26,14 @@ define([
   const console = Constants.console;
 
   return {
+    updateLastSeaPhaseBanner: function (visible) {
+      if (visible) {
+        this.bga.gameArea.addLastTurnBanner(_("Last Sea Phase: the game ends after this phase."));
+      } else {
+        this.bga.gameArea.removeLastTurnBanner();
+      }
+    },
+
     /**
      * The one way to ask for a resource: a grey, icon-only status bar button per resource, always
      * in sail / cannonball / doubloon order. The title says what the choice is for.

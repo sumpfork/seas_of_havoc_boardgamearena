@@ -638,8 +638,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             var htbSelf = this;
             htbTargets.forEach(function (target) {
               htbSelf.statusBar.addActionButton(
-                _("Target") + " " + (target.player_name || target.player_id),
-                function () { htbSelf.bgaPerformAction("actHuntTheBountyChooseTarget", { target_player_id: target.player_id }); },
+                _("Target") + " " + _(target.ship_name) + " (" + target.player_name + ")",
+                function () { htbSelf.bgaPerformAction("actHuntTheBountyChooseTarget", { target_ship: target.ship }); },
                 {},
               );
             });

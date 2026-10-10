@@ -47,7 +47,12 @@ define([
     },
 
     notif_endScores: function (args) {
+      this.updateLastSeaPhaseBanner(false);
       return this.showScoreSheet(args.endScores, true);
+    },
+
+    notif_lastSeaPhase: function () {
+      this.updateLastSeaPhaseBanner(true);
     },
 
     /** Answer to actViewDeck: the current player's deck, shuffled server-side. */
@@ -563,11 +568,16 @@ define([
 
       this._removeCardFromSelectionOrPile(card, original_location, player_id);
 
-      this.scrapPile.addCard({
-        id: card.id,
-        type: card.type,
-        location: "scrap",
-      });
+      // Extended/Epic Game: scrapped damage cards go back to the damage deck.
+      if (args.to_damage_deck) {
+        this.updateDamageDeckCount(args.damage_deck_size);
+      } else {
+        this.scrapPile.addCard({
+          id: card.id,
+          type: card.type,
+          location: "scrap",
+        });
+      }
 
       this.cleanupScrapCardSelection();
     },

@@ -24,8 +24,8 @@ class HuntTheBounty extends GameState
             id: STATE_HUNT_THE_BOUNTY,
             type: StateType::ACTIVE_PLAYER,
             name: 'huntTheBounty',
-            description: clienttranslate('${actplayer} must declare a Hunt the Bounty target'),
-            descriptionMyTurn: clienttranslate('${you} must declare a Hunt the Bounty target'),
+            description: clienttranslate('${actplayer} must declare a target ship for Hunt the Bounty'),
+            descriptionMyTurn: clienttranslate('${you} must declare a target ship for Hunt the Bounty'),
             transitions: [],
         );
     }
@@ -41,9 +41,9 @@ class HuntTheBounty extends GameState
     }
 
     #[PossibleAction]
-    public function actHuntTheBountyChooseTarget(string $target_player_id): mixed
+    public function actHuntTheBountyChooseTarget(string $target_ship): mixed
     {
-        return $this->game->actHuntTheBountyChooseTarget($target_player_id);
+        return $this->game->actHuntTheBountyChooseTarget($target_ship);
     }
 
     #[PossibleAction]

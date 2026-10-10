@@ -102,6 +102,7 @@ trait CardPlay
                     );
                 }
                 $this->dealDamageCard($rammed_player_id);
+                $this->scoreHuntTheBounty($player_id, (string) $collider["arg"]);
             } elseif ($collider["type"] === "rock") {
                 $this->bga->playerStats->inc("rock_collisions", 1, (int) $player_id);
                 $this->dealDamageCard($player_id);

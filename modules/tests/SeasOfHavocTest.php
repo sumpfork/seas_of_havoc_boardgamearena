@@ -214,6 +214,10 @@ if (!class_exists("MockBGA")) {
             $this->playerScoreAux = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
             $this->playerStats = new \Bga\GameFramework\PlayerStats();
             $this->tableStats = new \Bga\GameFramework\TableStats();
+            $this->tableOptions = new class extends \Bga\GameFramework\TableOptions {
+                public array $values = [];
+                public function get(int $optionId): ?int { return $this->values[$optionId] ?? null; }
+            };
         }
         public function dump($label, $data) {}
         public function trace($message) {}

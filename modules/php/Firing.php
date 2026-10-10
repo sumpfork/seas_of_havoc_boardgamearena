@@ -146,19 +146,7 @@ trait Firing
         }
         $this->dealDamageCard($hit_player_id);
 
-        $bounty_target = (int) $this->getGameStateValue("hunt_the_bounty_target");
-        if (
-            $bounty_target !== 0 &&
-            (int) $hit_player_id === $bounty_target &&
-            $this->getPlayerCaptain($player_id) === "corsair"
-        ) {
-            $this->scoreInfamy(
-                $player_id,
-                1,
-                "captain",
-                clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 infamy'),
-            );
-        }
+        $this->scoreHuntTheBounty($player_id, (string) $collider["arg"]);
     }
 
     /**
@@ -185,6 +173,7 @@ trait Firing
                     );
                 }
                 $this->dealDamageCard($hit_player_id);
+                $this->scoreHuntTheBounty($player_id, (string) $ship["arg"]);
             }
         }
         return $chain;

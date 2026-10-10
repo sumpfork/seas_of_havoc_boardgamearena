@@ -11,7 +11,6 @@ class CorsairCardUT extends SeasOfHavocUT {
     public array $resourceGainCalls = [];
     // [player_id => [resource => amount]]
     public array $mockAllResources = [];
-    public int $mockHuntBountyTarget = 0;
 
     public function __construct() {
         parent::__construct();
@@ -59,12 +58,15 @@ class CorsairCardUT extends SeasOfHavocUT {
         return $this->mockBoardingPartyTargets;
     }
 
-    // Override getHuntTheBountyTargets so tests don't need seaboard/DB
-    public array $mockHuntTheBountyTargets = ["2"];
+    public array $mockPlayerInfo = [
+        1 => ["player_name" => "Player 1", "player_ship" => "Brig", "player_ship2" => "Galleon"],
+        2 => ["player_name" => "Player 2", "player_ship" => "Xebec", "player_ship2" => "War Junk"],
+    ];
 
-    protected function getHuntTheBountyTargets(string $player_id): array {
-        return $this->mockHuntTheBountyTargets;
+    public function getPlayerInfo(?int $player_id = null): array {
+        return $this->mockPlayerInfo;
     }
+
 }
 
 final class CorsairCardAbilityTest extends TestCase {
@@ -197,6 +199,31 @@ final class CorsairCardAbilityTest extends TestCase {
         $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $result);
         // Verify stored target is retrievable
         $this->assertSame(2, (int) $this->game->getGameStateValue("hunt_the_bounty_target"));
+    }
+
+    public function testHuntTheBountyOffersEachEnemyShipSeparately(): void {
+        $targets = $this->game->argHuntTheBounty()["targets"];
+        $this->assertSame(["2", "2_2"], array_column($targets, "ship"));
+        $this->assertSame(["Xebec", "War Junk"], array_column($targets, "ship_name"));
+        $this->assertSame(["Player 2", "Player 2"], array_column($targets, "player_name"));
+    }
+
+    public function testHuntTheBountyOffersOnlyExistingShips(): void {
+        $this->game->mockPlayerInfo[2]["player_ship2"] = null;
+        $this->assertSame(["2"], array_column($this->game->argHuntTheBounty()["targets"], "ship"));
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actHuntTheBountyChooseTarget("2_2");
+    }
+
+    public function testHuntTheBountyCanSelectTheSecondShip(): void {
+        $this->game->actHuntTheBountyChooseTarget("2_2");
+        $this->assertSame(-2, (int) $this->game->getGameStateValue("hunt_the_bounty_target"));
+        $this->assertSame("War Junk", $this->game->debugLastNotif["args"]["ship_name"]);
+    }
+
+    public function testHuntTheBountyRejectsOwnSecondShip(): void {
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actHuntTheBountyChooseTarget("1_2");
     }
 
     public function testActHuntTheBountyChooseTargetRejectsNonCorsair(): void {

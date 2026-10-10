@@ -886,9 +886,16 @@ trait CaptainAbilities
     protected function getHuntTheBountyTargets(string $player_id): array
     {
         $targets = [];
-        foreach ($this->loadPlayersBasicInfos() as $other_id => $_) {
-            if ((string) $other_id !== $player_id) {
-                $targets[] = (string) $other_id;
+        foreach ($this->getPlayerInfo() as $other_id => $info) {
+            if ((string) $other_id === $player_id) continue;
+            foreach ([(string) $other_id => $info["player_ship"], self::secondShipArg($other_id) => $info["player_ship2"]] as $ship => $name) {
+                if ($ship === self::secondShipArg($other_id) && $name === null) continue;
+                $targets[] = [
+                    "ship" => (string) $ship,
+                    "ship_name" => $name,
+                    "player_id" => (string) $other_id,
+                    "player_name" => $info["player_name"],
+                ];
             }
         }
         return $targets;
@@ -896,37 +903,48 @@ trait CaptainAbilities
 
     function argHuntTheBounty(): array
     {
-        $player_id = $this->getActivePlayerId();
-        $target_ids = $this->getHuntTheBountyTargets($player_id);
-        $targets = [];
-        foreach ($target_ids as $tid) {
-            $targets[] = [
-                "player_id" => $tid,
-                "player_name" => $this->getPlayerNameById((int) $tid),
-            ];
-        }
-        return ["targets" => $targets];
+        return ["targets" => $this->getHuntTheBountyTargets($this->getActivePlayerId())];
     }
 
-    function actHuntTheBountyChooseTarget(string $target_player_id): mixed
+    function actHuntTheBountyChooseTarget(string $target_ship): mixed
     {
         $player_id = $this->getActivePlayerId();
         if ($this->getPlayerCaptain($player_id) !== "corsair") {
             throw new \Bga\GameFramework\UserException(clienttranslate("Only the Corsair can use Hunt the Bounty"));
         }
-        $valid_ids = $this->getHuntTheBountyTargets($player_id);
-        if (!in_array($target_player_id, $valid_ids)) {
+        $targets = $this->getHuntTheBountyTargets($player_id);
+        $index = array_search($target_ship, array_column($targets, "ship"), true);
+        if ($index === false) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Invalid target for Hunt the Bounty"));
         }
-        $this->setGameStateValue("hunt_the_bounty_target", (int) $target_player_id);
+        $target = $targets[$index];
+        // The integer state value stores the owner: positive for their first ship, negative for their second.
+        $this->setGameStateValue("hunt_the_bounty_target",
+            (int) $target["player_id"] * ($target_ship === $target["player_id"] ? 1 : -1));
         $this->bga->notify->all("log",
-            clienttranslate('${player_name} declares ${target_name} as their Hunt the Bounty target'),
+            clienttranslate('${player_name} declares ${target_name} (${ship_name}) as their Hunt the Bounty target'),
             [
                 "player_name" => $this->getPlayerNameById($player_id),
-                "target_name" => $this->getPlayerNameById((int) $target_player_id),
+                "target_name" => $target["player_name"],
+                "ship_name" => $target["ship_name"],
+                "i18n" => ["ship_name"],
             ],
         );
         return $this->huntTheBountyDone($player_id);
+    }
+
+    private function scoreHuntTheBounty(string $player_id, string $hit_ship): void
+    {
+        $target = (int) $this->getGameStateValue("hunt_the_bounty_target");
+        $target_ship = $target < 0 ? self::secondShipArg(-$target) : (string) $target;
+        if ($target !== 0 && $hit_ship === $target_ship && $this->getPlayerCaptain($player_id) === "corsair") {
+            $this->scoreInfamy(
+                $player_id,
+                1,
+                "captain",
+                clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 infamy'),
+            );
+        }
     }
 
     /**

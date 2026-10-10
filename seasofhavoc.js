@@ -438,6 +438,7 @@ define([
 
       // Initialize the game area HTML structure (replaces legacy view.php/tpl files)
       this.setupGameArea();
+      this.updateLastSeaPhaseBanner(gamedatas.last_sea_phase);
 
       this.playable_cards = gamedatas.playable_cards;
       this.non_playable_cards = gamedatas.non_playable_cards;
@@ -965,7 +966,7 @@ define([
       for (let s = oldScore + step; s !== score; s += step) {
         if ((((s % 60) + 60) % 60) % 15 == 0) corners.push($(this.scoreLocationId(s)).getBoundingClientRect());
       }
-      const affected = [...oldLoc.children, ...newLoc.children, marker];
+      const affected = [...new Set([...oldLoc.children, ...newLoc.children])];
       const before = new Map(affected.map((m) => [m, m.getBoundingClientRect()]));
       newLoc.appendChild(marker);
       this.fanScoreMarkers(oldLoc);
