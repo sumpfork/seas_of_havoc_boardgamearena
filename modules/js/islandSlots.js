@@ -81,7 +81,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
     /**
      * The workshop only has an effect if the player owns an unactivated upgrade they can afford.
      */
-    shouldBlockWorkshopSlot: function (slotName) {
+    shouldBlockSlot: function (slotName) {
+      // After a restock the skiff must go on one of the newly revealed Market cards.
+      if (this.isCurrentPlayerActive() && this.gamedatas.gamestate.args && this.gamedatas.gamestate.args.market_restocked) {
+        return slotName !== "market";
+      }
       if (slotName !== "workshop") {
         return false;
       }
@@ -167,10 +171,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
             domClass.remove(skiff_slot_id, "soh_occupied_blocked");
           }
 
-          if (this.shouldBlockWorkshopSlot(slot)) {
-            domClass.add(skiff_slot_id, "soh_workshop_unavailable");
+          if (this.shouldBlockSlot(slot)) {
+            domClass.add(skiff_slot_id, "soh_slot_unavailable");
           } else {
-            domClass.remove(skiff_slot_id, "soh_workshop_unavailable");
+            domClass.remove(skiff_slot_id, "soh_slot_unavailable");
           }
 
           var primaryOccupantId = slotData.occupying_player_id;

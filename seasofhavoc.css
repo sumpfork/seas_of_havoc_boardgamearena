@@ -183,13 +183,13 @@
   outline: none;
   background-color: rgba(90, 90, 90, 0.14) !important;
 }
-.soh_skiff_slot.soh_workshop_unavailable {
+.soh_skiff_slot.soh_slot_unavailable {
   pointer-events: none;
   cursor: default;
   background-color: rgba(90, 90, 90, 0.14) !important;
   box-shadow: none;
 }
-.soh_skiff_slot.soh_workshop_unavailable:hover {
+.soh_skiff_slot.soh_slot_unavailable:hover {
   outline: none;
   background-color: rgba(90, 90, 90, 0.14) !important;
 }
@@ -1403,10 +1403,10 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 }
 
 /* Your island turn: free skiff slots show a pointer cursor and a faint, slow glow. */
-.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_workshop_unavailable):not(.soh_occupied_blocked) {
+.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_slot_unavailable):not(.soh_occupied_blocked) {
   cursor: pointer;
 }
-.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_workshop_unavailable):not(.soh_occupied_blocked):not(.soh_pending_skiff) {
+.soh_placing .soh_skiff_slot.soh_unoccupied:not(.disabled):not(.soh_slot_unavailable):not(.soh_occupied_blocked):not(.soh_pending_skiff) {
   animation: soh-slot-pulse 2.4s ease-in-out infinite;
 }
 
