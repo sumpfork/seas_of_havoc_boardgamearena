@@ -91,61 +91,33 @@ trait ZombieMoves
     {
         $decisions = [];
         foreach ($actions as $action) {
-            $name = $action["action"] instanceof PrimitiveCardPlayAction ? $action["action"]->value : $action["action"];
-            if ($name === PrimitiveCardPlayAction::SEQUENCE->value) {
+            if (ShipUpgrades::actionName($action) === PrimitiveCardPlayAction::SEQUENCE->value) {
                 array_push($decisions, ...$this->randomCardDecisions($action["actions"], $budget));
                 continue;
             }
-            if ($name === PrimitiveCardPlayAction::CHOICE->value) {
-                $options = [];
-                foreach ($action["choices"] as $choice) {
-                    $choice_name = $choice["name"] ?? ($choice["action"] instanceof PrimitiveCardPlayAction
-                        ? $choice["action"]->value : $choice["action"]);
-                    // Nimble Hull is a once-per-phase upgrade, not a free random pick.
-                    if ($choice_name !== self::NIMBLE_HULL_CHOICE) {
-                        $options[] = [$choice_name, $action["cost"] ?? [], $choice];
-                    }
-                }
-                $picked = $this->pickAffordable($options, isset($action["cost"]), $budget);
-                $decisions[] = $picked[0];
-                if ($picked[2] !== null) {
-                    array_push($decisions, ...$this->randomCardDecisions([$picked[2]], $budget));
-                }
+            if (!self::needsDecision($action)) {
                 continue;
             }
-            $options = [];
-            if (isset($action["variants"])) {
-                foreach ($action["variants"] as $variant) {
-                    foreach ($variant["sides"] as $side) {
-                        $options[] = [$variant["name"] . " " . $side, $variant["cost"], null];
-                    }
-                }
-            } elseif (in_array($name, ["fire", "2 x fire", "3 x fire"], true)) {
-                $options[] = [$name . " left", $action["cost"] ?? [], null];
-                $options[] = [$name . " right", $action["cost"] ?? [], null];
-            } else {
-                $options[] = [$action["name"] ?? $name, $action["cost"] ?? [], null];
-            }
-            // A single option with no skip is a fixed move: the server takes no decision for it.
-            if (count($options) > 1 || isset($action["cost"])) {
-                $decisions[] = $this->pickAffordable($options, isset($action["cost"]), $budget)[0];
+            // Nimble Hull is a once-per-phase upgrade, not a free random pick.
+            $options = array_filter(self::actionOptions($action), fn($o) => $o["name"] !== self::NIMBLE_HULL_CHOICE);
+            $picked = $this->pickAffordable($options, $budget);
+            $decisions[] = $picked["name"];
+            if ($picked["choice"] !== null) {
+                array_push($decisions, ...$this->randomCardDecisions([$picked["choice"]], $budget));
             }
         }
         return $decisions;
     }
 
-    /** A random affordable [name, cost, choice] - or skip, when skipping is allowed - paid from $budget. */
-    private function pickAffordable(array $options, bool $can_skip, array &$budget): array
+    /** A random affordable option (CardPlay::actionOptions; "skip" is free), paid from $budget. */
+    private function pickAffordable(array $options, array &$budget): array
     {
-        $affordable = array_values(array_filter($options, fn($o) => $this->canPayFor($o[1], $budget)));
-        if ($can_skip) {
-            $affordable[] = ["skip", [], null];
-        }
+        $affordable = array_values(array_filter($options, fn($o) => $this->canPayFor($o["cost"], $budget)));
         if (empty($affordable)) {
             throw new \Bga\GameFramework\SystemException("Zombie has no affordable option: " . json_encode($options));
         }
         $picked = $affordable[array_rand($affordable)];
-        foreach ($picked[1] as $resource => $amount) {
+        foreach ($picked["cost"] as $resource => $amount) {
             $budget[$resource] = ($budget[$resource] ?? 0) - $amount;
         }
         return $picked;

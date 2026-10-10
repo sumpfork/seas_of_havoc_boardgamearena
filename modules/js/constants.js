@@ -22,6 +22,13 @@ define([], function () {
     // No location or storage (tests, sandboxed frames): stay quiet.
   }
   const silent = () => {};
+  const FIRE_COUNTS = { fire: 1, "2 x fire": 2, "3 x fire": 3 };
+
+  /** A fire action's shots. Without ship upgrades the server sends none: just the plain shot. */
+  const fireVariants = (action) => action.variants || [{
+    name: action.action, range: action.range, cost: action.cost, count: FIRE_COUNTS[action.action],
+    shot: "cannon", sides: ["left", "right"], both_sides: false,
+  }];
 
   return {
     /**
@@ -37,6 +44,33 @@ define([], function () {
           warn: (...args) => globalThis.console.warn(...args),
           error: (...args) => globalThis.console.error(...args),
         },
+
+    FIRE_COUNTS: FIRE_COUNTS,
+    fireVariants: fireVariants,
+
+    /**
+     * The decisions a card action accepts, as the server checks them (CardPlay::actionOptions). A
+     * choice offers its options by name (`choice` holds the option's action), fire each shot to each
+     * side, anything else itself. A cost makes the action optional: "skip".
+     */
+    actionOptions: function (action) {
+      let options;
+      if (action.action === "choice") {
+        options = action.choices.map((choice) => ({ name: choice.name || choice.action, choice: choice }));
+      } else if (Object.hasOwn(FIRE_COUNTS, action.action)) {
+        options = fireVariants(action).flatMap((variant) =>
+          variant.sides.map((side) => ({ name: variant.name + " " + side, cost: variant.cost, range: variant.range })));
+      } else {
+        options = [{ name: action.name || action.action, cost: action.cost, range: action.range }];
+      }
+      if (action.cost !== undefined) options.push({ name: "skip" });
+      return options;
+    },
+
+    /** Whether an action takes a decision: a choice, or more than one option to pick from. */
+    needsDecision: function (action) {
+      return action.action === "choice" || this.actionOptions(action).length > 1;
+    },
 
     // Direction constants - must match PHP versions
     NORTH: 1,
