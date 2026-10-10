@@ -76,16 +76,6 @@ define([
     },
 
     /**
-     * Trading post dialog notification
-     */
-    notif_showTradingPostDialog: function (args) {
-      console.groupCollapsed("show trading post dialog");
-      console.log("slot_number:", args.slot_number);
-      this.initTradingPost(args.slot_number);
-      console.groupEnd();
-    },
-
-    /**
      * Ship upgrade activated notification: flips the upgrade card on the activating player's board
      */
     notif_shipUpgradeActivated: function (args) {

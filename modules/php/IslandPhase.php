@@ -234,7 +234,7 @@ trait IslandPhase
         $this->setGameStateValue("pending_trading_post_slot", $slot_value);
     }
 
-    private function getPendingTradingPostSelection(): ?array
+    function getPendingTradingPostSelection(): ?array
     {
         $player_id = (int) $this->getGameStateValue("pending_trading_post_player");
         $slot_value = (int) $this->getGameStateValue("pending_trading_post_slot");
@@ -497,10 +497,7 @@ trait IslandPhase
                 return "islandTurnDone";
             case "trading_post":
                 $this->setPendingTradingPostSelection((int) $player_id, $number);
-                $this->bga->notify->player($player_id, "showTradingPostDialog", "", [
-                    "slot_number" => $number,
-                ]);
-                return null; // Dialog shown, waiting for actTradingPostExchange
+                return STATE_ISLAND_TURN; // re-entered so the args offer the exchange
             case "green_flag":
                 $this->showResourceChoiceDialog($slotname, $number);
                 return STATE_ISLAND_TURN; // re-entered so the args offer the resource choice
