@@ -200,6 +200,9 @@ trait IslandPhase
     function actRestockMarket(): mixed
     {
         $player_id = self::getActivePlayerId();
+        // A restock after the skiff went elsewhere would leave its "place on the market" rule
+        // set for the next player.
+        $this->assertNoPendingPlacement();
         if (!$this->canRestockMarket()) {
             throw new \Bga\GameFramework\UserException(clienttranslate("The market cannot be restocked now"));
         }
@@ -403,6 +406,20 @@ trait IslandPhase
     }
 
     /** The pending resource choice as ["context" => ..., "number" => "nX"], or null. */
+    private function assertNoPendingPlacement(): void
+    {
+        if ($this->getPendingTradingPostSelection() !== null) {
+            throw new \Bga\GameFramework\UserException(
+                clienttranslate("Finish the trading post exchange before placing another skiff"),
+            );
+        }
+        if ($this->getPendingResourceChoice() !== null || $this->getPendingWorkshopSelection() !== null) {
+            throw new \Bga\GameFramework\UserException(
+                clienttranslate("Finish your current placement before placing another skiff"),
+            );
+        }
+    }
+
     function getPendingResourceChoice(): ?array
     {
         $index = (int) $this->getGameStateValue("pending_resource_context");
@@ -419,16 +436,7 @@ trait IslandPhase
     {
         $player_id = self::getActivePlayerId();
         $this->mytrace("placeSkiff: $player_id slotname: $slotname number: $number");
-        if ($this->getPendingTradingPostSelection() !== null) {
-            throw new \Bga\GameFramework\UserException(
-                clienttranslate("Finish the trading post exchange before placing another skiff"),
-            );
-        }
-        if ($this->getPendingResourceChoice() !== null || $this->getPendingWorkshopSelection() !== null) {
-            throw new \Bga\GameFramework\UserException(
-                clienttranslate("Finish your current placement before placing another skiff"),
-            );
-        }
+        $this->assertNoPendingPlacement();
         $occupancies = $this->getIslandSlots();
 
         $this->mydump("occupancies", $occupancies);

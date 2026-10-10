@@ -1040,8 +1040,8 @@ define([
         return;
       }
 
-      if (slotElement.classList.contains("soh_workshop_unavailable")) {
-        console.log("no affordable ship upgrade to activate at the workshop");
+      if (slotElement.classList.contains("soh_slot_unavailable")) {
+        console.log("skiff slot is not available");
         return;
       }
 

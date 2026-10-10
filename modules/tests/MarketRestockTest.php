@@ -61,4 +61,12 @@ final class MarketRestockTest extends TestCase
         $this->expectException(\Bga\GameFramework\UserException::class);
         $this->game->actRestockMarket();
     }
+
+    public function testNoRestockWhileTradingPostPending(): void
+    {
+        $this->game->setGameStateValue("pending_trading_post_player", 1);
+        $this->game->setGameStateValue("pending_trading_post_slot", 1);
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actRestockMarket();
+    }
 }
