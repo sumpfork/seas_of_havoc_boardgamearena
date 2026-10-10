@@ -985,11 +985,6 @@ class SeasOfHavoc extends Table
         foreach ($this->booty_tokens as $cfg) {
             $result["booty_token_resources"][$cfg["image_id"]] = $cfg["resources"] ?? [];
         }
-        $pending_trading_post = $this->getPendingTradingPostSelection();
-        $result["pending_trading_post_slot"] = null;
-        if ($pending_trading_post !== null && (int) $pending_trading_post["player_id"] === (int) $current_player_id) {
-            $result["pending_trading_post_slot"] = $pending_trading_post["slot_number"];
-        }
         $pending_workshop = $this->getPendingWorkshopSelection();
         $result["pending_workshop_slot"] = null;
         if ($pending_workshop !== null && (int) $pending_workshop["player_id"] === (int) $current_player_id) {

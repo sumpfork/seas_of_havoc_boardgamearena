@@ -41,6 +41,7 @@ class IslandTurn extends GameState
             // page refresh shows the choice again.
             'pending_resource_choice' => $this->game->getPendingResourceChoice(),
             'pending_workshop' => $this->game->getPendingWorkshopChoice(),
+            'pending_trading_post' => $this->game->getPendingTradingPostSelection(),
         ];
     }
 

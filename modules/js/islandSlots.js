@@ -36,7 +36,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
       if (possibleActions.indexOf("actPlaceSkiff") === -1) {
         return false;
       }
-      if (this.gamedatas && this.gamedatas.pending_trading_post_slot != null) {
+      if (this.gamedatas.gamestate.args && this.gamedatas.gamestate.args.pending_trading_post) {
         return false;
       }
       return true;

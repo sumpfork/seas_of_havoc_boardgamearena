@@ -51,17 +51,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           break;
         }
 
-        case "islandPhase": {
-          if (this.player_captain === "corsair") {
-            this.corsairOccupiedPlacementAvailable = true;
-          }
-          this.refreshSkiffSlotPlaceability();
-          if (this.isCurrentPlayerActive() && this.gamedatas.pending_trading_post_slot) {
-            this.initTradingPost(this.gamedatas.pending_trading_post_slot);
-          }
-          break;
-        }
-
         case "islandPhaseSetup": {
           if (this.player_captain === "corsair") {
             this.corsairOccupiedPlacementAvailable = true;
@@ -72,6 +61,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
         case "islandTurn": {
           this.refreshSkiffSlotPlaceability();
+          // In the args rather than a notification, so a page refresh reopens the exchange.
+          if (this.isCurrentPlayerActive() && args.args.pending_trading_post) {
+            this.initTradingPost(args.args.pending_trading_post.slot_number);
+          }
           break;
         }
 
@@ -130,37 +123,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           this.setupDraft(stateName, args.args);
           break;
 
-        case "rallyTheFlagsChooseFlag": {
-          break;
-        }
-
         case "extortion": {
           this._extortionArgs = args.args || {};
           break;
         }
-
-        case "barter": {
-          break;
-        }
-
-        case "timelyTrading": {
-          break;
-        }
-
-        case "boardingParty": {
-          break;
-        }
-
-        case "huntTheBounty": {
-          break;
-        }
-
-        case "resolveCollision": {
-          break;
-        }
-
-        case "dummmy":
-          break;
       }
     },
 
@@ -242,9 +208,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
         case "timelyTrading":
           query(".soh_purchase_card_button").forEach(domConstruct.destroy);
-          break;
-
-        case "dummmy":
           break;
       }
     },
@@ -421,7 +384,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "cardPurchases":
           case "cardPurchasesPrivate":
-          case "cardPurchasesMaking":
             console.log("Adding End Purchase Phase button for state: " + stateName);
             this.statusBar.addActionButton(_("End Purchase Phase"), this.onCompletePurchasesClicked.bind(this));
             this.statusBar.addActionButton(_("Restart Purchases"), this.onRestartPurchasesClicked.bind(this), {

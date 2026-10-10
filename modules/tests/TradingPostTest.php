@@ -74,13 +74,11 @@ final class TradingPostTest extends TestCase
 
     public function testPlacingSkiffStartsPendingTradingPostFlow(): void
     {
-        $this->game->actPlaceSkiff("trading_post", "n1");
+        $this->assertSame(STATE_ISLAND_TURN, $this->game->actPlaceSkiff("trading_post", "n1"));
 
         $this->assertSame(1, $this->game->getGameStateValue("pending_trading_post_player"));
         $this->assertSame(1, $this->game->getGameStateValue("pending_trading_post_slot"));
-        $this->assertNotNull($this->game->debugLastNotif);
-        $this->assertSame("showTradingPostDialog", $this->game->debugLastNotif["type"]);
-        $this->assertSame(1, $this->game->debugLastNotif["player_id"]);
+        $this->assertSame(["player_id" => 1, "slot_number" => "n1"], $this->game->getPendingTradingPostSelection());
         $this->assertEmpty($this->game->resourceAdjustments);
         $this->assertEmpty($this->game->occupiedSlots);
     }

@@ -35,7 +35,7 @@ define([
     },
 
     /**
-     * Entry point: called from notif_showTradingPostDialog.
+     * Entry point: called on entering islandTurn with a pending trading post.
      * Kicks off the trading post client-state flow.
      */
     initTradingPost: function(slotNumber, stateOverride) {
