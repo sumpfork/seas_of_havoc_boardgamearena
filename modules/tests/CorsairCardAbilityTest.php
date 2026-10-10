@@ -4,6 +4,7 @@ use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
+require_once __DIR__ . "/BootyCapacityTest.php";
 
 class CorsairCardUT extends SeasOfHavocUT {
     public array $mockCaptains = [];
@@ -127,6 +128,38 @@ final class CorsairCardAbilityTest extends TestCase {
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
         $this->assertSame([["card_id" => 55, "location" => "booty_player"]], $this->game->getMockCards()->moveCardCalls);
         $this->assertSame([["player_id" => "1", "amount" => 1]], $this->game->infamyAwards);
+    }
+
+    public function testBoardingPartyImmediatelyNotifiesBothOwnersOfTheirUpdatedBooty(): void {
+        foreach ([1, 2] as $targetTokenCount) {
+            $deck = new BootyCapacityDeck();
+            $deck->add(54, 0, "booty_player", 1);
+            $deck->add(55, 1, "booty_player", 2);
+            if ($targetTokenCount === 2) {
+                $deck->add(56, 2, "booty_player", 2);
+            }
+            (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this->game, $deck);
+            $this->game->mockBoardingPartyTargets = [
+                ["player_id" => "2", "resources" => [], "booty_token_count" => $targetTokenCount],
+            ];
+            $this->game->bga->notify->sent = [];
+
+            $this->game->actBoardingPartySteal("2", "booty_token");
+
+            $this->assertSame(1, (int) $deck->cards[55]["location_arg"]);
+            $updates = array_values(array_filter($this->game->bga->notify->sent,
+                fn($notification) => $notification["type"] === "bootyTokenUsed"));
+            $this->assertCount(2, $updates);
+            $this->assertSame(2, $updates[0]["player_id"]);
+            $this->assertSame($targetTokenCount === 2 ? [$deck->cards[56]] : [], $updates[0]["booty_tokens"]);
+            $this->assertSame(1, $updates[1]["player_id"]);
+            $this->assertSame([$deck->cards[54], $deck->cards[55]], $updates[1]["booty_tokens"]);
+            foreach ($this->game->bga->notify->sent as $notification) {
+                if (isset($notification["args"])) {
+                    $this->assertArrayNotHasKey("booty_tokens", $notification["args"], "Token contents stay private");
+                }
+            }
+        }
     }
 
     public function testActBoardingPartyStealRejectsInvalidTarget(): void {
