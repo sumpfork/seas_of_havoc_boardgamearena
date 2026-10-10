@@ -697,6 +697,7 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 #card_play_buttons {
   grid-area: buttons;
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: end;
   gap: 8px;
@@ -706,6 +707,15 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   margin: 0;
   white-space: nowrap;
 }
+#card_choices_remaining {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: 12px;
+  color: #805400;
+}
+#card_choices_remaining:empty {
+  display: none;
+}
 .card-sides {
   width: 144px;
   height: 198px;
@@ -714,7 +724,21 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  padding: 6px 0;
+  padding: 6px 8px;
+  border-left: 3px solid transparent;
+}
+.soh_card_choices_row.soh_needs_choice {
+  background: #fff0cc;
+  border-left-color: #b5790d;
+}
+.soh_card_choice_hint {
+  display: none;
+  flex-basis: 100%;
+  font-size: 12px;
+  font-weight: 600;
+}
+.soh_needs_choice > .soh_card_choice_hint {
+  display: block;
 }
 .soh_card_choices_row + .soh_card_choices_row {
   border-top: 1px dashed #d4b87a;
