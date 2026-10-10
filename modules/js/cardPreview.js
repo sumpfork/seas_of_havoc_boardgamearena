@@ -145,18 +145,20 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
     const walk = (list) => {
       for (const action of list) {
         if (state.done) return;
-        // An optional (costed) action is skipped with a "skip" decision, as on the server.
-        if (action.cost !== undefined) {
+        // Consume once before dispatch; fixed moves and sequence wrappers need no decision.
+        const optional = action.cost !== undefined;
+        const needsDecision = optional || action.action === "choice" || Object.hasOwn(FIRE_COUNTS, action.action);
+        let decision;
+        if (needsDecision) {
           if (decisions.length === 0) { state.done = true; return; }
-          if (decisions[0] === "skip") { decisions.shift(); continue; }
+          decision = decisions.shift();
+          if (optional && decision === "skip") continue;
         }
         switch (action.action) {
           case "sequence":
             walk(action.actions);
             break;
           case "choice": {
-            if (decisions.length === 0) { state.done = true; return; }
-            const decision = decisions.shift();
             const chosen = action.choices.find((c) => (c.name || c.action) === decision);
             if (chosen) walk([chosen]);
             break;
@@ -186,8 +188,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           case "fire":
           case "2 x fire":
           case "3 x fire":
-            if (decisions.length === 0) { state.done = true; return; }
-            fire(action, decisions.shift());
+            fire(action, decision);
             break;
           default:
             // Captain abilities, repairs: nothing to show on the board.

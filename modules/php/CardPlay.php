@@ -112,6 +112,12 @@ trait CardPlay
 
     function processCardActions(array $actions, array $decisions): CardActionOutcome
     {
+        return $this->processCardActionsWithDecisions($actions, $decisions);
+    }
+
+    /** Nested maneuvers consume the same decision list as the actions that follow them. */
+    private function processCardActionsWithDecisions(array $actions, array &$decisions): CardActionOutcome
+    {
         $outcome = new CardActionOutcome();
         $this->mytrace("processing card actions");
         $this->mydump("actions", $actions);
@@ -122,22 +128,30 @@ trait CardPlay
                     : $action["action"];
             $this->mytrace("handling " . $typed_action->value);
             $this->mydump("action_chain", $outcome->actionChain);
-            if (array_key_exists("cost", $action)) {
-                $decision = $decisions[0];
-                if ($decision == "skip") {
+            $optional = array_key_exists("cost", $action);
+            $has_options = $typed_action === PrimitiveCardPlayAction::CHOICE || isset(ShipUpgrades::FIRE_COUNTS[$typed_action->value]);
+            $decision = null;
+            // Consume once before dispatch; fixed moves and sequence wrappers need no decision.
+            if ($optional || $has_options) {
+                if (empty($decisions)) {
+                    throw new \Bga\GameFramework\SystemException("Missing card action choice: " . $typed_action->value);
+                }
+                $decision = array_shift($decisions);
+                if ($optional && $decision === "skip") {
                     $this->mytrace("skipping action with cost due to decision == 'skip': " . $typed_action->value);
-                    array_shift($decisions);
                     $this->mytrace("decisions after skipping: " . implode(", ", $decisions));
                     continue;
+                }
+                if (!$has_options && $decision !== ($action["name"] ?? $typed_action->value)) {
+                    throw new \Bga\GameFramework\SystemException("Invalid card action choice: " . $decision);
                 }
             }
             $cost = $action["cost"] ?? [];
             switch ($typed_action) {
                 case PrimitiveCardPlayAction::SEQUENCE:
-                    $outcome->absorb($this->processCardActions($action["actions"], $decisions), $cost);
+                    $outcome->absorb($this->processCardActionsWithDecisions($action["actions"], $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::CHOICE:
-                    $decision = array_shift($decisions);
                     $choices = $action["choices"];
                     $choice_names = array_map(fn($x) => key_exists("name", $x) ? $x["name"] : $x["action"], $choices);
                     $decision_index = array_search($decision, $choice_names, true);
@@ -148,7 +162,7 @@ trait CardPlay
                         $this->useNimbleHull($this->getActivePlayerId());
                     }
                     $chosen = [$choices[array_keys($choices)[$decision_index]]];
-                    $outcome->absorb($this->processCardActions($chosen, $decisions), $cost);
+                    $outcome->absorb($this->processCardActionsWithDecisions($chosen, $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                 case PrimitiveCardPlayAction::RIGHT:
@@ -160,13 +174,12 @@ trait CardPlay
                         ["action" => $pivot],
                         ["action" => PrimitiveCardPlayAction::FORWARD],
                     ];
-                    $outcome->absorb($this->processCardActions($maneuver, $decisions), $cost);
+                    $outcome->absorb($this->processCardActionsWithDecisions($maneuver, $decisions), $cost);
                     break;
                 case PrimitiveCardPlayAction::FIRE:
                 case PrimitiveCardPlayAction::FIRE2:
                 case PrimitiveCardPlayAction::FIRE3:
                     $this->mytrace("fire");
-                    $decision = array_shift($decisions);
                     $this->mytrace("decision: $decision");
                     [$variant, $side] = ShipUpgrades::parseFireDecision($action, $decision);
                     // The chosen shot, not the action, decides what firing costs. Firing never

@@ -826,6 +826,13 @@ class SeasOfHavoc extends Table
 
         $this->setGameStateValue("hunt_the_bounty_target", 0);
         $this->clearUpgradeUses(["sloop_of_war_nimble_hull"]);
+        foreach (array_keys($this->getPlayerInfo()) as $player_id) {
+            if ($this->hasShipUpgrade($player_id, "sloop_of_war_nimble_hull")) {
+                $this->bga->notify->player((int) $player_id, "playableCardsUpdated", "", [
+                    "playable_cards" => $this->upgradedPlayableCards($player_id),
+                ]);
+            }
+        }
 
         if ($this->getPlayerCaptain($first_player_token_owner) === "admiral") {
             $this->playerGainResources($first_player_token_owner, ["doubloon" => 1]);
