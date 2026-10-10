@@ -5,7 +5,7 @@ const path = require("node:path");
 
 // `deps` supplies stubs for the dojo modules a handler actually uses, keyed by the tail of the
 // dependency path ("dojo/_base/fx" -> "fx"). Anything not supplied stays undefined, as before.
-function loadModule(name, deps = {}) {
+function loadModule(name, deps = {}, globals = {}) {
   let module;
   // Every module takes constants.js for its (debug-only) console: supply the real one.
   if (name !== "constants.js" && !deps["constants.js"]) {
@@ -20,11 +20,56 @@ function loadModule(name, deps = {}) {
     _: text => text,
     getLibUrl: name => name,
     g_gamethemeurl: "",
+    ...globals,
   });
   return module;
 }
 
 const notifications = loadModule("notifications.js");
+// Improvisation's copied card offers the same ship selector as a normal play. Preview and
+// submission must both follow it, even when the player changes their mind after selecting a card.
+{
+  let shipChoice = { value: "1" };
+  let selectorHtml;
+  let onShipChange;
+  let previewShip;
+  let sent;
+  const document = { body: {}, addEventListener() {}, querySelector: () => shipChoice };
+  const query = () => Object.assign([], { connect: (event, context, callback) => { onShipChange = callback; } });
+  const copyDialogs = loadModule("dialogs.js", {
+    "dom-construct": { place: (html, target) => { if (target === "card_ship_choice") selectorHtml = html; } },
+    lang: { hitch: (context, callback) => callback.bind(context) },
+    on() {}, query,
+    "bga-cards": { LineStock: class { addCard() {} } },
+  }, { document });
+  const preview = loadModule("cardPreview.js", {}, { document });
+  const copyGame = {
+    player_id: "1",
+    gamedatas: { playerinfo: { 1: { player_ship: "Brig", player_ship2: "Galleon" } } },
+    cleanupCardPlayDialog() {}, format_block: () => "dialog",
+    _makeCardDependencyTree: () => [], _renderCardChoiceRows: () => [],
+    _updateCardPlayControls() { this.updateCardPreview(); },
+    _decisionSummary: () => ["fire left"],
+    clearCardPreview() {}, showActionPreview: (actions, decisions, ship) => { previewShip = ship; },
+    updateCardPreview: preview.updateCardPreview,
+    bgaPerformAction: (name, args) => { sent = { name, args }; },
+  };
+  const card = { card_type: 19, actions: [{ action: "fire", range: 3 }] };
+  copyDialogs.showCardPlayDialog.call(copyGame, card, 55, 55);
+  assert.match(selectorHtml, /name="card_ship" value="2"/, "A copied card offers both ships");
+  for (const ship of ["2", "1"]) {
+    shipChoice.value = ship;
+    onShipChange();
+    assert.equal(previewShip, ship === "2" ? "1_2" : "1");
+    copyDialogs._sendPlayCard.call(copyGame, card, 55, ["fire left"], false, 55);
+    assert.equal(sent.name, "actResolveCaptainCard");
+    assert.equal(sent.args.ship, Number(ship), "The server receives the ship shown in the preview");
+    assert.deepEqual(JSON.parse(sent.args.choices), { card_id: 55 });
+  }
+  shipChoice = null;
+  copyDialogs._sendPlayCard.call(copyGame, card, 55, ["fire left"], false, 55);
+  assert.equal(sent.args.ship, undefined, "Single-ship games need no ship choice");
+}
 // Boarding Party sends each owner their new hold; render it without waiting for a pickup animation.
 for (const tokens of [[{ id: 55, type_arg: 1 }], [], [{ id: 56, type_arg: 2 }]]) {
   let renderedBooty;

@@ -194,7 +194,7 @@ define([
 
       // 2 Ship Variant: "Each card you play applies only to one ship."
       var me = this.gamedatas.playerinfo[this.player_id];
-      if (me.player_ship2 && captainCopyId === null) {
+      if (me.player_ship2) {
         domConstruct.place(
           `<div class="card_ship_choice_label">${_("Ship")}:</div>` +
             [[1, me.player_ship], [2, me.player_ship2]].map(([n, name]) =>
@@ -278,6 +278,10 @@ define([
     _sendPlayCard: function (card, card_id, decisions, useBooty, captainCopyId = this._captainCopyId) {
       if (captainCopyId != null) {
         const params = { choices: JSON.stringify({ card_id: captainCopyId }), decisions: JSON.stringify(decisions) };
+        const shipChoice = document.querySelector('input[name="card_ship"]:checked');
+        if (shipChoice) {
+          params.ship = Number(shipChoice.value);
+        }
         if (useBooty && this.booty_tokens.length > 0) {
           params.use_booty_card_id = this.getMyBootyTokenId(this._computeTotalPlayCost(this.dep_tree));
         }

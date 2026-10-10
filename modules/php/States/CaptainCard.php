@@ -42,8 +42,8 @@ class CaptainCard extends GameState
     }
 
     #[PossibleAction]
-    public function actResolveCaptainCard(#[JsonParam] array $choices, #[JsonParam] array $decisions = [], ?int $use_booty_card_id = null): mixed
+    public function actResolveCaptainCard(#[JsonParam] array $choices, #[JsonParam] array $decisions = [], ?int $use_booty_card_id = null, ?int $ship = null): mixed
     {
-        return $this->game->actResolveCaptainCard($choices, $decisions, $use_booty_card_id);
+        return $this->game->actResolveCaptainCard($choices, $decisions, $use_booty_card_id, $ship);
     }
 }
