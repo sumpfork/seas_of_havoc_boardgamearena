@@ -408,27 +408,24 @@ define([
      * Build dependency tree from card actions
      * @private
      */
-    _makeCardDependencyTree: function (actions, choice_count, topLevel = true) {
+    _makeCardDependencyTree: function (actions, counter = { next: 0 }, topLevel = true) {
       var bga = this;
       var tree = new Map();
-      if (typeof choice_count === "undefined") {
-        choice_count = 0;
-      }
 
       for (const action of actions) {
         console.log("tree considering action:");
         console.log(action);
         var option_count = 0;
-        var num_descendant_choices = 0;
 
         switch (action.action) {
           case "choice":
+            var choice_count = counter.next++;
             var tree_choices = [];
             for (const option of action.choices) {
               var choice_name = option.name || option.action;
               var id = "card_choice_" + choice_count + "_option_" + option_count;
               // Inside a choice the option's chip already names its move: no fixed rows for it.
-              var children = this._makeCardDependencyTree([option], choice_count + num_descendant_choices + 1, false);
+              var children = this._makeCardDependencyTree([option], counter, false);
               var entry = {
                 name: choice_name,
                 id: id,
@@ -447,7 +444,6 @@ define([
               }
               tree_choices.push(entry);
               console.log("choice added: " + choice_name + " " + id);
-              num_descendant_choices += children.size;
               option_count++;
             }
             if (typeof action.cost !== "undefined") {
@@ -459,12 +455,10 @@ define([
               option_count++;
             }
             tree.set("choice_" + choice_count, tree_choices);
-            choice_count++;
-            choice_count += num_descendant_choices;
             break;
 
           case "sequence":
-            var children = this._makeCardDependencyTree(action.actions, choice_count, topLevel);
+            var children = this._makeCardDependencyTree(action.actions, counter, topLevel);
             children.forEach((value, key) => {
               tree.set(key, value);
             });
@@ -500,6 +494,7 @@ define([
               choice_ranges.push(undefined);
             }
             if (choice_names.length > 1) {
+              var choice_count = counter.next++;
               var tree_choices = [];
               for (let i = 0; i < choice_names.length; i++) {
                 var to_push = {
@@ -514,19 +509,16 @@ define([
                 tree_choices.push(to_push);
               }
               tree.set("choice_" + choice_count, tree_choices);
-              choice_count++;
-              num_descendant_choices += 1;
             } else if (topLevel && FIXED_MOVES.includes(choice_name)) {
               // A move the card always makes: shown as its own row, ticked and locked, so the dialog
               // lists everything the card does. The server takes no decision for it.
+              var choice_count = counter.next++;
               tree.set("choice_" + choice_count, [{
                 name: choice_name,
                 id: "card_choice_" + choice_count + "_option_0",
                 fixed: true,
                 children: new Map(),
               }]);
-              choice_count++;
-              num_descendant_choices += 1;
             }
           }
         }

@@ -439,6 +439,91 @@ assert.equal(twoFires.length, 2);
 assert.ok(twoFires[0].includes("card_choice_0_option_0"), "sibling rows must keep tree order");
 assert.ok(twoFires[1].includes("card_choice_1_option_0"));
 
+// Nimble Hull wraps a sailing card in a choice and repeats its nested maneuver choices.
+const forkManeuver = { action: "choice", choices: [
+  { action: "left" },
+  { action: "sequence", name: "forward", actions: [
+    { action: "forward" },
+    { action: "choice", cost: { sail: 1 }, choices: [{ action: "left" }, { action: "forward" }, { action: "right" }] },
+  ] },
+  { action: "right" },
+] };
+const nimbleActions = [{ action: "choice", choices: [
+  { action: "sequence", name: "resolve once", actions: [forkManeuver] },
+  { action: "sequence", name: "nimble hull: maneuver twice", actions: [forkManeuver, forkManeuver] },
+] }];
+const nimbleRows = renderRows(nimbleActions);
+const nimbleIds = [...nimbleRows.join("").matchAll(/id="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(nimbleIds).size, nimbleIds.length, "Nested Nimble Hull choices must have unique radio IDs");
+assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows");
+{
+  const inputs = {};
+  const controls = loadModule("dialogs.js", {
+    dom: { byId: id => inputs[id] },
+    "dom-style": { get: row => row.display, set: (row, key, value) => { row[key] = value; } },
+    "dom-attr": {
+      set: input => { input.disabled = true; }, remove: input => { input.disabled = false; },
+    },
+    query: () => [{ textContent: "" }],
+  });
+  const tree = dialogs._makeCardDependencyTree(nimbleActions);
+  const makeInputs = tree => tree.forEach(options => {
+    const row = { display: "" };
+    options.forEach(option => {
+      inputs[option.id] = { checked: false, disabled: false, dataset: {}, parentNode: { parentNode: row } };
+      makeInputs(option.children);
+    });
+  });
+  makeInputs(tree);
+  let passes = 0;
+  let ready;
+  const controlGame = {
+    ...controls, dep_tree: tree,
+    addResources: (a, b) => ({ sail: (a.sail || 0) + (b.sail || 0) }),
+    canPlayerAfford: cost => (cost.sail || 0) <= 0,
+    updateCardPreview() {},
+    _updatePlayCardButton() { ready = Boolean(this._checkIsCardReadyToBePlayed(this.dep_tree)); },
+    _showHideCardPlayControls(branch, ...args) {
+      if (branch === tree) assert.ok(++passes < 20, "Updating nested choices must settle without freezing");
+      controls._showHideCardPlayControls.call(this, branch, ...args);
+    },
+  };
+  const choose = (branch, name) => {
+    const options = [...branch.values()][0];
+    options.forEach(option => { inputs[option.id].checked = option.name === name; });
+    passes = 0;
+    controlGame._updateCardPlayControls();
+    return options.find(option => option.name === name).children;
+  };
+  const twice = choose(tree, "nimble hull: maneuver twice");
+  assert.equal(ready, false, "The maneuver choices must be answered before playing");
+  const maneuvers = [...twice.entries()];
+  choose(new Map([maneuvers[0]]), "forward"); // The unaffordable extension automatically skips.
+  choose(new Map([maneuvers[1]]), "right");
+  assert.equal(ready, true, "Both chosen maneuvers enable Play Card");
+  assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["nimble hull: maneuver twice", "forward", "skip", "right"]);
+  const once = choose(tree, "resolve once");
+  choose(once, "left");
+  assert.equal(ready, true, "Switching back to resolve once remains playable");
+  assert.deepEqual(Array.from(controlGame._decisionSummary(tree)), ["resolve once", "left"], "Hidden maneuvers do not leak decisions");
+}
+{
+  const preview = loadModule("cardPreview.js");
+  const forward = [{ action: "forward" }, { action: "forward", cost: { sail: 1 } }];
+  const actions = [{ action: "choice", choices: [
+    { action: "sequence", name: "nimble hull: maneuver twice", actions: [...forward, ...forward] },
+  ] }];
+  const marks = preview.simulateCardPlay(actions, ["nimble hull: maneuver twice", "forward", "skip"],
+    { x: 0, y: 0, heading: 2 }, () => null);
+  const ghost = marks.find(mark => mark.type === "ghost");
+  assert.equal(ghost.x, 3, "The preview also consumes the first paid move before the second maneuver's skip");
+}
+const sequenceRows = renderRows([
+  { action: "sequence", actions: [{ action: "forward", cost: { sail: 1 } }] },
+  { action: "fire", range: 3, cost: { cannonball: 1 } },
+]);
+assert.equal(sequenceRows.length, 2, "An action after a sequence must not replace the sequence's row");
+
 // Market card 58: one choice, each branch unlocking its own side/skip row.
 const choiceRows = renderRows([
   { action: "choice", choices: [
