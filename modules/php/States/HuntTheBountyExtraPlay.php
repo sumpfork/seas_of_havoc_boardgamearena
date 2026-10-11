@@ -24,8 +24,8 @@ class HuntTheBountyExtraPlay extends GameState
             id: STATE_HUNT_THE_BOUNTY_EXTRA_PLAY,
             type: StateType::ACTIVE_PLAYER,
             name: 'huntTheBountyExtraPlay',
-            description: clienttranslate('${actplayer} may play another card'),
-            descriptionMyTurn: clienttranslate('${you} may play another card immediately'),
+            description: clienttranslate('Sea Phase: ${actplayer} may play another card'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} may play another card immediately'),
         );
     }
 

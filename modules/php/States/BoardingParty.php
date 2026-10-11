@@ -24,8 +24,8 @@ class BoardingParty extends GameState
             id: STATE_BOARDING_PARTY,
             type: StateType::ACTIVE_PLAYER,
             name: 'boardingParty',
-            description: clienttranslate('${actplayer} must resolve their Boarding Party ability'),
-            descriptionMyTurn: clienttranslate('${you} must resolve your Boarding Party ability'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve their Boarding Party ability'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve your Boarding Party ability'),
             transitions: [],
         );
     }

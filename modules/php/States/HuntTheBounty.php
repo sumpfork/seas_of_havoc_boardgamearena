@@ -24,8 +24,8 @@ class HuntTheBounty extends GameState
             id: STATE_HUNT_THE_BOUNTY,
             type: StateType::ACTIVE_PLAYER,
             name: 'huntTheBounty',
-            description: clienttranslate('${actplayer} must declare a target ship for Hunt the Bounty'),
-            descriptionMyTurn: clienttranslate('${you} must declare a target ship for Hunt the Bounty'),
+            description: clienttranslate('Sea Phase: ${actplayer} must declare a target ship for Hunt the Bounty'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must declare a target ship for Hunt the Bounty'),
             transitions: [],
         );
     }

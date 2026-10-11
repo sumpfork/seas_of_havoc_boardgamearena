@@ -24,8 +24,8 @@ class Barter extends GameState
             id: STATE_BARTER,
             type: StateType::ACTIVE_PLAYER,
             name: 'barter',
-            description: clienttranslate('${actplayer} must resolve their Barter ability'),
-            descriptionMyTurn: clienttranslate('${you} must resolve your Barter ability'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve their Barter ability'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve your Barter ability'),
             transitions: [],
         );
     }

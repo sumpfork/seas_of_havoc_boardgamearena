@@ -24,8 +24,8 @@ class Extortion extends GameState
             id: STATE_EXTORTION,
             type: StateType::ACTIVE_PLAYER,
             name: 'extortion',
-            description: clienttranslate('${actplayer} must resolve their Extortion ability'),
-            descriptionMyTurn: clienttranslate('${you} must resolve your Extortion ability'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve their Extortion ability'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve your Extortion ability'),
             transitions: [],
         );
     }

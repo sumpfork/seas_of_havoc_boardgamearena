@@ -25,8 +25,8 @@ class IslandTurn extends GameState
             id: STATE_ISLAND_TURN,
             type: StateType::ACTIVE_PLAYER,
             name: 'islandTurn',
-            description: clienttranslate('${actplayer} must place a skiff'),
-            descriptionMyTurn: clienttranslate('${you} must place a skiff'),
+            description: clienttranslate('Island Phase: ${actplayer} must place a skiff'),
+            descriptionMyTurn: clienttranslate('Island Phase: ${you} must place a skiff'),
             transitions: ['islandTurnDone' => STATE_NEXT_PLAYER_ISLAND_PHASE, 'scrapCard' => STATE_SCRAP_CARD],
         );
     }

@@ -24,8 +24,8 @@ class ScrapCard extends GameState
             id: STATE_SCRAP_CARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'scrapCard',
-            description: clienttranslate('${actplayer} must scrap a card'),
-            descriptionMyTurn: clienttranslate('${you} must scrap a card from your hand or discard pile'),
+            description: clienttranslate('Island Phase: ${actplayer} must scrap a card'),
+            descriptionMyTurn: clienttranslate('Island Phase: ${you} must scrap a card from your hand or discard pile'),
             transitions: ['cardScrapped' => STATE_NEXT_PLAYER_ISLAND_PHASE, 'scrapAgain' => STATE_SCRAP_CARD],
         );
     }

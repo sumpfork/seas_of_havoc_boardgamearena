@@ -25,8 +25,8 @@ class ChainShotLoss extends GameState
             id: STATE_CHAIN_SHOT_LOSS,
             type: StateType::ACTIVE_PLAYER,
             name: 'chainShotLoss',
-            description: clienttranslate('${actplayer} was hit by chain shot and must choose a resource to lose'),
-            descriptionMyTurn: clienttranslate('${you} were hit by chain shot: choose a resource to lose'),
+            description: clienttranslate('Sea Phase: ${actplayer} was hit by chain shot and must choose a resource to lose'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} were hit by chain shot: choose a resource to lose'),
             // The action returns to the next-player step of the sea phase.
             transitions: [],
         );

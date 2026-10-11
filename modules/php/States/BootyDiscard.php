@@ -24,8 +24,8 @@ class BootyDiscard extends GameState
             id: STATE_BOOTY_DISCARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'bootyDiscard',
-            description: clienttranslate('${actplayer} must choose a booty token to discard'),
-            descriptionMyTurn: clienttranslate('${you} have no room in your hold: choose a booty token to discard'),
+            description: clienttranslate('${phase}: ${actplayer} must choose a booty token to discard'),
+            descriptionMyTurn: clienttranslate('${phase}: ${you} have no room in your hold: choose a booty token to discard'),
             // The action returns the state the interrupted turn came from.
             transitions: [],
         );
@@ -33,7 +33,12 @@ class BootyDiscard extends GameState
 
     public function getArgs(): array
     {
-        return $this->game->argBootyDiscard();
+        // A pickup can overflow the hold in either phase: the state the turn returns to says which.
+        $island = (int) $this->game->getGameStateValue('booty_discard_return_state') === STATE_NEXT_PLAYER_ISLAND_PHASE;
+        return $this->game->argBootyDiscard() + [
+            'phase' => $island ? clienttranslate('Island Phase') : clienttranslate('Sea Phase'),
+            'i18n' => ['phase'],
+        ];
     }
 
     public function zombie(int $playerId): mixed
