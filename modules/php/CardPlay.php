@@ -560,7 +560,7 @@ trait CardPlay
         $this->notifyBootyCollected($player_id, $outcome->bootyCard);
 
         if ($this->maybeDeferSeaPhaseForTreasureSeeker($outcome->shipwreckEvent, $outcome->collisionOccurred)) {
-            return STATE_TREASURE_SEEKER_ADJUST;
+            return $this->treasureSeekerAdjustState();
         }
 
         return $outcome->collisionOccurred ? $this->collisionPenaltyState() : "seaTurnDone";
@@ -701,7 +701,7 @@ trait CardPlay
                     $resume,
                 )
             ) {
-                return STATE_TREASURE_SEEKER_ADJUST;
+                return $this->treasureSeekerAdjustState();
             }
         }
 

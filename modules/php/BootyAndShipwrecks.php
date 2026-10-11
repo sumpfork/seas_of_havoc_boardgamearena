@@ -114,9 +114,16 @@ trait BootyAndShipwrecks
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose a booty token from your hold"));
         }
         $this->discardBootyToken($player_id, $card_id);
+        return $this->bootyDiscardResumeState();
+    }
+
+    /** Where a turn interrupted by a full hold carries on, once the hold fits. */
+    function bootyDiscardResumeState(): int
+    {
         $return_state = (int) $this->getGameStateValue("booty_discard_return_state");
         // A hold can overflow by more than one, so keep asking until it fits.
-        return $this->bootyOverflowState($return_state) ?? $return_state;
+        return $this->bootyOverflowState($return_state)
+            ?? ($return_state === STATE_TREASURE_SEEKER_ADJUST ? $this->startTreasureSeekerAdjust() : $return_state);
     }
 
     /** Zombie/timeout fallback: drop the least valuable token so the game can continue. */
@@ -250,11 +257,25 @@ trait BootyAndShipwrecks
         $this->setGameStateValue("pending_shipwreck_y", $y);
         $this->setGameStateValue("pending_treasure_seeker_resume", $resume);
         $this->setGameStateValue("pending_treasure_seeker_player", (int) $this->getActivePlayerId());
-
-        $this->gamestate->changeActivePlayer((int) $treasure_seeker_id);
-        $this->giveExtraTime((int) $treasure_seeker_id);
-        // Note: jumpToState is removed - callers return the TreasureSeekerAdjust state class to trigger the transition
         return true;
+    }
+
+    /**
+     * The state after tryBeginTreasureSeekerShipwreckAdjust. The player who picked up the booty
+     * settles a full hold first, while it is still their turn; then the Treasure Seeker moves the
+     * new shipwreck.
+     */
+    function treasureSeekerAdjustState(): int
+    {
+        return $this->bootyOverflowState(STATE_TREASURE_SEEKER_ADJUST) ?? $this->startTreasureSeekerAdjust();
+    }
+
+    private function startTreasureSeekerAdjust(): int
+    {
+        $treasure_seeker_id = (int) $this->getTreasureSeekerPlayerId();
+        $this->gamestate->changeActivePlayer($treasure_seeker_id);
+        $this->giveExtraTime($treasure_seeker_id);
+        return STATE_TREASURE_SEEKER_ADJUST;
     }
 
     private function maybeDeferSeaPhaseForTreasureSeeker(?array $shipwreck_event, bool $collision_pending): bool

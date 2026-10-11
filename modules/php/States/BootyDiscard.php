@@ -44,7 +44,7 @@ class BootyDiscard extends GameState
     public function zombie(int $playerId): mixed
     {
         $this->game->discardLeastValuableBootyToken($playerId);
-        return (int) $this->game->getGameStateValue('booty_discard_return_state');
+        return $this->game->bootyDiscardResumeState();
     }
 
     #[PossibleAction]

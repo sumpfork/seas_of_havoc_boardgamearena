@@ -127,6 +127,19 @@ final class BootyCapacityTest extends TestCase
         $this->assertSame('booty_player', $this->game->deck->cards[101]['location'], 'the player keeps their pick');
     }
 
+    /** Bug report: the Treasure Seeker moved the new shipwreck before the collector chose a token to keep. */
+    public function testFullHoldIsSettledBeforeTheTreasureSeekerMovesTheShipwreck(): void
+    {
+        $game = new class extends BootyCapacityUT {
+            public function getTreasureSeekerPlayerId(): ?string { return '2'; }
+        };
+        $game->deck->add(100, 0, 'booty_player', 1);
+        $game->deck->add(101, 1, 'booty_player', 1);
+        $this->assertSame(STATE_BOOTY_DISCARD, $game->treasureSeekerAdjustState(), 'the collector discards first');
+        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->actDiscardBootyToken(100));
+        $this->assertSame(2, (int) $game->gamestate->getActivePlayerId(), 'then the Treasure Seeker takes over');
+    }
+
     public function testCannotDiscardATokenThePlayerDoesNotHold(): void
     {
         $this->fillHold(0, 1);
