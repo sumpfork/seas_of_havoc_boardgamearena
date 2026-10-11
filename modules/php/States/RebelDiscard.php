@@ -24,8 +24,8 @@ class RebelDiscard extends GameState
             id: STATE_REBEL_DISCARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'rebelDiscard',
-            description: clienttranslate('${actplayer} must discard a card'),
-            descriptionMyTurn: clienttranslate('${you} must discard a card (Rebel ability)'),
+            description: clienttranslate('Island Phase: ${actplayer} must discard a card'),
+            descriptionMyTurn: clienttranslate('Island Phase: ${you} must discard a card (Rebel ability)'),
             transitions: ['cardDiscarded' => STATE_ISLAND_TURN],
         );
     }

@@ -24,8 +24,8 @@ class TimelyTrading extends GameState
             id: STATE_TIMELY_TRADING,
             type: StateType::ACTIVE_PLAYER,
             name: 'timelyTrading',
-            description: clienttranslate('${actplayer} must resolve their Timely Trading ability'),
-            descriptionMyTurn: clienttranslate('${you} must resolve your Timely Trading ability'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve their Timely Trading ability'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve your Timely Trading ability'),
             transitions: [],
         );
     }

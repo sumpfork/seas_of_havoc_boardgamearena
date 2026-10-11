@@ -68,7 +68,7 @@ define([
       this.playerHand.unselectAll();
       this._rowing = true;
       this.playerHand.setSelectionMode("multiple");
-      this.statusBar.setTitle(_("${you} must select 2 cards to discard for rowing"));
+      this.statusBar.setTitle(_("Sea Phase: ${you} must select 2 cards to discard for rowing"));
       this.statusBar.removeActionButtons();
       this.statusBar.addActionButton(_("Cancel"), () => this.cancelRowing(), { color: "secondary" });
     },
@@ -685,7 +685,7 @@ define([
       const button = (label, action, color = "primary") => this.statusBar.addActionButton(label, action, { color });
       if (ability === "unearth_riches") {
         const gains = Object.entries(data.resources).map(([r, n]) => n + " " + (r === "choice" ? _("resource of your choice") : this.resourceIcon(r)));
-        this.statusBar.setTitle(_("Unearth Riches — gain:") + " " + gains.join(" + "));
+        this.statusBar.setTitle(_("Sea Phase: Unearth Riches — gain:") + " " + gains.join(" + "));
         if (data.resources.choice) {
           this.addResourceButtons((resource) => send({ resource }));
         } else {
@@ -695,7 +695,7 @@ define([
       }
       if (ability === "retaliation") {
         // Every damage card is identical, so there is nothing to pick between: go straight to the shot.
-        this.statusBar.setTitle(_("Retaliation: scrap a damage card, then you may fire."));
+        this.statusBar.setTitle(_("Sea Phase: Retaliation: scrap a damage card, then you may fire."));
         // The free shot the server resolves (see actResolveCaptainCard), previewed on the board.
         const shot = [{ action: "fire", range: 3 }];
         ["left", "right"].forEach((side) =>

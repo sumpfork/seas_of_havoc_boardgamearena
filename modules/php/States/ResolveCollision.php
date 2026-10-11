@@ -24,8 +24,8 @@ class ResolveCollision extends GameState
             id: STATE_RESOLVE_COLLISION,
             type: StateType::ACTIVE_PLAYER,
             name: 'resolveCollision',
-            description: clienttranslate('${actplayer} must resolve a collision'),
-            descriptionMyTurn: clienttranslate('${you} must resolve a collision'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve a collision'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve a collision'),
             transitions: [
                 'collisionResolved' => STATE_NEXT_PLAYER_SEA_PHASE,
                 'collisionOccurred' => STATE_RESOLVE_COLLISION,

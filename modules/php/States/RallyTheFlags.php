@@ -24,8 +24,8 @@ class RallyTheFlags extends GameState
             id: STATE_RALLY_THE_FLAGS,
             type: StateType::ACTIVE_PLAYER,
             name: 'rallyTheFlagsChooseFlag',
-            description: clienttranslate('${actplayer} must choose a flag to take'),
-            descriptionMyTurn: clienttranslate('${you} must take a flag (Rally the Flags)'),
+            description: clienttranslate('Sea Phase: ${actplayer} must choose a flag to take'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must take a flag (Rally the Flags)'),
             transitions: [],
         );
     }

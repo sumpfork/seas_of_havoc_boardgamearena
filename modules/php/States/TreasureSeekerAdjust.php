@@ -24,8 +24,8 @@ class TreasureSeekerAdjust extends GameState
             id: STATE_TREASURE_SEEKER_ADJUST,
             type: StateType::ACTIVE_PLAYER,
             name: 'treasureSeekerAdjust',
-            description: clienttranslate('${actplayer} may adjust the shipwreck location'),
-            descriptionMyTurn: clienttranslate('${you} may move the shipwreck to a surrounding space (Treasure Seeker ability)'),
+            description: clienttranslate('Sea Phase: ${actplayer} may adjust the shipwreck location'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} may move the shipwreck to a surrounding space (Treasure Seeker ability)'),
             transitions: [],
         );
     }

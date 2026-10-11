@@ -48,7 +48,7 @@ define([
 
       if (this._tradingPostState.useBooty || this._tradingPostState.resourcesSpent.length > 0) {
         this.setClientState("client_tradingPostGain", {
-          descriptionmyturn: _("${you} must select resources to receive"),
+          descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
         });
         return;
       }
@@ -56,11 +56,11 @@ define([
       var tokenRes = this.getMyBootyTokenRes();
       if (tokenRes) {
         this.setClientState("client_tradingPostBootyChoice", {
-          descriptionmyturn: _("Use your booty token at the trading post?"),
+          descriptionmyturn: _("Island Phase: Use your booty token at the trading post?"),
         });
       } else {
         this.setClientState("client_tradingPostSpend", {
-          descriptionmyturn: _("${you} must select resources to trade away"),
+          descriptionmyturn: _("Island Phase: ${you} must select resources to trade away"),
         });
       }
     },
@@ -68,14 +68,14 @@ define([
     onTradingPostBootyYes: function() {
       this._tradingPostState.useBooty = true;
       this.setClientState("client_tradingPostGain", {
-        descriptionmyturn: _("${you} must select resources to receive"),
+        descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
       });
     },
 
     onTradingPostBootyNo: function() {
       this._tradingPostState.useBooty = false;
       this.setClientState("client_tradingPostSpend", {
-        descriptionmyturn: _("${you} must select resources to trade away"),
+        descriptionmyturn: _("Island Phase: ${you} must select resources to trade away"),
       });
     },
 
@@ -291,7 +291,7 @@ define([
 
       this._tradingPostState.resourcesSpent = resourcesSpent;
       this.setClientState("client_tradingPostGain", {
-        descriptionmyturn: _("${you} must select resources to receive"),
+        descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
       });
     },
 

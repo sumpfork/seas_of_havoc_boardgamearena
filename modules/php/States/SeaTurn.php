@@ -25,8 +25,8 @@ class SeaTurn extends GameState
             id: STATE_SEA_TURN,
             type: StateType::ACTIVE_PLAYER,
             name: 'seaTurn',
-            description: clienttranslate('${actplayer} must play a card'),
-            descriptionMyTurn: clienttranslate('${you} must play a card'),
+            description: clienttranslate('Sea Phase: ${actplayer} must play a card'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must play a card'),
             transitions: ['seaTurnDone' => STATE_NEXT_PLAYER_SEA_PHASE, 'collisionOccurred' => STATE_RESOLVE_COLLISION],
         );
     }

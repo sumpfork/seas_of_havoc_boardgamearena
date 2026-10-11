@@ -21,8 +21,8 @@ class CaptainCard extends GameState
     public function __construct(protected \SeasOfHavoc $game)
     {
         parent::__construct($game, id: STATE_CAPTAIN_CARD, type: StateType::ACTIVE_PLAYER, name: 'captainCard',
-            description: clienttranslate('${actplayer} must resolve their captain card'),
-            descriptionMyTurn: clienttranslate('${you} must resolve your captain card'),
+            description: clienttranslate('Sea Phase: ${actplayer} must resolve their captain card'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must resolve your captain card'),
             transitions: ['seaTurnDone' => STATE_NEXT_PLAYER_SEA_PHASE, 'collisionOccurred' => STATE_RESOLVE_COLLISION]);
     }
 

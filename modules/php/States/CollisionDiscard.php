@@ -28,8 +28,8 @@ class CollisionDiscard extends GameState
             id: STATE_COLLISION_DISCARD,
             type: StateType::ACTIVE_PLAYER,
             name: 'collisionDiscard',
-            description: clienttranslate('${actplayer} must discard a card for the collision'),
-            descriptionMyTurn: clienttranslate('${you} must discard a card for the collision'),
+            description: clienttranslate('Sea Phase: ${actplayer} must discard a card for the collision'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} must discard a card for the collision'),
             transitions: ['cardDiscarded' => STATE_RESOLVE_COLLISION],
         );
     }

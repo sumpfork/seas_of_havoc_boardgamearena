@@ -136,7 +136,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
     onExtortionFlagChosen: function (flag, args) {
       if (flag === "green") {
         this.setClientState("client_extortionGreenResource", {
-          descriptionmyturn: _("${you} must choose a resource (Green Purser's Flag)"),
+          descriptionmyturn: _("Sea Phase: ${you} must choose a resource (Green Purser's Flag)"),
         });
         return;
       }
@@ -339,13 +339,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             // A placement waiting on a choice comes back from the server's args, so a refresh
             // restores it.
             if (args.pending_resource_choice) {
-              this.statusBar.setTitle(_("${you} must select a resource"));
+              this.statusBar.setTitle(_("Island Phase: ${you} must select a resource"));
               this.addResourceButtons((resource) => this.bgaPerformAction("actResourcePickedInDialog", { resource }));
               break;
             }
             this.clearUpgradeActivationButtons();
             if (args.pending_workshop) {
-              this.statusBar.setTitle(_("${you} must choose a ship upgrade to activate"));
+              this.statusBar.setTitle(_("Island Phase: ${you} must choose a ship upgrade to activate"));
               this.addUpgradeActivationButtons(args.pending_workshop.upgrades);
               break;
             }
@@ -363,7 +363,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               );
             }
             if (args && args.market_restocked) {
-              this.statusBar.setTitle(_("${you} must place a skiff on a newly revealed Market card"));
+              this.statusBar.setTitle(_("Island Phase: ${you} must place a skiff on a newly revealed Market card"));
             }
             if (args && args.can_restock_market) {
               this.statusBar.addActionButton(
@@ -568,8 +568,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             // With one ship to board the title names it; with several, each button says whose it is.
             this.statusBar.setTitle(
               targets.length === 1
-                ? _("${you} may steal 1 resource or a booty token from ${player}")
-                : _("${you} may steal 1 resource or a booty token"),
+                ? _("Sea Phase: ${you} may steal 1 resource or a booty token from ${player}")
+                : _("Sea Phase: ${you} may steal 1 resource or a booty token"),
               targets.length === 1 ? { player: name(targets[0]) } : undefined,
             );
             targets.forEach((target) => {

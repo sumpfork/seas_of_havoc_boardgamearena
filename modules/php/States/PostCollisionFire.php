@@ -29,8 +29,8 @@ class PostCollisionFire extends GameState
             id: STATE_POST_COLLISION_FIRE,
             type: StateType::ACTIVE_PLAYER,
             name: 'postCollisionFire',
-            description: clienttranslate('${actplayer} may fire after the collision'),
-            descriptionMyTurn: clienttranslate('${you} may fire after the collision'),
+            description: clienttranslate('Sea Phase: ${actplayer} may fire after the collision'),
+            descriptionMyTurn: clienttranslate('Sea Phase: ${you} may fire after the collision'),
             transitions: [],
         );
     }
