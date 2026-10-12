@@ -276,12 +276,18 @@ define([
       }
     },
 
-    /** The decisions ticked in the dialog so far, in the order the server consumes them. */
-    _decisionSummary: function (tree) {
+    /**
+     * The decisions ticked in the dialog so far, in the order the server consumes them. With
+     * `placeholders`, an unanswered row gives null, so the rows after it keep their place (the
+     * preview needs that; what is sent to the server has every row answered).
+     */
+    _decisionSummary: function (tree, placeholders = false) {
       const decisions = [];
       for (const [, options] of this._rows(tree, true)) {
-        const ticked = options.find(o => !o.fixed && dom.byId(o.id).checked);
+        if (options.every(o => o.fixed)) continue;
+        const ticked = options.find(o => dom.byId(o.id).checked);
         if (ticked) decisions.push(ticked.name);
+        else if (placeholders) decisions.push(null);
       }
       return decisions;
     },

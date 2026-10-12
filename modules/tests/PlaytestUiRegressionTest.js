@@ -505,6 +505,11 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
     return options.find(option => option.name === name).children;
   };
   const twice = choose(tree, "nimble hull maneuver twice");
+  choose(new Map([[...twice.entries()][1]]), "right");
+  assert.deepEqual(Array.from(controlGame._decisionSummary(tree, true)), ["nimble hull maneuver twice", null, "right"],
+    "For the preview, an unanswered row keeps the later decisions in their place");
+  [...twice.entries()][1][1].forEach(option => { inputs[option.id].checked = false; });
+  controlGame._updateCardPlayControls();
   assert.equal(ready, false, "The maneuver choices must be answered before playing");
   assert.equal(inputs.card_choices_remaining.textContent, "2 choices remaining");
   const highlightedRows = () => new Set(Object.values(inputs)

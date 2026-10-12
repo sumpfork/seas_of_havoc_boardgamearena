@@ -235,7 +235,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       if (!this._previewActions || !this.dep_tree) return;
       const shipChoice = document.querySelector('input[name="card_ship"]:checked');
       const shipArg = shipChoice && shipChoice.value === "2" ? this.player_id + "_2" : String(this.player_id);
-      this.showActionPreview(this._previewActions, this._decisionSummary(this.dep_tree), shipArg);
+      this.showActionPreview(this._previewActions, this._decisionSummary(this.dep_tree, true), shipArg);
     },
 
     /**
