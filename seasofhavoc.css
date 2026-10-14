@@ -646,14 +646,32 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_card-zoom-dialog {
   border: 0;
   border-radius: 8px;
-  padding: 16px;
+  padding: 40px 16px 16px; /* room for the close X above the card */
   text-align: center;
 }
 .soh_card-zoom-dialog::backdrop {
   background: rgba(0, 0, 0, 0.65);
 }
-.soh_card-zoom-dialog > button {
-  margin: 12px 0 0;
+.soh_card-zoom-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  color: #444;
+  cursor: pointer;
+}
+.soh_card-hover-zoom {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 #card_display_dialog {
   position: fixed;

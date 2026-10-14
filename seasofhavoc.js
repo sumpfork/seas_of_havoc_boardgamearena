@@ -448,14 +448,17 @@ define([
       this.corsairOccupiedPlacementAvailable = !!gamedatas.corsair_occupied_placement_available;
       this.corsairOccupiedSlotNames = gamedatas.corsair_occupied_slot_names || [];
 
-      // Log thumbnails are HTML strings, so they get their zoom handler on first click.
-      document.addEventListener("click", (event) => {
+      // Log thumbnails are HTML strings, so they get their zoom handlers on first hover or click.
+      const setupLogCardPreview = (event, replay) => {
         const art = event.target.closest(".soh_log_card .soh_panel_card_art");
         if (art && !art.dataset.previewReady) {
           this.setupCardPreview(art);
-          art.click();
+          replay(art);
         }
-      });
+      };
+      document.addEventListener("click", (event) => setupLogCardPreview(event, (art) => art.click()));
+      document.addEventListener("mouseover", (event) =>
+        setupLogCardPreview(event, (art) => art.dispatchEvent(new MouseEvent("mouseenter"))));
 
       // Log booty tokens are HTML strings too, so their enlarged copy is placed on hover. Fixed
       // positioning keeps it from being clipped by the log panel.
