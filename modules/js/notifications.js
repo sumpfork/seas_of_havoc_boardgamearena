@@ -612,6 +612,9 @@ define([
       // ponytail: a replay can't reload, so it keeps the pre-draft board; rebuild in place if replays matter.
       if (!g_archive_mode) {
         window.location.reload();
+        // reload() is async: hold the queue so chooseHeading isn't entered with pre-draft gamedatas
+        // (no ship names yet -> format_block throws "null is not an object").
+        return new Promise(() => {});
       }
     },
 

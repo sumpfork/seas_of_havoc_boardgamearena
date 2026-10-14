@@ -29,12 +29,22 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
           face.click();
         }
       });
+      // Faces that show a card front: bga-cards fronts, panel/log/draft thumbnails, activated upgrades.
+      const showsFront = () =>
+        !(face.classList.contains('soh_non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) &&
+        !!(face.closest('.soh_seasofhavoc-card[data-side="front"]') || face.classList.contains('soh_panel_card_art') ||
+           face.classList.contains('upgrade-activated-face'));
+      // Mouse users get an enlarged copy on hover; touch users tap for the dialog below.
+      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        face.addEventListener('mouseenter', () => {
+          if (showsFront()) this.showCardHoverZoom(face);
+        });
+        face.addEventListener('mouseleave', () => this.hideCardHoverZoom());
+      }
       face.addEventListener('click', event => {
+        this.hideCardHoverZoom();
         // Selectable stocks own clicks for playing, scrapping, and discarding.
-        if (face.closest('.bga-cards_selectable-stock') ||
-            (face.classList.contains('soh_non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) ||
-            !(face.closest('.soh_seasofhavoc-card[data-side="front"]') || face.classList.contains('soh_panel_card_art') ||
-              face.classList.contains('upgrade-activated-face'))) return;
+        if (face.closest('.bga-cards_selectable-stock') || !showsFront()) return;
         event.stopPropagation();
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');
@@ -42,24 +52,12 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         dialog.setAttribute('aria-label', _('Card preview'));
         const close = document.createElement('button');
         close.type = 'button';
-        close.className = 'bgabutton bgabutton_gray';
-        close.textContent = _('Close');
+        close.className = 'soh_card-zoom-close';
+        close.textContent = '\u00d7';
+        close.setAttribute('aria-label', _('Close'));
         close.addEventListener('click', () => dialog.close());
-        const frame = document.createElement('div');
-        const art = document.createElement('div');
-        const style = getComputedStyle(face);
-        const scale = Math.min(3, (window.innerWidth - 64) / 144, (window.innerHeight - 120) / 198);
-        frame.style.width = `${144 * scale}px`;
-        frame.style.height = `${198 * scale}px`;
-        Object.assign(art.style, {
-          width: '144px', height: '198px',
-          backgroundImage: style.backgroundImage,
-          backgroundPosition: style.backgroundPosition,
-          backgroundSize: style.backgroundSize,
-          transform: `scale(${scale})`, transformOrigin: 'top left',
-        });
-        frame.append(art);
-        dialog.append(frame, close);
+        const scale = Math.min(3, (window.innerWidth - 64) / 144, (window.innerHeight - 88) / 198);
+        dialog.append(this.cardArtCopy(face, scale), close);
         dialog.addEventListener('click', event => {
           if (event.target === dialog) dialog.close();
         });
@@ -70,6 +68,52 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         document.body.append(dialog);
         dialog.showModal();
       });
+    },
+
+    /** The face's card art, scaled up, in a frame sized to match. */
+    cardArtCopy: function (face, scale) {
+      const frame = document.createElement('div');
+      const art = document.createElement('div');
+      const style = getComputedStyle(face);
+      frame.style.width = `${144 * scale}px`;
+      frame.style.height = `${198 * scale}px`;
+      Object.assign(art.style, {
+        width: '144px', height: '198px',
+        backgroundImage: style.backgroundImage,
+        backgroundPosition: style.backgroundPosition,
+        backgroundSize: style.backgroundSize,
+        transform: `scale(${scale})`, transformOrigin: 'top left',
+      });
+      frame.append(art);
+      return frame;
+    },
+
+    /**
+     * Enlarged card beside the hovered face, after a short delay so sweeping across the hand
+     * doesn't flash every card. Fixed positioning keeps it clear of panels that clip.
+     */
+    showCardHoverZoom: function (face) {
+      this.hideCardHoverZoom();
+      this._cardHoverTimer = setTimeout(() => {
+        if (!face.isConnected) return;
+        const scale = Math.min(2, (window.innerHeight - 16) / 198);
+        const width = 144 * scale, height = 198 * scale;
+        const zoom = this.cardArtCopy(face, scale);
+        zoom.className = 'soh_card-hover-zoom';
+        const rect = face.getBoundingClientRect();
+        const right = rect.right + 8;
+        const left = right + width <= window.innerWidth ? right : Math.max(0, rect.left - 8 - width);
+        const top = Math.min(Math.max(8, rect.top + rect.height / 2 - height / 2), window.innerHeight - height - 8);
+        Object.assign(zoom.style, { left: `${left}px`, top: `${Math.max(0, top)}px` });
+        document.body.append(zoom);
+        this._cardHoverZoom = zoom;
+      }, 250);
+    },
+
+    hideCardHoverZoom: function () {
+      clearTimeout(this._cardHoverTimer);
+      this._cardHoverZoom?.remove();
+      this._cardHoverZoom = null;
     },
 
     /**
