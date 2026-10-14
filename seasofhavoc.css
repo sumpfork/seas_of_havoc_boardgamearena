@@ -684,6 +684,10 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   padding: 40px 16px 16px; /* room for the close X above the card */
   text-align: center;
 }
+.soh_card-zoom-dialog > div:first-child {
+  overflow: hidden;
+  border-radius: 8px;
+}
 .soh_card-zoom-dialog::backdrop {
   background: rgba(0, 0, 0, 0.65);
 }
@@ -699,6 +703,11 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   line-height: 1;
   color: #444;
   cursor: pointer;
+}
+/* The card the hover zoom is of, outlined just outside its edge. */
+.soh_card-hover-source {
+  outline: 3px solid #e8b930;
+  outline-offset: 2px;
 }
 .soh_card-hover-zoom {
   position: fixed;
@@ -927,6 +936,11 @@ a.disabled {
 #soh_other_boards {
   display: flex;
   flex-wrap: wrap;
+}
+/* My resources, captain and upgrades as one board, sized to its contents like the others. */
+#myship {
+  width: fit-content;
+  column-gap: 20px;
 }
 .soh_seasofhavoc-card {
   width: 144px;
@@ -1234,7 +1248,21 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 .soh_player_panel_cards {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+}
+/* 20px either side of the captain, as on my board. */
+.soh_board_ships,
+.soh_player_panel_cards [id^="panel_captain_"] {
+  margin-right: 10px;
+}
+/* Player boards (mine and the others'): BGA's whiteblock, set apart with the rounded corners and
+   shadow of BGA's own player panels, so neighbouring boards don't run together. */
+#soh_other_boards {
+  column-gap: 10px; /* rows are already apart by whiteblock's vertical margins */
+}
+.soh_player_board {
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 /* In the 2 Ship Variant, one above the other beside the cards. */
 .soh_board_ships {
@@ -1247,9 +1275,13 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   height: 45.5px;
 }
 /* Full size, like my own captain and upgrades. */
+/* Styled like my bga-cards captain and upgrades: their corners and drop shadow, no border. */
 .soh_player_panel_cards .soh_panel_card {
   width: 144px;
   height: 198px;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 1px 1px 2px 1px rgba(0, 0, 0, 0.5);
 }
 .soh_player_panel_cards .soh_panel_card_art {
   transform: none;
@@ -1265,9 +1297,6 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 .soh_panel_card_art {
   transform: scale(0.3);
   transform-origin: top left;
-}
-.soh_panel_card.soh_active {
-  border-color: #e8b930;
 }
 .soh_panel_card_flash {
   animation: panel-card-flash 0.8s ease-out 2;
