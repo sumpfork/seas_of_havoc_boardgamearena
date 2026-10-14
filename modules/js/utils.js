@@ -402,7 +402,7 @@ define([
       tokens.forEach((token) => {
         const node = this.createBootyTokenNode(false, token.type_arg);
         this.setBootyTokenImageForSlot(node, token.type_arg);
-        node.dataset.imageId = token.type_arg; // for the pinned panel's hover zoom
+        node.dataset.imageId = token.type_arg; // for the board copy's hover zoom
         domConstruct.place(node, mySlot);
         this.addBootyTokenTooltip(node, token.type_arg);
       });
@@ -410,34 +410,19 @@ define([
     },
 
     /**
-     * A copy of my resources and booty, pinned under the status bar once my player panel scrolls
-     * out of view. Mirrored from the panel on every change, so the panel stays the one source.
+     * A copy of my resources and booty on my board under the hand, so they're in view while
+     * choosing cards. Mirrored from the panel on every change, so the panel stays the one source.
      */
     setupMyResourcesPanel: function () {
       if (this.isSpectator) {
+        dom.byId("myresources_wrap").remove();
         return;
       }
       const sources = [
         dom.byId(`player_resource_board_p${this.player_id}`),
         dom.byId(`booty_token_p${this.player_id}`),
       ];
-      const panel = domConstruct.place(
-        `<div id="soh_my_resources" class="soh_my_resources">
-           <button type="button" class="soh_my_resources_toggle" title="${_("Show/hide my resources")}"
-             aria-label="${_("Show/hide my resources")}" aria-expanded="true"></button>
-           <div class="soh_my_resources_content" aria-hidden="true"></div>
-         </div>`,
-        document.body,
-      );
-      const content = panel.querySelector(".soh_my_resources_content");
-      const toggle = panel.querySelector(".soh_my_resources_toggle");
-      const setCollapsed = (collapsed) => {
-        domClass.toggle(panel, "soh_collapsed", collapsed);
-        toggle.setAttribute("aria-expanded", String(!collapsed));
-        localStorage.setItem("soh_my_resources_collapsed", collapsed ? "1" : "");
-      };
-      toggle.addEventListener("click", () => setCollapsed(!domClass.contains(panel, "soh_collapsed")));
-      setCollapsed(localStorage.getItem("soh_my_resources_collapsed") === "1");
+      const content = dom.byId("soh_my_resources");
       // Copies keep their ids, prefixed, so they can carry the same tooltips as the panel.
       const copyOf = (source) => {
         const copy = source.cloneNode(true);
@@ -464,20 +449,6 @@ define([
       };
       new MutationObserver(mirrorSlot).observe(slot, { childList: true, attributes: true });
       mirrorSlot();
-
-      const title = dom.byId("page-title");
-      const place = () => {
-        // Narrow layouts put the player panels above the status bar, so test against it only
-        // once BGA has pinned it.
-        const top = title.getBoundingClientRect().bottom;
-        panel.style.top = `${top}px`;
-        const pinned = domClass.contains(title, "fixed-page-title");
-        domClass.toggle(panel, "soh_visible", pinned && sources[0].getBoundingClientRect().bottom < top);
-      };
-      window.addEventListener("scroll", place, { passive: true });
-      window.addEventListener("resize", place);
-      new ResizeObserver(place).observe(title);
-      place();
     },
 
     renderFacedownTokenForPlayer: function (playerId) {
