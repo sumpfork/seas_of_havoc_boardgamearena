@@ -505,6 +505,41 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   position: relative;
   top: -10px;
 }
+/* Resources and skiffs in a player's panel (and its copy on my board), centred on a line. */
+.soh_resource_row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.soh_resource_row > * {
+  flex-shrink: 0;
+}
+.soh_resource_row .soh_resource_count {
+  top: 0;
+  margin-right: 6px;
+}
+/* Flags, booty, hand count, then the player's ship(s) at full sprite size, kept together. */
+.soh_token_row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+/* Sized so that in the 234px right-hand panel the five flags fill the first line (5 x 46px) and
+   booty, hand count and two ships the second (50 + 6 + 50 + 6 + 2 x 60). */
+.soh_token_row > .soh_flagish {
+  zoom: 0.92;
+}
+.soh_token_row > .soh_hand_count {
+  margin-left: 6px;
+}
+.soh_panel_ships {
+  display: flex;
+  margin-left: 6px;
+}
+.soh_panel_ships .soh_player_ship.soh_panel_ship {
+  width: 60px;
+  height: 45.5px;
+}
 .soh_skiff {
   width: 40px;
   height: 40px;
@@ -888,9 +923,10 @@ a.disabled {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr) 180px;
 }
-#myship {
-  display: grid;
-  grid-template-columns: 200px 350px 1fr;
+#myship,
+#soh_other_boards {
+  display: flex;
+  flex-wrap: wrap;
 }
 .soh_seasofhavoc-card {
   width: 144px;
@@ -1120,14 +1156,9 @@ a.disabled {
   text-align: center;
 }
 
-/* Player deck and discard pile styling */
 #captain_stock,
 #upgrades_stock {
   min-height: 200px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 10px;
-  background: rgba(128, 128, 128, 0.2);
 }
 
 /* Room under the upgrade cards for their "Activate" buttons at the workshop. */
@@ -1199,11 +1230,29 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   }
 }
 
-/* Captain and ship upgrades in the player panels */
+/* Other players' ships, captain and upgrades, on their boards under mine. */
 .soh_player_panel_cards {
   display: flex;
-  gap: 4px;
-  padding-top: 4px;
+  align-items: center;
+  gap: 6px;
+}
+/* In the 2 Ship Variant, one above the other beside the cards. */
+.soh_board_ships {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.soh_board_ships .soh_player_ship.soh_panel_ship {
+  width: 60px;
+  height: 45.5px;
+}
+/* Full size, like my own captain and upgrades. */
+.soh_player_panel_cards .soh_panel_card {
+  width: 144px;
+  height: 198px;
+}
+.soh_player_panel_cards .soh_panel_card_art {
+  transform: none;
 }
 .soh_panel_card {
   width: 43px;
@@ -1216,10 +1265,6 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 .soh_panel_card_art {
   transform: scale(0.3);
   transform-origin: top left;
-}
-.soh_panel_card.soh_inactive {
-  filter: grayscale(0.8);
-  opacity: 0.8;
 }
 .soh_panel_card.soh_active {
   border-color: #e8b930;
@@ -1264,7 +1309,7 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   position: static;
 }
 
-/* A player's ship(s) at the start of their panel's card row, scaled down from the board sprite. */
+/* A player's ship(s), scaled down from the board sprite: in their panel and on their board. */
 .soh_player_ship.soh_panel_ship {
   position: static;
   align-self: center;
@@ -1503,74 +1548,30 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* My resources and booty, pinned under the status bar while my player panel is scrolled away. */
+/* My resources and booty, copied onto my board under the hand: stacked, about a card's size. */
 .soh_my_resources {
-  position: fixed;
-  left: 8px;
-  z-index: 880;
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #222;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-}
-.soh_my_resources.soh_visible {
   display: flex;
-}
-/* Only the icons take the mouse, for their tooltips; clicks elsewhere reach the board. */
-.soh_my_resources_content :is(.soh_resource, .soh_resource_count, .soh_skiff, .soh_booty-token) {
-  pointer-events: auto;
-}
-.soh_my_resources_content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap; /* the fixed panel is shrink-to-fit, which otherwise wraps every icon */
-}
-/* Centre the icons rather than sitting them on the text baseline, as the player panel does. */
-.soh_my_resources_content .soh_cp_board {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.soh_my_resources_content .soh_resource_count {
-  top: 0;
-  margin-right: 6px;
-}
-.soh_my_resources.soh_collapsed .soh_my_resources_content {
-  display: none;
-}
-/* Full height with a divider, so it reads as a control rather than another resource. */
-.soh_my_resources_toggle {
-  pointer-events: auto;
-  cursor: pointer;
-  align-self: stretch;
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  min-width: 32px; /* BGA's minimum tap target */
-  min-height: 32px;
-  border: none;
-  border-right: 1px solid rgba(0, 0, 0, 0.3);
-  background: none;
-  padding: 0 8px 0 2px;
-  font-size: 14px;
-  line-height: 1;
-  color: #666;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 198px;
 }
-.soh_my_resources_toggle:hover {
-  color: #000;
+/* No title, so centre it against the cards beside it rather than their titles. */
+#myresources_wrap {
+  display: flex;
+  align-items: center;
 }
-.soh_my_resources.soh_collapsed .soh_my_resources_toggle {
-  border-right: none;
+/* One resource per line: icon, then its count. */
+.soh_my_resources .soh_resource_row {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-items: start;
+  align-items: center;
+  gap: 6px 8px;
 }
-.soh_my_resources_toggle::before {
-  content: "\25C0"; /* ◀ collapse */
-}
-.soh_my_resources.soh_collapsed .soh_my_resources_toggle::before {
-  content: "\25B6"; /* ▶ expand */
+.soh_my_resources .soh_resource_row .soh_resource_count {
+  justify-self: start;
+  margin-right: 0;
+  font-size: 18px;
 }

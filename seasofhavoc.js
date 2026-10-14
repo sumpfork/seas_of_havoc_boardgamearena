@@ -251,6 +251,9 @@ define([
         </div>
 
         <div id="myship">
+        <div id="myresources_wrap" class="whiteblock">
+            <div id="soh_my_resources" class="soh_my_resources"></div>
+        </div>
         <div id="captain_wrap" class="whiteblock">
             <h3>${_("Captain")}</h3>
             <div id="captain_stock">
@@ -262,6 +265,8 @@ define([
             </div>
         </div>
         </div>
+
+        <div id="soh_other_boards"></div>
 
       `;
 
@@ -280,13 +285,13 @@ define([
                           </div>`;
 
       window.jstpl_resources_playerboard = `
-                          <div class="soh_cp_board" id="player_resource_board_p\${player_id}">
+                          <div class="soh_cp_board soh_resource_row" id="player_resource_board_p\${player_id}">
                               <div id="sail_p\${player_id}" class="soh_sail soh_resource"></div><span id="sailcount_p\${player_id}" class="soh_resource_count">0</span>
                               <div id="cannonball_p\${player_id}" class="soh_cannonball soh_resource"></div><span id="cannonballcount_p\${player_id}" class="soh_resource_count">0</span>
                               <div id="doubloon_p\${player_id}" class="soh_doubloon soh_resource"></div><span id="doublooncount_p\${player_id}" class="soh_resource_count">0</span>
                               \${skiff} <span id="skiffcount_p\${player_id}" class="soh_resource_count">0</span>
                           </div>
-                          <div class="soh_cp_board" id="player_token_board_p\${player_id}">
+                          <div class="soh_cp_board soh_token_row" id="player_token_board_p\${player_id}">
                               <div id="green_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="green_flag"></div>
                               <div id="tan_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="tan_flag"></div>
                               <div id="blue_flag_p\${player_id}" class="soh_flagish soh_no_own_flag" data-tokenkey="blue_flag"></div>

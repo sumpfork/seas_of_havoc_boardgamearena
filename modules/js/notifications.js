@@ -80,10 +80,11 @@ define([
      */
     notif_shipUpgradeActivated: function (args) {
       console.log("notify: ship upgrade activated", args);
-      const panelId = `panel_upgrade_p${args.player_id}_${args.upgrade_key}`;
-      this.setPanelCardActive(panelId, true);
-      $(panelId).classList.add("soh_panel_card_flash");
-      if (args.player_id == this.player_id) {
+      if (args.player_id != this.player_id) {
+        const panelId = `panel_upgrade_p${args.player_id}_${args.upgrade_key}`;
+        this.setPanelCardActive(panelId, true);
+        $(panelId).classList.add("soh_panel_card_flash");
+      } else {
         this.updateUpgradeCardVisual({ id: `upgrade-${args.upgrade_key}`, isActivated: true });
         (this.player_ship_upgrades || []).forEach((upgrade) => {
           if (upgrade.upgrade_key === args.upgrade_key) {

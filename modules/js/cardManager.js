@@ -202,21 +202,29 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       }
     },
 
-    /** Captain and ship upgrade thumbnails in a player's panel; click shows the full card. */
+    /**
+     * The player's ships, as drawn on the board, at the end of their panel's flag row: in the
+     * 2 Ship Variant this is how you tell whose second ship is whose, since each ship type has its
+     * own colour. Other players also get a board under mine with their captain and upgrades
+     * (mine are the full cards in #myship).
+     */
     addPlayerPanelCards: function (player) {
-      const row = document.createElement("div");
-      row.className = "soh_cp_board soh_player_panel_cards";
-      row.id = `player_panel_cards_p${player.id}`;
-      this.bga.playerPanels.getElement(player.id).append(row);
-      // The player's ships as drawn on the board: in the 2 Ship Variant this is how you tell whose
-      // second ship is whose, since each ship type has its own colour.
       const info = this.gamedatas.playerinfo[player.id];
-      for (const shipname of [info.player_ship, info.player_ship2].filter(Boolean)) {
-        row.insertAdjacentHTML(
-          "beforeend",
-          `<div class="soh_player_ship soh_panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`,
-        );
+      const ships = [info.player_ship, info.player_ship2].filter(Boolean)
+        .map((shipname) => `<div class="soh_player_ship soh_panel_ship" data-shipname="${shipname}" title="${_(shipname)}"></div>`)
+        .join("");
+      $(`player_token_board_p${player.id}`).insertAdjacentHTML("beforeend", `<div class="soh_panel_ships">${ships}</div>`);
+      if (player.id == this.player_id) {
+        return;
       }
+      $("soh_other_boards").insertAdjacentHTML(
+        "beforeend",
+        `<div class="whiteblock soh_other_board">
+           <h3 style="color: #${player.color}">${player.name}</h3>
+           <div id="player_panel_cards_p${player.id}" class="soh_player_panel_cards"><div class="soh_board_ships">${ships}</div></div>
+         </div>`,
+      );
+      const row = $(`player_panel_cards_p${player.id}`);
       // No captain yet while the snake draft runs.
       if (player.captain) {
         this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
@@ -242,7 +250,6 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       const image_id = cardData.image_id + (active ? 2 : 0);
       const position = `-${(image_id % 6) * 144}px -${Math.floor(image_id / 6) * 198}px`;
       thumb.classList.toggle("soh_active", active);
-      thumb.classList.toggle("soh_inactive", cardData.category === "ship_upgrade" && !active);
       thumb.innerHTML = `<div class="soh_non-playable-card-front soh_panel_card_art" style="background-position: ${position}"></div>`;
       this.setupCardPreview(thumb.firstChild);
     },
