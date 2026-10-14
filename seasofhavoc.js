@@ -250,16 +250,16 @@ define([
         </div>
         </div>
 
-        <div id="myship">
-        <div id="myresources_wrap" class="whiteblock">
+        <div id="myship" class="whiteblock soh_player_board">
+        <div id="myresources_wrap">
             <div id="soh_my_resources" class="soh_my_resources"></div>
         </div>
-        <div id="captain_wrap" class="whiteblock">
+        <div id="captain_wrap">
             <h3>${_("Captain")}</h3>
             <div id="captain_stock">
             </div>
         </div>
-        <div id="upgrades_wrap" class="whiteblock">
+        <div id="upgrades_wrap">
             <h3>${_("Ship Upgrades")}</h3>
             <div id="upgrades_stock">
             </div>
@@ -523,6 +523,7 @@ define([
         getId: (card) => `card-${card.id}`,
         cardWidth: 144,
         cardHeight: 198,
+        cardBorderRadius: "8px",
 
         setupDiv: (card, div) => {
           div.classList.add("soh_seasofhavoc-card");
@@ -545,6 +546,7 @@ define([
         getId: (card) => `np-card-${card.id}`,
         cardWidth: 144,
         cardHeight: 198,
+        cardBorderRadius: "8px",
         setupDiv: (card, div) => {
           div.classList.add("soh_seasofhavoc-card", "non-playable-card");
         },

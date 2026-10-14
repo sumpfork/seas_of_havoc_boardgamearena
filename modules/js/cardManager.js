@@ -90,7 +90,8 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
 
     /**
      * Enlarged card beside the hovered face, after a short delay so sweeping across the hand
-     * doesn't flash every card. Fixed positioning keeps it clear of panels that clip.
+     * doesn't flash every card. Fixed positioning keeps it clear of panels that clip. The hovered
+     * card is outlined meanwhile, to show which one the zoom is of.
      */
     showCardHoverZoom: function (face) {
       this.hideCardHoverZoom();
@@ -107,6 +108,9 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         Object.assign(zoom.style, { left: `${left}px`, top: `${Math.max(0, top)}px` });
         document.body.append(zoom);
         this._cardHoverZoom = zoom;
+        // Thumbnails are scaled art in a clipping frame, so outline the frame.
+        this._cardHoverSource = face.closest('.soh_panel_card, .soh_draft_card') || face;
+        this._cardHoverSource.classList.add('soh_card-hover-source');
       }, 250);
     },
 
@@ -114,6 +118,8 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       clearTimeout(this._cardHoverTimer);
       this._cardHoverZoom?.remove();
       this._cardHoverZoom = null;
+      this._cardHoverSource?.classList.remove('soh_card-hover-source');
+      this._cardHoverSource = null;
     },
 
     /**
@@ -219,7 +225,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       }
       $("soh_other_boards").insertAdjacentHTML(
         "beforeend",
-        `<div class="whiteblock soh_other_board">
+        `<div class="whiteblock soh_player_board">
            <h3 style="color: #${player.color}">${player.name}</h3>
            <div id="player_panel_cards_p${player.id}" class="soh_player_panel_cards"><div class="soh_board_ships">${ships}</div></div>
          </div>`,
@@ -249,7 +255,6 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       const cardData = this.non_playable_cards[thumb.dataset.cardkey];
       const image_id = cardData.image_id + (active ? 2 : 0);
       const position = `-${(image_id % 6) * 144}px -${Math.floor(image_id / 6) * 198}px`;
-      thumb.classList.toggle("soh_active", active);
       thumb.innerHTML = `<div class="soh_non-playable-card-front soh_panel_card_art" style="background-position: ${position}"></div>`;
       this.setupCardPreview(thumb.firstChild);
     },
