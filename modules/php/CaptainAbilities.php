@@ -270,7 +270,7 @@ trait CaptainAbilities
         if ($ability === "retaliation" || $ability === "improvisation") {
             if (empty($this->captainCardOptions($player_id, $ability))) {
                 if ($ability === "improvisation") {
-                    $this->drawCards($player_id);
+                    $this->drawCardsAtSea($player_id);
                 }
                 return new CardActionOutcome();
             }
@@ -420,7 +420,7 @@ trait CaptainAbilities
             }
         }
         if (empty($to_gain)) {
-            $this->drawCards($player_id);
+            $this->drawCardsAtSea($player_id);
             $this->bga->notify->all(
                 "log",
                 clienttranslate(
@@ -453,7 +453,7 @@ trait CaptainAbilities
                 "captain",
                 clienttranslate('${player_name}\'s Inspire: gains 1 infamy'),
             );
-            $this->drawCards($player_id);
+            $this->drawCardsAtSea($player_id);
         } else {
             $damage_card = reset($damage_cards);
             $this->scrapCardAndRefund((int) $damage_card["id"], $player_id);
@@ -601,7 +601,7 @@ trait CaptainAbilities
                 ]);
                 break;
             case "tan":
-                $this->drawCards($player_id, 1);
+                $this->drawCardsAtSea($player_id, 1);
                 $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Bosun\'s Flag)'), [
                     "player_name" => $this->getPlayerNameById($player_id),
                 ]);

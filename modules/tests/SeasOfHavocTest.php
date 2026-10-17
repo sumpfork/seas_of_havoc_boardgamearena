@@ -64,6 +64,16 @@ if (!class_exists("MockCardDeck")) {
             return count($this->locations[$key] ?? []);
         }
 
+        public function countCardsByLocationArgs(string $location): array {
+            $counts = [];
+            foreach ($this->locations as $key => $cards) {
+                if (str_starts_with($key, "{$location}_") && count($cards) > 0) {
+                    $counts[substr($key, strlen($location) + 1)] = count($cards);
+                }
+            }
+            return $counts;
+        }
+
         public function pickCardsForLocation(int $count, string $from, string $to): void {}
     }
 }

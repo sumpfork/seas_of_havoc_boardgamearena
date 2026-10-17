@@ -56,7 +56,7 @@ class PirateQueenCardUT extends SeasOfHavocUT {
         $this->infamyAwards[] = ["player_id" => $player_id, "amount" => $amount];
     }
 
-    public function drawCards(string $player_id, int $num_cards = 1): void {
+    public function drawCards(string $player_id, int $num_cards = 1, bool $may_reshuffle = true): void {
         $this->drawCalls[] = ["player_id" => $player_id, "num_cards" => $num_cards];
     }
 
