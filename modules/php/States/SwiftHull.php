@@ -36,7 +36,7 @@ class SwiftHull extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipSwiftHull();
+        return $this->game->zombieSwiftHull($playerId);
     }
 
     #[PossibleAction]

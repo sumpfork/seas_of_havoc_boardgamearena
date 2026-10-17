@@ -37,7 +37,7 @@ class BoardingParty extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipBoardingParty();
+        return $this->game->zombieBoardingParty($playerId);
     }
 
     #[PossibleAction]

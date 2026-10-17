@@ -37,7 +37,7 @@ class TimelyTrading extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipTimelyTrading();
+        return $this->game->zombieTimelyTrading($playerId);
     }
 
     #[PossibleAction]

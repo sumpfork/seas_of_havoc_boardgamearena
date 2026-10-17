@@ -37,7 +37,7 @@ class Extortion extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipExtortion();
+        return $this->game->zombieExtortion($playerId);
     }
 
     #[PossibleAction]

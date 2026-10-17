@@ -36,6 +36,25 @@ class ZombieMovesUT extends SeasOfHavocUT
     }
 }
 
+/** A market of three cards of one type, two claimed by player 1, who can afford one of them. */
+class ZombiePurchasesUT extends ZombieMovesUT
+{
+    public ?array $bought = null;
+    public int|string $type;
+    public array $resources;
+    public function getIslandSlots()
+    {
+        $slot = fn($occupant) => ["occupying_player_id" => $occupant, "corsair_occupying_player_id" => null, "disabled" => false];
+        return ["market" => ["n1" => $slot("1"), "n2" => $slot("2"), "n3" => $slot("1")]];
+    }
+    function getMarketSlots(): array
+    {
+        return [["id" => "11", "type" => $this->type], ["id" => "12", "type" => $this->type], ["id" => "13", "type" => $this->type], null, null];
+    }
+    function getGameResourcesHierarchical(?int $player_id = null) { return [1 => $this->resources]; }
+    function actCompletePurchases(array $cards_purchased) { $this->bought = $cards_purchased; }
+}
+
 final class ZombieMovesTest extends TestCase
 {
     /** Every card, bare and with every upgrade: the zombie's random decisions must play and be paid for. */
@@ -69,5 +88,15 @@ final class ZombieMovesTest extends TestCase
             $this->assertSame("islandTurnDone", $game->zombieIslandTurn(1));
         }
         $this->assertSame(["shipyard n1"], array_unique($game->placed));
+    }
+
+    /** Claimed cards are bought in market order until the next one is unaffordable; others' claims are left alone. */
+    public function testPurchasesBuyTheClaimedCardsItCanAfford(): void
+    {
+        $game = new ZombiePurchasesUT();
+        $game->type = array_key_first(array_filter($game->playable_cards, fn($card) => !empty($card["cost"])));
+        $game->resources = $game->playable_cards[$game->type]["cost"];
+        $game->zombiePurchases(1);
+        $this->assertSame([11], $game->bought);
     }
 }

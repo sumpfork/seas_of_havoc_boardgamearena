@@ -33,7 +33,7 @@ class CardPurchasesPrivate extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        $this->game->actCompletePurchases([]);
+        $this->game->zombiePurchases($playerId);
         return null;
     }
 
