@@ -741,7 +741,7 @@ trait CardPlay
                 $this->playerGainResources($player_id, [$resource => 1]);
                 break;
             case "tan":
-                $this->drawCards($player_id);
+                $this->drawCardsAtSea($player_id);
                 break;
             case "red":
                 if ($card_id === null) {

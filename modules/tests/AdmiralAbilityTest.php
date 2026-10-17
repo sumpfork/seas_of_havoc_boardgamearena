@@ -34,7 +34,7 @@ class AdmiralActionUT extends SeasOfHavocUT {
         return $this->mockCaptains[$player_id] ?? null;
     }
 
-    public function drawCards(string $player_id, int $num_cards = 1) {
+    public function drawCards(string $player_id, int $num_cards = 1, bool $may_reshuffle = true) {
         $this->drawCalls[] = [
             "player_id" => $player_id,
             "num_cards" => $num_cards,

@@ -131,4 +131,30 @@ final class DiscardPileTest extends TestCase
         $this->assertSame(2, $this->game->deck->countCardInLocation("hand", 1));
         $this->assertSame([$kept], array_map(fn($c) => (int) $c["id"], $this->game->getPlayerDiscard("1")));
     }
+
+    /** At sea, an empty deck only reforms while another player still holds cards: else nothing is drawn. */
+    public function testASeaDrawCannotReshuffleOnceEveryoneElseIsOutOfCards(): void
+    {
+        $this->game->discardCardToPlayer($this->game->makeCard(5), "1");
+        $this->game->drawCardsAtSea("1");
+        $this->assertSame(0, $this->game->deck->countCardInLocation("hand", 1));
+        $this->assertSame(1, $this->game->deck->countCardInLocation("player_discard_1"));
+    }
+
+    public function testASeaDrawReshufflesWhileAnotherPlayerHoldsCards(): void
+    {
+        $this->game->discardCardToPlayer($this->game->makeCard(5), "1");
+        $this->game->deck->moveCard($this->game->makeCard(6), "hand", 2);
+        $this->game->drawCardsAtSea("1");
+        $this->assertSame(1, $this->game->deck->countCardInLocation("hand", 1));
+    }
+
+    /** The rule is for Sea Phase effects only: refilling hands at the end of the phase still reshuffles. */
+    public function testOtherDrawsStillReshuffleWithEveryoneOutOfCards(): void
+    {
+        $this->game->discardCardToPlayer($this->game->makeCard(5), "1");
+        $this->game->drawCards("1", 4);
+        $this->assertSame(1, $this->game->deck->countCardInLocation("hand", 1));
+        $this->assertTrue($this->game->deck->autoreshuffle, "the deck is left reshuffling for the next draw");
+    }
 }

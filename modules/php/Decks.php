@@ -118,7 +118,30 @@ trait Decks
         ]);
     }
 
-    function drawCards(string $player_id, int $num_cards = 1)
+    /**
+     * A draw from a Sea Phase effect. "During the Sea Phase, you may only shuffle your discard pile
+     * into a new deck while another player still has cards in hand"; otherwise a draw from an empty
+     * deck draws nothing. Without it a deck thinned to cards that each draw a card (Inspire and
+     * Government Funding) keeps playing forever once everyone else is out of cards.
+     */
+    function drawCardsAtSea(string $player_id, int $num_cards = 1): void
+    {
+        $others_hold_cards = false;
+        foreach ($this->cards->countCardsByLocationArgs("hand") as $holder => $count) {
+            $others_hold_cards = $others_hold_cards || ((string) $holder !== $player_id && $count > 0);
+        }
+        if (!$others_hold_cards
+            && $this->cards->countCardInLocation($this->playerDeckName($player_id)) < $num_cards
+            && $this->cards->countCardInLocation($this->playerDiscardName($player_id)) > 0) {
+            $this->bga->notify->all("log", clienttranslate('${player_name} cannot reshuffle: no other player has cards left'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+            ]);
+        }
+        $this->drawCards($player_id, $num_cards, $others_hold_cards);
+    }
+
+    /** Draws for anything but a Sea Phase effect (those use drawCardsAtSea), reshuffling as needed. */
+    function drawCards(string $player_id, int $num_cards = 1, bool $may_reshuffle = true)
     {
         $this->mytrace("drawCard - drawing $num_cards cards");
         $deck_name = $this->playerDeckName($player_id);
@@ -129,7 +152,12 @@ trait Decks
         $this->cards->autoreshuffle_custom = [$deck_name => $discard_name];
 
         $discard_count_before = $this->cards->countCardInLocation($discard_name);
-        $cards_drawn = $this->cards->pickCards($num_cards, $deck_name, $player_id);
+        $this->cards->autoreshuffle = $may_reshuffle;
+        try {
+            $cards_drawn = $this->cards->pickCards($num_cards, $deck_name, $player_id);
+        } finally {
+            $this->cards->autoreshuffle = true;
+        }
         $this->mytrace("drawCard - drew " . count($cards_drawn) . " cards");
 
         // The discard emptying mid-draw is how we know the deck was reformed from it.
