@@ -197,6 +197,12 @@ class SeasOfHavoc extends Table
      * "All players receive 1 of each resource plus additional resources based on play order."
      * Play order runs clockwise (seat order) from $first_seat, the first player token's holder.
      */
+    /** A seat's place in the first round's turn order: 1 for the first player. */
+    static function playOrder(int $seat, int $first_seat, int $player_count): int
+    {
+        return (($seat - $first_seat + $player_count) % $player_count) + 1;
+    }
+
     static function startingResources(int $seat, int $first_seat, int $player_count): array
     {
         $resources = ["sail" => 1, "cannonball" => 1, "doubloon" => 1, "skiff" => 3];
@@ -207,7 +213,7 @@ class SeasOfHavoc extends Table
             4 => ["sail" => 1, "cannonball" => 1],
             5 => ["cannonball" => 1, "doubloon" => 1],
         ];
-        $play_order = (($seat - $first_seat + $player_count) % $player_count) + 1;
+        $play_order = self::playOrder($seat, $first_seat, $player_count);
         if (!isset($bonus[$play_order])) {
             throw new \Bga\GameFramework\SystemException("No starting resources for play order $play_order");
         }
@@ -276,6 +282,9 @@ class SeasOfHavoc extends Table
                 ["captain", "ship", "upgrades_activated", "cards_bought", "cards_scrapped", "shots_fired", "shots_missed",
                     "hits_broadside", "hits_raking", "rams", "rammed", "rock_collisions", "damage_received"],
                 array_map(fn($source) => "infamy_from_$source", self::INFAMY_SOURCES),
+                ["play_order"],
+                array_map(fn($i) => "captain_$i", range(1, count(self::STAT_CAPTAINS))),
+                array_map(fn($i) => "ship_$i", range(1, count(self::STAT_SHIPS))),
             ),
             0,
         );
@@ -292,6 +301,7 @@ class SeasOfHavoc extends Table
 
         $values = [];
         foreach ($player_infos as $playerid => $player) {
+            $this->bga->playerStats->set("play_order", self::playOrder((int) $player["player_no"], $first_seat, count($player_infos)), (int) $playerid);
             $player_resources = self::startingResources((int) $player["player_no"], $first_seat, count($player_infos));
             foreach ($player_resources as $resource_type => $resource_count) {
                 $values[] = "('" . $playerid . "','$resource_type','" . $resource_count . "')";
@@ -487,6 +497,8 @@ class SeasOfHavoc extends Table
 
         $this->bga->playerStats->set("captain", $this->captainStatValue($captain_key), (int) $player_id);
         $this->bga->playerStats->set("ship", $this->shipStatValue($ship_name), (int) $player_id);
+        $this->bga->playerStats->set("captain_" . $this->captainStatValue($captain_key), 1, (int) $player_id);
+        $this->bga->playerStats->set("ship_" . $this->shipStatValue($ship_name), 1, (int) $player_id);
         $this->assignShipUpgradesToPlayer($player_id, $ship_name);
 
         // Starting deck: the ship's starting cards plus the captain's two cards.

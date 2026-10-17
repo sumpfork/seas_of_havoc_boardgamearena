@@ -33,6 +33,18 @@ class DraftUT extends SeasOfHavocUT
 
 final class CaptainShipAssignmentTest extends TestCase
 {
+    /** captain_N / ship_N must name STAT_CAPTAINS / STAT_SHIPS entry N, as the captain and ship labels do. */
+    public function testPerCaptainAndShipStatsFollowTheLabelOrder(): void
+    {
+        $stats = json_decode(preg_replace('#^\s*//.*$#m', '', file_get_contents(__DIR__ . "/../../stats.jsonc")), true);
+        foreach (["captain" => SeasOfHavoc::STAT_CAPTAINS, "ship" => SeasOfHavoc::STAT_SHIPS] as $kind => $keys) {
+            $labels = $stats["value_labels"][(string) $stats["player"][$kind]["id"]];
+            foreach (array_keys($keys) as $i) {
+                $this->assertSame(ucfirst($kind) . " was " . $labels[$i + 1], $stats["player"]["{$kind}_" . ($i + 1)]["name"]);
+            }
+        }
+    }
+
     public function testFirstGamePairsGiveEachShipAndCaptainOnce(): void
     {
         $this->assertEqualsCanonicalizing(SeasOfHavoc::STAT_SHIPS, array_column(SeasOfHavoc::FIRST_GAME_PAIRS, 0));

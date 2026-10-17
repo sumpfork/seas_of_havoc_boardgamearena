@@ -1,6 +1,10 @@
 // Stat ids are never reused: table 10 and player 10 were the unused template "Number of turns".
 // Captain and ship stats store 1-based indexes into SeasOfHavoc::STAT_CAPTAINS / STAT_SHIPS; the
 // value_labels below must list them in the same order ("None" is 0).
+// captain_N / ship_N are 1 for the player whose captain / ship is STAT_CAPTAINS / STAT_SHIPS entry N,
+// else 0. They are for the Audience page, which averages number stats but leaves labelled ones out:
+// a captain's "Winners' average" over its "All players' average" is how much more often it wins
+// than its share of seats. "display": "limited" keeps them to developers.
 {
     "table": {
         "rounds": {
@@ -129,6 +133,83 @@
             "id": 47,
             "name": "Infamy from captain abilities",
             "type": "int"
+        },
+        "play_order": {
+            "id": 48,
+            "name": "Turn order in the first round (1 = first player)",
+            "type": "int"
+        },
+        "captain_1": {
+            "id": 49,
+            "name": "Captain was Pirate Queen",
+            "type": "int",
+            "display": "limited"
+        },
+        "captain_2": {
+            "id": 50,
+            "name": "Captain was Rebel",
+            "type": "int",
+            "display": "limited"
+        },
+        "captain_3": {
+            "id": 51,
+            "name": "Captain was Admiral",
+            "type": "int",
+            "display": "limited"
+        },
+        "captain_4": {
+            "id": 52,
+            "name": "Captain was Merchant",
+            "type": "int",
+            "display": "limited"
+        },
+        "captain_5": {
+            "id": 53,
+            "name": "Captain was Corsair",
+            "type": "int",
+            "display": "limited"
+        },
+        "captain_6": {
+            "id": 54,
+            "name": "Captain was Treasure Seeker",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_1": {
+            "id": 55,
+            "name": "Ship was Xebec",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_2": {
+            "id": 56,
+            "name": "Ship was Ship-of-the-Line",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_3": {
+            "id": 57,
+            "name": "Ship was Galleon",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_4": {
+            "id": 58,
+            "name": "Ship was Sloop of War",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_5": {
+            "id": 59,
+            "name": "Ship was War Junk",
+            "type": "int",
+            "display": "limited"
+        },
+        "ship_6": {
+            "id": 60,
+            "name": "Ship was Brig",
+            "type": "int",
+            "display": "limited"
         }
     },
     "value_labels": {
