@@ -844,7 +844,9 @@ class SeasOfHavoc extends Table
             );
         }
 
-        return "";
+        // A first player who scrapped their whole hand in the Island Phase has no turns: the next
+        // player with cards starts, as stNextPlayerSeaPhase skips anyone with an empty hand.
+        return $this->cards->countCardInLocation("hand", $first_player_token_owner) > 0 ? "" : STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     function stNextPlayerSeaPhase(): mixed

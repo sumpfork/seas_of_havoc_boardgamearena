@@ -88,4 +88,12 @@ final class NimbleHullTest extends TestCase
         $this->assertSame(1, (int) $updates[0]['player_id']);
         $this->assertSame(SeasOfHavoc::NIMBLE_HULL_CHOICE, $updates[0]['playable_cards'][1]['actions'][0]['choices'][1]['name']);
     }
+
+    /** A first player who scrapped their whole hand at the island has no sea turns: the lead passes on. */
+    public function testSeaPhaseStartsWithTheFirstPlayerOnlyIfTheyHaveCards(): void {
+        $game = new NimbleHullUT();
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $game->stSeaPhaseSetup());
+        $game->addCard(array_key_first($game->playable_cards), 'hand', 1);
+        $this->assertSame("", $game->stSeaPhaseSetup());
+    }
 }
