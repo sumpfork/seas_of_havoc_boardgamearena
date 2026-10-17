@@ -146,9 +146,15 @@ trait Resources
     /** Whether the player can pay a cost from their resources, helped by one of their booty tokens if need be. */
     function canPayWithOptionalBooty(int $player_id, array $cost): bool
     {
+        return $this->bootyTokenToAfford($player_id, $cost) !== null;
+    }
+
+    /** 0 if the player can pay without booty, else the id of a booty token that makes it affordable, else null. */
+    function bootyTokenToAfford(int $player_id, array $cost): ?int
+    {
         $player_resources = $this->getGameResourcesHierarchical($player_id)[$player_id] ?? [];
         if ($this->canPayFor($cost, $player_resources)) {
-            return true;
+            return 0;
         }
         foreach ($this->getBootyTokensForPlayer($player_id) as $token) {
             $booty = $this->resolveBootyResourcesForPayment(
@@ -162,10 +168,10 @@ trait Resources
                 $remaining_cost[$res] = max(0, $need - ($booty[$res] ?? 0));
             }
             if ($this->canPayFor($remaining_cost, $player_resources)) {
-                return true;
+                return (int) $token["id"];
             }
         }
-        return false;
+        return null;
     }
 
     /**

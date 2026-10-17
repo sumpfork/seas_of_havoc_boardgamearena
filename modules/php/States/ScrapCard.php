@@ -37,7 +37,7 @@ class ScrapCard extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return 'cardScrapped';
+        return $this->game->zombieIslandScrap($playerId);
     }
 
     #[PossibleAction]

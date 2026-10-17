@@ -37,7 +37,7 @@ class Barter extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipBarter();
+        return $this->game->zombieBarter($playerId);
     }
 
     #[PossibleAction]

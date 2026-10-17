@@ -31,7 +31,7 @@ class CardFlag extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipCardFlag();
+        return $this->game->zombieCardFlag($playerId);
     }
 
     #[PossibleAction]

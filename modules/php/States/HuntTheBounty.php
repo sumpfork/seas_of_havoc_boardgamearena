@@ -37,7 +37,7 @@ class HuntTheBounty extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipHuntTheBounty();
+        return $this->game->zombieHuntTheBounty($playerId);
     }
 
     #[PossibleAction]
