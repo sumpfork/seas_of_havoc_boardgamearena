@@ -125,6 +125,7 @@ class SeasOfHavoc extends Table
     private array $token_names;
     private array $non_playable_cards;
     private array $booty_tokens = [];
+    private static ?array $material = null;
 
     function __construct()
     {
@@ -136,7 +137,9 @@ class SeasOfHavoc extends Table
         // Note: afterwards, you can get/set the global variables with getGameStateValue/setGameStateInitialValue/setGameStateValue
         parent::__construct();
 
-        require "modules/material.inc.php";
+        foreach (self::material() as $name => $value) {
+            $this->$name = $value;
+        }
 
         self::initGameStateLabels([
             "seafeature_effects_attempted" => 10,
@@ -180,10 +183,27 @@ class SeasOfHavoc extends Table
         });
 
         $this->seaboard = new SeaBoard("SeasOfHavoc::DBQuery", $this);
+    }
 
-        foreach (array_keys($this->playable_cards) as $t) {
-            $this->playable_cards[$t]["card_type"] = $t;
+    /**
+     * material.inc.php, run once per process and kept: its arrays never change, and building them
+     * (enum values, translations) for every new game object was a large share of simulated moves.
+     * Each game object gets the same arrays; PHP copies one only if that object writes to it.
+     */
+    private static function material(): array
+    {
+        if (self::$material === null) {
+            // The file assigns $this->...; a bare object takes them (closures cannot bind to stdClass).
+            $material = new #[\AllowDynamicProperties] class {};
+            (function () {
+                require __DIR__ . "/modules/material.inc.php";
+            })->call($material);
+            foreach (array_keys($material->playable_cards) as $t) {
+                $material->playable_cards[$t]["card_type"] = $t;
+            }
+            self::$material = get_object_vars($material);
         }
+        return self::$material;
     }
 
     /*
