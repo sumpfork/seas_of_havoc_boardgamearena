@@ -78,8 +78,9 @@ final class CollisionGustTest extends TestCase
         $state = new ResolveCollision($this->game);
         $this->assertSame('collisionResolved', $state->zombie(1));
 
+        // The zombie's pivot is random; the gust pushes north whichever way the ship faces.
         $ship = $this->game->board->findObject('player_ship', '1');
-        $this->assertSame([2, 1, Heading::EAST], [$ship['x'], $ship['y'], $ship['object']['heading']]);
+        $this->assertSame([2, 1], [$ship['x'], $ship['y']]);
     }
 
     public function testBlockedGustCausesOneMoreCollisionWithoutRepeating(): void

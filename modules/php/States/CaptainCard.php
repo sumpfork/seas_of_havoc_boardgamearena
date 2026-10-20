@@ -33,12 +33,7 @@ class CaptainCard extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        $args = $this->getArgs();
-        $cards = $args['_private'][$playerId]['available_cards'];
-        return $this->game->actResolveCaptainCard([
-            'card_id' => (int) $cards[0]['id'], 'fire' => 'skip',
-            'order' => array_map('intval', array_column($cards, 'id')), 'resource' => 'sail',
-        ], ['pass']);
+        return $this->game->zombieCaptainCard($playerId);
     }
 
     #[PossibleAction]

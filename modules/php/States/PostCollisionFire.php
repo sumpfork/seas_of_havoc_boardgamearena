@@ -42,7 +42,7 @@ class PostCollisionFire extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actPostCollisionFire('skip');
+        return $this->game->zombiePostCollisionFire($playerId);
     }
 
     #[PossibleAction]

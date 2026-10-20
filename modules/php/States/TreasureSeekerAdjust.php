@@ -37,7 +37,7 @@ class TreasureSeekerAdjust extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actSkipTreasureSeekerAdjust();
+        return $this->game->zombieTreasureSeekerAdjust($playerId);
     }
 
     #[PossibleAction]
