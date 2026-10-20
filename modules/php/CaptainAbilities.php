@@ -184,7 +184,7 @@ trait CaptainAbilities
         $this->bga->notify->all(
             "log",
             clienttranslate(
-                '${player_name} uses Corsair to place on occupied ${slot_label} and gains only resources shown there',
+                '${player_name} uses the Corsair ability to share an occupied space and gains only the resources shown on ${slot_label}',
             ),
             [
                 "player_name" => $this->getPlayerNameById($player_id),

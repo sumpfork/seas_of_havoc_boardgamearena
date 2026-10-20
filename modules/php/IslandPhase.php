@@ -136,7 +136,7 @@ trait IslandPhase
         );
         $this->bga->notify->all(
             "skiffPlaced",
-            clienttranslate('${player_name} placed a skiff on occupied ${slot_label}'),
+            clienttranslate('${player_name} placed a skiff on ${slot_label}, which was already occupied'),
             [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
