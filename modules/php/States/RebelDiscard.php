@@ -37,7 +37,7 @@ class RebelDiscard extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return 'cardDiscarded';
+        return $this->game->zombieRebelDiscard($playerId);
     }
 
     #[PossibleAction]

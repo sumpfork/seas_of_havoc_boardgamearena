@@ -14,6 +14,17 @@ class ZombieMovesUT extends SeasOfHavocUT
     function resolveFireAction(array $variant, string $side): array { return []; }
     function processCaptainAbility(string $ability): CardActionOutcome|int { return new CardActionOutcome(); }
     function useNimbleHull($player_id): void {}
+    public string $captain = "admiral";
+    function getPlayerCaptain($player_id) { return $this->captain; }
+    function canRestockMarket(): bool { return false; }
+    function canUseExtraRations($player_id): bool { return false; }
+    function getGameResourcesHierarchical(?int $player_id = null) { return [1 => []]; }
+
+    public function __construct()
+    {
+        parent::__construct();
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this, new MockCardDeck());
+    }
 
     public array $placed = [];
     public function getIslandSlots()
@@ -80,7 +91,7 @@ final class ZombieMovesTest extends TestCase
         }
     }
 
-    /** Only a free, enabled slot the zombie can finish: not taken, disabled, the Trading Post or an unaffordable Workshop. */
+    /** Only a free, enabled slot the zombie can finish: not taken, disabled, the Trading Post with nothing to trade or an unaffordable Workshop. */
     public function testIslandTurnPlacesOnAFreeSlot(): void
     {
         $game = new ZombieMovesUT();
@@ -97,6 +108,19 @@ final class ZombieMovesTest extends TestCase
         $game->type = array_key_first(array_filter($game->playable_cards, fn($card) => !empty($card["cost"])));
         $game->resources = $game->playable_cards[$game->type]["cost"];
         $game->zombiePurchases(1);
-        $this->assertSame([11], $game->bought);
+        $this->assertSame([["card_id" => 11]], $game->bought);
+    }
+
+    /** The Merchant pays a sail or cannonball shortfall in doubloons. */
+    public function testMerchantPaysAShortfallInDoubloons(): void
+    {
+        $game = new ZombiePurchasesUT();
+        $game->captain = "merchant";
+        $game->type = array_key_first(array_filter($game->playable_cards, fn($card) => !empty($card["cost"]["sail"])));
+        $cost = $game->playable_cards[$game->type]["cost"];
+        $game->resources = ["sail" => 0, "doubloon" => ($cost["doubloon"] ?? 0) + $cost["sail"]] + $cost;
+        $game->resources["sail"] = 0;
+        $game->zombiePurchases(1);
+        $this->assertSame([["card_id" => 11, "doubloons_as_sails" => $cost["sail"]]], $game->bought);
     }
 }

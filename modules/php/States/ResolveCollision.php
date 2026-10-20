@@ -46,6 +46,6 @@ class ResolveCollision extends GameState
 
     public function zombie(int $playerId): mixed
     {
-        return $this->game->actPivotPickedInDialog('no pivot');
+        return $this->game->zombieResolveCollision($playerId);
     }
 }
