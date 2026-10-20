@@ -135,7 +135,8 @@ trait CaptainAbilities
             ],
         );
 
-        return $rebel_id;
+        // With every card scrapped there is nothing to discard.
+        return $this->cards->countCardInLocation("hand", $rebel_id) > 0 ? $rebel_id : null;
     }
 
     function applyAdmiralTokenTakenAbilities(
