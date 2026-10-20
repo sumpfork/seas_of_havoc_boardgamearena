@@ -66,10 +66,18 @@ final class RebelAbilityTest extends TestCase {
     }
 
     public function testRebelDrawsOneAdditionalCardAtIslandPhaseStart(): void {
+        $cards = new MockCardDeck();
+        $cards->locations["hand_1"] = [["id" => 5]];
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this->game, $cards);
         $rebel_id = $this->game->applyRebelIslandPhaseStartDraw();
 
         $this->assertSame("1", $rebel_id);
         $this->assertSame([["player_id" => "1", "num_cards" => 1]], $this->game->drawCalls);
+    }
+
+    public function testRebelWithNoCardsLeftHasNothingToDiscard(): void {
+        (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this->game, new MockCardDeck());
+        $this->assertNull($this->game->applyRebelIslandPhaseStartDraw());
     }
 
     public function testNonRebelCaptainDoesNotDrawAtIslandPhaseStart(): void {
