@@ -303,11 +303,10 @@ class SeasOfHavoc extends Table
                     "hits_broadside", "hits_raking", "rams", "rammed", "rock_collisions", "damage_received"],
                 array_map(fn($source) => "infamy_from_$source", self::INFAMY_SOURCES),
                 ["play_order"],
-                array_map(fn($i) => "captain_$i", range(1, count(self::STAT_CAPTAINS))),
-                array_map(fn($i) => "ship_$i", range(1, count(self::STAT_SHIPS))),
             ),
             0,
         );
+        // captain_N / ship_N are initialized once captains and ships are known (initFleetStats).
 
         /************ Start the game initialization *****/
 
@@ -451,6 +450,7 @@ class SeasOfHavoc extends Table
                 $this->assignCaptainToPlayer($playerid, $captain_key);
                 $this->setupPlayerFleet((string) $playerid);
             }
+            $this->initFleetStats();
         }
 
         $market_deck = [];
@@ -517,8 +517,6 @@ class SeasOfHavoc extends Table
 
         $this->bga->playerStats->set("captain", $this->captainStatValue($captain_key), (int) $player_id);
         $this->bga->playerStats->set("ship", $this->shipStatValue($ship_name), (int) $player_id);
-        $this->bga->playerStats->set("captain_" . $this->captainStatValue($captain_key), 1, (int) $player_id);
-        $this->bga->playerStats->set("ship_" . $this->shipStatValue($ship_name), 1, (int) $player_id);
         $this->assignShipUpgradesToPlayer($player_id, $ship_name);
 
         // Starting deck: the ship's starting cards plus the captain's two cards.
@@ -607,6 +605,27 @@ class SeasOfHavoc extends Table
         return $this->finishDraft();
     }
 
+    /**
+     * captain_N / ship_N flags exist only for the captains and ships at this table (the rest show
+     * "-"): 0 for every player, 1 for the one who has it.
+     */
+    function initFleetStats(): void
+    {
+        $fleets = [];
+        foreach (self::getCollectionFromDB("SELECT player_id, player_ship FROM player", true) as $player_id => $ship_name) {
+            $fleets[$player_id] = [
+                "captain_" . $this->captainStatValue($this->getPlayerCaptain($player_id)),
+                "ship_" . $this->shipStatValue($ship_name),
+            ];
+        }
+        $this->bga->playerStats->init(array_values(array_unique(array_merge(...array_values($fleets)))), 0);
+        foreach ($fleets as $player_id => $stats) {
+            foreach ($stats as $stat) {
+                $this->bga->playerStats->set($stat, 1, (int) $player_id);
+            }
+        }
+    }
+
     /** Everyone has a captain and a ship: set up their fleets and move on to pointing the ships. */
     function finishDraft(): int
     {
@@ -616,6 +635,7 @@ class SeasOfHavoc extends Table
         foreach (array_keys($player_infos) as $player_id) {
             $this->setupPlayerFleet((string) $player_id);
         }
+        $this->initFleetStats();
         // Colours, ships, decks and hands all changed: clients reload to pick them up.
         $this->bga->notify->all("draftComplete", "", []);
         $this->gamestate->changeActivePlayer($this->getFirstPlayerTokenOwner());
