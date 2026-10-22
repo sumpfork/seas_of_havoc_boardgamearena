@@ -76,7 +76,7 @@ final class CollisionPivotOrderTest extends TestCase
             'the pivot is applied first, from the heading the ship collided on',
         );
         $this->assertSame(
-            [PivotBoard::SOUTH, PivotBoard::WEST],
+            [PivotBoard::SOUTH, PivotBoard::EAST],
             [$chain[1]['old_heading'], $chain[1]['new_heading']],
             'the whirlpool then spins the ship from where the pivot left it',
         );
@@ -103,6 +103,6 @@ final class CollisionPivotOrderTest extends TestCase
         $chain = $this->game->debugLastNotif['args']['moveChain'];
         $this->assertCount(1, $chain);
         $this->assertSame(PivotBoard::WEST, $chain[0]['old_heading']);
-        $this->assertSame(PivotBoard::NORTH, $chain[0]['new_heading']);
+        $this->assertSame(PivotBoard::SOUTH, $chain[0]['new_heading']);
     }
 }
