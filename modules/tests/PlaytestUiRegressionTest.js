@@ -221,12 +221,13 @@ assert.equal(previewed[1].preview.decisions[0], "fire right");
 assert.equal(previewed[1].preview.ship, "7_2", "the preview is drawn for the ship that fires");
 
 buttons.length = 0;
-// Timely Trading: the status bar only offers the doubloons; purchases are buttons on the market cards.
+// Timely Trading: the status bar offers each pair of resources; purchases are buttons on the market cards.
 let marketButtonsAdded = false;
 iconGame.addTimelyTradingPurchaseButtons = () => { marketButtonsAdded = true; };
 handlers.onUpdateActionButtons.call(iconGame, "timelyTrading", { market: [{ id: 42, type: 1 }] });
-assert.equal(buttons.length, 1);
-assert.match(buttons[0].label, /Gain 2 <span/);
+assert.equal(buttons.length, 6);
+assert.match(buttons[0].label, /^Gain <span[^>]*soh_sail.*soh_sail/);
+assert.match(buttons[1].label, /^Gain <span[^>]*soh_sail.*soh_cannonball/);
 assert.ok(marketButtonsAdded);
 buttons.length = 0;
 // Each market card gets a purchase button; the Merchant's doubloons cover only what they're short of.

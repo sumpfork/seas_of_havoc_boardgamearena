@@ -163,18 +163,29 @@ final class MerchantCardAbilityTest extends TestCase {
         $this->assertSame(STATE_TIMELY_TRADING, $result);
     }
 
-    public function testActTimelyTradingGainDoubloons(): void {
-        $result = $this->game->actTimelyTradingGainDoubloons();
+    public function testActTimelyTradingGainTwoDifferentResources(): void {
+        $result = $this->game->actTimelyTradingGainResources("sail", "cannonball");
 
-        $this->assertSame([["doubloon" => 2]], $this->game->resourceGainCalls);
+        $this->assertSame([["sail" => 1, "cannonball" => 1]], $this->game->resourceGainCalls);
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
     }
 
-    public function testActTimelyTradingGainDoubloonsMerchantOnly(): void {
+    public function testActTimelyTradingGainTwoOfTheSameResource(): void {
+        $this->game->actTimelyTradingGainResources("doubloon", "doubloon");
+
+        $this->assertSame([["doubloon" => 2]], $this->game->resourceGainCalls);
+    }
+
+    public function testActTimelyTradingGainResourcesRejectsNonResource(): void {
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actTimelyTradingGainResources("sail", "infamy");
+    }
+
+    public function testActTimelyTradingGainResourcesMerchantOnly(): void {
         $this->game->mockCaptains[1] = "pirate_queen";
 
         $this->expectException(\Bga\GameFramework\UserException::class);
-        $this->game->actTimelyTradingGainDoubloons();
+        $this->game->actTimelyTradingGainResources("sail", "sail");
     }
 
     public function testTimelyTradingPurchaseAddsCardToHandAndNotifiesBuyer(): void {

@@ -344,8 +344,8 @@ trait CardPlay
         if (!$this->seaboard->isObjectOnWhirlpool("player_ship", $ship)) {
             return null;
         }
-        $this->mytrace("Ship is on whirlpool - rotating 90 degrees clockwise");
-        return $this->seaboard->turnObject("player_ship", $ship, Turn::RIGHT);
+        $this->mytrace("Ship is on whirlpool - rotating 90 degrees counter-clockwise");
+        return $this->seaboard->turnObject("player_ship", $ship, Turn::LEFT);
     }
 
     /** The gust's push (a move or a collision), or null when the ship is not on a gust. */

@@ -715,15 +715,24 @@ trait CaptainAbilities
         return ["market" => $market, "resources" => $resources];
     }
 
-    function actTimelyTradingGainDoubloons(): mixed
+    /** Gain 2 resources, each of the Merchant's choice. */
+    function actTimelyTradingGainResources(string $first, string $second): mixed
     {
         $player_id = $this->getActivePlayerId();
         if ($this->getPlayerCaptain($player_id) !== "merchant") {
             throw new \Bga\GameFramework\UserException(clienttranslate("Only the Merchant can use Timely Trading"));
         }
-        $this->playerGainResources($player_id, ["doubloon" => 2]);
-        $this->bga->notify->all("log", clienttranslate('${player_name}\'s Timely Trading: gains 2 doubloons'), [
+        $gains = [];
+        foreach ([$first, $second] as $resource) {
+            if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+            }
+            $gains[$resource] = ($gains[$resource] ?? 0) + 1;
+        }
+        $this->playerGainResources($player_id, $gains);
+        $this->bga->notify->all("log", clienttranslate('${player_name}\'s Timely Trading: gains ${resource_list}'), [
             "player_name" => $this->getPlayerNameById($player_id),
+            "resource_list" => "[$first] [$second]", // shown as icons
         ]);
         return STATE_NEXT_PLAYER_SEA_PHASE;
     }

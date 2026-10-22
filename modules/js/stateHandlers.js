@@ -552,11 +552,16 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "timelyTrading": {
-            var ttSelf = this;
-            this.statusBar.addActionButton(
-              _("Gain") + " 2 " + this.resourceIcon("doubloon"),
-              function () { ttSelf.bgaPerformAction("actTimelyTradingGainDoubloons", {}); },
-              { color: "secondary" },
+            // One button per pair of resources (order doesn't matter, so 6 of them).
+            const resources = ["sail", "cannonball", "doubloon"];
+            resources.forEach((first, i) =>
+              resources.slice(i).forEach((second) =>
+                this.statusBar.addActionButton(
+                  _("Gain") + " " + this.resourceIcon(first) + this.resourceIcon(second),
+                  () => this.bgaPerformAction("actTimelyTradingGainResources", { first, second }),
+                  { color: "secondary" },
+                ),
+              ),
             );
             this.addTimelyTradingPurchaseButtons();
             break;

@@ -226,10 +226,14 @@ trait ZombieMoves
         return $this->zombiePick($moves);
     }
 
-    /** 2 doubloons, or a random market card it can afford. */
+    /** 2 random resources, or a random market card it can afford. */
     function zombieTimelyTrading(int $player_id): mixed
     {
-        $moves = [fn() => $this->actSkipTimelyTrading(), fn() => $this->actTimelyTradingGainDoubloons()];
+        $resources = ["sail", "cannonball", "doubloon"];
+        $moves = [
+            fn() => $this->actSkipTimelyTrading(),
+            fn() => $this->actTimelyTradingGainResources($resources[array_rand($resources)], $resources[array_rand($resources)]),
+        ];
         foreach ($this->argTimelyTrading()["market"] as $card) {
             $cost = $this->playable_cards[$card["type"]]["cost"] ?? [];
             if ($this->canPayWithOptionalBooty($player_id, $cost)) {

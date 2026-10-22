@@ -41,9 +41,9 @@ class TimelyTrading extends GameState
     }
 
     #[PossibleAction]
-    public function actTimelyTradingGainDoubloons(): mixed
+    public function actTimelyTradingGainResources(string $first, string $second): mixed
     {
-        return $this->game->actTimelyTradingGainDoubloons();
+        return $this->game->actTimelyTradingGainResources($first, $second);
     }
 
     #[PossibleAction]
