@@ -336,11 +336,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "extraRations": {
-            this.statusBar.addActionButton(
-              _("Pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
-              () => this.payWithOptionalBooty({ doubloon: 1 }, "actExtraRations"),
-              {},
-            );
+            this.addExtraRationsButtons(args.extra_rations_resources, _("Pay 1"));
             this.statusBar.addActionButton(_("Skip"), () => {
               this.bgaPerformAction("actSkipExtraRations", {});
             }, { color: "secondary" });
@@ -384,12 +380,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                 { color: "secondary" },
               );
             }
-            if (args && args.can_use_extra_rations) {
-              this.statusBar.addActionButton(
-                _("Extra Rations") + ": " + _("pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
-                () => this.payWithOptionalBooty({ doubloon: 1 }, "actExtraRations"),
-                {},
-              );
+            if (args) {
+              this.addExtraRationsButtons(args.extra_rations_resources, _("Extra Rations") + ": " + _("pay 1"));
             }
             break;
           }

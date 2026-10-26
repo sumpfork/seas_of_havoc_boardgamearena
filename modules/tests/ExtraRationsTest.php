@@ -60,4 +60,31 @@ final class ExtraRationsTest extends TestCase
         $game->rationsAvailable = false;
         $this->assertSame("islandPhaseDone", $game->stNextPlayerIslandPhase());
     }
+
+    /** "Pay 1 resource": any of the three the player can afford. */
+    public function testPaidWithAnyResourceThePlayerCanAfford(): void
+    {
+        $game = new class extends SeasOfHavocUT {
+            public array $have = ["sail" => 0, "cannonball" => 2, "doubloon" => 0];
+            public bool $used = false;
+            public function __construct()
+            {
+                parent::__construct();
+                (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($this, new MockCardDeck());
+            }
+            function getGameResourcesHierarchical(?int $player_id = null) { return [1 => $this->have]; }
+            function getActiveShipUpgrades($player_id): array { return ["brig_extra_rations" => true]; }
+            function hasUsedUpgradeThisPhase($player_id, string $upgrade_key): bool { return $this->used; }
+        };
+        $this->assertSame(["cannonball"], $game->extraRationsPaymentOptions(1));
+        $game->have["sail"] = 1;
+        $this->assertSame(["sail", "cannonball"], $game->extraRationsPaymentOptions(1));
+        $game->used = true;
+        $this->assertSame([], $game->extraRationsPaymentOptions(1));
+        $this->assertFalse($game->canUseExtraRations(1));
+
+        $game->used = false;
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $game->actExtraRations("skiff");
+    }
 }

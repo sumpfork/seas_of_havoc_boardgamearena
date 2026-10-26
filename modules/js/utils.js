@@ -51,6 +51,17 @@ define([
         );
     },
 
+    /** Extra Rations: pay 1 resource of the player's choice to draw a card. One button per resource they can afford. */
+    addExtraRationsButtons: function (resources, label) {
+      for (const resource of resources) {
+        this.statusBar.addActionButton(
+          label + " " + this.resourceIcon(resource) + " " + _("to draw a card"),
+          () => this.payWithOptionalBooty({ [resource]: 1 }, "actExtraRations", { resource }),
+          {},
+        );
+      }
+    },
+
     resourceIcon: function (resource) {
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
       if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);
