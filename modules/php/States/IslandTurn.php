@@ -34,7 +34,7 @@ class IslandTurn extends GameState
     public function getArgs(): array
     {
         return [
-            'can_use_extra_rations' => $this->game->canUseExtraRations($this->game->getActivePlayerId()),
+            'extra_rations_resources' => $this->game->extraRationsPaymentOptions($this->game->getActivePlayerId()),
             'can_restock_market' => $this->game->canRestockMarket(),
             'market_restocked' => (bool) $this->game->getGameStateValue("market_restocked"),
             // A skiff placement still waiting on a choice. In the args, not a notification, so a
@@ -85,9 +85,9 @@ class IslandTurn extends GameState
     }
 
     #[PossibleAction]
-    public function actExtraRations(?int $use_booty_card_id = null): mixed
+    public function actExtraRations(string $resource, ?int $use_booty_card_id = null): mixed
     {
-        $this->game->actExtraRations($use_booty_card_id);
+        $this->game->actExtraRations($resource, $use_booty_card_id);
         // Free action: re-enter the island turn so the player still makes their skiff placement,
         // and so getArgs recomputes and drops the now-spent Extra Rations button.
         return STATE_ISLAND_TURN;

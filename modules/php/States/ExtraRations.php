@@ -26,8 +26,13 @@ class ExtraRations extends GameState
             type: StateType::ACTIVE_PLAYER,
             name: 'extraRations',
             description: clienttranslate('Island Phase: ${actplayer} may use Extra Rations to draw a card'),
-            descriptionMyTurn: clienttranslate('Island Phase: ${you} may pay 1 doubloon to draw a card'),
+            descriptionMyTurn: clienttranslate('Island Phase: ${you} may pay 1 resource to draw a card'),
         );
+    }
+
+    public function getArgs(): array
+    {
+        return ['extra_rations_resources' => $this->game->extraRationsPaymentOptions($this->game->getActivePlayerId())];
     }
 
     public function zombie(int $playerId): mixed
@@ -36,9 +41,9 @@ class ExtraRations extends GameState
     }
 
     #[PossibleAction]
-    public function actExtraRations(?int $use_booty_card_id = null): int
+    public function actExtraRations(string $resource, ?int $use_booty_card_id = null): int
     {
-        $this->game->actExtraRations($use_booty_card_id);
+        $this->game->actExtraRations($resource, $use_booty_card_id);
         return STATE_NEXT_PLAYER_ISLAND_PHASE;
     }
 

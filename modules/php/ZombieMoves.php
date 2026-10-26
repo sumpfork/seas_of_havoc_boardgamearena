@@ -73,7 +73,7 @@ trait ZombieMoves
         }
         if ($this->canUseExtraRations($player_id)) {
             $moves[] = function () use ($player_id) {
-                $this->actExtraRations($this->bootyToPay($player_id, ["doubloon" => 1]));
+                $this->zombieUseExtraRations($player_id);
                 return $this->zombieIslandTurn($player_id); // a free action: the placement still follows
             };
         }
@@ -284,8 +284,16 @@ trait ZombieMoves
 
     function zombieExtraRations(int $player_id): int
     {
-        $this->zombiePick([fn() => null, fn() => $this->actExtraRations($this->bootyToPay($player_id, ["doubloon" => 1]))]);
+        $this->zombiePick([fn() => null, fn() => $this->zombieUseExtraRations($player_id)]);
         return STATE_NEXT_PLAYER_ISLAND_PHASE;
+    }
+
+    /** Extra Rations paid with a random affordable resource. */
+    private function zombieUseExtraRations(int $player_id): void
+    {
+        $options = $this->extraRationsPaymentOptions($player_id);
+        $resource = $options[array_rand($options)];
+        $this->actExtraRations($resource, $this->bootyToPay($player_id, [$resource => 1]));
     }
 
     function zombieSwiftHull(int $player_id): mixed

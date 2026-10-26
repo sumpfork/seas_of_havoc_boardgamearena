@@ -191,8 +191,8 @@ trait ShipUpgradeRules
         return $pending;
     }
 
-    /** Pay and draw. Free: the caller's state decides where play goes next. */
-    function actExtraRations(?int $use_booty_card_id = null): void
+    /** Pay 1 $resource and draw. Free: the caller's state decides where play goes next. */
+    function actExtraRations(string $resource, ?int $use_booty_card_id = null): void
     {
         $player_id = self::getActivePlayerId();
         if (!$this->hasShipUpgrade($player_id, "brig_extra_rations")) {
@@ -203,7 +203,10 @@ trait ShipUpgradeRules
                 clienttranslate("You have already used Extra Rations this Island Phase"),
             );
         }
-        $this->payWithOptionalBooty((int) $player_id, ["doubloon" => 1], $use_booty_card_id);
+        if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
+        }
+        $this->payWithOptionalBooty((int) $player_id, [$resource => 1], $use_booty_card_id);
         $this->markUpgradeUsedThisPhase($player_id, "brig_extra_rations");
         $this->bga->notify->all("log", clienttranslate('${player_name} uses Extra Rations to draw a card'), [
             "player_name" => $this->getPlayerNameById($player_id),
@@ -215,13 +218,20 @@ trait ShipUpgradeRules
     /** True when the active player may still use Extra Rations this Island Phase. */
     function canUseExtraRations($player_id): bool
     {
-        if (!$this->hasShipUpgrade($player_id, "brig_extra_rations")) {
-            return false;
+        return $this->extraRationsPaymentOptions($player_id) !== [];
+    }
+
+    /** The resources the player can pay Extra Rations with ("pay 1 resource"), or none when it is not available. */
+    function extraRationsPaymentOptions($player_id): array
+    {
+        if (!$this->hasShipUpgrade($player_id, "brig_extra_rations") ||
+            $this->hasUsedUpgradeThisPhase($player_id, "brig_extra_rations")) {
+            return [];
         }
-        if ($this->hasUsedUpgradeThisPhase($player_id, "brig_extra_rations")) {
-            return false;
-        }
-        return $this->canPayWithOptionalBooty((int) $player_id, ["doubloon" => 1]);
+        return array_values(array_filter(
+            ["sail", "cannonball", "doubloon"],
+            fn($resource) => $this->canPayWithOptionalBooty((int) $player_id, [$resource => 1]),
+        ));
     }
 
     function actActivateShipUpgrade(string $upgrade_key, ?int $use_booty_card_id = null): mixed
