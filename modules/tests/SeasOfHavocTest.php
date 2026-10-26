@@ -226,6 +226,7 @@ if (!class_exists("MockBGA")) {
             $this->tableStats = new \Bga\GameFramework\TableStats();
             $this->tableOptions = new class extends \Bga\GameFramework\TableOptions {
                 public array $values = [];
+                public function __construct() {} // the stub wants a Table to read options from; $values replaces it
                 public function get(int $optionId): ?int { return $this->values[$optionId] ?? null; }
             };
         }

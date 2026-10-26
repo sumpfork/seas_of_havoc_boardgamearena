@@ -282,6 +282,12 @@ trait ZombieMoves
         return $this->zombiePick($moves);
     }
 
+    function zombieExtraRations(int $player_id): int
+    {
+        $this->zombiePick([fn() => null, fn() => $this->actExtraRations($this->bootyToPay($player_id, ["doubloon" => 1]))]);
+        return STATE_NEXT_PLAYER_ISLAND_PHASE;
+    }
+
     function zombieSwiftHull(int $player_id): mixed
     {
         $moves = [fn() => $this->actSkipSwiftHull()];

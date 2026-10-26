@@ -87,6 +87,9 @@ class IslandTurn extends GameState
     #[PossibleAction]
     public function actExtraRations(?int $use_booty_card_id = null): mixed
     {
-        return $this->game->actExtraRations($use_booty_card_id);
+        $this->game->actExtraRations($use_booty_card_id);
+        // Free action: re-enter the island turn so the player still makes their skiff placement,
+        // and so getArgs recomputes and drops the now-spent Extra Rations button.
+        return STATE_ISLAND_TURN;
     }
 }

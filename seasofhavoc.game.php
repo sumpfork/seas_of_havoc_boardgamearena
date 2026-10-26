@@ -66,6 +66,7 @@ if (!defined("STATE_END_GAME")) {
     define("STATE_CHOOSE_HEADING", 29);
     define("STATE_DRAFT_CAPTAIN", 30);
     define("STATE_DRAFT_SHIP", 31);
+    define("STATE_EXTRA_RATIONS", 32);
     define("STATE_END_GAME", 99);
 }
 
@@ -78,6 +79,10 @@ class SeasOfHavoc extends Table
     private const OPTION_TWO_SHIPS = 100;
     /** Table option: how captains and ships are handed out. 1 = at random. */
     private const OPTION_CAPTAINS_AND_SHIPS = 101;
+    /** extra_rations_offered values. */
+    private const EXTRA_RATIONS_NOT_OFFERED = 0;
+    private const EXTRA_RATIONS_OFFERED_TURN_END = 1;
+    private const EXTRA_RATIONS_OFFERED_PHASE_END = 2;
     private const ASSIGN_FIRST_GAME_PAIRS = 2;
     private const ASSIGN_DRAFT = 3;
     /** Table option (First Mates): 1 = standard, 2 = Extended Game, 3 = Epic Game. */
@@ -170,6 +175,8 @@ class SeasOfHavoc extends Table
             "pending_resource_context" => 34,
             "pending_resource_slot" => 35,
             "last_sea_phase" => 36,
+            // Where the Extra Rations prompt stands: EXTRA_RATIONS_OFFERED_* below.
+            "extra_rations_offered" => 37,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -793,10 +800,22 @@ class SeasOfHavoc extends Table
             return $overflow;
         }
 
+        $current_player = $this->getActivePlayerId();
+
+        // Extra Rations is offered at the end of each of its owner's turns and once more when the
+        // phase ends, before purchases.
+        $offered = (int) $this->getGameStateValue("extra_rations_offered");
+        if ($offered === self::EXTRA_RATIONS_OFFERED_PHASE_END) {
+            return $this->endIslandPhase();
+        }
+        if ($offered === self::EXTRA_RATIONS_NOT_OFFERED && $this->canUseExtraRations($current_player)) {
+            $this->setGameStateValue("extra_rations_offered", self::EXTRA_RATIONS_OFFERED_TURN_END);
+            return STATE_EXTRA_RATIONS;
+        }
+        $this->setGameStateValue("extra_rations_offered", self::EXTRA_RATIONS_NOT_OFFERED);
+
         $resources = $this->getGameResourcesHierarchical();
         $this->mydump("fetched resources:", $resources);
-
-        $current_player = $this->getActivePlayerId();
 
         // Check if current player has an extra turn
         if ($this->hasExtraTurn($current_player, "island")) {
@@ -822,8 +841,17 @@ class SeasOfHavoc extends Table
             // Prevent infinite loop if we've gone through all players
             if ($active_player == $starting_player) {
                 $this->mytrace("All players checked, no one has skiffs");
-                $this->clearExtraTurns("island");
-                return "islandPhaseDone";
+                // Offer Extra Rations one last time, unless its owner was just offered it at the
+                // end of the turn that ended the phase.
+                foreach (array_keys($this->loadPlayersBasicInfos()) as $player_id) {
+                    if ($this->canUseExtraRations($player_id) && !($offered && $player_id == $current_player)) {
+                        $this->setGameStateValue("extra_rations_offered", self::EXTRA_RATIONS_OFFERED_PHASE_END);
+                        $this->gamestate->changeActivePlayer($player_id);
+                        $this->giveExtraTime((int) $player_id);
+                        return STATE_EXTRA_RATIONS;
+                    }
+                }
+                return $this->endIslandPhase();
             }
 
             $this->mytrace("Player $active_player has no skiffs, skipping");
@@ -833,6 +861,13 @@ class SeasOfHavoc extends Table
         $this->mytrace("Next player with skiffs: $active_player");
         $this->giveExtraTime($active_player);
         return "nextPlayer";
+    }
+
+    private function endIslandPhase(): string
+    {
+        $this->setGameStateValue("extra_rations_offered", self::EXTRA_RATIONS_NOT_OFFERED);
+        $this->clearExtraTurns("island");
+        return "islandPhaseDone";
     }
 
     function stCardPurchases()
