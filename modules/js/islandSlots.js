@@ -107,6 +107,29 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
       }
     },
 
+    /**
+     * Highlights and blocks skiff slots for the current player's placement. Whether a slot can be
+     * used depends on the game state (whose turn it is, which actions are possible), so this runs
+     * on every state change as well as after the slots are redrawn.
+     */
+    updateSkiffSlotPlaceability: function () {
+      for (const [slot, numbers] of Object.entries(this.islandSlots)) {
+        for (const [number, slotData] of Object.entries(numbers)) {
+          const skiffSlot = $(`skiff_slot_${slot}_${number}`);
+          if (!skiffSlot) {
+            continue;
+          }
+          const corsairSelectable = this.canCurrentPlayerUseCorsairOnSlot(slot, slotData);
+          skiffSlot.classList.toggle("soh_corsair_selectable", corsairSelectable);
+          skiffSlot.classList.toggle("soh_occupied_blocked", this.shouldBlockOccupiedSkiffSlot(slot, slotData));
+          skiffSlot.classList.toggle("soh_slot_unavailable", this.shouldBlockSlot(slot));
+          for (const skiff of skiffSlot.querySelectorAll(".soh_skiff:not(.soh_corsair_overlay)")) {
+            skiff.classList.toggle("soh_corsair_selectable_hint", corsairSelectable);
+          }
+        }
+      }
+    },
+
     renderSkiffInSlot: function (skiffSlot, slotName, slotNumber, playerId, players, isCorsairOverlay) {
       var suffix = isCorsairOverlay ? "_corsair" : "";
       var skiff_id = "skiff_p" + playerId + "_" + slotName + "_" + slotNumber + suffix;
@@ -117,9 +140,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
 
       domConstruct.place(skiff, skiffSlot);
       domClass.add(skiff_id, "skiff_placed");
-      if (domClass.contains(skiffSlot, "soh_corsair_selectable") && !isCorsairOverlay) {
-        domClass.add(skiff_id, "soh_corsair_selectable_hint");
-      }
       if (isCorsairOverlay) {
         domClass.add(skiff_id, "soh_corsair_overlay");
       }
@@ -157,24 +177,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
             console.log("Disabled slot: " + skiff_slot_id);
           } else {
             domClass.remove(skiff_slot_id, "disabled");
-          }
-
-          if (this.canCurrentPlayerUseCorsairOnSlot(slot, slotData)) {
-            domClass.add(skiff_slot_id, "soh_corsair_selectable");
-          } else {
-            domClass.remove(skiff_slot_id, "soh_corsair_selectable");
-          }
-
-          if (this.shouldBlockOccupiedSkiffSlot(slot, slotData)) {
-            domClass.add(skiff_slot_id, "soh_occupied_blocked");
-          } else {
-            domClass.remove(skiff_slot_id, "soh_occupied_blocked");
-          }
-
-          if (this.shouldBlockSlot(slot)) {
-            domClass.add(skiff_slot_id, "soh_slot_unavailable");
-          } else {
-            domClass.remove(skiff_slot_id, "soh_slot_unavailable");
           }
 
           var primaryOccupantId = slotData.occupying_player_id;
@@ -263,6 +265,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
           }
         }
       }
+      this.updateSkiffSlotPlaceability();
     },
 
     /**

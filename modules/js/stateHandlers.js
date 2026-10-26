@@ -55,12 +55,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           if (this.player_captain === "corsair") {
             this.corsairOccupiedPlacementAvailable = true;
           }
-          this.refreshSkiffSlotPlaceability();
           break;
         }
 
         case "islandTurn": {
-          this.refreshSkiffSlotPlaceability();
           // In the args rather than a notification, so a page refresh reopens the exchange.
           if (this.isCurrentPlayerActive() && args.args.pending_trading_post) {
             this.initTradingPost(args.args.pending_trading_post.slot_number);
@@ -128,6 +126,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           break;
         }
       }
+      // Skiff slots stay highlighted (e.g. for the Corsair) only while this player is placing one.
+      this.updateSkiffSlotPlaceability();
     },
 
     /**

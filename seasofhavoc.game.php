@@ -114,10 +114,6 @@ class SeasOfHavoc extends Table
         "corsair_occupied_green_flag",
     ];
 
-    private const TREASURE_SEEKER_RESUME_SEA_TURN_DONE = 2;
-    private const TREASURE_SEEKER_RESUME_COLLISION = 3;
-    private const TREASURE_SEEKER_RESUME_COLLISION_RESOLVED = 4;
-
     // Decision values pass through BGA's alphanumeric JsonParam validation.
     public const NIMBLE_HULL_CHOICE = "nimble hull maneuver twice";
 
@@ -154,7 +150,6 @@ class SeasOfHavoc extends Table
             "pending_shipwreck_arg" => 16,
             "pending_shipwreck_x" => 17,
             "pending_shipwreck_y" => 18,
-            "pending_treasure_seeker_resume" => 19,
             "extortion_pending_flags" => 20,
             "hunt_the_bounty_target" => 21,
             "pending_captain_card" => 22,
@@ -945,6 +940,11 @@ class SeasOfHavoc extends Table
         $chain_shot = $this->nextChainShotLossState();
         if ($chain_shot !== null) {
             return $chain_shot;
+        }
+        // The card, its sea features and any collisions have played out: salvaged shipwrecks go
+        // back on the board now, before the flag action (blue plays another card) or Swift Hull.
+        if ($this->tryBeginTreasureSeekerShipwreckAdjust($this->placeSalvagedShipwrecks())) {
+            return $this->startTreasureSeekerAdjust();
         }
         $type = (int) $this->getGameStateValue("pending_card_flag_type");
         if ($type !== 0) {

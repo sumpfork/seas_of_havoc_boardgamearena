@@ -25,16 +25,16 @@ final class CardActionOutcome
         /** Resource => amount still to be paid for the actions taken. */
         public array $cost = [],
         public bool $collisionOccurred = false,
-        public ?array $shipwreckEvent = null,
-        public ?array $bootyCard = null,
+        /** Every shipwreck picked up, in order: a card that moves twice can salvage twice. */
+        public array $shipwreckEvents = [],
+        public array $bootyCards = [],
         /** Set when a captain ability needs the player's input: the state to go to instead. */
         public ?int $captainState = null,
     ) {
     }
 
     /**
-     * Fold a nested outcome into this one, adding $cost for the action that produced it. The first
-     * shipwreck and booty token picked up are the ones reported.
+     * Fold a nested outcome into this one, adding $cost for the action that produced it.
      */
     public function absorb(self $other, array $cost = []): void
     {
@@ -45,14 +45,18 @@ final class CardActionOutcome
             }
         }
         $this->collisionOccurred = $this->collisionOccurred || $other->collisionOccurred;
-        $this->shipwreckEvent ??= $other->shipwreckEvent;
-        $this->bootyCard ??= $other->bootyCard;
+        $this->shipwreckEvents = array_merge($this->shipwreckEvents, $other->shipwreckEvents);
+        $this->bootyCards = array_merge($this->bootyCards, $other->bootyCards);
     }
 
-    /** Record what collectShipwrecksAtPlayer() picked up, unless something was already picked up. */
+    /** Record what collectShipwrecksAtPlayer() picked up, if anything. */
     public function addPickup(array $pickup): void
     {
-        $this->shipwreckEvent ??= $pickup["shipwreck_event"] ?? null;
-        $this->bootyCard ??= $pickup["booty_card"] ?? null;
+        if ($pickup["shipwreck_event"] !== null) {
+            $this->shipwreckEvents[] = $pickup["shipwreck_event"];
+        }
+        if ($pickup["booty_card"] !== null) { // null when the booty stack and discard are both empty
+            $this->bootyCards[] = $pickup["booty_card"];
+        }
     }
 }

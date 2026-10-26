@@ -169,11 +169,17 @@ final class CardFlagActionTest extends TestCase
             public function getPlayerCaptain($player_id): ?string { return $player_id == 2 ? 'treasure_seeker' : null; }
             public function getValidTreasureSeekerShipwreckPositions(int $x, int $y): array { return [['x' => 1, 'y' => 1]]; }
             public function applySeafeatureEffects($player_id): CardActionOutcome {
-                return new CardActionOutcome(shipwreckEvent: ['shipwreck_arg' => '1', 'new_x' => 0, 'new_y' => 0]);
+                return new CardActionOutcome(shipwreckEvents: [['shipwreck_arg' => '1', 'old_x' => 0, 'old_y' => 0]]);
             }
         };
+        $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()
+            ->onlyMethods(['getObjectsOfTypes', 'placeObject'])->getMock();
+        $board->method('getObjectsOfTypes')->willReturn([]);
+        (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($game, $board);
         $game->owners['green_flag'] = '1';
-        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->playFlagActions('green', []));
+        $this->assertSame('seaTurnDone', $game->playFlagActions('green', []));
+        $game->bga->globals->set('salvaged_shipwrecks', ['1']); // as collectShipwrecksAtPlayer() records it
+        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->stNextPlayerSeaPhase(), 'placed before the flag action');
         $this->assertSame('2', $game->getActivePlayerId());
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $game->actSkipTreasureSeekerAdjust());
         $this->assertSame('1', $game->getActivePlayerId());

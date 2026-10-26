@@ -5,12 +5,17 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . "/SeasOfHavocTest.php";
 
+/** Player 2 is the Treasure Seeker. */
+class TreasureSeekerUT extends SeasOfHavocUT {
+    public function getPlayerCaptain($player_id) { return $player_id == 2 ? "treasure_seeker" : null; }
+}
+
 final class TreasureSeekerAbilityTest extends TestCase {
     private SeasOfHavocUT $game;
     private array $mockCellObjects = [];
 
     protected function setUp(): void {
-        $this->game = new SeasOfHavocUT();
+        $this->game = new TreasureSeekerUT();
         $cellObjects = &$this->mockCellObjects;
 
         $mockSeaboard = $this->getMockBuilder(SeaBoard::class)
@@ -70,5 +75,36 @@ final class TreasureSeekerAbilityTest extends TestCase {
 
         $this->assertContains(["x" => 2, "y" => 3], $valid);
         $this->assertContains(["x" => 3, "y" => 2], $valid);
+    }
+
+    /** One card salvaged wrecks 1, 2 and 3; wreck 3 was placed with no surrounding space free. */
+    public function testTreasureSeekerAdjustsEachPlacementInTurn(): void {
+        $this->setCellObjects(5, 6, [["type" => "rock", "arg" => "0"]]);
+        $this->setCellObjects(6, 5, [["type" => "rock", "arg" => "1"]]);
+        $events = [
+            ["shipwreck_arg" => "1", "new_x" => 7, "new_y" => 7],
+            ["shipwreck_arg" => "3", "new_x" => 5, "new_y" => 5],
+            ["shipwreck_arg" => "2", "new_x" => 3, "new_y" => 3],
+        ];
+        $pending = fn() => array_map(
+            fn($label) => $this->game->getGameStateValue($label),
+            ["pending_shipwreck_arg", "pending_shipwreck_x", "pending_shipwreck_y"],
+        );
+
+        $this->assertTrue($this->game->tryBeginTreasureSeekerShipwreckAdjust($events));
+        $this->game->gamestate->changeActivePlayer(2);
+        $this->assertSame([1, 7, 7], $pending());
+        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $this->game->actSkipTreasureSeekerAdjust());
+        $this->assertSame([2, 3, 3], $pending());
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actSkipTreasureSeekerAdjust());
+        $this->assertEquals(1, $this->game->getActivePlayerId(), "play returns to the player who salvaged");
+    }
+
+    public function testNothingToAdjustWhenNoPlacementCanMove(): void {
+        $this->setCellObjects(5, 6, [["type" => "rock", "arg" => "0"]]);
+        $this->setCellObjects(6, 5, [["type" => "rock", "arg" => "1"]]);
+        $this->assertFalse($this->game->tryBeginTreasureSeekerShipwreckAdjust(
+            [["shipwreck_arg" => "1", "new_x" => 5, "new_y" => 5]],
+        ));
     }
 }
