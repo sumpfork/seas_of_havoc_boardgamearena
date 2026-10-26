@@ -177,7 +177,10 @@ $this->playable_cards = [
     [
         "ship_name" => "Xebec",
         "cost" => ["sail" => 1],
-        "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::FORWARD->value, "cost" => ["sail" => 1]]],
+        "actions" => [
+            ["action" => PrimitiveCardPlayAction::FORWARD->value],
+            ["action" => PrimitiveCardPlayAction::FORWARD->value, "cost" => ["sail" => 1]],
+        ],
         "image_id" => 0,
         "count" => 2,
         "category" => "starting_card",
@@ -188,7 +191,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 1,
@@ -217,7 +223,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 4,
@@ -246,7 +255,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 7,
@@ -259,7 +271,11 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 8,
@@ -280,7 +296,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 10,
@@ -293,7 +312,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 11,
@@ -314,7 +336,11 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 13,
@@ -327,7 +353,10 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 14,
@@ -348,7 +377,11 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "image_id" => 16,
@@ -435,7 +468,11 @@ $this->playable_cards = [
         "actions" => [
             [
                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
             ],
         ],
         "type" => ["sailing"],
@@ -458,7 +495,11 @@ $this->playable_cards = [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
                             [
                                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                                "choices" => [
+                                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                                ],
                                 "cost" => ["sail" => 1],
                             ],
                         ],
@@ -477,7 +518,10 @@ $this->playable_cards = [
     ],
     [
         "cost" => ["sail" => 1],
-        "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::FORWARD->value, "cost" => ["sail" => 1]]],
+        "actions" => [
+            ["action" => PrimitiveCardPlayAction::FORWARD->value],
+            ["action" => PrimitiveCardPlayAction::FORWARD->value, "cost" => ["sail" => 1]],
+        ],
         "type" => ["sailing"],
         "image_id" => 23,
         "infamy" => 1,
@@ -494,7 +538,11 @@ $this->playable_cards = [
                     ["action" => PrimitiveCardPlayAction::FORWARD->value],
                     [
                         "action" => PrimitiveCardPlayAction::CHOICE->value,
-                        "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                        "choices" => [
+                            ["action" => PrimitiveCardPlayAction::LEFT->value],
+                            ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                            ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                        ],
                         "cost" => ["sail" => 1],
                     ],
                 ],
@@ -510,7 +558,10 @@ $this->playable_cards = [
     ],
     [
         "cost" => ["sail" => 1, "cannonball" => 1],
-        "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
+        "actions" => [
+            ["action" => PrimitiveCardPlayAction::FORWARD->value],
+            ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+        ],
         "type" => ["sailing", "firing"],
         "image_id" => 25,
         "infamy" => 2,
@@ -523,7 +574,14 @@ $this->playable_cards = [
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "cost" => ["sail" => 1]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+                "cost" => ["sail" => 1],
+            ],
         ],
         "type" => ["sailing", "firing"],
         "image_id" => 26,
@@ -545,7 +603,11 @@ $this->playable_cards = [
                         "action" => PrimitiveCardPlayAction::SEQUENCE->value,
                         "actions" => [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
-                            ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                            [
+                                "action" => PrimitiveCardPlayAction::FIRE->value,
+                                "range" => 3,
+                                "cost" => ["cannonball" => 1],
+                            ],
                         ],
                         "name" => "forward",
                     ],
@@ -563,7 +625,13 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "cannonball" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
         ],
         "type" => ["sailing", "firing"],
@@ -576,7 +644,13 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 29,
@@ -588,7 +662,14 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value], ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 30,
@@ -611,10 +692,13 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 2],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 32,
@@ -626,11 +710,14 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 3],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-                ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                    ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 33,
@@ -642,7 +729,14 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["sailing"],
         "image_id" => 34,
@@ -664,7 +758,11 @@ $this->playable_cards = [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
                             [
                                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                                "choices" => [
+                                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                                ],
                                 "cost" => ["sail" => 1],
                             ],
                         ],
@@ -733,7 +831,14 @@ $this->playable_cards = [
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "cost" => ["sail" => 1]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+                "cost" => ["sail" => 1],
+            ],
         ],
         "type" => ["sailing", "firing"],
         "image_id" => 39,
@@ -754,7 +859,11 @@ $this->playable_cards = [
                         "action" => PrimitiveCardPlayAction::SEQUENCE->value,
                         "actions" => [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
-                            ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                            [
+                                "action" => PrimitiveCardPlayAction::FIRE->value,
+                                "range" => 3,
+                                "cost" => ["cannonball" => 1],
+                            ],
                         ],
                         "name" => "forward",
                     ],
@@ -772,7 +881,13 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "cannonball" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
         ],
         "type" => ["sailing", "firing"],
@@ -785,7 +900,13 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 42,
@@ -797,7 +918,14 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value], ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 43,
@@ -820,10 +948,13 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 2],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 45,
@@ -835,11 +966,14 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 3],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-                ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                    ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 46,
@@ -851,7 +985,14 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["sailing"],
         "image_id" => 47,
@@ -873,7 +1014,11 @@ $this->playable_cards = [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
                             [
                                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                                "choices" => [
+                                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                                ],
                                 "cost" => ["sail" => 1],
                             ],
                         ],
@@ -942,7 +1087,14 @@ $this->playable_cards = [
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "cost" => ["sail" => 1]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+                "cost" => ["sail" => 1],
+            ],
         ],
         "type" => ["sailing", "firing"],
         "image_id" => 52,
@@ -963,7 +1115,11 @@ $this->playable_cards = [
                         "action" => PrimitiveCardPlayAction::SEQUENCE->value,
                         "actions" => [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
-                            ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                            [
+                                "action" => PrimitiveCardPlayAction::FIRE->value,
+                                "range" => 3,
+                                "cost" => ["cannonball" => 1],
+                            ],
                         ],
                         "name" => "forward",
                     ],
@@ -981,7 +1137,13 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "cannonball" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
         ],
         "type" => ["sailing", "firing"],
@@ -994,7 +1156,13 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 55,
@@ -1006,7 +1174,14 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value], ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 56,
@@ -1029,10 +1204,13 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 2],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 58,
@@ -1044,11 +1222,14 @@ $this->playable_cards = [
     [
         "cost" => ["cannonball" => 3],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [
-                ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-                ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
-                ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
-            ]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                    ["action" => PrimitiveCardPlayAction::FIRE2->value, "range" => 2, "cost" => ["cannonball" => 2]],
+                    ["action" => PrimitiveCardPlayAction::FIRE3->value, "range" => 1, "cost" => ["cannonball" => 3]],
+                ],
+            ],
         ],
         "type" => ["firing"],
         "image_id" => 59,
@@ -1060,7 +1241,14 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["sailing"],
         "image_id" => 60,
@@ -1082,7 +1270,11 @@ $this->playable_cards = [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
                             [
                                 "action" => PrimitiveCardPlayAction::CHOICE->value,
-                                "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::FORWARD->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]],
+                                "choices" => [
+                                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                                ],
                                 "cost" => ["sail" => 1],
                             ],
                         ],
@@ -1116,7 +1308,15 @@ $this->playable_cards = [
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "cost" => ["sail" => 1]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::FORWARD->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+                "cost" => ["sail" => 1],
+            ],
         ],
         "type" => ["sailing"],
         "image_id" => 63,
@@ -1143,7 +1343,14 @@ $this->playable_cards = [
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]], "cost" => ["sail" => 1]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+                "cost" => ["sail" => 1],
+            ],
         ],
         "type" => ["sailing", "firing"],
         "image_id" => 65,
@@ -1164,7 +1371,11 @@ $this->playable_cards = [
                         "action" => PrimitiveCardPlayAction::SEQUENCE->value,
                         "actions" => [
                             ["action" => PrimitiveCardPlayAction::FORWARD->value],
-                            ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
+                            [
+                                "action" => PrimitiveCardPlayAction::FIRE->value,
+                                "range" => 3,
+                                "cost" => ["cannonball" => 1],
+                            ],
                         ],
                         "name" => "forward",
                     ],
@@ -1182,7 +1393,13 @@ $this->playable_cards = [
     [
         "cost" => ["sail" => 1, "cannonball" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::LEFT->value], ["action" => PrimitiveCardPlayAction::RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::RIGHT->value],
+                ],
+            ],
             ["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]],
         ],
         "type" => ["sailing", "firing"],
@@ -1195,7 +1412,13 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 68,
@@ -1207,7 +1430,14 @@ $this->playable_cards = [
     [
         "cost" => ["doubloon" => 1],
         "actions" => [
-            ["action" => PrimitiveCardPlayAction::CHOICE->value, "choices" => [["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value], ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value], ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value]]],
+            [
+                "action" => PrimitiveCardPlayAction::CHOICE->value,
+                "choices" => [
+                    ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                ],
+            ],
         ],
         "type" => ["pivot"],
         "image_id" => 69,
