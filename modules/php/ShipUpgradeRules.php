@@ -191,7 +191,8 @@ trait ShipUpgradeRules
         return $pending;
     }
 
-    function actExtraRations(?int $use_booty_card_id = null): mixed
+    /** Pay and draw. Free: the caller's state decides where play goes next. */
+    function actExtraRations(?int $use_booty_card_id = null): void
     {
         $player_id = self::getActivePlayerId();
         if (!$this->hasShipUpgrade($player_id, "brig_extra_rations")) {
@@ -209,9 +210,6 @@ trait ShipUpgradeRules
             "player_id" => $player_id,
         ]);
         $this->drawCards($player_id);
-        // Free action: re-enter the island turn so the player still makes their skiff placement,
-        // and so getArgs recomputes and drops the now-spent Extra Rations button.
-        return STATE_ISLAND_TURN;
     }
 
     /** True when the active player may still use Extra Rations this Island Phase. */

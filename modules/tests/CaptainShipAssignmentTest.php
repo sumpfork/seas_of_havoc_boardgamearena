@@ -15,7 +15,7 @@ class DraftUT extends SeasOfHavocUT
 
     public function getActivePlayerId(): string { return $this->active; }
     public function activeNextPlayer(): int|string { return $this->active = $this->step(1); }
-    public function activePrevPlayer(): void { $this->active = $this->step(-1); }
+    public function activePrevPlayer(): int { return (int) ($this->active = $this->step(-1)); }
     private function step(int $by): string
     {
         $i = array_search($this->active, $this->order, true);

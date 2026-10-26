@@ -335,6 +335,18 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             break;
           }
 
+          case "extraRations": {
+            this.statusBar.addActionButton(
+              _("Pay 1") + " " + this.resourceIcon("doubloon") + " " + _("to draw a card"),
+              () => this.payWithOptionalBooty({ doubloon: 1 }, "actExtraRations"),
+              {},
+            );
+            this.statusBar.addActionButton(_("Skip"), () => {
+              this.bgaPerformAction("actSkipExtraRations", {});
+            }, { color: "secondary" });
+            break;
+          }
+
           case "islandTurn": {
             // A placement waiting on a choice comes back from the server's args, so a refresh
             // restores it.

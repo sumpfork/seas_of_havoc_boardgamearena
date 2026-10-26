@@ -10,7 +10,7 @@ class RebelActionUT extends SeasOfHavocUT {
     public array $discardCalls = [];
     public ?string $mockFirstPlayerTokenOwner = "2";
 
-    public function loadPlayersBasicInfos() {
+    public function loadPlayersBasicInfos(): array {
         return $this->players;
     }
 

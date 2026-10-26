@@ -9,7 +9,7 @@ class PirateQueenActionUT extends SeasOfHavocUT {
     public array $mockCaptains = [];
     public array $infamyAwards = [];
 
-    public function loadPlayersBasicInfos() {
+    public function loadPlayersBasicInfos(): array {
         return $this->players;
     }
 
