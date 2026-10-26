@@ -338,8 +338,51 @@ handlers.onEnteringState.call({
   highlightActivePlayerShips() {},
   isCurrentPlayerActive: () => true,
   setupScrapCardSelection: args => { shownScraps = args; },
+  updateSkiffSlotPlaceability() {},
 }, "cardFlag", { args: { flag: "red", _private: privateScraps } });
 assert.equal(shownScraps, privateScraps, "Red flag must use only the active player's private scrap choices");
+// The Corsair's occupied-slot highlight only lasts while the Corsair is the one placing a skiff.
+{
+  const classList = () => {
+    const names = new Set();
+    return { contains: name => names.has(name), toggle: (name, on) => { on ? names.add(name) : names.delete(name); } };
+  };
+  const skiff = { classList: classList() };
+  const slotElement = { classList: classList(), querySelectorAll: () => [skiff] };
+  const islandSlots = loadModule("islandSlots.js", {}, { $: id => (id === "skiff_slot_shipyard_n1" ? slotElement : null) });
+  const corsairGame = {
+    ...islandSlots,
+    player_captain: "corsair",
+    corsairOccupiedPlacementAvailable: true,
+    corsairOccupiedSlotNames: ["shipyard"],
+    islandSlots: { shipyard: { n1: { occupying_player_id: "2", corsair_occupying_player_id: null } } },
+    active: true,
+    isCurrentPlayerActive() { return this.active; },
+    gamedatas: { gamestate: { possibleactions: ["actPlaceSkiff"], args: {} } },
+    updateHandSelectionMode() {},
+    highlightActivePlayerShips() {},
+    updateCardPurchaseButtons() {},
+    _savePurchaseSnapshot() {},
+  };
+  const highlighted = () => slotElement.classList.contains("soh_corsair_selectable");
+  handlers.onEnteringState.call(corsairGame, "islandTurn", { args: {} });
+  assert.equal(highlighted(), true, "The Corsair's own island turn highlights eligible occupied slots");
+  assert.equal(skiff.classList.contains("soh_corsair_selectable_hint"), true);
+  assert.equal(slotElement.classList.contains("soh_occupied_blocked"), false);
+
+  corsairGame.active = false;
+  handlers.onEnteringState.call(corsairGame, "islandTurn", { args: {} });
+  assert.equal(highlighted(), false, "Another player's island turn clears the Corsair highlight");
+
+  corsairGame.active = true;
+  handlers.onEnteringState.call(corsairGame, "islandTurn", { args: {} });
+  corsairGame.gamedatas.gamestate = { possibleactions: ["actCompletePurchases"], args: {} };
+  for (const state of ["cardPurchases", "cardPurchasesCompleted"]) {
+    handlers.onEnteringState.call(corsairGame, state, { args: {} });
+    assert.equal(highlighted(), false, `${state} must not leave the Corsair highlight from the island phase`);
+    assert.equal(skiff.classList.contains("soh_corsair_selectable_hint"), false);
+  }
+}
 let gameMethods;
 const templates = {};
 const scoreNodes = {};
@@ -719,7 +762,7 @@ seqNotifications.notif_cardPlayed.call({
     { type: "fire_miss", fire_heading: 1, miss_x: 4, miss_y: 1 },
     { type: "collision", collision_x: 5, collision_y: 1 },
   ],
-  shipwreck_event: null,
+  salvaged_shipwrecks: [],
 });
 assert.deepEqual(played, [
   "chain(slide,chain(shot,blast),slide,chain(shot,blast:soh_splash),blast:soh_ram)",

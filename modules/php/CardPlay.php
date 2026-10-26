@@ -331,7 +331,7 @@ trait CardPlay
                 "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $outcome->actionChain,
                 "cost" => $outcome->cost,
-                "shipwreck_event" => null,
+                "salvaged_shipwrecks" => [],
             ]);
         }
         return STATE_NEXT_PLAYER_SEA_PHASE;
@@ -394,6 +394,7 @@ trait CardPlay
             (int) $held["type"] !== $card_type) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card from your hand"));
         }
+        $this->assertNoSalvagedShipwrecksPending();
         $this->setActiveShip($ship);
         return $this->resolvePlayedCard($card_type, $card_id, $decisions, $use_booty_card_id);
     }
@@ -430,6 +431,7 @@ trait CardPlay
         if (!in_array($decision, $maneuvers, true)) {
             throw new \Bga\GameFramework\UserException(clienttranslate("Choose a rowing maneuver"));
         }
+        $this->assertNoSalvagedShipwrecksPending();
         $this->setActiveShip($ship);
         $player_id = (string) $this->getActivePlayerId();
         // Validates both cards are in the player's hand.
@@ -494,7 +496,7 @@ trait CardPlay
                     "card_image" => $card_type,
                     "moveChain" => [],
                     "cost" => [],
-                    "shipwreck_event" => null,
+                    "salvaged_shipwrecks" => [],
                 ]);
                 return $outcome->captainState;
             }
@@ -554,32 +556,27 @@ trait CardPlay
             "card_image" => $card_type,
             "moveChain" => $outcome->actionChain,
             "cost" => $outcome->cost,
-            "shipwreck_event" => $outcome->shipwreckEvent,
+            "salvaged_shipwrecks" => $outcome->shipwreckEvents,
         ]);
 
-        $this->notifyBootyCollected($player_id, $outcome->bootyCard);
-
-        if ($this->maybeDeferSeaPhaseForTreasureSeeker($outcome->shipwreckEvent, $outcome->collisionOccurred)) {
-            return $this->treasureSeekerAdjustState();
-        }
+        $this->notifyBootyCollected($player_id, $outcome->bootyCards);
 
         return $outcome->collisionOccurred ? $this->collisionPenaltyState() : "seaTurnDone";
     }
 
-    private function notifyBootyCollected($player_id, ?array $booty_card): void
+    private function notifyBootyCollected($player_id, array $booty_cards): void
     {
-        if ($booty_card === null) {
-            return;
+        foreach ($booty_cards as $booty_card) {
+            $this->mydump("booty collected", $booty_card);
+            $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+            ]);
+            $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
+                "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
+                "new_token" => $booty_card,
+            ]);
         }
-        $this->mydump("booty collected", $booty_card);
-        $this->bga->notify->all("bootyTokenCollected", clienttranslate('${player_name} collected a booty token'), [
-            "player_name" => $this->getPlayerNameById($player_id),
-            "player_id" => $player_id,
-        ]);
-        $this->bga->notify->player($player_id, "bootyTokenRevealed", clienttranslate("You reveal a booty token"), [
-            "booty_tokens" => $this->getBootyTokensForPlayer($player_id),
-            "new_token" => $booty_card,
-        ]);
     }
 
     /**
@@ -680,35 +677,16 @@ trait CardPlay
                 "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $outcome->actionChain,
                 "cost" => $outcome->cost,
-                "shipwreck_event" => $outcome->shipwreckEvent,
+                "salvaged_shipwrecks" => $outcome->shipwreckEvents,
             ]);
         }
 
-        $this->notifyBootyCollected($player_id, $outcome->bootyCard);
-
-        $shipwreck_event = $outcome->shipwreckEvent;
-        $seafeature_collision = $seafeature->collisionOccurred;
-
-        if ($shipwreck_event !== null) {
-            $resume = $seafeature_collision
-                ? self::TREASURE_SEEKER_RESUME_COLLISION
-                : self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED;
-            if (
-                $this->tryBeginTreasureSeekerShipwreckAdjust(
-                    (string) $shipwreck_event["shipwreck_arg"],
-                    (int) $shipwreck_event["new_x"],
-                    (int) $shipwreck_event["new_y"],
-                    $resume,
-                )
-            ) {
-                return $this->treasureSeekerAdjustState();
-            }
-        }
+        $this->notifyBootyCollected($player_id, $outcome->bootyCards);
 
         // If gust push caused another collision, stay in collision resolution state
         // Note: Seafeature effects are only applied once per card play, so this can only happen
         // when resolving a collision from the initial card play (gust push after collision resolution)
-        if ($seafeature_collision) {
+        if ($seafeature->collisionOccurred) {
             return $this->collisionPenaltyState();
         }
         return $this->postCollisionFireState() ?? "collisionResolved";

@@ -122,8 +122,7 @@ trait BootyAndShipwrecks
     {
         $return_state = (int) $this->getGameStateValue("booty_discard_return_state");
         // A hold can overflow by more than one, so keep asking until it fits.
-        return $this->bootyOverflowState($return_state)
-            ?? ($return_state === STATE_TREASURE_SEEKER_ADJUST ? $this->startTreasureSeekerAdjust() : $return_state);
+        return $this->bootyOverflowState($return_state) ?? $return_state;
     }
 
     /** Zombie/timeout fallback: drop the least valuable token so the game can continue. */
@@ -158,20 +157,47 @@ trait BootyAndShipwrecks
             return ["shipwreck_event" => null, "booty_card" => null];
         }
         $shipwreck = $shipwrecks[0];
+        // Off the board until the turn's card, sea features and collisions have all played out:
+        // placeSalvagedShipwrecks() puts it back, so nothing before then can sail onto it again.
         $this->seaboard->removeObject($x, $y, "shipwreck", $shipwreck["arg"]);
-        $new_position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
-        $this->mydump("collectShipwrecksAtPlayer new_position", $new_position);
-        $this->placeShipwreck($shipwreck["arg"], $new_position["x"], $new_position["y"]);
+        $salvaged = $this->bga->globals->get("salvaged_shipwrecks", []);
+        $salvaged[] = (string) $shipwreck["arg"];
+        $this->bga->globals->set("salvaged_shipwrecks", $salvaged);
         $event = [
             "shipwreck_arg" => $shipwreck["arg"],
             "old_x" => $x,
             "old_y" => $y,
-            "new_x" => $new_position["x"],
-            "new_y" => $new_position["y"],
         ];
         $booty_card = $this->drawBootyToken($player_id);
         $this->mydump("collectShipwrecksAtPlayer result", ["event" => $event, "booty_card" => $booty_card]);
         return ["shipwreck_event" => $event, "booty_card" => $booty_card];
+    }
+
+    /**
+     * Place again every shipwreck salvaged this turn, in the order they were salvaged, and tell the
+     * clients. Returns the placements, for the Treasure Seeker.
+     */
+    function placeSalvagedShipwrecks(): array
+    {
+        $placed = [];
+        foreach ($this->bga->globals->get("salvaged_shipwrecks", []) as $arg) {
+            $position = $this->findEmptyBoardPosition($this->shipwreckPlacementBlockingTypes());
+            $this->placeShipwreck($arg, $position["x"], $position["y"]);
+            $placed[] = ["shipwreck_arg" => $arg, "new_x" => $position["x"], "new_y" => $position["y"]];
+        }
+        $this->bga->globals->delete("salvaged_shipwrecks");
+        if ($placed !== []) {
+            $this->bga->notify->all("shipwrecksPlaced", "", ["shipwreck_events" => $placed]);
+        }
+        return $placed;
+    }
+
+    /** Salvaged wrecks must be back on the board before another card is played. */
+    function assertNoSalvagedShipwrecksPending(): void
+    {
+        if ($this->bga->globals->get("salvaged_shipwrecks", []) !== []) {
+            throw new \Bga\GameFramework\SystemException("A card is played before the salvaged shipwrecks were placed again");
+        }
     }
 
     /** Number of booty tokens a player may keep in their hold. */
@@ -240,34 +266,44 @@ trait BootyAndShipwrecks
         ];
     }
 
-    function tryBeginTreasureSeekerShipwreckAdjust(string $shipwreck_arg, int $x, int $y, int $resume): bool
+    /**
+     * "Whenever a Shipwreck token is placed, you may adjust its location": queue every placement in
+     * $shipwreck_events for the Treasure Seeker. False when there is none to offer.
+     */
+    function tryBeginTreasureSeekerShipwreckAdjust(array $shipwreck_events): bool
     {
-        $treasure_seeker_id = $this->getTreasureSeekerPlayerId();
-        if ($treasure_seeker_id === null) {
+        if ($this->getTreasureSeekerPlayerId() === null) {
             return false;
         }
-
-        $valid_positions = $this->getValidTreasureSeekerShipwreckPositions($x, $y);
-        if (empty($valid_positions)) {
+        $this->bga->globals->set("treasure_seeker_adjust_queue", $shipwreck_events);
+        if (!$this->nextTreasureSeekerAdjust()) {
             return false;
         }
-
-        $this->setGameStateValue("pending_shipwreck_arg", (int) $shipwreck_arg);
-        $this->setGameStateValue("pending_shipwreck_x", $x);
-        $this->setGameStateValue("pending_shipwreck_y", $y);
-        $this->setGameStateValue("pending_treasure_seeker_resume", $resume);
         $this->setGameStateValue("pending_treasure_seeker_player", (int) $this->getActivePlayerId());
         return true;
     }
 
     /**
-     * The state after tryBeginTreasureSeekerShipwreckAdjust. The player who picked up the booty
-     * settles a full hold first, while it is still their turn; then the Treasure Seeker moves the
-     * new shipwreck.
+     * Make the next queued placement the pending one, skipping any with no space to move to: an
+     * earlier adjustment can fill one.
      */
-    function treasureSeekerAdjustState(): int
+    private function nextTreasureSeekerAdjust(): bool
     {
-        return $this->bootyOverflowState(STATE_TREASURE_SEEKER_ADJUST) ?? $this->startTreasureSeekerAdjust();
+        $queue = $this->bga->globals->get("treasure_seeker_adjust_queue", []);
+        while ($queue !== []) {
+            $event = array_shift($queue);
+            $x = (int) $event["new_x"];
+            $y = (int) $event["new_y"];
+            if ($this->getValidTreasureSeekerShipwreckPositions($x, $y) !== []) {
+                $this->bga->globals->set("treasure_seeker_adjust_queue", $queue);
+                $this->setGameStateValue("pending_shipwreck_arg", (int) $event["shipwreck_arg"]);
+                $this->setGameStateValue("pending_shipwreck_x", $x);
+                $this->setGameStateValue("pending_shipwreck_y", $y);
+                return true;
+            }
+        }
+        $this->bga->globals->delete("treasure_seeker_adjust_queue");
+        return false;
     }
 
     private function startTreasureSeekerAdjust(): int
@@ -278,45 +314,19 @@ trait BootyAndShipwrecks
         return STATE_TREASURE_SEEKER_ADJUST;
     }
 
-    private function maybeDeferSeaPhaseForTreasureSeeker(?array $shipwreck_event, bool $collision_pending): bool
+    /** Back to the player whose turn placed the shipwrecks, once every placement is settled. */
+    private function completeTreasureSeekerAdjust(): int
     {
-        if ($shipwreck_event === null) {
-            return false;
+        if ($this->nextTreasureSeekerAdjust()) {
+            return STATE_TREASURE_SEEKER_ADJUST; // the Treasure Seeker stays active for the next one
         }
-
-        $resume = $collision_pending
-            ? self::TREASURE_SEEKER_RESUME_COLLISION
-            : self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE;
-
-        return $this->tryBeginTreasureSeekerShipwreckAdjust(
-            (string) $shipwreck_event["shipwreck_arg"],
-            (int) $shipwreck_event["new_x"],
-            (int) $shipwreck_event["new_y"],
-            $resume,
-        );
-    }
-
-    private function completeTreasureSeekerAdjust(): mixed
-    {
-        $resume = (int) $this->getGameStateValue("pending_treasure_seeker_resume");
         $this->gamestate->changeActivePlayer((int) $this->getGameStateValue("pending_treasure_seeker_player"));
         $this->giveExtraTime((int) $this->getGameStateValue("pending_treasure_seeker_player"));
         $this->setGameStateValue("pending_treasure_seeker_player", 0);
         $this->setGameStateValue("pending_shipwreck_arg", 0);
         $this->setGameStateValue("pending_shipwreck_x", 0);
         $this->setGameStateValue("pending_shipwreck_y", 0);
-        $this->setGameStateValue("pending_treasure_seeker_resume", 0);
-
-        switch ($resume) {
-            case self::TREASURE_SEEKER_RESUME_SEA_TURN_DONE:
-                return STATE_NEXT_PLAYER_SEA_PHASE;
-            case self::TREASURE_SEEKER_RESUME_COLLISION_RESOLVED:
-                return $this->postCollisionFireState() ?? STATE_NEXT_PLAYER_SEA_PHASE;
-            case self::TREASURE_SEEKER_RESUME_COLLISION:
-                return $this->collisionPenaltyState();
-            default:
-                throw new \Bga\GameFramework\SystemException("Unknown treasure seeker resume value: $resume");
-        }
+        return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     private function getShipwrecksOnBoard(): array

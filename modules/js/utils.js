@@ -680,6 +680,11 @@ define([
       console.groupEnd();
     },
 
+    removeShipwreck: function (arg) {
+      domConstruct.destroy(`shipwreck_${arg}`);
+      this.seaboard = this.seaboard.filter((entry) => !(entry.type === "shipwreck" && entry.arg == arg));
+    },
+
     applyShipwreckEvents: function (events) {
       if (!events || !events.length) {
         return;

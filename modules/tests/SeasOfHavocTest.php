@@ -224,6 +224,7 @@ if (!class_exists("MockBGA")) {
             $this->playerScoreAux = new \Bga\GameFramework\Components\Counters\StubPlayerCounter();
             $this->playerStats = new \Bga\GameFramework\PlayerStats();
             $this->tableStats = new \Bga\GameFramework\TableStats();
+            $this->globals = new \Bga\GameFramework\Db\Globals();
             $this->tableOptions = new class extends \Bga\GameFramework\TableOptions {
                 public array $values = [];
                 public function __construct() {} // the stub wants a Table to read options from; $values replaces it
@@ -278,22 +279,25 @@ final class SeasOfHavocTest extends TestCase
         $this->assertSame(100, $game->getGameProgression());
     }
 
-    public function testCardActionOutcomeAbsorbAddsCostsAndKeepsFirstPickup(): void
+    /** A card that moves twice can salvage a wreck, sail onto where it was placed again, and salvage it again. */
+    public function testCardActionOutcomeAbsorbAddsCostsAndKeepsEveryPickup(): void
     {
         $outcome = new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "move"]], ["sail" => 1]);
+        $outcome->addPickup(["shipwreck_event" => ["shipwreck_arg" => "a", "new_x" => 2], "booty_card" => ["id" => 6]]);
+        $outcome->addPickup(["shipwreck_event" => null, "booty_card" => null]);
         $outcome->absorb(
-            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "turn"]], ["sail" => 1], false, ["shipwreck_arg" => "a"]),
+            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "turn"]], ["sail" => 1]),
             ["cannonball" => 1],
         );
         $outcome->absorb(
-            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "collision"]], [], true, ["shipwreck_arg" => "b"], ["id" => 7]),
+            new \Bga\Games\SeasOfHavoc\CardActionOutcome([["type" => "collision"]], [], true, [["shipwreck_arg" => "a", "new_x" => 5]], [["id" => 7]]),
         );
 
         $this->assertSame([["type" => "move"], ["type" => "turn"], ["type" => "collision"]], $outcome->actionChain);
         $this->assertSame(["sail" => 2, "cannonball" => 1], $outcome->cost);
         $this->assertTrue($outcome->collisionOccurred);
-        $this->assertSame(["shipwreck_arg" => "a"], $outcome->shipwreckEvent);
-        $this->assertSame(["id" => 7], $outcome->bootyCard);
+        $this->assertSame([["shipwreck_arg" => "a", "new_x" => 2], ["shipwreck_arg" => "a", "new_x" => 5]], $outcome->shipwreckEvents);
+        $this->assertSame([["id" => 6], ["id" => 7]], $outcome->bootyCards);
     }
 
     // Resource calculation tests

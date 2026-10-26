@@ -135,9 +135,10 @@ final class BootyCapacityTest extends TestCase
         };
         $game->deck->add(100, 0, 'booty_player', 1);
         $game->deck->add(101, 1, 'booty_player', 1);
-        $this->assertSame(STATE_BOOTY_DISCARD, $game->treasureSeekerAdjustState(), 'the collector discards first');
-        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->actDiscardBootyToken(100));
-        $this->assertSame(2, (int) $game->gamestate->getActivePlayerId(), 'then the Treasure Seeker takes over');
+        $game->bga->globals->set('salvaged_shipwrecks', ['4']);
+        $this->assertSame(STATE_BOOTY_DISCARD, $game->stNextPlayerSeaPhase(), 'the collector discards first');
+        $this->assertSame(['4'], $game->bga->globals->get('salvaged_shipwrecks'), 'the shipwreck is not placed yet');
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $game->actDiscardBootyToken(100), 'then the turn carries on to place it');
     }
 
     public function testCannotDiscardATokenThePlayerDoesNotHold(): void

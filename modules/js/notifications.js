@@ -460,10 +460,12 @@ define([
       }
       console.log(anims);
       const applyShipwreckEvents = () => {
-        if (args.shipwreck_event) {
-          this.animateBootyTokenPickup(args.shipwreck_event, args.player_id);
-          this.applyShipwreckEvents([args.shipwreck_event]);
+        // Salvaged wrecks leave the board; shipwrecksPlaced puts them back once the turn has played out.
+        for (const event of args.salvaged_shipwrecks) {
+          this.animateBootyTokenPickup(event, args.player_id);
+          this.removeShipwreck(event.shipwreck_arg);
         }
+        this.refreshShipwreckPairs();
       };
       console.groupEnd();
       if (!anims.length) {
@@ -595,6 +597,11 @@ define([
       }
 
       this.cleanupDiscardCardSelection();
+    },
+
+    /** Shipwrecks salvaged this turn, placed again now that the card and its collisions have played out. */
+    notif_shipwrecksPlaced: function (args) {
+      this.applyShipwreckEvents(args.shipwreck_events);
     },
 
     /**
