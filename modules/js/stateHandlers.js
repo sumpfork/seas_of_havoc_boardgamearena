@@ -83,30 +83,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           break;
         }
 
-        case "cardFlag": {
-          if (this.isCurrentPlayerActive() && args.args.flag === "red") {
-            this.setupScrapCardSelection(args.args._private);
-          }
-          break;
-        }
-
-        case "scrapCard": {
-          if (this.isCurrentPlayerActive()) {
-            this.setupScrapCardSelection(args.args);
-          }
-          break;
-        }
-
-        case "rebelDiscard":
-        case "collisionDiscard": {
-          if (this.isCurrentPlayerActive()) {
-            this.setupDiscardCardSelection(args.args, stateName === "collisionDiscard"
-              ? _("Choose a card to discard (collision penalty)")
-              : _("Choose a card to discard (Rebel ability)"));
-          }
-          break;
-        }
-
         case "treasureSeekerAdjust": {
           this.setupTreasureSeekerAdjust(args.args);
           break;
@@ -141,7 +117,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
         return;
       }
       if (flag === "red") {
-        this.setupScrapCardSelection(args);
+        this.setClientState("client_extortionScrap", {
+          descriptionmyturn: _("Sea Phase: ${you} must choose a card to scrap (Red Shipwright's Flag)"),
+        });
         return;
       }
       this.bgaPerformAction("actExtortionUseFlag", { flag });
@@ -169,9 +147,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           this.cleanupTradingPostUi();
           break;
 
-        case "extortion":
-          this.cleanupScrapCardSelection();
-          break;
 
         case "captainCard":
           this.cleanupCaptainCardSelection();
@@ -180,12 +155,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
         case "cardFlag":
         case "scrapCard":
-          this.cleanupScrapCardSelection();
-          break;
-
+        case "client_extortionScrap":
         case "rebelDiscard":
         case "collisionDiscard":
-          this.cleanupDiscardCardSelection();
+          this.cleanupCardPick();
           break;
 
         case "treasureSeekerAdjust":
@@ -250,7 +223,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             break;
 
           case "cardFlag":
-            if (args.flag === "green") {
+            if (args.flag === "red") {
+              this.setupScrapCardSelection(args._private.available_cards);
+            } else if (args.flag === "green") {
               this.addResourceButtons((resource) => this.bgaPerformAction("actResolveCardFlag", { resource }));
             } else if (args.flag === "tan" || args.flag === "blue") {
               this.statusBar.addActionButton(args.flag === "tan" ? _("Draw a card") : _("Take another turn"), () => {
@@ -354,6 +329,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             this.clearUpgradeActivationButtons();
             if (args.pending_workshop) {
               this.statusBar.setTitle(_("Island Phase: ${you} must choose a ship upgrade to activate"));
+              // The server only occupies the slot once an upgrade is chosen; show the skiff meanwhile.
+              const number = args.pending_workshop.slot_number;
+              this.renderSkiffInSlot(document.getElementById(`skiff_slot_workshop_${number}`), "workshop", number, this.player_id, this.players, false);
               this.addUpgradeActivationButtons(args.pending_workshop.upgrades);
               break;
             }
@@ -511,6 +489,21 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             }, { color: "secondary" });
             break;
           }
+
+          case "scrapCard":
+            this.setupScrapCardSelection(args.available_cards, _("Don't scrap"),
+              () => this.bgaPerformAction("actSkipIslandScrap", {}));
+            break;
+
+          case "rebelDiscard":
+          case "collisionDiscard":
+            this.setupDiscardCardSelection(args.available_cards);
+            break;
+
+          case "client_extortionScrap":
+            this.setupScrapCardSelection(this._extortionArgs.available_cards, _("Back"),
+              () => this.restoreServerGameState());
+            break;
 
           case "client_extortionGreenResource": {
             this.addResourceButtons((resource) => this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource }));

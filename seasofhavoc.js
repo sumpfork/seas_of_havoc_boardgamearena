@@ -153,7 +153,9 @@ define([
     },
 
     updateHandSelectionMode: function () {
-      if (!this.playerHand) {
+      // A scrap/discard pick owns the hand until cleanupCardPick; onEnteringState can run after the
+      // onUpdateActionButtons that set it up.
+      if (!this.playerHand || this._cardPick) {
         return;
       }
       // Don't use checkAction() here — it returns false during state transitions
@@ -304,29 +306,6 @@ define([
       window.jstpl_hand_count = `<div class="soh_hand_count"><span></span><span></span><span></span><span id="handcount_p\${player_id}" class="soh_hand_count_number">0</span></div>`;
 
       window.jstpl_card_purchase_button = `<a id="\${id}" class="bgabutton bgabutton_blue soh_purchase_card_button" data-slotnumber="\${slotnumber}" data-cardid="\${cardid}">${_("Purchase Card")}</a>`;
-
-      window.jstpl_scrap_card_dialog = `<div id="scrap_card_dialog" class="soh_scrap_card_dialog">
-                          <h3>${_("Choose a card to scrap")}</h3>
-                          <div id="scrap_hand_group" class="soh_scrap_card_group">
-                              <h4>${_("Your hand")}</h4>
-                              <div id="scrap_card_selection_wrapper" class="soh_card_selection_wrapper"></div>
-                          </div>
-                          <div id="scrap_discard_group" class="soh_scrap_card_group">
-                              <h4>${_("Discard pile")}</h4>
-                              <div id="scrap_discard_selection_wrapper" class="soh_card_selection_wrapper"></div>
-                          </div>
-                          <div class="soh_scrap_dialog_buttons">
-                              <a href="#" id="cancel_scrap_button" class="bgabutton bgabutton_red">${_("Cancel")}</a>
-                          </div>
-                      </div>`;
-
-      window.jstpl_discard_card_dialog = `<div id="discard_card_dialog" class="soh_scrap_card_dialog">
-                          <h3>${_("Choose a card to discard")}</h3>
-                          <div id="discard_card_selection_wrapper" class="soh_card_selection_wrapper"></div>
-                          <div class="soh_discard_dialog_buttons">
-                              <a href="#" id="confirm_discard_button" class="bgabutton bgabutton_blue disabled">${_("Discard Card")}</a>
-                          </div>
-                      </div>`;
 
       window.jstpl_card_choices_row = `<div class="soh_card_choices_row"><span class="soh_card_choice_hint">${_("Choose one")}</span>\${card_choices}</div>`;
 
@@ -1100,6 +1079,10 @@ define([
     },
 
     onCardSelectedPlayerHand: function () {
+      if (this._cardPick) {
+        this._onCardPicked(this.playerHand);
+        return;
+      }
       if (this._rowing) {
         // The hand is picking rowing's two discards; the maneuver dialog is up while there are two.
         if (this.playerHand.getSelection().length === 2) {

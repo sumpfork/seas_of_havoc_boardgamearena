@@ -677,9 +677,6 @@ define([
           _("${count} choices remaining").replace("${count}", remaining);
     },
 
-    /**
-     * Set up scrap card selection dialog
-     */
     setupCaptainCardSelection: function (args) {
       this.cleanupCaptainCardSelection();
       const ability = args.ability;
@@ -754,143 +751,79 @@ define([
       domConstruct.destroy("captain_card_choices");
     },
 
-    setupScrapCardSelection: function (args) {
-      console.log("Setting up scrap card selection");
-      console.log(args);
+    /**
+     * Scrap a card from the hand or discard pile: hand cards are picked in the hand itself, the
+     * discard pile's spread out in its column in place of the pile. skipLabel/skip add a way out,
+     * if there is one.
+     */
+    setupScrapCardSelection: function (cards, skipLabel = null, skip = null) {
+      this._setupCardPick(cards, _("Scrap selected card"), (cardId) => this.confirmScrapCard(cardId));
+      if (skip) {
+        this.statusBar.addActionButton(skipLabel, skip, { color: "secondary" });
+      }
+    },
 
-      var overlay = document.createElement("div");
-      overlay.id = "card_dialog_overlay";
-      overlay.className = "soh_card_dialog_overlay";
-      document.body.appendChild(overlay);
-
-      var scrapDialog = this.format_block("jstpl_scrap_card_dialog", {});
-      document.body.insertAdjacentHTML("beforeend", scrapDialog);
-
-      // Hand and discard pile are shown as separate rows, so the player can see where each
-      // card comes from. One selection across both.
-      const makeStock = (wrapperId) => {
-        const stock = new BgaCards.ScrollableStock(this.cardsManager, $(wrapperId), {
-          gap: "16px",
-          center: true,
-          scrollStep: 160,
-          buttonGap: "4px",
-          scrollbarVisible: false,
-          leftButton: { html: "‹", classes: ["soh_card_dialog_scroll_btn"] },
-          rightButton: { html: "›", classes: ["soh_card_dialog_scroll_btn"] },
-        });
-        stock.setSelectionMode("single");
-        return stock;
-      };
-      this.scrapCardSelection = makeStock("scrap_card_selection_wrapper");
-      this.scrapDiscardSelection = makeStock("scrap_discard_selection_wrapper");
-
-      const inHand = (card) => card.location === "hand";
-      const handPreviews = this._addPreviewCards(this.scrapCardSelection, args.available_cards, inHand);
-      const discardPreviews = this._addPreviewCards(this.scrapDiscardSelection, args.available_cards, (card) => !inHand(card));
-      this.scrapPreviewCards = new Map([...handPreviews, ...discardPreviews]);
-      domStyle.set("scrap_hand_group", "display", handPreviews.size ? "" : "none");
-      domStyle.set("scrap_discard_group", "display", discardPreviews.size ? "" : "none");
-
-      this.scrapSelectedCardId = null;
-      const onSelect = (stock, other) => (selection) => {
-        if (selection.length > 0) {
-          other.unselectAll(true);
-          this.scrapSelectedCardId = this.scrapPreviewCards.get(Number(selection[0].id)).id;
-          if (!$("confirm_scrap_button")) {
-            domConstruct.create(
-              "a",
-              {
-                id: "confirm_scrap_button",
-                class: "bgabutton bgabutton_red",
-                innerHTML: _("Scrap Card"),
-                href: "#",
-              },
-              $("cancel_scrap_button"),
-              "before",
-            );
-            // Reads the selection when clicked: the player may change their mind after the
-            // button appears.
-            on($("confirm_scrap_button"), "click", (event) => {
-              event.preventDefault();
-              this.confirmScrapCard(this.scrapSelectedCardId);
-            });
-          }
-        } else if (other.getSelection().length === 0) {
-          this.scrapSelectedCardId = null;
-          if ($("confirm_scrap_button")) {
-            domConstruct.destroy("confirm_scrap_button");
-          }
-        }
-      };
-      this.scrapCardSelection.onSelectionChange = onSelect(this.scrapCardSelection, this.scrapDiscardSelection);
-      this.scrapDiscardSelection.onSelectionChange = onSelect(this.scrapDiscardSelection, this.scrapCardSelection);
-
-      on($("cancel_scrap_button"), "click", (event) => {
-        event.preventDefault();
-        if (this.checkAction("actSkipIslandScrap", true)) {
-          this.bgaPerformAction("actSkipIslandScrap", {});
-        } else if (this.checkAction("actSkipCardFlag", true)) {
-          this.bgaPerformAction("actSkipCardFlag", {});
-        }
-        this.cleanupScrapCardSelection();
-      });
+    /** Discard a card from the hand (Rebel ability, or the collision penalty), picked in the hand. */
+    setupDiscardCardSelection: function (cards) {
+      this._setupCardPick(cards, _("Discard selected card"), (cardId) => this.confirmDiscardCard(cardId));
     },
 
     /**
-     * Set up discard card selection dialog (Rebel ability)
+     * One card from `cards` (hand and discard pile ones) is selected, then sent with the status bar
+     * button. Picks in the hand land in onCardSelectedPlayerHand while this._cardPick is set.
+     * @private
      */
-    setupDiscardCardSelection: function (args, title) {
-      console.log("Setting up discard card selection");
-      console.log(args);
+    _setupCardPick: function (cards, label, send) {
+      this.cleanupCardPick();
+      cards = Object.values(cards);
+      const handCards = cards.filter((card) => card.location === "hand");
+      const pileCards = cards.filter((card) => card.location !== "hand");
+      const pick = { cardId: null, button: null, pileStock: null, pilePreviews: new Map() };
+      this._cardPick = pick;
 
-      var overlay = document.createElement("div");
-      overlay.id = "card_dialog_overlay";
-      overlay.className = "soh_card_dialog_overlay";
-      document.body.appendChild(overlay);
+      this.playerHand.unselectAll(true);
+      $("mycards").classList.add("soh_card_pick");
+      this.playerHand.setSelectionMode("single", handCards.map((card) => ({ id: card.id, type: card.type })));
 
-      var discardDialog = this.format_block("jstpl_discard_card_dialog", {});
-      document.body.insertAdjacentHTML("beforeend", discardDialog);
-      $("discard_card_dialog").querySelector("h3").innerHTML = title || _("Choose a card to discard (Rebel ability)");
+      if (pileCards.length) {
+        // Spread out in place of the pile, next to the hand, rather than showing it twice.
+        const panel = domConstruct.create("div", { id: "soh_pile_pick" }, "mydiscard_wrap");
+        $("mycards").classList.add("soh_picking_from_discard");
+        pick.pileStock = new BgaCards.LineStock(this.cardsManager, domConstruct.create("div", {}, panel));
+        pick.pileStock.setSelectionMode("single");
+        pick.pilePreviews = this._addPreviewCards(pick.pileStock, pileCards);
+        pick.pileStock.onSelectionChange = () => this._onCardPicked(pick.pileStock);
+      }
 
-      this.discardCardSelection = new BgaCards.ScrollableStock(this.cardsManager, $("discard_card_selection_wrapper"), {
-        gap: "16px",
-        center: true,
-        scrollStep: 160,
-        buttonGap: "4px",
-        scrollbarVisible: false,
-        leftButton: { html: "‹", classes: ["soh_card_dialog_scroll_btn"] },
-        rightButton: { html: "›", classes: ["soh_card_dialog_scroll_btn"] },
-      });
+      // Reads the pick when clicked: the player may change their mind after selecting.
+      pick.button = this.statusBar.addActionButton(label, () => send(pick.cardId), { disabled: true });
+    },
 
-      this.discardCardSelection.setSelectionMode("single");
+    /** A card was selected or unselected in the hand or the discard row. @private */
+    _onCardPicked: function (stock) {
+      const pick = this._cardPick;
+      const other = stock === this.playerHand ? pick.pileStock : this.playerHand;
+      const selected = stock.getSelection()[0];
+      if (selected) {
+        other?.unselectAll(true);
+        pick.cardId = stock === this.playerHand ? selected.id : pick.pilePreviews.get(Number(selected.id)).id;
+      } else if (!other?.getSelection().length) {
+        pick.cardId = null;
+      }
+      pick.button.disabled = pick.cardId === null;
+      pick.button.classList.toggle("disabled", pick.cardId === null);
+    },
 
-      this.discardPreviewCards = this._addPreviewCards(
-        this.discardCardSelection,
-        args.available_cards,
-        card => card.location === "hand",
-      );
-
-      domClass.add("confirm_discard_button", "disabled");
-      this.rebelDiscardSelectedCardId = null;
-
-      this.discardCardSelection.onSelectionChange = (selection, lastChange) => {
-        if (selection.length > 0) {
-          var selectedCard = this.discardPreviewCards.get(Number(selection[0].id));
-          this.rebelDiscardSelectedCardId = selectedCard.id;
-          console.log("Card selected for discard:", selectedCard);
-          domClass.remove("confirm_discard_button", "disabled");
-        } else {
-          this.rebelDiscardSelectedCardId = null;
-          domClass.add("confirm_discard_button", "disabled");
-        }
-      };
-
-      on($("confirm_discard_button"), "click", (event) => {
-        event.preventDefault();
-        if (this.rebelDiscardSelectedCardId != null) {
-          this.confirmDiscardCard(this.rebelDiscardSelectedCardId);
-        }
-      });
+    cleanupCardPick: function () {
+      if (!this._cardPick) {
+        return;
+      }
+      this._destroySelectionStock(this._cardPick.pileStock);
+      domConstruct.destroy("soh_pile_pick");
+      $("mycards").classList.remove("soh_card_pick", "soh_picking_from_discard");
+      this._cardPick = null;
+      this.playerHand.unselectAll(true);
+      this.updateHandSelectionMode();
     },
 
     /**
@@ -1016,42 +949,6 @@ define([
         this.playerHand.removeCard({ id: card.id });
       } else if (originalLocation === "player_discard") {
         this.playerDiscard.removeCard({ id: card.id });
-      }
-    },
-
-    cleanupScrapCardSelection: function () {
-      console.log("Cleaning up scrap card selection");
-
-      this._destroySelectionStock(this.scrapCardSelection);
-      this._destroySelectionStock(this.scrapDiscardSelection);
-      this.scrapCardSelection = null;
-      this.scrapDiscardSelection = null;
-      this.scrapPreviewCards = null;
-      this.scrapSelectedCardId = null;
-
-      if ($("scrap_card_dialog")) {
-        domConstruct.destroy("scrap_card_dialog");
-      }
-      if ($("card_dialog_overlay")) {
-        domConstruct.destroy("card_dialog_overlay");
-      }
-    },
-
-    /**
-     * Clean up discard card selection dialog
-     */
-    cleanupDiscardCardSelection: function () {
-      console.log("Cleaning up discard card selection");
-
-      this._destroySelectionStock(this.discardCardSelection);
-      this.discardCardSelection = null;
-      this.discardPreviewCards = null;
-
-      if ($("discard_card_dialog")) {
-        domConstruct.destroy("discard_card_dialog");
-      }
-      if ($("card_dialog_overlay")) {
-        domConstruct.destroy("card_dialog_overlay");
       }
     },
 

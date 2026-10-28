@@ -121,7 +121,7 @@ const discardGame = {
   player_id: '1',
   playerDiscard: { addCard: card => discarded.push(card) },
   _removeCardFromSelectionOrPile() { removed++; },
-  cleanupDiscardCardSelection() {},
+  cleanupCardPick() {},
 };
 notifications.notif_cardsDiscarded.call(discardGame, { player_id: '2', cards: [{ id: 47, type: 12 }] });
 assert.equal(discarded.length, 0, "Another player's discard must not enter My Discard");
@@ -309,9 +309,14 @@ dialogs.confirmScrapCard.call({
   bgaPerformAction(name) { scrapAction = name; },
 }, 30);
 assert.equal(scrapAction, "actScrapCard");
+const privateScraps = { available_cards: [{ id: 42, type: 19 }] };
+let shownScraps;
 for (const flag of ["green", "tan", "blue", "red"]) {
   buttons.length = 0;
-  handlers.onUpdateActionButtons.call(iconGame, "cardFlag", { flag });
+  handlers.onUpdateActionButtons.call(
+    { ...iconGame, setupScrapCardSelection: cards => { shownScraps = cards; } },
+    "cardFlag", { flag, _private: privateScraps },
+  );
   assert.equal(buttons.length, flag === "green" ? 4 : flag === "red" ? 1 : 2);
   if (flag === "green") {
     assert.match(buttons[0].label, /aria-label="sail"/);
@@ -331,16 +336,7 @@ dialogs.confirmScrapCard.call({
 }, 42);
 assert.equal(action.name, "actResolveCardFlag");
 assert.equal(action.args.card_id, 42);
-const privateScraps = { available_cards: [{ id: 42, type: 19 }] };
-let shownScraps;
-handlers.onEnteringState.call({
-  updateHandSelectionMode() {},
-  highlightActivePlayerShips() {},
-  isCurrentPlayerActive: () => true,
-  setupScrapCardSelection: args => { shownScraps = args; },
-  updateSkiffSlotPlaceability() {},
-}, "cardFlag", { args: { flag: "red", _private: privateScraps } });
-assert.equal(shownScraps, privateScraps, "Red flag must use only the active player's private scrap choices");
+assert.equal(shownScraps, privateScraps.available_cards, "Red flag must use only the active player's private scrap choices");
 // The Corsair's occupied-slot highlight only lasts while the Corsair is the one placing a skiff.
 {
   const classList = () => {

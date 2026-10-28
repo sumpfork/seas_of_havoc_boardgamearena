@@ -937,6 +937,20 @@ a.disabled {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr) 180px;
 }
+/* The discard pile spread out to pick a card to scrap from, under the hand. */
+/* Scrapping: the discard pile is spread out in its own column (see _setupCardPick). */
+#mycards.soh_picking_from_discard #mydiscard {
+  display: none;
+}
+@media (min-width: 1001px) {
+  #mycards.soh_picking_from_discard {
+    grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+/* The hand stock drops the selectable outline; while picking, match the discard row's. */
+#mycards.soh_card_pick #myhand .bga-cards_selectable-card {
+  outline-width: 5px;
+}
 #myship,
 #soh_other_boards {
   display: flex;
@@ -1031,14 +1045,12 @@ a.disabled {
   overflow-x: auto;
 }
 
-.soh_scrap_dialog_buttons,
-.soh_discard_dialog_buttons {
+.soh_scrap_dialog_buttons {
   text-align: center;
   margin-top: 18px;
 }
 
-.soh_scrap_dialog_buttons .bgabutton,
-.soh_discard_dialog_buttons .bgabutton {
+.soh_scrap_dialog_buttons .bgabutton {
   margin: 0 10px;
 }
 
@@ -1450,12 +1462,6 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 }
 
 /* Scrap dialog: the hand and the discard pile as separate, labelled rows. */
-.soh_scrap_card_group h4 {
-  margin: 12px 0 4px;
-  text-align: left;
-  font-size: 14px;
-  color: #6b5210;
-}
 
 #soh_score_sheet_popup {
   position: fixed;

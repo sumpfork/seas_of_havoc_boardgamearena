@@ -233,7 +233,13 @@ define([
      * Workshop: an "Activate" button under each upgrade the player can afford (the server only
      * offers those), with the upgrade cards scrolled into view.
      */
-    addUpgradeActivationButtons: function (upgrades) {
+    addUpgradeActivationButtons: async function (upgrades) {
+      // On a page load the cards are still animating into their slots, inside a wrapper the
+      // animation removes when it ends - taking any button placed next to the card with it.
+      await this.upgradeCardsPlaced;
+      if (!this.gamedatas.gamestate.args?.pending_workshop) {
+        return; // chosen or gone while waiting
+      }
       for (const upgrade of upgrades) {
         const card = this.nonPlayableCardsManager.getCardElement({ id: `upgrade-${upgrade.upgrade_key}` });
         domStyle.set(card.parentElement, "position", "relative");

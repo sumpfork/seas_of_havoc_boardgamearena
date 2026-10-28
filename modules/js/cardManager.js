@@ -186,6 +186,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       }
 
       // Add player's ship upgrade cards
+      const upgradesPlaced = [];
       if (gamedatas.player_ship_upgrades && gamedatas.player_ship_upgrades.length > 0) {
         gamedatas.player_ship_upgrades.forEach((upgrade, index) => {
           const upgradeCard = {
@@ -197,7 +198,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
 
           console.log(`Adding upgrade card ${index + 1}:`, upgradeCard);
           try {
-            this.upgradesStock.addCard(upgradeCard);
+            upgradesPlaced.push(this.upgradesStock.addCard(upgradeCard));
             console.log(`Upgrade card ${index + 1} added successfully`);
 
             this.updateUpgradeCardVisual(upgradeCard);
@@ -206,6 +207,8 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
           }
         });
       }
+      // Resolves once the cards have animated into their slots (see addUpgradeActivationButtons).
+      this.upgradeCardsPlaced = Promise.all(upgradesPlaced);
     },
 
     /**

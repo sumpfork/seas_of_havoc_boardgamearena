@@ -572,7 +572,7 @@ define([
         });
       }
 
-      this.cleanupScrapCardSelection();
+      this.cleanupCardPick();
     },
 
     /**
@@ -596,7 +596,7 @@ define([
         });
       }
 
-      this.cleanupDiscardCardSelection();
+      this.cleanupCardPick();
     },
 
     /** Shipwrecks salvaged this turn, placed again now that the card and its collisions have played out. */
