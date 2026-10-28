@@ -466,6 +466,10 @@ trait CardPlay
         // Damage card, "Repair: When you would play this card, scrap it instead." The repair is
         // the whole play - no maneuver, no flag action, and the card leaves the deck for good.
         if (in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true)) {
+            $this->bga->notify->all("log", clienttranslate('${player_name} has played a card ${card_image}'), [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "card_image" => $card_type,
+            ]);
             $this->scrapCardAndRefund($card_id, $player_id);
             return "seaTurnDone";
         }

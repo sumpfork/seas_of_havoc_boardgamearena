@@ -341,7 +341,10 @@ trait Decks
         ];
 
         // Notify players
-        $this->bga->notify->all("cardScrapped", clienttranslate('${player_name} scrapped a card'), [
+        $message = (int) $card["type"] === $this->damageCardType()
+            ? clienttranslate('${player_name} scrapped a damage card')
+            : clienttranslate('${player_name} scrapped a card');
+        $this->bga->notify->all("cardScrapped", $message, [
             "player_name" => $this->getPlayerNameById($player_id),
             "player_id" => intval($player_id),
             "card" => $card_for_notification,

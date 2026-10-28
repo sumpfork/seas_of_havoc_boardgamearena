@@ -741,6 +741,11 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   row-gap: 10px;
   align-items: start;
 }
+/* Phone layout: BGA's chat bar (history and chat bubbles, #chatbar) floats over the bottom ~63px,
+   above this dialog, so sit clear of it. */
+body.mobile_version #card_display_dialog {
+  bottom: 70px;
+}
 #card_display {
   grid-area: card;
 }
