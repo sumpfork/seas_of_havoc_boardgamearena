@@ -70,7 +70,7 @@ define([
       this.playerHand.setSelectionMode("multiple");
       this.statusBar.setTitle(_("Sea Phase: ${you} must select 2 cards to discard for rowing"));
       this.statusBar.removeActionButtons();
-      this.statusBar.addActionButton(_("Cancel"), () => this.cancelRowing(), { color: "secondary" });
+      this.statusBar.addActionButton(_("Cancel"), () => this.cancelRowing(), { color: "alert" });
     },
 
     cancelRowing: function () {
@@ -733,7 +733,7 @@ define([
             title.textContent = _("Ready: keep the first card and return the others in the selected order.");
             button(_("Confirm"), () => send({ order: order }));
           }
-          button(_("Start over"), () => { this.statusBar.removeActionButtons(); this.setupCaptainCardSelection(args); }, "secondary");
+          button(_("Start over"), () => { this.statusBar.removeActionButtons(); this.setupCaptainCardSelection(args); }, "alert");
         } else {
           this.showCardPlayDialog(this.playable_cards[card.type], Number(card.id), Number(card.id));
         }
@@ -754,12 +754,12 @@ define([
     /**
      * Scrap a card from the hand or discard pile: hand cards are picked in the hand itself, the
      * discard pile's spread out in its column in place of the pile. skipLabel/skip add a way out,
-     * if there is one.
+     * if there is one: a skip (secondary) or, with skipColor "alert", a way back.
      */
-    setupScrapCardSelection: function (cards, skipLabel = null, skip = null) {
+    setupScrapCardSelection: function (cards, skipLabel = null, skip = null, skipColor = "secondary") {
       this._setupCardPick(cards, _("Scrap selected card"), (cardId) => this.confirmScrapCard(cardId));
       if (skip) {
-        this.statusBar.addActionButton(skipLabel, skip, { color: "secondary" });
+        this.statusBar.addActionButton(skipLabel, skip, { color: skipColor });
       }
     },
 
@@ -871,10 +871,7 @@ define([
       const wrapper = domConstruct.create(
         "div", { id: "pile_view_wrapper", className: "soh_card_selection_wrapper" }, dialog,
       );
-      const buttons = domConstruct.create("div", { className: "soh_scrap_dialog_buttons" }, dialog);
-      const close = domConstruct.create(
-        "a", { href: "#", className: "bgabutton bgabutton_gray", textContent: _("Close") }, buttons,
-      );
+      dialog.append(this.closeButton(() => this.cleanupPileDialog()));
 
       this.pileViewStock = new BgaCards.ScrollableStock(this.cardsManager, wrapper, {
         gap: "16px",
@@ -887,10 +884,6 @@ define([
       });
       this._addPreviewCards(this.pileViewStock, cards);
 
-      on(close, "click", (event) => {
-        event.preventDefault();
-        this.cleanupPileDialog();
-      });
       on(overlay, "click", () => this.cleanupPileDialog());
     },
 

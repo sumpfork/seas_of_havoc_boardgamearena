@@ -279,7 +279,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               this.statusBar.addActionButton(
                 _("Discard") + " " + node.outerHTML,
                 () => { this.bgaPerformAction("actDiscardBootyToken", { card_id: token.id }); },
-                { color: "secondary" },
               );
               this.addBootyTokenTooltip(document.getElementById(node.id), token.image_id);
             });
@@ -369,7 +368,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             console.log("Adding End Purchase Phase button for state: " + stateName);
             this.statusBar.addActionButton(_("End Purchase Phase"), this.onCompletePurchasesClicked.bind(this));
             this.statusBar.addActionButton(_("Restart Purchases"), this.onRestartPurchasesClicked.bind(this), {
-              color: "secondary",
+              color: "alert",
             });
             break;
 
@@ -382,10 +381,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                 if (combo.cb > 0) parts.push(combo.cb + " " + self.resourceIcon("doubloon") + " → " + combo.cb + " " + self.resourceIcon("cannonball"));
                 if (combo.sail > 0) parts.push(combo.sail + " " + self.resourceIcon("doubloon") + " → " + combo.sail + " " + self.resourceIcon("sail"));
                 var label = parts.length > 0 ? parts.join(", ") : _("No substitution");
-                var isNone = combo.cb === 0 && combo.sail === 0;
                 self.statusBar.addActionButton(label, function () {
                   self.onMerchantSubstituteChosen(combo.cb, combo.sail);
-                }, { color: isNone ? "secondary" : "primary" });
+                }, { color: parts.length > 0 ? "primary" : "secondary" });
               });
               this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
                 color: "alert",
@@ -394,33 +392,24 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             break;
 
           case "client_bootyPurchaseConfirm":
-            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPurchaseYes.bind(this), {
-              });
-            this.statusBar.addActionButton(_("No thanks"), this.onBootyPurchaseNo.bind(this), {
-              color: "secondary",
-            });
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPurchaseYes.bind(this));
+            this.statusBar.addActionButton(_("No thanks"), this.onBootyPurchaseNo.bind(this), { color: "secondary" });
             this.statusBar.addActionButton(_("Cancel"), this.onBootyPurchaseCancel.bind(this), {
               color: "alert",
             });
             break;
 
           case "client_bootyPlayConfirm":
-            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPlayYes.bind(this), {
-              });
-            this.statusBar.addActionButton(_("No thanks"), this.onBootyPlayNo.bind(this), {
-              color: "secondary",
-            });
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onBootyPlayYes.bind(this));
+            this.statusBar.addActionButton(_("No thanks"), this.onBootyPlayNo.bind(this), { color: "secondary" });
             this.statusBar.addActionButton(_("Cancel"), this.onBootyPlayCancel.bind(this), {
               color: "alert",
             });
             break;
 
           case "client_tradingPostBootyChoice":
-            this.statusBar.addActionButton(_("Yes, use booty token"), this.onTradingPostBootyYes.bind(this), {
-              });
-            this.statusBar.addActionButton(_("No, trade resources"), this.onTradingPostBootyNo.bind(this), {
-              color: "secondary",
-            });
+            this.statusBar.addActionButton(_("Yes, use booty token"), this.onTradingPostBootyYes.bind(this));
+            this.statusBar.addActionButton(_("No, trade resources"), this.onTradingPostBootyNo.bind(this), { color: "secondary" });
             break;
 
           case "client_tradingPostSpend":
@@ -436,18 +425,18 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               "<div class='soh_resource soh_pivot_left' role='img' aria-label='" + _("Pivot left") + "' data-pivot='pivot left'></div>",
               this.onPivotButtonClicked.bind(this),
               { actions: [{ action: "pivot left" }], decisions: [], ship: args.ship },
-              { color: "secondary", classes: "soh_pivot_button" },
+              { classes: "soh_pivot_button" },
             );
             this.statusBar.addActionButton(
               "<div class='soh_resource soh_nope' role='img' aria-label='" + _("Do not pivot") + "' data-pivot='no pivot'></div>",
               this.onPivotButtonClicked.bind(this),
-              { color: "secondary", classes: "soh_pivot_button" },
+              { classes: "soh_pivot_button" },
             );
             this.addPreviewedActionButton(
               "<div class='soh_resource soh_pivot_right' role='img' aria-label='" + _("Pivot right") + "' data-pivot='pivot right'></div>",
               this.onPivotButtonClicked.bind(this),
               { actions: [{ action: "pivot right" }], decisions: [], ship: args.ship },
-              { color: "secondary", classes: "soh_pivot_button" },
+              { classes: "soh_pivot_button" },
             );
             break;
 
@@ -502,13 +491,13 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "client_extortionScrap":
             this.setupScrapCardSelection(this._extortionArgs.available_cards, _("Back"),
-              () => this.restoreServerGameState());
+              () => this.restoreServerGameState(), "alert");
             break;
 
           case "client_extortionGreenResource": {
             this.addResourceButtons((resource) => this.bgaPerformAction("actExtortionUseFlag", { flag: "green", resource }));
             this.statusBar.addActionButton(_("Back"), () => { this.restoreServerGameState(); }, {
-              color: "secondary",
+              color: "alert",
             });
             break;
           }
@@ -526,14 +515,12 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                   function () {
                     barterSelf.payWithOptionalBooty({ [res]: 1 }, "actBarterExchange", { resource: res, direction: "resource_to_infamy" });
                   },
-                  { color: "secondary" },
                 );
               }
               if (infamy >= amount) {
                 barterSelf.statusBar.addActionButton(
                   amount + " " + barterSelf.resourceIcon("infamy") + " → 1 " + barterSelf.resourceIcon(res),
                   function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
-                  { color: "secondary" },
                 );
               }
             });
@@ -556,7 +543,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                 this.statusBar.addActionButton(
                   _("Gain") + " " + this.resourceIcon(first) + this.resourceIcon(second),
                   () => this.bgaPerformAction("actTimelyTradingGainResources", { first, second }),
-                  { color: "secondary" },
                 ),
               ),
             );
@@ -586,7 +572,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
                 this.statusBar.addActionButton(
                   _("Booty token") + owner,
                   () => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item: "booty_token" }),
-                  { color: "secondary" },
                 );
               }
             });
@@ -644,8 +629,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       // Picking a direction only selects it; Confirm (which counts down and fires on its own)
       // sends it, so a misclick can still be changed.
       for (const b of document.querySelectorAll("#generalactions .soh_pivot_button")) {
-        b.classList.toggle("bgabutton_blue", b === button);
-        b.classList.toggle("bgabutton_gray", b !== button);
+        b.classList.toggle("soh_pivot_selected", b === button);
       }
       document.getElementById("soh_pivot_confirm")?.remove();
       document.getElementById("soh_pivot_cancel")?.remove();
@@ -656,7 +640,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       // Back to the three directions with nothing selected and no countdown running.
       this.statusBar.addActionButton(_("Cancel"), () => this.restoreServerGameState(), {
         id: "soh_pivot_cancel",
-        color: "secondary",
+        color: "alert",
       });
     },
   };

@@ -499,12 +499,12 @@ define([
       }
       this.statusBar.removeActionButtons();
       this.statusBar.setTitle(_("You can still afford cards you have not purchased. They will not be bought."));
-      this.statusBar.addActionButton(_("End Purchase Phase"), submit, { color: "alert", autoclick: true });
+      this.statusBar.addActionButton(_("End Purchase Phase"), submit, { autoclick: true });
       this.statusBar.addActionButton(_("Keep purchasing"), () => {
         this._restoringFromBootyConfirm = true;
         this.restoreServerGameState();
         this._restoringFromBootyConfirm = false;
-      }, { color: "secondary" });
+      }, { color: "alert" });
     },
 
     _submitCompletePurchases: function (cardsPayload) {

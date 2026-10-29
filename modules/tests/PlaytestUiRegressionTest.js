@@ -146,10 +146,11 @@ handlers.onUpdateActionButtons.call({
   },
   bgaPerformAction: (name, args) => { action = { name, args }; },
 }, "boardingParty", { targets: [{ player_id: "2389208", resources: { sail: 1, cannonball: 0 }, booty_token_count: 1 }] });
-// One target: the title names it and the resources are the usual grey icon-only buttons.
+// One target: the title names it and the resources are the usual icon-only choice buttons, blue
+// (the default): BGA's guidelines keep grey for unavailable actions.
 assert.equal(title.args.player, "pgorniak4");
 assert.equal(buttons[0].label, utils.resourceIcon("sail"), "Only resources the target holds are offered");
-assert.equal(buttons[0].options.color, "secondary");
+assert.equal(buttons[0].options?.color, undefined);
 assert.equal(buttons[1].label, "Booty token");
 buttons[0].callback();
 assert.equal(action.name, "actBoardingPartySteal");

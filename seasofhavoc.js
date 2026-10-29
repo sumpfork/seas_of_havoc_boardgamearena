@@ -409,6 +409,7 @@ define([
         entryLabelHeight: 28,
         scores: animate ? undefined : scores,
       });
+      node.append(this.closeButton(dismiss));
       if (!animate) return Promise.resolve();
       // Live game: hold the notification queue until the sheet is closed, so BGA's end-of-game
       // screen only takes over afterwards. Replays (animations off) don't wait.
@@ -1071,7 +1072,7 @@ define([
       this.statusBar.addActionButton(_("Cancel"), () => {
         this.clearPendingSkiffSlot();
         this.restoreServerGameState();
-      }, { color: "secondary" });
+      }, { color: "alert" });
     },
 
     clearPendingSkiffSlot: function () {

@@ -50,12 +50,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         const dialog = document.createElement('dialog');
         dialog.className = 'soh_card-zoom-dialog';
         dialog.setAttribute('aria-label', _('Card preview'));
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'soh_card-zoom-close';
-        close.textContent = '\u00d7';
-        close.setAttribute('aria-label', _('Close'));
-        close.addEventListener('click', () => dialog.close());
+        const close = this.closeButton(() => dialog.close());
         const scale = Math.min(3, (window.innerWidth - 64) / 144, (window.innerHeight - 88) / 198);
         dialog.append(this.cardArtCopy(face, scale), close);
         dialog.addEventListener('click', event => {

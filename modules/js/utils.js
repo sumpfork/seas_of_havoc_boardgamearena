@@ -45,9 +45,7 @@ define([
       ["sail", "cannonball", "doubloon"]
         .filter((resource) => offered.includes(resource))
         .forEach((resource) =>
-          this.statusBar.addActionButton(this.resourceIcon(resource) + suffix, () => onPick(resource), {
-            color: "secondary",
-          }),
+          this.statusBar.addActionButton(this.resourceIcon(resource) + suffix, () => onPick(resource)),
         );
     },
 
@@ -60,6 +58,17 @@ define([
           {},
         );
       }
+    },
+
+    /** The × in a popup's top right corner (.soh_close_x; its parent must be positioned). */
+    closeButton: function (onClose) {
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "soh_close_x";
+      close.textContent = "\u00d7";
+      close.setAttribute("aria-label", _("Close"));
+      close.addEventListener("click", onClose);
+      return close;
     },
 
     resourceIcon: function (resource) {

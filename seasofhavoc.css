@@ -284,8 +284,7 @@
   margin: 0 2px;
   display: inline-block;
 }
-/* Keep the brown glyphs readable on blue buttons and dark panels, logs and tooltips. */
-.bgabutton_blue .soh_resource,
+/* Keep the brown glyphs readable on dark panels, logs and tooltips. */
 html[data-theme="dark"] .soh_resource {
   background-color: #f5ead8;
   border-radius: 50%;
@@ -330,6 +329,28 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 }
 .soh_nope {
   background-position: -60px -30px;
+}
+/* On blue buttons the glyphs are drawn white, like the button text, and a little larger. */
+.bgabutton_blue .soh_resource:not(.soh_log_skiff) {
+  filter: brightness(0) invert(1);
+  background-color: transparent;
+  box-shadow: none;
+}
+.bgabutton_blue .soh_resource.soh_log_resource {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  background-size: 88px 88px;
+}
+.bgabutton_blue .soh_resource.soh_log_resource.soh_sail {
+  background-position: -22px 0px;
+}
+.bgabutton_blue .soh_resource.soh_log_resource.soh_doubloon {
+  background-position: 0px -22px;
+}
+.bgabutton_blue .soh_resource.soh_log_resource.soh_infamy {
+  background-position: -22px -22px;
 }
 /* Resource buttons: solid beige, no default button gradient */
 .soh_flagish {
@@ -698,7 +719,7 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_card-zoom-dialog::backdrop {
   background: rgba(0, 0, 0, 0.65);
 }
-.soh_card-zoom-close {
+.soh_close_x {
   position: absolute;
   top: 0;
   right: 0;
@@ -1052,15 +1073,6 @@ a.disabled {
   overflow-x: auto;
 }
 
-.soh_scrap_dialog_buttons {
-  text-align: center;
-  margin-top: 18px;
-}
-
-.soh_scrap_dialog_buttons .bgabutton {
-  margin: 0 10px;
-}
-
 /* Suppress BGA framework's yellow dashed selectable outline on cards in these dialogs */
 .soh_scrap_card_dialog .bga-cards_selectable-card {
   outline: none !important;
@@ -1245,12 +1257,11 @@ a.disabled {
     border-color 0.15s,
     opacity 0.15s;
 }
-.soh_trading-resource-btn.soh_trading-selected {
-  border-color: #333;
-  box-shadow: none;
-}
-html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
-  border-color: #f5ead8;
+/* All the options are blue (C.3: grey means unavailable); the picked one gets a gold ring. */
+.soh_trading-resource-btn.soh_trading-selected,
+.soh_pivot_button.soh_pivot_selected {
+  outline: 3px solid #ffd75a;
+  outline-offset: 1px;
 }
 .soh_trading-resource-btn.disabled {
   opacity: 0.35;
@@ -1478,6 +1489,9 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
   background: rgba(0, 0, 0, 0.4);
 }
 
+#soh_score_sheet {
+  position: relative; /* for its close × */
+}
 .soh_score_sheet_parchment {
   background: linear-gradient(#f4e4bc, #e8d098);
   border: 3px solid #6b4423;
