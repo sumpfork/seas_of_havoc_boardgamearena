@@ -46,6 +46,13 @@
 
 /********* You can start writing your CSS below this line: **********/
 
+/* On wide screens the rows (market, cards, boards) would stretch far past the 1000px board; keep
+   the game grouped around it instead. */
+#game_play_area {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
 .soh_cp_board {
   clear: both;
 }
@@ -1460,8 +1467,6 @@ html[data-theme="dark"] .soh_trading-resource-btn.soh_trading-selected {
 .soh_seafeature_badge[data-seafeature="gust"] {
   background-position: 0px -68px;
 }
-
-/* Scrap dialog: the hand and the discard pile as separate, labelled rows. */
 
 #soh_score_sheet_popup {
   position: fixed;
