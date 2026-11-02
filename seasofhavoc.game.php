@@ -1253,4 +1253,26 @@ class SeasOfHavoc extends Table
         //
         //
     }
+
+    /**
+     * Studio only (debug_ functions aren't callable in production): play every seat with the zombie
+     * moves until a choice that is worth testing by hand comes up, or 300 moves have been made.
+     * Also stops at card purchases: playUntil can't play their private states (it plays the
+     * claimants in the parent state, which has no 'completedPurchases' transition).
+     */
+    public function debug_playToTest(): void
+    {
+        $stops = [
+            STATE_RALLY_THE_FLAGS, STATE_EXTORTION, STATE_BARTER, STATE_TIMELY_TRADING, STATE_BOARDING_PARTY,
+            STATE_HUNT_THE_BOUNTY, STATE_POST_COLLISION_FIRE, STATE_COLLISION_DISCARD, STATE_CARD_PURCHASES,
+        ];
+        // A scrap is only worth a look once the discard pile holds copies of a card (shown once, ×N).
+        $scrapWithCopies = function (): bool {
+            $types = array_column($this->getPlayerDiscard((int) $this->getActivePlayerId()), "type");
+            return count($types) !== count(array_unique($types));
+        };
+        $this->debug->playUntil(fn(int $count) => $count >= 300 ||
+            in_array($this->gamestate->getCurrentMainStateId(), $stops, true) ||
+            ($this->gamestate->getCurrentMainStateId() === STATE_SCRAP_CARD && $scrapWithCopies()));
+    }
 }

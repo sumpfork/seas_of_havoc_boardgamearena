@@ -540,6 +540,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             };
             // Chosen on my player board rather than one button per flag: up to four, plus the skip.
             this.statusBar.setTitle(_("Sea Phase: ${you} may use each of your flags: choose one on your player board"));
+            // Fade the rest of the row, so the flags still to use stand out from the used ones.
+            document.getElementById(`player_token_board_p${this.player_id}`).classList.add("soh_choosing");
             (extortionArgs2.pending_flags || []).forEach((flag) => {
               this.makeChoosable(document.getElementById(`${flag}_flag_p${this.player_id}`), extortionNames[flag],
                 () => this.onExtortionFlagChosen(flag, extortionArgs2));

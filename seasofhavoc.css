@@ -1371,6 +1371,21 @@ a.disabled {
   cursor: pointer;
   filter: drop-shadow(0 0 4px #ffd75a) drop-shadow(0 0 4px #ffd75a);
 }
+/* Flags to use (Extortion): a pulsing gold ring; the other held flags and tokens fade (empty slots
+   are already faded further). */
+.soh_flagish.soh_choosable {
+  filter: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px #ffd75a;
+  animation: soh-choosable-flag-pulse 1.4s ease-in-out infinite;
+}
+@keyframes soh-choosable-flag-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #ffd75a, 0 0 4px 3px rgba(255, 215, 90, 0.5); }
+  50% { box-shadow: 0 0 0 3px #ffd75a, 0 0 10px 6px rgba(255, 215, 90, 0.9); }
+}
+.soh_choosing > .soh_flagish:not(.soh_choosable):has(> .soh_flagish) {
+  opacity: 0.35;
+}
 .soh_player_ship.soh_active_turn_ship {
   filter: drop-shadow(0 0 3px var(--owner-color)) drop-shadow(0 0 3px var(--owner-color));
 }

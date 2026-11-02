@@ -216,6 +216,13 @@ define([
           button.textContent = _("Cannot Afford");
           continue;
         }
+        // The Merchant's doubloons stand in automatically here, so say so: otherwise the card looks
+        // unaffordable. (With a booty token on offer, this is the price without it.)
+        const subs = withoutBooty || withBooty;
+        const swaps = [["doubloons_as_cannonballs", "cannonball"], ["doubloons_as_sails", "sail"]]
+          .filter(([key]) => subs[key] > 0)
+          .map(([key, resource]) => subs[key] + " " + this.resourceIcon("doubloon") + " " + _("as") + " " + this.resourceIcon(resource));
+        if (swaps.length) button.innerHTML += " (" + swaps.join(", ") + ")";
         const send = (useBooty) => {
           const args = { card_id: slot_card.id, ...(useBooty ? withBooty : withoutBooty) };
           if (useBooty) args.use_booty_card_id = this.getMyBootyTokenId(cost);

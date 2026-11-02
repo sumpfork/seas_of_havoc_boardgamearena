@@ -102,6 +102,7 @@ define([
         element.removeEventListener("keydown", element._sohChoose);
         delete element._sohChoose;
       }
+      document.querySelectorAll(".soh_choosing").forEach((element) => element.classList.remove("soh_choosing"));
     },
 
     /** The ship elements of a player on the board (one, or two in the 2 Ship Variant). */
@@ -332,7 +333,8 @@ define([
       if (!token_element) {
         token_element = domConstruct.place(this.format_block("jstpl_unique_token", { token_key: token_key }), slot_id);
       } else {
-        this.attachToNewParent(token_element, slot_id);
+        // attachToNewParent replaces the node (keeping its on-screen spot via left/top): reset the new one.
+        token_element = this.attachToNewParent(token_element, slot_id);
       }
       domStyle.set(token_element, { left: "0px", top: "0px" });
       return token_element;
