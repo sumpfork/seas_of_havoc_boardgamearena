@@ -791,7 +791,19 @@ define([
         $("mycards").classList.add("soh_picking_from_discard");
         pick.pileStock = new BgaCards.LineStock(this.cardsManager, domConstruct.create("div", {}, panel));
         pick.pileStock.setSelectionMode("single");
-        pick.pilePreviews = this._addPreviewCards(pick.pileStock, pileCards);
+        // Copies of a card are shown once, with a count: picking any of them is the same.
+        const copies = new Map();
+        for (const card of pileCards) {
+          copies.has(card.type) ? copies.get(card.type).push(card) : copies.set(card.type, [card]);
+        }
+        pick.pilePreviews = this._addPreviewCards(pick.pileStock, [...copies.values()].map((same) => same[0]));
+        for (const [previewId, card] of pick.pilePreviews) {
+          const count = copies.get(card.type).length;
+          if (count > 1) {
+            domConstruct.create("span", { class: "soh_card_count", innerHTML: "&times;" + count },
+              this.cardsManager.getCardElement({ id: previewId }));
+          }
+        }
         pick.pileStock.onSelectionChange = () => this._onCardPicked(pick.pileStock);
       }
 

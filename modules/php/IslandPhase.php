@@ -650,9 +650,9 @@ trait IslandPhase
             ]);
             $this->notifyBootyTokensChanged((int) $player_id);
         } else {
-            // Normal trade: spend 1-2 resources, gain the same number
-            if (count($resources_spent) < 1 || count($resources_spent) > 2) {
-                throw new \Bga\GameFramework\UserException(clienttranslate("Must spend 1 or 2 resources"));
+            // Normal trade: spend up to 2 resources (none: the skiff just takes the space), gain as many
+            if (count($resources_spent) > 2) {
+                throw new \Bga\GameFramework\UserException(clienttranslate("Cannot trade more than 2 resources"));
             }
             if (count($resources_gained) !== count($resources_spent)) {
                 throw new \Bga\GameFramework\UserException(clienttranslate("Must gain the same number of resources as spent"));

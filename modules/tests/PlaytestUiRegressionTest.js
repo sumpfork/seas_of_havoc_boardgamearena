@@ -130,7 +130,8 @@ notifications.notif_cardsDiscarded.call(discardGame, { player_id: 1, cards: [{ i
 assert.equal(discarded[0].id, 29);
 assert.equal(removed, 1, "Own discard must move out of hand");
 
-const handlers = loadModule("stateHandlers.js");
+// Ships and flags are looked up by id to be made choices on the board.
+const handlers = loadModule("stateHandlers.js", {}, { document: { getElementById: (id) => ({ id }) } });
 const utils = loadModule("utils.js");
 const buttons = [];
 let action;
@@ -138,6 +139,7 @@ let title;
 handlers.onUpdateActionButtons.call({
   resourceIcon: utils.resourceIcon,
   addResourceButtons: utils.addResourceButtons,
+  addBoardingPartyChoices: handlers.addBoardingPartyChoices,
   isCurrentPlayerActive: () => true,
   gamedatas: { players: { 2389208: { name: "pgorniak4" } } },
   statusBar: {
@@ -160,11 +162,23 @@ for (const resource of ["sail", "cannonball", "doubloon", "infamy"]) {
   assert.match(utils.resourceIcon(resource), new RegExp('aria-label="' + resource + '"'));
 }
 assert.throws(() => utils.resourceIcon("unknown"), /Unknown resource icon/);
+const chosen = [];
 const iconGame = {
+  player_id: "1",
   resourceIcon: utils.resourceIcon,
   addResourceButtons: utils.addResourceButtons,
+  showBarStep: utils.showBarStep,
+  addCountChoice: handlers.addCountChoice,
+  addMerchantSubstituteChoices: handlers.addMerchantSubstituteChoices,
+  addBoardingPartyChoices: handlers.addBoardingPartyChoices,
+  makeChoosable: (element, label, onPick) => chosen.push({ element, label, onPick }),
+  gamedatas: { players: { 2389208: { name: "pgorniak4" } } },
   isCurrentPlayerActive: () => true,
-  statusBar: { addActionButton: (label, callback) => buttons.push({ label, callback }) },
+  statusBar: {
+    addActionButton: (label, callback, options) => buttons.push({ label, callback, options }),
+    removeActionButtons: () => { buttons.length = 0; },
+    setTitle() {},
+  },
   bgaPerformAction: (name, args) => { action = { name, args }; },
   canPlayerAfford: () => true,
   payWithOptionalBooty: (cost, name, args) => { action = { name, args }; },
@@ -180,9 +194,12 @@ handlers.onUpdateActionButtons.call(iconGame, "huntTheBounty", { targets: [
   { ship: "2", ship_name: "Xebec", player_name: "Opponent" },
   { ship: "2_2", ship_name: "War Junk", player_name: "Opponent" },
 ] });
-assert.deepEqual(buttons.map(b => b.label), ["Target Xebec (Opponent)", "Target War Junk (Opponent)", "Skip (No Target)"]);
+// The targets are the ships on the board; the action bar keeps only the skip.
+assert.deepEqual(chosen.map((c) => [c.element.id, c.label]),
+  [["player_ship_2", "Xebec (Opponent)"], ["player_ship_2_2", "War Junk (Opponent)"]]);
+assert.deepEqual(buttons.map(b => b.label), ["Skip (No Target)"]);
 for (const [index, ship] of ["2", "2_2"].entries()) {
-  buttons[index].callback();
+  chosen[index].onPick();
   assert.equal(action.name, "actHuntTheBountyChooseTarget");
   assert.equal(action.args.target_ship, ship);
 }
@@ -192,12 +209,19 @@ assert.equal(buttons[0].label, '2 ' + utils.resourceIcon('doubloon') + ' → 2 '
 buttons[0].callback();
 assert.deepEqual(action, { cb: 2, sail: 1 });
 buttons.length = 0;
-handlers.onUpdateActionButtons.call(iconGame, "barter", { resources: { sail: 1, cannonball: 1, doubloon: 1 }, infamy: 3 });
-assert.equal(buttons.length, 7);
-for (const button of buttons.slice(0, 6)) {
-  assert.equal((button.label.match(/role="img"/g) || []).length, 2);
-  button.callback();
-  assert.equal(action.name, "actBarterExchange");
+// Six trades would overflow the action bar (four buttons at most): the direction comes first.
+for (const direction of [0, 1]) {
+  handlers.onUpdateActionButtons.call(iconGame, "barter", { resources: { sail: 1, cannonball: 1, doubloon: 1 }, infamy: 3 });
+  assert.equal(buttons.length, 3, "two directions and the skip");
+  buttons[direction].callback();
+  assert.equal(buttons.length, 4, "three trades and a way back");
+  for (const button of buttons.slice(0, 3)) {
+    assert.equal((button.label.match(/role="img"/g) || []).length, 2);
+    button.callback();
+    assert.equal(action.name, "actBarterExchange");
+  }
+  assert.equal(action.args.direction, direction === 0 ? "resource_to_infamy" : "infamy_to_resource");
+  buttons.length = 0;
 }
 // Every "pick a resource" prompt uses the same grey icon buttons, in sail / cannonball / doubloon order.
 buttons.length = 0;
@@ -222,14 +246,18 @@ assert.equal(previewed[1].preview.decisions[0], "fire right");
 assert.equal(previewed[1].preview.ship, "7_2", "the preview is drawn for the ship that fires");
 
 buttons.length = 0;
-// Timely Trading: the status bar offers each pair of resources; purchases are buttons on the market cards.
+// Timely Trading: the two resources one at a time; purchases are buttons on the market cards.
 let marketButtonsAdded = false;
 iconGame.addTimelyTradingPurchaseButtons = () => { marketButtonsAdded = true; };
 handlers.onUpdateActionButtons.call(iconGame, "timelyTrading", { market: [{ id: 42, type: 1 }] });
-assert.equal(buttons.length, 6);
+assert.equal(buttons.length, 3);
+assert.ok(marketButtonsAdded);
+buttons[0].callback();
+assert.equal(buttons.length, 4, "three second resources and a way back");
 assert.match(buttons[0].label, /^Gain <span[^>]*soh_sail.*soh_sail/);
 assert.match(buttons[1].label, /^Gain <span[^>]*soh_sail.*soh_cannonball/);
-assert.ok(marketButtonsAdded);
+buttons[1].callback();
+assert.deepEqual({ ...action.args }, { first: "sail", second: "cannonball" });
 buttons.length = 0;
 // Each market card gets a purchase button; the Merchant's doubloons cover only what they're short of.
 const placed = [];
@@ -282,16 +310,56 @@ purchases.addTimelyTradingPurchaseButtons.call(timelyGame({ sail: 1 }));
 assert.equal(placed[2].disabledClass, undefined);
 placed[2].onclick();
 assert.deepEqual({ ...action.args }, { card_id: 44, doubloons_as_cannonballs: 0, doubloons_as_sails: 0, use_booty_card_id: 7 });
-// Extortion uses every flag you control, in an order you choose: one button per flag, plus skip.
+// Extortion uses every flag you control, in an order you choose: the flags on the player board.
 let chosenFlag = null;
 iconGame.onExtortionFlagChosen = flag => { chosenFlag = flag; };
-handlers.onUpdateActionButtons.call(iconGame, "extortion", { pending_flags: ["green", "red", "tan"] });
-assert.equal(buttons.length, 4, "a button per pending flag, in any order, plus skip");
-buttons[2].callback();
+chosen.length = 0;
+handlers.onUpdateActionButtons.call(iconGame, "extortion", { pending_flags: ["green", "red", "tan", "blue"] });
+assert.deepEqual(chosen.map((c) => c.element.id), ["green_flag_p1", "red_flag_p1", "tan_flag_p1", "blue_flag_p1"]);
+assert.equal(buttons.length, 1, "only the skip is in the action bar");
+chosen[2].onPick();
 assert.equal(chosenFlag, "tan", "the player picks which flag resolves next");
-buttons[3].callback();
+buttons[0].callback();
 assert.equal(action.name, "actSkipExtortion");
 buttons.length = 0;
+{
+  const atMostFour = (what) => assert.ok(buttons.length <= 4, what + ": " + buttons.length + " buttons");
+  // Merchant: a 3-cannonball, 2-sail card with doubloons to spare - twelve mixes.
+  const combinations = [];
+  for (let cb = 0; cb <= 3; cb++) for (let sail = 0; sail <= 2; sail++) combinations.push({ cb, sail });
+  handlers.onUpdateActionButtons.call({ ...iconGame, _pendingMerchantPurchase: { combinations } }, "client_merchantSubstitute", {});
+  atMostFour("merchant cannonballs");
+  assert.equal(buttons[0].options.disabled, true, "the stepper starts at the fewest");
+  buttons[2].callback(); // +
+  buttons[1].callback(); // choose 1 doubloon for a cannonball
+  atMostFour("merchant sails");
+  buttons[2].callback(); // 2 for sails
+  assert.deepEqual(action, { cb: 1, sail: 2 });
+  buttons.length = 0;
+  // Boarding Party: all three resources and a booty token.
+  handlers.onUpdateActionButtons.call(iconGame, "boardingParty", { targets: [
+    { player_id: "2389208", resources: { sail: 1, cannonball: 1, doubloon: 1 }, booty_token_count: 1 },
+  ] });
+  atMostFour("boarding party");
+  buttons[0].callback();
+  atMostFour("boarding party resources");
+  buttons[2].callback();
+  assert.deepEqual({ ...action.args }, { target_player_id: "2389208", item: "doubloon" });
+  buttons.length = 0;
+  // Firing with two upgraded weapons as well as the cannon: six shots.
+  const variants = ["fire", "carronade", "chain shot"].map((name) => ({ name, sides: ["left", "right"], range: 2 }));
+  const shotLabels = [];
+  handlers.onUpdateActionButtons.call({
+    ...iconGame,
+    _choiceLabelHtml: (option) => option.name,
+    addPreviewedActionButton: (label) => { shotLabels.push(label); buttons.push({ label }); },
+  }, "postCollisionFire", { action: { action: "fire", variants }, ship: "1" });
+  atMostFour("weapons");
+  buttons[1].callback();
+  atMostFour("sides");
+  assert.deepEqual(shotLabels, ["carronade left", "carronade right"]);
+  buttons.length = 0;
+}
 handlers.onUpdateActionButtons.call(iconGame, "client_extortionGreenResource", {});
 assert.equal(buttons.length, 4, "three resources and a way back");
 buttons[1].callback();

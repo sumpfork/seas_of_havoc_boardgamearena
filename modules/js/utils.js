@@ -60,6 +60,55 @@ define([
       }
     },
 
+    /**
+     * A follow-up step in the action bar, to keep it to four buttons (BGA guideline A.2): replaces
+     * the buttons, then addButtons() adds this step's and a Back button goes to `back`, by default
+     * the state's own first step.
+     */
+    showBarStep: function (title, addButtons, back = () => this.restoreServerGameState()) {
+      this.statusBar.removeActionButtons();
+      this.statusBar.setTitle(title);
+      addButtons();
+      this.statusBar.addActionButton(_("Back"), back, { color: "alert" });
+    },
+
+    /**
+     * Highlight `element` (a ship on the board, a flag on my player board) and make it a choice:
+     * clicked or Enter/Space. Undone by clearChoosables().
+     */
+    makeChoosable: function (element, label, onPick) {
+      if (!element) throw new Error("No element to choose for " + label);
+      element.classList.add("soh_choosable");
+      element.setAttribute("role", "button");
+      element.setAttribute("aria-label", label);
+      element.tabIndex = 0;
+      element._sohChoose = (event) => {
+        if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        onPick();
+      };
+      element.addEventListener("click", element._sohChoose);
+      element.addEventListener("keydown", element._sohChoose);
+    },
+
+    clearChoosables: function () {
+      for (const element of document.querySelectorAll(".soh_choosable")) {
+        element.classList.remove("soh_choosable");
+        element.removeAttribute("role");
+        element.removeAttribute("aria-label");
+        element.removeAttribute("tabindex");
+        element.removeEventListener("click", element._sohChoose);
+        element.removeEventListener("keydown", element._sohChoose);
+        delete element._sohChoose;
+      }
+    },
+
+    /** The ship elements of a player on the board (one, or two in the 2 Ship Variant). */
+    playerShipElements: function (playerId) {
+      return [playerId, playerId + "_2"].map((arg) => document.getElementById("player_ship_" + arg)).filter(Boolean);
+    },
+
     /** The × in a popup's top right corner (.soh_close_x; its parent must be positioned). */
     closeButton: function (onClose) {
       const close = document.createElement("button");
@@ -220,14 +269,32 @@ define([
           }, thumb);
           this.setupCardPreview(art);
           if (card.count > 1) {
-            domConstruct.create("span", { class: "soh_draft_count", innerHTML: "&times;" + card.count }, thumb);
+            domConstruct.create("span", { class: "soh_card_count", innerHTML: "&times;" + card.count }, thumb);
           }
+        }
+        // Clicking anywhere on an option picks it (hover still zooms its cards).
+        if (this.isCurrentPlayerActive()) {
+          this.makeChoosable(option, this.draftChoiceName(stateName, choice),
+            () => this.pickDraftChoice(stateName, choice, option));
         }
       }
     },
 
+    /** A draft pick waits in the action bar for Confirm; picking another option switches to it. */
+    pickDraftChoice: function (stateName, choice, option) {
+      document.querySelector(".soh_draft_pending")?.classList.remove("soh_draft_pending");
+      option.classList.add("soh_draft_pending");
+      this.statusBar.removeActionButtons();
+      this.statusBar.setTitle(_("${you} chose ${choice}"), { choice: this.draftChoiceName(stateName, choice) });
+      this.statusBar.addActionButton(_("Confirm"), () => this.bgaPerformAction(
+        stateName === "draftCaptain" ? "actDraftCaptain" : "actDraftShip",
+        stateName === "draftCaptain" ? { captain: choice } : { ship: choice },
+      ));
+    },
+
     cleanupDraft: function () {
       domConstruct.destroy("soh_draft");
+      this.hideCardHoverZoom();
     },
 
     getObjectOnSeaboard: function (object_type, arg) {

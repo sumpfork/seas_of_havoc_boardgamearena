@@ -35,7 +35,8 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         !!(face.closest('.soh_seasofhavoc-card[data-side="front"]') || face.classList.contains('soh_panel_card_art') ||
            face.classList.contains('upgrade-activated-face'));
       // Mouse users get an enlarged copy on hover; touch users tap for the dialog below.
-      if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      const hoverZoom = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      if (hoverZoom) {
         face.addEventListener('mouseenter', () => {
           if (showsFront()) this.showCardHoverZoom(face);
         });
@@ -45,6 +46,22 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         this.hideCardHoverZoom();
         // Selectable stocks own clicks for playing, scrapping, and discarding.
         if (face.closest('.bga-cards_selectable-stock') || !showsFront()) return;
+        // Draft cards never open the dialog: a click chooses their option (when it is a choice), and
+        // touch users get the enlarged copy until their next tap; tapping the same card just closes it.
+        if (face.closest('#soh_draft')) {
+          if (hoverZoom) return;
+          if (this._tapZoomFace === face) {
+            this._tapZoomFace = null;
+            return;
+          }
+          this.showCardHoverZoom(face);
+          this._tapZoomFace = face;
+          setTimeout(() => document.addEventListener('pointerdown', (event) => {
+            this.hideCardHoverZoom();
+            if (!face.contains(event.target)) this._tapZoomFace = null;
+          }, { once: true }));
+          return;
+        }
         event.stopPropagation();
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');

@@ -228,9 +228,11 @@ define([
         this.scrapPile.addCard({ id: card.id, type: card.type, location: "scrap" });
       }
 
+      // Remove via the manager: Stock.removeCard skips elements that are mid-animation outside
+      // the market div (e.g. replay fast-forward), orphaning them so the re-add below throws.
       var existing_cards = this.market.getCards();
       for (var i = 0; i < existing_cards.length; i++) {
-        this.market.removeCard(existing_cards[i]);
+        this.cardsManager.removeCard(existing_cards[i]);
       }
 
       this.marketSlotMap = {};

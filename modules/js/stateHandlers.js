@@ -125,6 +125,100 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       this.bgaPerformAction("actExtortionUseFlag", { flag });
     },
 
+    /** What Boarding Party can take from `target`; addExit() adds the way out (skip or back). */
+    addBoardingPartyChoices: function (target, addExit) {
+      const title = _("Sea Phase: ${you} may steal 1 resource or a booty token from ${player}");
+      const player = this.gamedatas.players[target.player_id].name;
+      this.statusBar.setTitle(title, { player });
+      const held = target.resources || {};
+      const resources = Object.keys(held).filter((r) => held[r] > 0);
+      const steal = (item) => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item });
+      const hasBooty = (target.booty_token_count || 0) > 0;
+      if (resources.length + hasBooty <= 3) {
+        this.addResourceButtons(steal, resources);
+      } else {
+        // Three resources and a booty token: the resource is its own step, to keep to four buttons.
+        this.statusBar.addActionButton(_("A resource"), () => this.showBarStep(title, () => {
+          this.statusBar.setTitle(title, { player });
+          this.addResourceButtons(steal, resources);
+        }, () => {
+          this.statusBar.removeActionButtons();
+          this.addBoardingPartyChoices(target, addExit);
+        }));
+      }
+      if (hasBooty) {
+        this.statusBar.addActionButton(_("Booty token"), () => steal("booty_token"));
+      }
+      addExit();
+    },
+
+    /**
+     * Merchant: which doubloons stand in for cannonballs and sails. All the mixes when they fit in
+     * the bar; otherwise how many for cannonballs, then how many for sails.
+     */
+    addMerchantSubstituteChoices: function () {
+      const combos = this._pendingMerchantPurchase.combinations;
+      const swap = (n, res) => n + " " + this.resourceIcon("doubloon") + " → " + n + " " + this.resourceIcon(res);
+      const cancel = () => this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
+        color: "alert",
+      });
+      if (combos.length <= 3) {
+        for (const combo of combos) {
+          const parts = [];
+          if (combo.cb > 0) parts.push(swap(combo.cb, "cannonball"));
+          if (combo.sail > 0) parts.push(swap(combo.sail, "sail"));
+          this.statusBar.addActionButton(parts.length > 0 ? parts.join(", ") : _("No substitution"),
+            () => this.onMerchantSubstituteChosen(combo.cb, combo.sail),
+            { color: parts.length > 0 ? "primary" : "secondary" });
+        }
+        cancel();
+        return;
+      }
+      const cbCounts = [...new Set(combos.map((c) => c.cb))].sort((a, b) => a - b);
+      const sails = (cb) => {
+        const counts = combos.filter((c) => c.cb === cb).map((c) => c.sail).sort((a, b) => a - b);
+        if (counts.length === 1) {
+          this.onMerchantSubstituteChosen(cb, counts[0]);
+          return;
+        }
+        this.statusBar.removeActionButtons();
+        this.statusBar.setTitle(_("Merchant: how many doubloons pay for sails?"));
+        this.addCountChoice(counts, (n) => swap(n, "sail"), (sail) => this.onMerchantSubstituteChosen(cb, sail),
+          cbCounts.length > 1
+            ? () => this.statusBar.addActionButton(_("Back"), () => {
+              this.statusBar.removeActionButtons();
+              this.addMerchantSubstituteChoices();
+            }, { color: "alert" })
+            : cancel);
+      };
+      if (cbCounts.length === 1) {
+        sails(cbCounts[0]);
+        return;
+      }
+      this.statusBar.setTitle(_("Merchant: how many doubloons pay for cannonballs?"));
+      this.addCountChoice(cbCounts, (n) => swap(n, "cannonball"), sails, cancel);
+    },
+
+    /**
+     * Choose one of `counts` (ascending): a button each, or for four a stepper - "−", the current
+     * count (choosing it), "+" - so with addExit()'s button the bar keeps to four.
+     */
+    addCountChoice: function (counts, label, onPick, addExit) {
+      if (counts.length <= 3) {
+        counts.forEach((n) => this.statusBar.addActionButton(label(n), () => onPick(n)));
+        addExit();
+        return;
+      }
+      const show = (i) => {
+        this.statusBar.removeActionButtons();
+        this.statusBar.addActionButton("\u2212", () => show(i - 1), { disabled: i === 0, title: _("Fewer") });
+        this.statusBar.addActionButton(label(counts[i]), () => onPick(counts[i]));
+        this.statusBar.addActionButton("+", () => show(i + 1), { disabled: i === counts.length - 1, title: _("More") });
+        addExit();
+      };
+      show(0);
+    },
+
     /**
      * Called when leaving a game state
      */
@@ -135,16 +229,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
       // A hovered status bar button's board preview: the button goes away without a mouseleave.
       // (The card play dialog's own preview stays while the dialog is open.)
       if (!this._previewActions) this.clearCardPreview();
+      this.clearChoosables();
 
       switch (stateName) {
         case "islandTurn":
           this.clearUpgradeActivationButtons();
-          break;
-
-        case "client_tradingPostBootyChoice":
-        case "client_tradingPostSpend":
-        case "client_tradingPostGain":
-          this.cleanupTradingPostUi();
           break;
 
 
@@ -198,16 +287,6 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
-          case "draftCaptain":
-            args.captains.forEach(captain => this.statusBar.addActionButton(this.draftChoiceName(stateName, captain),
-              () => this.bgaPerformAction("actDraftCaptain", { captain })));
-            break;
-
-          case "draftShip":
-            args.ships.forEach(ship => this.statusBar.addActionButton(this.draftChoiceName(stateName, ship),
-              () => this.bgaPerformAction("actDraftShip", { ship })));
-            break;
-
           case "seaTurn":
             this.statusBar.addActionButton(_("Row (discard 2 cards)"), () => this.startRowing(), {
               id: "soh_row_button",
@@ -243,23 +322,31 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             const shots = [];
             if (fireAction.variants) {
               fireAction.variants.forEach((variant) => variant.sides.forEach((side) => shots.push(
-                { name: variant.name + " " + side, cost: variant.cost, range: variant.range },
+                { weapon: variant, name: variant.name + " " + side, cost: variant.cost, range: variant.range },
               )));
             } else {
+              const weapon = { name: fireAction.action, cost: fireAction.cost, range: fireAction.range };
               ["left", "right"].forEach((side) => shots.push(
-                { name: fireAction.action + " " + side, cost: fireAction.cost, range: fireAction.range },
+                { weapon, name: fireAction.action + " " + side, cost: fireAction.cost, range: fireAction.range },
               ));
             }
-            shots.forEach((shot) => {
-              if (!this.canPlayerAfford(shot.cost, true, false)) {
-                return;
+            const affordable = shots.filter((shot) => this.canPlayerAfford(shot.cost, true, false));
+            const addShot = (shot) => this.addPreviewedActionButton(
+              this._choiceLabelHtml(shot),
+              () => { this.fireAfterCollision(shot); },
+              { actions: [fireAction], decisions: [shot.name], ship: args.ship },
+            );
+            if (affordable.length <= 3) {
+              affordable.forEach(addShot);
+            } else {
+              // An upgraded ship has a side for each weapon: pick the weapon, then the side.
+              for (const weapon of new Set(affordable.map((shot) => shot.weapon))) {
+                this.statusBar.addActionButton(this._choiceLabelHtml(weapon), () => this.showBarStep(
+                  _("Sea Phase: ${you} may fire to one side"),
+                  () => affordable.filter((shot) => shot.weapon === weapon).forEach(addShot),
+                ));
               }
-              this.addPreviewedActionButton(
-                this._choiceLabelHtml(shot),
-                () => { this.fireAfterCollision(shot); },
-                { actions: [fireAction], decisions: [shot.name], ship: args.ship },
-              );
-            });
+            }
             this.statusBar.addActionButton(
               _("Don't fire"),
               () => { this.bgaPerformAction("actPostCollisionFire", { decision: "skip" }); },
@@ -373,21 +460,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             break;
 
           case "client_merchantSubstitute":
-            var ctx = this._pendingMerchantPurchase;
-            if (ctx) {
-              var self = this;
-              ctx.combinations.forEach(function (combo) {
-                var parts = [];
-                if (combo.cb > 0) parts.push(combo.cb + " " + self.resourceIcon("doubloon") + " → " + combo.cb + " " + self.resourceIcon("cannonball"));
-                if (combo.sail > 0) parts.push(combo.sail + " " + self.resourceIcon("doubloon") + " → " + combo.sail + " " + self.resourceIcon("sail"));
-                var label = parts.length > 0 ? parts.join(", ") : _("No substitution");
-                self.statusBar.addActionButton(label, function () {
-                  self.onMerchantSubstituteChosen(combo.cb, combo.sail);
-                }, { color: parts.length > 0 ? "primary" : "secondary" });
-              });
-              this.statusBar.addActionButton(_("Cancel"), this.onMerchantSubstituteCancel.bind(this), {
-                color: "alert",
-              });
+            if (this._pendingMerchantPurchase) {
+              this.addMerchantSubstituteChoices();
             }
             break;
 
@@ -412,12 +486,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             this.statusBar.addActionButton(_("No, trade resources"), this.onTradingPostBootyNo.bind(this), { color: "secondary" });
             break;
 
-          case "client_tradingPostSpend":
-            this.buildTradingPostSpendUI();
-            break;
-
-          case "client_tradingPostGain":
-            this.buildTradingPostGainUI();
+          case "client_tradingPost":
+            this.showTradingPostStep();
             break;
 
           case "resolveCollision":
@@ -468,10 +538,11 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
               blue: _("Blue Sailor's Flag: extra island turn"),
               red: _("Red Shipwright's Flag: scrap a card"),
             };
+            // Chosen on my player board rather than one button per flag: up to four, plus the skip.
+            this.statusBar.setTitle(_("Sea Phase: ${you} may use each of your flags: choose one on your player board"));
             (extortionArgs2.pending_flags || []).forEach((flag) => {
-              this.statusBar.addActionButton(extortionNames[flag] || flag, () => {
-                this.onExtortionFlagChosen(flag, extortionArgs2);
-              });
+              this.makeChoosable(document.getElementById(`${flag}_flag_p${this.player_id}`), extortionNames[flag],
+                () => this.onExtortionFlagChosen(flag, extortionArgs2));
             });
             this.statusBar.addActionButton(_("Skip the rest"), () => {
               this.bgaPerformAction("actSkipExtortion", {});
@@ -503,30 +574,34 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "barter": {
-            var barterArgs = args || {};
-            var infamy = barterArgs.infamy || 0;
-            var rates = [["sail", 1], ["cannonball", 2], ["doubloon", 3]];
-            var barterSelf = this;
-            rates.forEach(function (pair) {
-              var res = pair[0], amount = pair[1];
-              if (barterSelf.canPlayerAfford({ [res]: 1 }, true, false)) {
-                barterSelf.statusBar.addActionButton(
-                  "1 " + barterSelf.resourceIcon(res) + " → " + amount + " " + barterSelf.resourceIcon("infamy"),
-                  function () {
-                    barterSelf.payWithOptionalBooty({ [res]: 1 }, "actBarterExchange", { resource: res, direction: "resource_to_infamy" });
-                  },
-                );
-              }
-              if (infamy >= amount) {
-                barterSelf.statusBar.addActionButton(
-                  amount + " " + barterSelf.resourceIcon("infamy") + " → 1 " + barterSelf.resourceIcon(res),
-                  function () { barterSelf.bgaPerformAction("actBarterExchange", { resource: res, direction: "infamy_to_resource" }); },
-                );
-              }
+            const infamy = (args || {}).infamy || 0;
+            const rates = { sail: 1, cannonball: 2, doubloon: 3 };
+            const resources = Object.keys(rates);
+            const toInfamy = resources.filter((res) => this.canPlayerAfford({ [res]: 1 }, true, false));
+            const fromInfamy = resources.filter((res) => infamy >= rates[res]);
+            const addTrades = (list, direction) => list.forEach((res) => this.statusBar.addActionButton(
+              direction === "resource_to_infamy"
+                ? "1 " + this.resourceIcon(res) + " → " + rates[res] + " " + this.resourceIcon("infamy")
+                : rates[res] + " " + this.resourceIcon("infamy") + " → 1 " + this.resourceIcon(res),
+              () => direction === "resource_to_infamy"
+                ? this.payWithOptionalBooty({ [res]: 1 }, "actBarterExchange", { resource: res, direction })
+                : this.bgaPerformAction("actBarterExchange", { resource: res, direction }),
+            ));
+            if (toInfamy.length + fromInfamy.length <= 3) {
+              addTrades(toInfamy, "resource_to_infamy");
+              addTrades(fromInfamy, "infamy_to_resource");
+            } else {
+              // Up to six trades: pick the direction, then the resource.
+              this.statusBar.addActionButton(_("Trade a resource for") + " " + this.resourceIcon("infamy"),
+                () => this.showBarStep(_("Sea Phase: ${you} may trade a resource for infamy"),
+                  () => addTrades(toInfamy, "resource_to_infamy")));
+              this.statusBar.addActionButton(_("Trade") + " " + this.resourceIcon("infamy") + " " + _("for a resource"),
+                () => this.showBarStep(_("Sea Phase: ${you} may trade infamy for a resource"),
+                  () => addTrades(fromInfamy, "infamy_to_resource")));
+            }
+            this.statusBar.addActionButton(_("Skip (No Exchange)"), () => this.bgaPerformAction("actSkipBarter", {}), {
+              color: "secondary",
             });
-            this.statusBar.addActionButton(_("Skip (No Exchange)"), function () {
-              barterSelf.bgaPerformAction("actSkipBarter", {});
-            }, { color: "secondary" });
             break;
           }
 
@@ -536,65 +611,58 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
           }
 
           case "timelyTrading": {
-            // One button per pair of resources (order doesn't matter, so 6 of them).
+            // Two resources, picked one at a time (the six pairs would overflow the bar).
             const resources = ["sail", "cannonball", "doubloon"];
-            resources.forEach((first, i) =>
-              resources.slice(i).forEach((second) =>
-                this.statusBar.addActionButton(
-                  _("Gain") + " " + this.resourceIcon(first) + this.resourceIcon(second),
-                  () => this.bgaPerformAction("actTimelyTradingGainResources", { first, second }),
-                ),
+            const gain = (first, second) => this.bgaPerformAction("actTimelyTradingGainResources", { first, second });
+            resources.forEach((first) => this.statusBar.addActionButton(
+              _("Gain") + " " + this.resourceIcon(first),
+              () => this.showBarStep(
+                _("Sea Phase: ${you} gain") + " " + this.resourceIcon(first) + " " + _("and one more resource"),
+                () => resources.forEach((second) => this.statusBar.addActionButton(
+                  _("Gain") + " " + this.resourceIcon(first) + this.resourceIcon(second), () => gain(first, second),
+                )),
               ),
-            );
+            ));
             this.addTimelyTradingPurchaseButtons();
             break;
           }
 
           case "boardingParty": {
             const targets = (args || {}).targets || [];
-            const name = (target) => this.gamedatas.players[target.player_id].name;
-            // With one ship to board the title names it; with several, each button says whose it is.
-            this.statusBar.setTitle(
-              targets.length === 1
-                ? _("Sea Phase: ${you} may steal 1 resource or a booty token from ${player}")
-                : _("Sea Phase: ${you} may steal 1 resource or a booty token"),
-              targets.length === 1 ? { player: name(targets[0]) } : undefined,
-            );
-            targets.forEach((target) => {
-              const owner = targets.length === 1 ? "" : " " + name(target);
-              const held = target.resources || {};
-              this.addResourceButtons(
-                (item) => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item }),
-                Object.keys(held).filter((r) => held[r] > 0),
-                owner,
-              );
-              if ((target.booty_token_count || 0) > 0) {
-                this.statusBar.addActionButton(
-                  _("Booty token") + owner,
-                  () => this.bgaPerformAction("actBoardingPartySteal", { target_player_id: target.player_id, item: "booty_token" }),
-                );
+            const skip = () => this.statusBar.addActionButton(_("Skip (No Steal)"),
+              () => this.bgaPerformAction("actSkipBoardingParty", {}), { color: "secondary" });
+            if (targets.length === 1) {
+              this.addBoardingPartyChoices(targets[0], skip);
+              break;
+            }
+            // Several ships alongside: choose whose on the board, then what to take.
+            this.statusBar.setTitle(_("Sea Phase: ${you} may board a ship alongside: choose it on the board"));
+            for (const target of targets) {
+              const name = this.gamedatas.players[target.player_id].name;
+              for (const ship of this.playerShipElements(target.player_id)) {
+                this.makeChoosable(ship, name, () => {
+                  this.clearChoosables();
+                  this.statusBar.removeActionButtons();
+                  this.addBoardingPartyChoices(target, () => this.statusBar.addActionButton(
+                    _("Back"), () => this.restoreServerGameState(), { color: "alert" }));
+                });
               }
-            });
-            this.statusBar.addActionButton(_("Skip (No Steal)"), () => this.bgaPerformAction("actSkipBoardingParty", {}), {
-              color: "secondary",
-            });
+            }
+            skip();
             break;
           }
 
           case "huntTheBounty": {
-            var htbArgs = args || {};
-            var htbTargets = htbArgs.targets || [];
-            var htbSelf = this;
-            htbTargets.forEach(function (target) {
-              htbSelf.statusBar.addActionButton(
-                _("Target") + " " + _(target.ship_name) + " (" + target.player_name + ")",
-                function () { htbSelf.bgaPerformAction("actHuntTheBountyChooseTarget", { target_ship: target.ship }); },
-                {},
-              );
+            // The target is chosen on the board: every other ship can be one.
+            this.statusBar.setTitle(_("Sea Phase: ${you} may choose a ship to hunt on the board"));
+            for (const target of (args || {}).targets || []) {
+              this.makeChoosable(document.getElementById("player_ship_" + target.ship),
+                _(target.ship_name) + " (" + target.player_name + ")",
+                () => this.bgaPerformAction("actHuntTheBountyChooseTarget", { target_ship: target.ship }));
+            }
+            this.statusBar.addActionButton(_("Skip (No Target)"), () => this.bgaPerformAction("actSkipHuntTheBounty", {}), {
+              color: "secondary",
             });
-            this.statusBar.addActionButton(_("Skip (No Target)"), function () {
-              htbSelf.bgaPerformAction("actSkipHuntTheBounty", {});
-            }, { color: "secondary" });
             break;
           }
 

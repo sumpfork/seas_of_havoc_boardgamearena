@@ -124,4 +124,17 @@ final class TradingPostTest extends TestCase
         $this->assertSame("n1", $this->game->occupiedSlots[0]["slot_number"]);
         $this->assertSame(3, $this->game->gamestate->getCurrentMainStateId());
     }
+
+    public function testTradingPostAllowsTradingNothing(): void
+    {
+        $this->game->setGameStateValue("pending_trading_post_player", 1);
+        $this->game->setGameStateValue("pending_trading_post_slot", 1);
+
+        $this->game->actTradingPostExchange([], [], "n1");
+
+        $this->assertNull($this->game->getPendingTradingPostSelection());
+        $this->assertSame(1, $this->game->mockPlayerResources["sail"]);
+        $this->assertSame(0, $this->game->mockPlayerResources["skiff"]);
+        $this->assertCount(1, $this->game->occupiedSlots);
+    }
 }

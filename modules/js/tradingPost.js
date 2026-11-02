@@ -10,319 +10,101 @@
 /**
  * Seas of Havoc - Trading Post Module
  * Handles the trading post island slot: exchange up to 2 resources for others,
- * or spend a booty token to gain 2 resources.
+ * or spend a booty token to gain 2 resources. One resource per step in the action bar.
  */
 
 define([
-  "dojo/dom",
-  "dojo/dom-class",
-  "dojo/dom-construct",
-  "dojo/query",
   g_gamethemeurl + "modules/js/constants.js",
-], function (dom, domClass, domConstruct, query, Constants) {
+], function (Constants) {
   // Debug logging only in Studio (see constants.js).
   const console = Constants.console;
 
-
-  var TRADEABLE_RESOURCES = ["sail", "cannonball", "doubloon"];
-
   return {
-    cleanupTradingPostUi: function() {
-      var rows = dom.byId("trading_post_rows");
-      if (rows) {
-        domConstruct.destroy(rows);
-      }
-    },
-
     /**
      * Entry point: called on entering islandTurn with a pending trading post.
-     * Kicks off the trading post client-state flow.
+     * Starts the exchange over from its first step.
      */
-    initTradingPost: function(slotNumber, stateOverride) {
-      this._tradingPostState = stateOverride || {
-        slotNumber: slotNumber,
-        useBooty: false,
-        resourcesSpent: [],
-        resourcesGained: [],
-      };
-
-      if (this._tradingPostState.useBooty || this._tradingPostState.resourcesSpent.length > 0) {
-        this.setClientState("client_tradingPostGain", {
-          descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
-        });
-        return;
-      }
-
-      var tokenRes = this.getMyBootyTokenRes();
-      if (tokenRes) {
+    initTradingPost: function (slotNumber) {
+      this._tradingPostState = { slotNumber, useBooty: false, resourcesSpent: [], resourcesGained: [], spendDone: false };
+      if (this.getMyBootyTokenRes()) {
         this.setClientState("client_tradingPostBootyChoice", {
           descriptionmyturn: _("Island Phase: Use your booty token at the trading post?"),
         });
       } else {
-        this.setClientState("client_tradingPostSpend", {
-          descriptionmyturn: _("Island Phase: ${you} must select resources to trade away"),
-        });
+        this.setClientState("client_tradingPost", { descriptionmyturn: "" });
       }
     },
 
-    onTradingPostBootyYes: function() {
+    onTradingPostBootyYes: function () {
       this._tradingPostState.useBooty = true;
-      this.setClientState("client_tradingPostGain", {
-        descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
-      });
+      this._tradingPostState.spendDone = true;
+      this.setClientState("client_tradingPost", { descriptionmyturn: "" });
     },
 
-    onTradingPostBootyNo: function() {
-      this._tradingPostState.useBooty = false;
-      this.setClientState("client_tradingPostSpend", {
-        descriptionmyturn: _("Island Phase: ${you} must select resources to trade away"),
-      });
+    onTradingPostBootyNo: function () {
+      this.setClientState("client_tradingPost", { descriptionmyturn: "" });
     },
 
     /**
-     * Build the spend-selection UI: two rows of resource buttons in the status bar.
-     * Row 1: mandatory pick. Row 2: pick or skip (trade only 1).
+     * The current step: a resource to trade away (first or second, with a skip), then one to
+     * receive for each traded away. The title shows the trade so far.
      */
-    buildTradingPostSpendUI: function() {
-      var actionsDiv = dom.byId("generalactions");
-      var playerRes = this.getPlayerResources();
+    showTradingPostStep: function () {
+      const state = this._tradingPostState;
+      const spent = state.resourcesSpent;
+      const gained = state.resourcesGained;
+      const icons = (resources) => resources.map((resource) => this.resourceIcon(resource)).join("");
+      let trade = state.useBooty ? _("booty token") : icons(spent);
+      if (gained.length) trade += " → " + icons(gained);
 
-      this.cleanupTradingPostUi();
-
-      var html = '<div id="trading_post_rows" class="soh_trading-post-rows">';
-
-      // Row 1
-      html += '<div class="soh_trading-row">';
-      html += '<span class="soh_trading-row-label">1.</span>';
-      for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
-        var res = TRADEABLE_RESOURCES[i];
-        var count = parseInt(playerRes[res]) || 0;
-        var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_blue soh_trading-resource-btn' + disabledClass
-          + '" data-resource="' + res + '" data-row="1" data-phase="spend">'
-          + this.resourceIcon(res) + '</a>';
-      }
-      html += '</div>';
-
-      // Row 2
-      html += '<div class="soh_trading-row">';
-      html += '<span class="soh_trading-row-label">2.</span>';
-      for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
-        var res = TRADEABLE_RESOURCES[i];
-        var count = parseInt(playerRes[res]) || 0;
-        var disabledClass = count < 1 ? " disabled" : "";
-        html += '<a class="bgabutton bgabutton_blue soh_trading-resource-btn' + disabledClass
-          + '" data-resource="' + res + '" data-row="2" data-phase="spend">'
-          + this.resourceIcon(res) + '</a>';
-      }
-      html += '<a class="bgabutton bgabutton_blue soh_trading-resource-btn" '
-        + 'data-resource="skip" data-row="2" data-phase="spend">' + _("Skip") + '</a>';
-      html += '</div>';
-
-      html += '</div>';
-      domConstruct.place(html, actionsDiv);
-
-      this.statusBar.addActionButton(
-        _("Confirm"),
-        this.onTradingPostSpendConfirm.bind(this),
-        { id: "trading_post_confirm_btn", },
-      );
-      domClass.add("trading_post_confirm_btn", "disabled");
-
-      this._wireTradingResourceButtons("spend");
-      this._restoreTradingSelections("spend");
-      this._updateTradingSpendConstraints();
-      this._updateTradingConfirmButton("spend");
-    },
-
-    /**
-     * Build the gain-selection UI: 1 or 2 rows (matching spend count / 2 if booty).
-     * All resources are always available.
-     */
-    buildTradingPostGainUI: function() {
-      var actionsDiv = dom.byId("generalactions");
-      var numRows = this._tradingPostState.useBooty
-        ? 2
-        : this._tradingPostState.resourcesSpent.length;
-
-      this.cleanupTradingPostUi();
-
-      var html = '<div id="trading_post_rows" class="soh_trading-post-rows">';
-      for (var row = 1; row <= numRows; row++) {
-        html += '<div class="soh_trading-row">';
-        html += '<span class="soh_trading-row-label">' + row + '.</span>';
-        for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
-          var res = TRADEABLE_RESOURCES[i];
-          html += '<a class="bgabutton bgabutton_blue soh_trading-resource-btn'
-            + '" data-resource="' + res + '" data-row="' + row + '" data-phase="gain">'
-            + this.resourceIcon(res) + '</a>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-      domConstruct.place(html, actionsDiv);
-
-      this.statusBar.addActionButton(
-        _("Confirm"),
-        this.onTradingPostGainConfirm.bind(this),
-        { id: "trading_post_confirm_btn", },
-      );
-      domClass.add("trading_post_confirm_btn", "disabled");
-
-      this._wireTradingResourceButtons("gain");
-      this._restoreTradingSelections("gain");
-      this._updateTradingConfirmButton("gain");
-    },
-
-    _restoreTradingSelections: function(phase) {
-      var selectedResources = phase === "spend"
-        ? this._tradingPostState.resourcesSpent
-        : this._tradingPostState.resourcesGained;
-
-      for (var row = 1; row <= selectedResources.length; row++) {
-        var resource = selectedResources[row - 1];
-        query('.soh_trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]').forEach(function(btn) {
-          if (btn.dataset.resource === resource) {
-            domClass.add(btn, "soh_trading-selected");
+      this.statusBar.removeActionButtons();
+      if (!state.spendDone) {
+        const held = this.getPlayerResources();
+        const left = (resource) => (parseInt(held[resource]) || 0) - spent.filter((r) => r === resource).length;
+        const first = spent.length === 0;
+        this.statusBar.setTitle(first
+          ? _("Trading Post: ${you} may select a resource to trade away")
+          : _("Trading Post (${trade}): ${you} may select a second resource to trade away"), { trade });
+        this.addResourceButtons((resource) => {
+          spent.push(resource);
+          state.spendDone = spent.length === 2;
+          this.showTradingPostStep();
+        }, ["sail", "cannonball", "doubloon"].filter((resource) => left(resource) > 0));
+        this.statusBar.addActionButton(first ? _("Don't trade") : _("Only one"), () => {
+          if (first) {
+            this.confirmIslandAction(_("Confirm no trade"), () => this._submitTradingPostExchange());
+            return;
           }
-        });
+          state.spendDone = true;
+          this.showTradingPostStep();
+        }, { color: "secondary" });
+        return;
       }
-    },
 
-    _wireTradingResourceButtons: function(phase) {
-      var self = this;
-      query("#trading_post_rows .soh_trading-resource-btn").forEach(function(btn) {
-        btn.addEventListener("click", function(event) {
-          event.preventDefault();
-          self._onTradingResourceClicked(btn, phase);
-        });
+      const receiving = state.useBooty ? 2 : spent.length;
+      this.statusBar.setTitle(receiving === 1
+        ? _("Trading Post (${trade}): ${you} must select the resource to receive")
+        : gained.length === 0
+          ? _("Trading Post (${trade}): ${you} must select the first resource to receive")
+          : _("Trading Post (${trade}): ${you} must select the second resource to receive"), { trade });
+      this.addResourceButtons((resource) => {
+        gained.push(resource);
+        if (gained.length < receiving) {
+          this.showTradingPostStep();
+          return;
+        }
+        this.confirmIslandAction(_("Confirm trade"), () => this._submitTradingPostExchange());
       });
     },
 
-    _onTradingResourceClicked: function(btn, phase) {
-      if (domClass.contains(btn, "disabled")) return;
-
-      var row = btn.dataset.row;
-
-      // Select this button, deselect others in the same row
-      query('.soh_trading-resource-btn[data-row="' + row + '"][data-phase="' + phase + '"]')
-        .forEach(function(b) { domClass.remove(b, "soh_trading-selected"); });
-      domClass.add(btn, "soh_trading-selected");
-
-      if (phase === "spend") {
-        this._updateTradingSpendConstraints();
-      }
-      this._updateTradingConfirmButton(phase);
-    },
-
-    /**
-     * After row 1 selection changes, update which row 2 buttons are affordable.
-     */
-    _updateTradingSpendConstraints: function() {
-      var playerRes = this.getPlayerResources();
-
-      var row1Selected = null;
-      query('.soh_trading-resource-btn.soh_trading-selected[data-row="1"][data-phase="spend"]')
-        .forEach(function(btn) { row1Selected = btn.dataset.resource; });
-
-      var remaining = {};
-      for (var i = 0; i < TRADEABLE_RESOURCES.length; i++) {
-        remaining[TRADEABLE_RESOURCES[i]] = parseInt(playerRes[TRADEABLE_RESOURCES[i]]) || 0;
-      }
-      if (row1Selected) {
-        remaining[row1Selected] = Math.max(0, (remaining[row1Selected] || 0) - 1);
-      }
-
-      query('.soh_trading-resource-btn[data-row="2"][data-phase="spend"]').forEach(function(btn) {
-        if (btn.dataset.resource === "skip") return;
-        var res = btn.dataset.resource;
-        if ((remaining[res] || 0) < 1) {
-          domClass.add(btn, "disabled");
-          if (domClass.contains(btn, "soh_trading-selected")) {
-            domClass.remove(btn, "soh_trading-selected");
-          }
-        } else {
-          domClass.remove(btn, "disabled");
-        }
-      });
-    },
-
-    _updateTradingConfirmButton: function(phase) {
-      var confirmBtn = dom.byId("trading_post_confirm_btn");
-      if (!confirmBtn) return;
-
-      var canConfirm = false;
-      if (phase === "spend") {
-        var row1Ok = query('.soh_trading-resource-btn.soh_trading-selected[data-row="1"][data-phase="spend"]').length > 0;
-        var row2Ok = query('.soh_trading-resource-btn.soh_trading-selected[data-row="2"][data-phase="spend"]').length > 0;
-        canConfirm = row1Ok && row2Ok;
-      } else {
-        canConfirm = true;
-        var numRows = this._tradingPostState.useBooty
-          ? 2
-          : this._tradingPostState.resourcesSpent.length;
-        for (var row = 1; row <= numRows; row++) {
-          if (query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="gain"]').length === 0) {
-            canConfirm = false;
-            break;
-          }
-        }
-      }
-
-      if (canConfirm) {
-        domClass.remove(confirmBtn, "disabled");
-      } else {
-        domClass.add(confirmBtn, "disabled");
-      }
-    },
-
-    onTradingPostSpendConfirm: function() {
-      if (domClass.contains("trading_post_confirm_btn", "disabled")) return;
-
-      var resourcesSpent = [];
-      for (var row = 1; row <= 2; row++) {
-        query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="spend"]')
-          .forEach(function(btn) {
-            if (btn.dataset.resource !== "skip") {
-              resourcesSpent.push(btn.dataset.resource);
-            }
-          });
-      }
-
-      this._tradingPostState.resourcesSpent = resourcesSpent;
-      this.setClientState("client_tradingPostGain", {
-        descriptionmyturn: _("Island Phase: ${you} must select resources to receive"),
-      });
-    },
-
-    onTradingPostGainConfirm: function() {
-      if (domClass.contains("trading_post_confirm_btn", "disabled")) return;
-
-      var numRows = this._tradingPostState.useBooty
-        ? 2
-        : this._tradingPostState.resourcesSpent.length;
-      var resourcesGained = [];
-      for (var row = 1; row <= numRows; row++) {
-        query('.soh_trading-resource-btn.soh_trading-selected[data-row="' + row + '"][data-phase="gain"]')
-          .forEach(function(btn) {
-            resourcesGained.push(btn.dataset.resource);
-          });
-      }
-
-      this._tradingPostState.resourcesGained = resourcesGained;
-      this._submitTradingPostExchange();
-    },
-
-    _submitTradingPostExchange: function() {
-      var self = this;
-      var state = this._tradingPostState;
-      var stateSnapshot = JSON.parse(JSON.stringify(state));
-      var params = {
+    _submitTradingPostExchange: function () {
+      const state = this._tradingPostState;
+      const params = {
         resources_spent: JSON.stringify(state.resourcesSpent),
         resources_gained: JSON.stringify(state.resourcesGained),
         slot_number: state.slotNumber,
       };
-      var previousBootyTokens = null;
+      let previousBootyTokens = null;
 
       if (state.useBooty && this.booty_tokens && this.booty_tokens.length > 0) {
         previousBootyTokens = JSON.parse(JSON.stringify(this.booty_tokens));
@@ -332,17 +114,13 @@ define([
 
       this._tradingPostState = null;
       this.restoreServerGameState();
-      var actionPromise = this.bgaPerformAction("actTradingPostExchange", params);
-      if (actionPromise && typeof actionPromise.then === "function") {
-        actionPromise.catch(function() {
-          self._tradingPostState = stateSnapshot;
-          if (previousBootyTokens) {
-            self.booty_tokens = previousBootyTokens;
-            self.updateMyBootyToken();
-          }
-          self.initTradingPost(stateSnapshot.slotNumber, stateSnapshot);
-        });
-      }
+      this.bgaPerformAction("actTradingPostExchange", params).catch(() => {
+        if (previousBootyTokens) {
+          this.booty_tokens = previousBootyTokens;
+          this.updateMyBootyToken();
+        }
+        this.initTradingPost(state.slotNumber);
+      });
     },
   };
 });

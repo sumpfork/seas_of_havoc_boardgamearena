@@ -384,9 +384,10 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_flagish > .soh_flagish {
   position: absolute;
 }
-/* Frame a held flag so it reads clearly against the faded placeholders. Inset, so no layout shift. */
+/* Frame a held flag so it reads clearly against the faded placeholders. Inset, so no layout shift.
+   Dark, not gold: gold is what marks something to choose (.soh_choosable, the draft pick). */
 .soh_flagish > .soh_flagish:not([data-tokenkey="first_player_token"]) {
-  box-shadow: inset 0 0 0 3px gold, inset 0 0 0 4px black;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
   border-radius: 4px;
 }
 .soh_seafeature {
@@ -899,6 +900,21 @@ body.mobile_version #card_display_dialog {
   padding-left: 5px;
   border-left: 1px solid #d4b87a;
 }
+/* The same label on an action bar button (Fire after a collision): spaced and centred like the
+   chip, without the chip's small type, and with a divider that shows on the button colour. */
+#generalactions .bgabutton:has(> .chip_text) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.bgabutton .soh_chip_range {
+  font-size: inherit;
+  opacity: 0.85;
+}
+.bgabutton .soh_chip_cost {
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
 .soh_purchase_card_button {
   display: block;
   position: absolute;
@@ -1231,42 +1247,10 @@ a.disabled {
 
 /* BGA Cards library will handle card flipping animations */
 
-/* Trading post resource selection rows */
-.soh_trading-post-rows {
-  display: block;
-  width: 100%;
-  margin-bottom: 6px;
-}
-.soh_trading-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-.soh_trading-row-label {
-  font-weight: bold;
-  min-width: 20px;
-  text-align: right;
-  margin-right: 2px;
-}
-.soh_trading-resource-btn {
-  cursor: pointer;
-  border: 2px solid transparent;
-  border-radius: 4px;
-  transition:
-    border-color 0.15s,
-    opacity 0.15s;
-}
-/* All the options are blue (C.3: grey means unavailable); the picked one gets a gold ring. */
-.soh_trading-resource-btn.soh_trading-selected,
+/* The picked pivot gets a gold ring. */
 .soh_pivot_button.soh_pivot_selected {
   outline: 3px solid #ffd75a;
   outline-offset: 1px;
-}
-.soh_trading-resource-btn.disabled {
-  opacity: 0.35;
-  cursor: default;
-  pointer-events: none;
 }
 
 @media (max-width: 1000px) {
@@ -1382,6 +1366,11 @@ a.disabled {
 }
 
 /* The active player's ship(s), glowing in their colour. */
+/* A ship or flag to choose (Hunt the Bounty, Boarding Party, Extortion): a gold glow. */
+.soh_choosable {
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px #ffd75a) drop-shadow(0 0 4px #ffd75a);
+}
 .soh_player_ship.soh_active_turn_ship {
   filter: drop-shadow(0 0 3px var(--owner-color)) drop-shadow(0 0 3px var(--owner-color));
 }
@@ -1549,13 +1538,27 @@ a.disabled {
 #soh_draft {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 12px 24px;
 }
 .soh_draft_option h3 {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0 0 4px;
+}
+/* A whole draft option is the choice: no glow, just the pointer. */
+#soh_draft .soh_choosable {
+  filter: none;
+}
+/* Every option is padded so the picked one can be a raised panel without the row shifting. */
+.soh_draft_option {
+  padding: 6px;
+  border-radius: 8px;
+}
+/* The picked option: a pale panel lifted off the wood, edged in the game's gold. */
+.soh_draft_pending {
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 3px #d9a520, 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 .soh_draft_cards {
   display: flex;
@@ -1572,8 +1575,10 @@ a.disabled {
 .soh_draft_card .soh_panel_card_art {
   transform: scale(0.5);
 }
-.soh_draft_count {
+/* "×2": copies of a card shown once (draft options, scrapping from the discard pile). */
+.soh_card_count {
   position: absolute;
+  z-index: 1;
   right: 2px;
   bottom: 2px;
   padding: 0 4px;
