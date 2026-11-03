@@ -204,6 +204,10 @@ define([
             <div id="skiff_slot_tan_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="tan_flag" data-number="n1"></div>
             <div id="skiff_slot_blue_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="blue_flag" data-number="n1"></div>
             <div id="skiff_slot_red_flag_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="red_flag" data-number="n1"></div>
+            <div id="red_flag_board" class="soh_flagish soh_board_flag" data-tokenkey="red_flag"></div>
+            <div id="tan_flag_board" class="soh_flagish soh_board_flag" data-tokenkey="tan_flag"></div>
+            <div id="green_flag_board" class="soh_flagish soh_board_flag" data-tokenkey="green_flag"></div>
+            <div id="blue_flag_board" class="soh_flagish soh_board_flag" data-tokenkey="blue_flag"></div>
             <div id="seaboard"></div>
         </div>
         <div class="whiteblock soh_market-section">
@@ -211,11 +215,6 @@ define([
                 <div class="soh_market-area">
                     <h3>${_("Market")}</h3>
                     <div id="market">
-                        <div id="market_slot_n1" class="soh_market_slot"></div>
-                        <div id="market_slot_n2" class="soh_market_slot"></div>
-                        <div id="market_slot_n3" class="soh_market_slot"></div>
-                        <div id="market_slot_n4" class="soh_market_slot"></div>
-                        <div id="market_slot_n5" class="soh_market_slot"></div>
                         <div id="skiff_slot_market_n1" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n1"></div>
                         <div id="skiff_slot_market_n2" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n2"></div>
                         <div id="skiff_slot_market_n3" class="soh_skiff_slot soh_unoccupied" data-slotname="market" data-number="n3"></div>
@@ -591,15 +590,16 @@ define([
         },
       });
 
-      this.playerDiscard = new BgaCards.AllVisibleDeck(this.cardsManager, $("mydiscard"), {
-        shift: "8px",
+      // Top card only, like the damage deck: a fanned pile outgrows its box late in the game.
+      // Earlier cards stay in the stock so the pile viewer can still list them.
+      this.playerDiscard = new BgaCards.Deck(this.cardsManager, $("mydiscard"), {
+        autoRemovePreviousCards: false,
         counter: {
           hideWhenEmpty: true,
         },
       });
 
-      // Top card only, like the damage deck: the fanned pile outgrew its box late in the game.
-      // Earlier cards stay in the stock (public anyway) so the pile viewer can still list them.
+      // Same as the discard.
       this.scrapPile = new BgaCards.Deck(this.cardsManager, $("scrap"), {
         autoRemovePreviousCards: false,
         counter: {

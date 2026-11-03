@@ -142,7 +142,7 @@
 
 .soh_skiff_slot {
   position: absolute;
-  /* A 32px tap target (BGA minimum), but only the middle 26px is painted so the disc matches
+  /* A 32px box, but only the middle 26px is painted so the disc matches
      the marker printed on the board; the negative margin keeps the marker's centre. */
   box-sizing: border-box;
   width: 32px;
@@ -154,10 +154,12 @@
   margin: -1px;
   background-color: rgba(0, 34, 255, 0.306);
 }
-
-/* Market slots (SlotStock containers) - positioned by SlotStock */
-.soh_market_slot {
-  position: relative;
+/* Invisible 44px hit area (BGA's recommended tap target); the nearest slots are 48px apart. */
+.soh_skiff_slot::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 
 /* Skiff slots are separate overlay elements positioned absolutely over market slots */
@@ -207,31 +209,21 @@
     0 0 10px rgba(232, 179, 53, 0.75);
   animation: corsair-slot-pulse 1.6s ease-in-out infinite;
 }
-.soh_skiff_slot.soh_corsair_selectable::before {
-  content: "";
+.soh_skiff_slot.soh_corsair_selectable::after {
+  content: "+";
   position: absolute;
   bottom: -1px;
   right: -1px;
   width: 16px;
   height: 16px;
-  border: 2px dashed rgba(201, 140, 20, 1);
-  border-radius: 50%;
-  background: rgba(255, 236, 179, 0.85);
-  z-index: 2;
-  pointer-events: none;
-}
-.soh_skiff_slot.soh_corsair_selectable::after {
-  content: "+";
-  position: absolute;
-  bottom: 2px;
-  right: 4px;
-  width: 14px;
-  height: 14px;
-  line-height: 14px;
+  line-height: 16px;
   text-align: center;
   font-size: 14px;
   font-weight: bold;
   color: #8a5a00;
+  border: 2px dashed rgba(201, 140, 20, 1);
+  border-radius: 50%;
+  background: rgba(255, 236, 179, 0.85);
   z-index: 3;
   pointer-events: none;
 }
@@ -384,11 +376,47 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_flagish > .soh_flagish {
   position: absolute;
 }
-/* Frame a held flag so it reads clearly against the faded placeholders. Inset, so no layout shift.
-   Dark, not gold: gold is what marks something to choose (.soh_choosable, the draft pick). */
+/* Outline a held flag so it reads clearly against the faded placeholders. A drop-shadow follows the
+   flag's ragged bottom edge, where a box-shadow would square it off. Dark, not gold: gold is what
+   marks something to choose (.soh_choosable, the draft pick). */
 .soh_flagish > .soh_flagish:not([data-tokenkey="first_player_token"]) {
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.75);
-  border-radius: 4px;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+/* Unclaimed flags sit on their banners, over the printed icon; a claimed one leaves a dark gap
+   in the flag's shape (the sprite as a mask; its position is set per flag below). */
+.soh_board_flag {
+  position: absolute;
+  background-image: none;
+  /* It reaches into the flag slot's enlarged hit area just below; let clicks through to the slot. */
+  pointer-events: none;
+}
+.soh_board_flag:empty {
+  background-color: rgba(0, 0, 0, 0.45);
+  mask-image: url("img/flags_1stplayer.png");
+}
+.soh_board .soh_board_flag > .soh_flagish {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6));
+}
+/* Each placed so the token's icon is centred on the (larger) icon printed on the banner. */
+.soh_board_flag[data-tokenkey="red_flag"] {
+  left: 58.5px;
+  top: 25.5px;
+  mask-position: 0px 0px;
+}
+.soh_board_flag[data-tokenkey="tan_flag"] {
+  left: 148px;
+  top: 22.5px;
+  mask-position: 0px -50px;
+}
+.soh_board_flag[data-tokenkey="green_flag"] {
+  left: 800.5px;
+  top: 19.5px;
+  mask-position: 0px -100px;
+}
+.soh_board_flag[data-tokenkey="blue_flag"] {
+  left: 892.5px;
+  top: 20px;
+  mask-position: 0px -150px;
 }
 .soh_seafeature {
   width: 63px;
@@ -438,7 +466,8 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_booty-token-back {
   background-position: 0px -189px;
 }
-.soh_booty-token-pickup {
+.soh_booty-token-pickup,
+.soh_flying {
   position: absolute;
   z-index: 870;
 }
@@ -1129,6 +1158,7 @@ a.disabled {
 /* Market and Scrap Pile Layout */
 .soh_market-section {
   min-height: 250px;
+  padding-inline: 18px; /* the same 18px edge gap as My Deck and My Discard below */
   /* The buy buttons' z-index lifts them over their market card only; without this they sat above
      everything else on the page too, like the cards in hand as the page scrolled past. */
   isolation: isolate;
@@ -1140,10 +1170,9 @@ a.disabled {
   align-items: flex-start;
 }
 
+/* Sized to its cards, so it sits at the left edge as the damage deck does at the right. */
 .soh_market-area {
-  flex: 1;
   min-width: 0; /* Allows flex item to shrink */
-  margin-right: auto; /* Push market to the left */
 }
 
 #market {
@@ -1192,18 +1221,6 @@ a.disabled {
   box-sizing: border-box; /* as #scrap: the cards sit at the corner, so padding only grows the box */
 }
 
-/* Piles open in a bounded dialog on click. The library also fans them out on hover, to
-   (card height + shift) x card count - off the screen and over the page. Pin them shut. */
-#mydiscard.all-visible-deck:hover,
-#mydiscard.all-visible-deck:active {
-  height: calc(var(--height) + (var(--tile-count) - 1) * var(--vertical-shift));
-  width: calc(var(--width) + (var(--tile-count) - 1) * var(--horizontal-shift));
-}
-#mydiscard.all-visible-deck:hover > .bga-cards_card,
-#mydiscard.all-visible-deck:active > .bga-cards_card {
-  top: calc(var(--vertical-shift) * var(--order));
-  left: calc(var(--horizontal-shift) * var(--order));
-}
 #mydiscard,
 #scrap {
   cursor: pointer;
@@ -1214,6 +1231,12 @@ a.disabled {
    a little below the box (not clipped) - raise this if that ever looks wrong. */
 #myhand {
   --bga-cards_hand-stock-height: 240px !important;
+}
+
+/* 18px either side of the 144px pile fills the 180px column, so the piles sit 18px from the edge. */
+#mydeck_wrap,
+#mydiscard_wrap {
+  padding-inline: 18px;
 }
 
 #myhand_wrap {
@@ -1502,7 +1525,6 @@ a.disabled {
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   padding: 10px 14px;
-  font-family: Georgia, "Times New Roman", serif;
   color: #3b2412;
 }
 
@@ -1653,4 +1675,19 @@ a.disabled {
   justify-self: start;
   margin-right: 0;
   font-size: 18px;
+}
+
+/* Rally the Flags: a free flag is chosen on its banner. The banner lets clicks through to the
+   skiff slot below; the flag itself takes them while choosable, with a glow that follows its shape. */
+.soh_board .soh_board_flag > .soh_flagish.soh_choosable {
+  pointer-events: auto;
+  box-shadow: none;
+  animation: none;
+  filter: drop-shadow(0 0 4px #ffd75a) drop-shadow(0 0 4px #ffd75a);
+}
+/* Rally the Flags: the flags a ship holds, in its tooltip. */
+.soh_tooltip_flag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

@@ -512,20 +512,34 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "rallyTheFlagsChooseFlag": {
             var flagNames = { green_flag: _("Green Purser's Flag"), tan_flag: _("Tan Bosun's Flag"), blue_flag: _("Blue Sailor's Flag"), red_flag: _("Red Shipwright's Flag") };
-            var self = this;
-            (args.available_flags || []).forEach(function (flag) {
-              var flagKey = flag.flag_key;
-              var name = flagNames[flagKey] || flagKey;
-              // Taking a flag off a neighbour is a different decision from taking a free one.
-              var label = flag.owner_name
-                ? self.format_string_recursive(_("Take ${flag} from ${player}"), { flag: name, player: flag.owner_name })
-                : _("Take") + " " + name;
-              self.statusBar.addActionButton(
-                label,
-                function () { self.bgaPerformAction("actRallyTheFlagsChooseFlag", { flag_key: flagKey }); },
-                {},
-              );
-            });
+            const take = (flagKey) => this.bgaPerformAction("actRallyTheFlagsChooseFlag", { flag_key: flagKey });
+            // Chosen on the board: a free flag where it sits on its banner, a neighbour's on their ship.
+            this.statusBar.setTitle(_("Sea Phase: ${you} must take a flag: choose it, or a ship holding it, on the board"));
+            const byOwner = {};
+            for (const flag of args.available_flags || []) {
+              if (flag.owner_id === null) {
+                this.makeChoosable(document.getElementById("token_" + flag.flag_key), _("Take") + " " + flagNames[flag.flag_key],
+                  () => take(flag.flag_key));
+              } else {
+                (byOwner[flag.owner_id] ??= []).push(flag.flag_key);
+              }
+            }
+            for (const [ownerId, flagKeys] of Object.entries(byOwner)) {
+              const name = this.gamedatas.players[ownerId].name;
+              const tooltip = flagKeys.map((k) =>
+                `<div class="soh_tooltip_flag"><div class="soh_flagish" data-tokenkey="${k}"></div>${flagNames[k]}</div>`).join("");
+              const pick = flagKeys.length === 1 ? () => take(flagKeys[0]) : () => {
+                // Several flags on that ship: which one.
+                this.clearChoosables();
+                this.statusBar.removeActionButtons();
+                this.statusBar.setTitle(_("Sea Phase: ${you} must take a flag from ${player}"), { player: name });
+                flagKeys.forEach((k) => this.statusBar.addActionButton(_("Take") + " " + flagNames[k], () => take(k)));
+                this.statusBar.addActionButton(_("Back"), () => this.restoreServerGameState(), { color: "alert" });
+              };
+              for (const ship of this.playerShipElements(ownerId)) {
+                this.makeChoosable(ship, name + ": " + flagKeys.map((k) => flagNames[k]).join(", "), pick, tooltip);
+              }
+            }
             break;
           }
 

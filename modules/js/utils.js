@@ -76,8 +76,12 @@ define([
      * Highlight `element` (a ship on the board, a flag on my player board) and make it a choice:
      * clicked or Enter/Space. Undone by clearChoosables().
      */
-    makeChoosable: function (element, label, onPick) {
+    makeChoosable: function (element, label, onPick, tooltipHtml) {
       if (!element) throw new Error("No element to choose for " + label);
+      if (tooltipHtml) {
+        this.addTooltipHtml(element.id, tooltipHtml);
+        element._sohTooltip = true;
+      }
       element.classList.add("soh_choosable");
       element.setAttribute("role", "button");
       element.setAttribute("aria-label", label);
@@ -92,6 +96,18 @@ define([
       element.addEventListener("keydown", element._sohChoose);
     },
 
+    /**
+     * Seen once (Timely Trading, 2026-11-03): every market slot showing an old card next to its new
+     * one, until a reload. Not reproduced, so this says when and with which cards it happens.
+     */
+    assertNoStrayMarketCards: function (when) {
+      const known = new Set(this.market.getCards().map((card) => this.cardsManager.getCardElementId(card)));
+      const stray = [...this.market.element.querySelectorAll(".bga-cards_card")].filter((el) => !known.has(el.id));
+      if (stray.length) {
+        throw new Error(`Stray market cards ${when}: ${stray.map((el) => el.id).join(", ")}; market has ${[...known].join(", ")}`);
+      }
+    },
+
     clearChoosables: function () {
       for (const element of document.querySelectorAll(".soh_choosable")) {
         element.classList.remove("soh_choosable");
@@ -101,6 +117,10 @@ define([
         element.removeEventListener("click", element._sohChoose);
         element.removeEventListener("keydown", element._sohChoose);
         delete element._sohChoose;
+        if (element._sohTooltip) {
+          this.removeTooltip(element.id);
+          delete element._sohTooltip;
+        }
       }
       document.querySelectorAll(".soh_choosing").forEach((element) => element.classList.remove("soh_choosing"));
     },
@@ -315,6 +335,8 @@ define([
       for (const [token_key, player_id] of Object.entries(unique_tokens)) {
         console.log("token id: " + token_key + " player id: " + player_id);
         if (player_id === null) {
+          // A flag nobody has claimed yet sits on its banner on the board.
+          domConstruct.place(this.format_block("jstpl_unique_token", { token_key: token_key }), `${token_key}_board`);
           continue;
         }
         var token_element = this.placeUniqueToken(token_key, player_id);
@@ -338,6 +360,27 @@ define([
       }
       domStyle.set(token_element, { left: "0px", top: "0px" });
       return token_element;
+    },
+
+    /**
+     * Show `element` sliding into the place it already has, from `from`. A copy does the flying, from
+     * the top of the page: the board's `isolation` would keep the element itself under the player
+     * panels on the way.
+     */
+    slideAboveAll: function (element, from) {
+      const copy = element.cloneNode(true);
+      [copy, ...copy.querySelectorAll("[id]")].forEach((el) => el.removeAttribute("id"));
+      copy.id = "soh_flying_" + this._nextEffectId();
+      copy.classList.add("soh_flying");
+      domConstruct.place(copy, "overall-content");
+      this.placeOnObject(copy, from);
+      element.style.visibility = "hidden";
+      const anim = this.slideToObject(copy, element, 800);
+      anim.onEnd = () => {
+        domConstruct.destroy(copy);
+        element.style.visibility = "";
+      };
+      anim.play();
     },
 
     // Booty sprite: 4 cols. Col 0 = seafeatures. Cols 1,2 = 4 tokens each (rows 0–3). Col 3 = 1 token (row 0). cellSize 63 = full, 50 = slot.
@@ -732,7 +775,6 @@ define([
       console.groupCollapsed("[booty] animateBootyTokenPickup");
       console.log("event", event, "playerId", playerId);
       const targetSlotId = `booty_token_p${playerId}`;
-      const seaboardNode = dom.byId("seaboard");
       const isOwner = playerId == this.player_id;
       const faceupTypeArg = isOwner ? this.lastBootyTokenTypeArg : null;
       console.log("[booty] pickup animation", { isOwner, faceupTypeArg });
@@ -743,7 +785,7 @@ define([
       const tokenId = `booty_pickup_${playerId}_${event.shipwreck_arg}_${Date.now()}`;
       tokenNode.id = tokenId;
       domClass.add(tokenNode, "soh_booty-token-pickup");
-      const overlayRoot = dom.byId("overall_game") || seaboardNode;
+      const overlayRoot = dom.byId("overall-content");
       domConstruct.place(tokenNode, overlayRoot);
       const startId = `seaboardlocation_${event.old_x}_${event.old_y}`;
       this.placeOnObject(tokenId, startId);

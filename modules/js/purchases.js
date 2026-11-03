@@ -54,11 +54,6 @@ define([
               var slotnum = number;
 
               var slot_id = "market_slot_n" + number.substring(1);
-              var slot_element = $(slot_id);
-              if (!slot_element) {
-                throw new Error("Market slot element not found: " + slot_id);
-              }
-
               if (!this.market.slots || !this.market.slots[slot_id]) {
                 throw new Error("SlotStock slot not found: " + slot_id);
               }
@@ -184,6 +179,7 @@ define([
      * A booty token can help pay; the Merchant's doubloons stand in for whatever is still short.
      */
     addTimelyTradingPurchaseButtons: function () {
+      this.assertNoStrayMarketCards("at Timely Trading");
       query(".soh_purchase_card_button").forEach(domConstruct.destroy);
       const have = this.getPlayerResources();
       // Doubloons to substitute for what `cost` (after any booty) leaves short, or null if even that falls short.

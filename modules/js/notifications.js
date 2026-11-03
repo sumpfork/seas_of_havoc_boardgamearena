@@ -152,11 +152,10 @@ define([
       console.log("skiff slot:");
       console.log(skiff_slot);
 
-      if (player_board) {
-        this.placeOnObject(skiff_id, player_board);
+      if (!player_board) {
+        throw new Error(`No player panel for ${args.player_id}`);
       }
-      domStyle.set(skiff_id, "zIndex", 1);
-      this.slideToObject(skiff_id, skiff_slot, 800).play();
+      this.slideAboveAll(dom.byId(skiff_id), player_board);
       console.groupEnd();
     },
 
@@ -199,15 +198,8 @@ define([
         query(".soh_skiff", slot).forEach(domConstruct.destroy);
         query(".soh_purchase_card_button", slot.parentElement).forEach(domConstruct.destroy);
         domClass.add(slot, "soh_unoccupied");
-        var slot_number = attr.get(slot, "data-number");
-        var market_slot_id = "market_slot_n" + slot_number.substring(1);
-        var market_slot = $(market_slot_id);
-        if (market_slot) {
-          var has_card = query(".card", market_slot).length > 0;
-          if (!has_card) {
-            domStyle.set(slot, "display", "none");
-          }
-        }
+        // Hidden until the market refill (notif_marketUpdated) shows the ones with a card.
+        domStyle.set(slot, "display", "none");
       });
 
       this.cards_purchased = [];
@@ -236,6 +228,7 @@ define([
       }
 
       this.marketSlotMap = {};
+      this.assertNoStrayMarketCards("after clearing the market for a refill");
 
       var market_array = Array.isArray(args.market) ? args.market : Object.values(args.market);
       for (var i = 0; i < market_array.length; i++) {
@@ -292,23 +285,16 @@ define([
       var token_key = args.token_key;
       var player_id = args.player_id;
 
-      // A flag taken off another player is already on screen, sitting on their panel: slide that
-      // element across. Only a flag coming off the island has to be created on its island slot.
+      // Every flag is already on screen, on its banner on the board or on its owner's panel: it
+      // slides from there. Only the first player token, dealt at setup, starts nowhere.
       var token_element = dom.byId("token_" + token_key);
-      if (!token_element) {
-        var token_html = this.format_block("jstpl_unique_token", { token_key: token_key });
-        var origin = token_key == "first_player_token" ? "skiff_slot_capitol_n1" : `skiff_slot_${token_key}_n1`;
-        token_element = domConstruct.place(token_html, origin);
+      var from = token_element ? token_element.parentNode : "skiff_slot_capitol_n1";
+      if (!token_element && token_key != "first_player_token") {
+        throw new Error(`No element for ${token_key}`);
       }
 
-      this.unique_tokens[token_key] = args.player_id;
-
-      if (player_id != null) {
-        domStyle.set(token_element, "zIndex", 1);
-        var slide = this.slideToObject(token_element, `${token_key}_p${player_id}`, 800);
-        slide.onEnd = () => { this.placeUniqueToken(token_key, player_id); };
-        slide.play();
-      }
+      this.unique_tokens[token_key] = player_id;
+      this.slideAboveAll(this.placeUniqueToken(token_key, player_id), from);
       console.groupEnd();
     },
 

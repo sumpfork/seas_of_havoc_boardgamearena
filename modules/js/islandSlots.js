@@ -255,11 +255,8 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
               if (!has_card) {
                 domStyle.set(skiff_slot_id, "display", "none");
               } else {
-                var market_slot = $(market_slot_id);
-                if (market_slot) {
-                  this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
-                  domStyle.set(skiff_slot_id, "display", "block");
-                }
+                this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
+                domStyle.set(skiff_slot_id, "display", "block");
               }
             }
           }
@@ -274,19 +271,9 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
      */
     positionMarketSkiffSlot: function (skiff_slot_id, market_slot_id) {
       var skiff_slot = $(skiff_slot_id);
-      if (!skiff_slot) {
-        return;
-      }
-
-      var slot_container = null;
-      if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
-        slot_container = this.market.slots[market_slot_id];
-      } else {
-        slot_container = $(market_slot_id);
-      }
-
-      if (!slot_container) {
-        return;
+      var slot_container = this.market.slots[market_slot_id];
+      if (!skiff_slot || !slot_container) {
+        throw new Error(`No ${skiff_slot_id} or market slot ${market_slot_id}`);
       }
 
       // Ensure the slot container has position relative for absolute child positioning
@@ -306,46 +293,32 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
         var market_slot_id = "market_slot_n" + i;
         var skiff_slot_id = "skiff_slot_market_n" + i;
         var skiff_slot = $(skiff_slot_id);
-
-        if (!skiff_slot) {
-          continue;
-        }
-
-        var slot_container = null;
-        if (this.market && this.market.slots && this.market.slots[market_slot_id]) {
-          slot_container = this.market.slots[market_slot_id];
-        } else {
-          slot_container = $(market_slot_id);
-        }
-
-        if (slot_container) {
-          var slot_index = i - 1;
-          var has_card = false;
-          if (this.gamedatas && this.gamedatas.market) {
-            var market_array = Array.isArray(this.gamedatas.market)
-              ? this.gamedatas.market
-              : Object.values(this.gamedatas.market);
-            if (market_array.length > slot_index && market_array[slot_index]) {
-              var card_id = market_array[slot_index].id;
-              if (this.gamedatas.pending_purchases) {
-                var pending_array = Array.isArray(this.gamedatas.pending_purchases)
-                  ? this.gamedatas.pending_purchases
-                  : Object.values(this.gamedatas.pending_purchases);
-                if (pending_array.indexOf(card_id) === -1) {
-                  has_card = true;
-                }
-              } else {
+        var slot_index = i - 1;
+        var has_card = false;
+        if (this.gamedatas && this.gamedatas.market) {
+          var market_array = Array.isArray(this.gamedatas.market)
+            ? this.gamedatas.market
+            : Object.values(this.gamedatas.market);
+          if (market_array.length > slot_index && market_array[slot_index]) {
+            var card_id = market_array[slot_index].id;
+            if (this.gamedatas.pending_purchases) {
+              var pending_array = Array.isArray(this.gamedatas.pending_purchases)
+                ? this.gamedatas.pending_purchases
+                : Object.values(this.gamedatas.pending_purchases);
+              if (pending_array.indexOf(card_id) === -1) {
                 has_card = true;
               }
+            } else {
+              has_card = true;
             }
           }
+        }
 
-          if (has_card) {
-            this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
-            domStyle.set(skiff_slot, "display", "block");
-          } else {
-            domStyle.set(skiff_slot, "display", "none");
-          }
+        if (has_card) {
+          this.positionMarketSkiffSlot(skiff_slot_id, market_slot_id);
+          domStyle.set(skiff_slot, "display", "block");
+        } else {
+          domStyle.set(skiff_slot, "display", "none");
         }
       }
     },

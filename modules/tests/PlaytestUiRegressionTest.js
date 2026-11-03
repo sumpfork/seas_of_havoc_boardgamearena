@@ -107,6 +107,7 @@ const game = {
   players: {},
   gamedatas: { islandslots: occupied },
   positionMarketSkiffSlots() {},
+  assertNoStrayMarketCards() {},
   updateIslandSlots(slots) { renderedSlots = slots; },
 };
 notifications.notif_marketUpdated.call(game, { market: [], islandslots: cleared });
@@ -131,7 +132,7 @@ assert.equal(discarded[0].id, 29);
 assert.equal(removed, 1, "Own discard must move out of hand");
 
 // Ships and flags are looked up by id to be made choices on the board.
-const handlers = loadModule("stateHandlers.js", {}, { document: { getElementById: (id) => ({ id }) } });
+const handlers = loadModule("stateHandlers.js", {}, { document: { getElementById: (id) => ({ id, classList: { add() {} } }) } });
 const utils = loadModule("utils.js");
 const buttons = [];
 let action;
@@ -281,6 +282,7 @@ const timelyGame = (bootyRes) => ({
   getPlayerResources: () => ({ sail: 1, cannonball: 1, doubloon: 5 }),
   getMyBootyTokenRes: () => bootyRes,
   getMyBootyTokenId: () => 7,
+  assertNoStrayMarketCards() {},
   bootyOverlapsCost: utils.bootyOverlapsCost,
   resolveBootyResources: (res) => res,
   computeEffectiveCost: utils.computeEffectiveCost,
