@@ -1048,7 +1048,8 @@ define([
     },
 
     /**
-     * Swaps the status bar for Confirm / Cancel before an island action is sent, unless the player
+     * Swaps the status bar for Confirm / Cancel before an island action or a ship's starting
+     * direction is sent, unless the player
      * turned that off (preference 100: 1 = confirm, 2 = don't). Confirm counts down and fires on
      * its own (BGA's autoclick); Cancel puts the normal buttons back. slotElement, if given, is
      * highlighted while waiting.

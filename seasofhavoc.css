@@ -730,7 +730,8 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
 .soh_heading_arrow::before {
   content: "\279C";
 }
-.soh_heading_arrow:hover {
+.soh_heading_arrow:hover,
+.soh_heading_arrow.soh_pending_skiff {
   background-color: rgba(232, 179, 53, 0.8);
 }
 

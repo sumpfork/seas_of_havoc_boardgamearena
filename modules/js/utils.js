@@ -237,6 +237,8 @@ define([
         this.seaboard.push(entry);
         this.addShipToBoard(entry);
       }
+      const shipElement = document.getElementById("player_ship_" + ship.arg);
+      shipElement.style.rotate = ""; // Cancel comes back here from a previewed heading.
       if (!this.isCurrentPlayerActive()) return;
       // Heading -> step to the neighbouring cell; the grid has a cell of margin all round.
       const steps = { 1: [0, -1], 2: [1, 0], 3: [0, 1], 4: [-1, 0] };
@@ -245,7 +247,11 @@ define([
         this.placeOnObject(arrow, "seaboardlocation_" + (ship.x + dx) + "_" + (ship.y + dy));
         // The glyph points east (heading 2).
         arrow.style.rotate = (heading - 2) * 90 + "deg";
-        arrow.addEventListener("click", () => this.bgaPerformAction("actChooseHeading", { heading: Number(heading) }));
+        arrow.addEventListener("click", () => {
+          shipElement.style.rotate = this.getHeadingDegrees(Number(heading)) + "deg";
+          this.confirmIslandAction(_("Confirm direction"),
+            () => this.bgaPerformAction("actChooseHeading", { heading: Number(heading) }), arrow);
+        });
       }
     },
 

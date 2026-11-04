@@ -1,6 +1,6 @@
 {
   "100": {
-    "name": "Confirm skiff placement and Market restock",
+    "name": "Confirm skiff placement, Market restock and ship direction",
     "needReload": false,
     "values": {
       "1": { "name": "Yes" },
