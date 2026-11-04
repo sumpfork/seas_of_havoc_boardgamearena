@@ -21,9 +21,15 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
   const console = Constants.console;
 
   return {
+    /** What the slot does, plus whose skiffs are on it: skiffs only differ by colour otherwise. */
     addSkiffSlotTooltips: function () {
       for (const slot of document.querySelectorAll(".soh_skiff_slot")) {
-        this.addTooltip(slot.id, this.tooltipText("skiff_slot", slot.dataset.slotname), "");
+        const owners = [...slot.querySelectorAll(".skiff_placed")].map((skiff) => {
+          const player = this.gamedatas.players[skiff.dataset.playerId];
+          return `<span class="soh_player_name" style="color:#${player.color}">${player.name}</span>`;
+        });
+        const owned = owners.length ? `<br>${_("Skiff:")} ${owners.join(", ")}` : "";
+        this.addTooltipHtml(slot.id, this.tooltipText("skiff_slot", slot.dataset.slotname) + owned);
       }
     },
 
@@ -140,6 +146,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
 
       domConstruct.place(skiff, skiffSlot);
       domClass.add(skiff_id, "skiff_placed");
+      $(skiff_id).dataset.playerId = playerId;
       if (isCorsairOverlay) {
         domClass.add(skiff_id, "soh_corsair_overlay");
       }
@@ -262,6 +269,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
           }
         }
       }
+      this.addSkiffSlotTooltips();
       this.updateSkiffSlotPlaceability();
     },
 

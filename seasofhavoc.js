@@ -908,7 +908,6 @@ define([
 
       var skiffslot_class = query(".soh_skiff_slot");
       var handlers = skiffslot_class.on("click", lang.hitch(this, "onClickSkiffSlot"));
-      this.addSkiffSlotTooltips();
 
       console.log("Ending game setup");
       console.groupEnd();

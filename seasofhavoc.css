@@ -182,21 +182,25 @@
   outline-width: 2px;
   cursor: pointer;
 }
+/* These still take hover for their tooltips; onClickSkiffSlot ignores clicks on them. */
 .soh_skiff_slot.soh_occupied_blocked {
-  pointer-events: none;
   cursor: default;
   background-color: rgba(90, 90, 90, 0.14) !important;
   box-shadow: none;
 }
 .soh_skiff_slot.soh_occupied_blocked:hover {
   outline: none;
+  cursor: default;
   background-color: rgba(90, 90, 90, 0.14) !important;
 }
 .soh_skiff_slot.soh_slot_unavailable {
-  pointer-events: none;
   cursor: default;
   background-color: rgba(90, 90, 90, 0.14) !important;
   box-shadow: none;
+}
+.soh_skiff_slot.soh_slot_unavailable:hover {
+  outline: none;
+  cursor: default;
 }
 .soh_skiff_slot.soh_slot_unavailable:hover {
   outline: none;
@@ -1690,4 +1694,10 @@ a.disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Player names in their colour, outlined so light colours (War Junk yellow) stay readable on white. */
+.soh_player_name {
+  font-weight: bold;
+  text-shadow: 0 0 1px #000, 0 0 1px #000;
 }
