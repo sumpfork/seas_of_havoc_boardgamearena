@@ -169,7 +169,7 @@ trait Firing
                         $player_id,
                         1,
                         "shots",
-                        clienttranslate('${player_name}\'s rocket explosion: gains 1 infamy'),
+                        clienttranslate('${player_name}\'s rocket explosion: gains 1 [infamy]'),
                     );
                 }
                 $this->dealDamageCard($hit_player_id);

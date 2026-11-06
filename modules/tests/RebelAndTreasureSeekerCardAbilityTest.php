@@ -325,6 +325,23 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         }
     }
 
+    /** One card per flag prints 1 sail on its 180 only; Lateen Rigging is for extended maneuvers, not this. */
+    public function testPivot180CostsASailOnEveryFlagAndTheQuarterTurnsStayFree(): void {
+        $types = array_keys(array_filter($this->game->playable_cards, fn($card) =>
+            in_array('pivot 180', array_column($card['actions'][0]['choices'] ?? [], 'action'), true)));
+        $this->assertEqualsCanonicalizing(['green', 'blue', 'tan', 'red'],
+            array_map(fn($type) => $this->game->playable_cards[$type]['flag'], $types));
+        foreach ($types as $type) {
+            $actions = \Bga\Games\SeasOfHavoc\ShipUpgrades::rewriteActions($this->game->playable_cards[$type]['actions'], ['xebec_lateen_rigging' => true]);
+            $board = $this->getMockBuilder(SeaBoard::class)->disableOriginalConstructor()->onlyMethods(['turnObject'])->getMock();
+            $board->method('turnObject')->willReturn(['type' => 'turn']);
+            (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
+            $this->assertSame(['sail' => 1], $this->game->processCardActions($actions, ['pivot 180'])->cost);
+            $this->assertSame([], $this->game->processCardActions($actions, ['pivot left'])->cost);
+            $this->assertSame([], $this->game->processCardActions($actions, ['pivot right'])->cost);
+        }
+    }
+
     /** The printed extended maneuver goes one more space, then left, forward or right - no further. */
     public function testExtendedForkManeuverMovesAsPrinted(): void {
         foreach ([37, 50] as $image_id) {

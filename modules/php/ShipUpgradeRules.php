@@ -139,6 +139,7 @@ trait ShipUpgradeRules
         $context = $this->shipUpgradeContext($player_id);
         $cards = $this->playable_cards;
         foreach ($cards as $type => $card) {
+            $cards[$type]["printed_actions"] = $card["actions"]; // for the card's tooltip text
             $cards[$type]["actions"] = $this->upgradedCardActions($card, $player_id, $context);
         }
         return $cards;
@@ -288,7 +289,7 @@ trait ShipUpgradeRules
                     (string) $player_id,
                     $infamy_total,
                     "upgrades",
-                    clienttranslate('${player_name} scores ${score_increment} infamy from ship upgrades'),
+                    clienttranslate('${player_name} scores ${score_increment} [infamy] from ship upgrades'),
                 );
             }
         }

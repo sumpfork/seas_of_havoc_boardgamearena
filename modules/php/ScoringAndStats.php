@@ -39,7 +39,7 @@ trait ScoringAndStats
                     (string) $player_id,
                     $infamy,
                     "cards",
-                    clienttranslate('${player_name} scores ${score_increment} infamy from their cards'),
+                    clienttranslate('${player_name} scores ${score_increment} [infamy] from their cards'),
                 );
             }
             // "In the case of a tie, the player with the most resources wins. If there is still a
@@ -173,7 +173,7 @@ trait ScoringAndStats
         }
         $this->bga->playerStats->inc("infamy_from_$source", $amount, (int) $player_id);
         if ($message === "") {
-            $message = clienttranslate('${player_name} scored ${score_increment} infamy');
+            $message = clienttranslate('${player_name} scored ${score_increment} [infamy]');
         }
         $this->bga->playerScore->inc(
             (int) $player_id,

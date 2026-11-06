@@ -511,9 +511,9 @@ for (const [from, to, corners] of [[0, 44, [15, 30]], [44, 0, [30, 15]], [59, 61
 }
 const formatBlock = (name, args) => templates[name].replace(/\$\{(\w+)\}/g, (_, key) => args[key]);
 const logArgs = { resource_change: "gains 3 [skiff]", booty_usage: "1 [cannonball]" };
-gameMethods.bgaFormatText.call({ format_block: formatBlock }, "resources", logArgs);
+gameMethods.bgaFormatText.call({ format_block: formatBlock, iconifyMarkers: utils.iconifyMarkers, resourceIcon: utils.resourceIcon }, "resources", logArgs);
 assert.match(logArgs.resource_change, /<svg /);
-assert.match(logArgs.resource_change, /aria-label='skiff'/);
+assert.match(logArgs.resource_change, /aria-label="skiff"/);
 assert.doesNotMatch(logArgs.resource_change, /\bid=/, "Repeated log icons must not duplicate DOM IDs");
 assert.match(logArgs.booty_usage, /soh_log_resource soh_cannonball/);
 assert.match(formatBlock("jstpl_skiff", { id: "board-skiff", player_color: "ff0000" }), /fill:#ff0000/);
@@ -645,6 +645,12 @@ assert.equal(nimbleRows.length, 7, "Both maneuvers retain all their choice rows"
   makeInputs(fixedOnly);
   assert.equal(controlGame._updateCardChoiceHints(fixedOnly), 0, "Fixed moves never ask for a choice");
   assert.equal(controlGame._updateCardChoiceHints(new Map()), 0, "Cards without choice rows are ready");
+  const pivots = Array.from(dialogs._makeCardDependencyTree([
+    { action: "choice", choices: [{ action: "pivot left" }, { action: "pivot 180", option_cost: { sail: 1 } }] },
+  ]).values());
+  assert.equal(pivots.length, 1, "An option's own cost adds no row of its own");
+  assert.equal(pivots[0][0].cost, undefined);
+  assert.equal(pivots[0][1].cost.sail, 1);
 }
 {
   const preview = loadModule("cardPreview.js");
@@ -971,4 +977,61 @@ assert.equal(nodes.skip.checked, false);
 
   assert.deepEqual(simulateCardPlay([{ action: "forward" }], ["pass"], { x: 0, y: 0, heading: N }, open), [],
     "passing the card shows nothing");
+}
+
+// Card tooltips print a card's wording, whatever its upgraded live actions say.
+{
+  const game = { ...loadModule("cardManager.js"), resourceIcon: (resource) => `[${resource}]` };
+  const fire = { action: "fire", range: 3, cost: { cannonball: 1 } };
+  const lines = (actions) => JSON.parse(JSON.stringify(game.printedCardLines(actions))); // out of the vm context
+  assert.deepEqual(lines([{ action: "forward" }, { action: "forward", cost: { sail: 1 } }]),
+    { types: ["sailing"], lines: ["1[sail]: Perform the extended maneuver as well."] });
+  assert.deepEqual(lines([{ action: "forward" }, { action: "choice", cost: { sail: 1 }, choices: [{ action: "left" }, { action: "right" }] }]).lines,
+    ["1[sail]: Perform the extended maneuver instead."]);
+  assert.deepEqual(lines([{ action: "choice", choices: [fire, { action: "2 x fire", range: 2, cost: { cannonball: 2 } }] }]),
+    { types: ["firing"], lines: ["1[cannonball]: Fire 1 cannon. Range 3", "2[cannonball]: Fire 2 cannon. Range 2"] });
+  assert.deepEqual(lines([{ action: "forward" }, fire, { action: "choice", cost: { sail: 1 }, choices: [{ action: "sequence", actions: [{ action: "forward" }, fire] }] }]),
+    { types: ["sailing", "firing"], lines: ["1[cannonball] each: Fire 1 cannon. Range 3", "1[sail]: Perform the extended maneuver instead."] },
+    "a second shot on the extended maneuver is paid for each, and is one line");
+  assert.deepEqual(lines([{ action: "choice", choices: [{ action: "pivot left" }, { action: "pivot 180", option_cost: { sail: 1 } }] }]),
+    { types: ["pivot"], lines: ["1[sail]: Pivot 180°"] });
+  assert.throws(() => game.cardTextPanel({ dataset: {} }), /Card face without a card/);
+}
+
+// On touch, a scrap or discard pick shows the card's text and still selects; playing stays with the dialog.
+{
+  const tap = (selector) => {
+    const game = {
+      ...loadModule("cardManager.js", {}, {
+        window: { matchMedia: () => ({ matches: false }) },
+        document: { addEventListener() {} },
+        setTimeout() {},
+      }),
+      hideCardHoverZoom() {},
+      showCardHoverZoom() { result.shown = true; },
+    };
+    const result = { shown: false, stopped: false };
+    const listeners = {};
+    const face = {
+      dataset: {}, classList: { contains: () => false },
+      setAttribute() {}, addEventListener: (type, listener) => { listeners[type] = listener; },
+      closest: (query) => query === selector || query === '.soh_seasofhavoc-card[data-side="front"]' ||
+        (selector === ".soh_card_pick .bga-cards_selectable-stock" && query === ".bga-cards_selectable-stock"),
+    };
+    game.setupCardPreview(face);
+    listeners.click({ stopPropagation() { result.stopped = true; } });
+    return result;
+  };
+  assert.deepEqual({ ...tap(".soh_card_pick .bga-cards_selectable-stock") }, { shown: true, stopped: false });
+  assert.deepEqual({ ...tap(".bga-cards_selectable-stock") }, { shown: false, stopped: false });
+  assert.deepEqual({ ...tap("none") }, { shown: true, stopped: true });
+}
+
+// Card text and logs share their icon markers.
+{
+  const game = { ...utils, format_block: () => "<svg></svg>" };
+  assert.equal(game.iconifyMarkers("pay 2 [cannonball]"), "pay 2 " + utils.resourceIcon("cannonball"));
+  assert.match(game.iconifyMarkers("gain [any]"), /aria-label="any resource".*sail.*\/.*cannonball.*\/.*doubloon/);
+  assert.match(game.iconifyMarkers("[skiff]"), /aria-label="skiff".*<svg>/);
+  assert.equal(game.iconifyMarkers("[other] text"), "[other] text");
 }

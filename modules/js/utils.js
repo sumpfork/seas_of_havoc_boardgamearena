@@ -141,6 +141,24 @@ define([
       return close;
     },
 
+    /**
+     * [sail], [cannonball], [doubloon], [infamy] and [skiff] in a text become their icons, as does
+     * [any] for the cards' any-resource symbol.
+     */
+    iconifyMarkers: function (text) {
+      return text.replace(/\[(sail|cannonball|doubloon|infamy|skiff|any)\]/g, (match, marker) => {
+        if (marker === "skiff") {
+          return `<span class="soh_resource soh_log_resource soh_log_skiff" role="img" aria-label="${_("skiff")}">` +
+            this.format_block("jstpl_skiff_svg", { player_color: "555555" }) + "</span>";
+        }
+        if (marker === "any") {
+          const icons = ["sail", "cannonball", "doubloon"].map((resource) => this.resourceIcon(resource)).join("/");
+          return `<span class="soh_any_resource" role="img" aria-label="${_("any resource")}">${icons}</span>`;
+        }
+        return this.resourceIcon(marker);
+      });
+    },
+
     resourceIcon: function (resource) {
       const names = { sail: _("sail"), cannonball: _("cannonball"), doubloon: _("doubloon"), infamy: _("infamy") };
       if (!Object.hasOwn(names, resource)) throw new Error("Unknown resource icon: " + resource);
@@ -263,12 +281,12 @@ define([
     draftChoiceCards: function (stateName, choice) {
       const cards = Object.values(this.playable_cards);
       if (stateName === "draftCaptain") {
-        return [{ image_id: this.non_playable_cards[choice].image_id, nonPlayable: true }].concat(
+        return [{ image_id: this.non_playable_cards[choice].image_id, nonPlayable: true, card_key: choice }].concat(
           cards.filter(c => c.category === "captain" && c.captain_key === choice));
       }
-      return Object.values(this.non_playable_cards)
-        .filter(c => c.category === "ship_upgrade" && c.ship_name === choice)
-        .map(c => ({ image_id: c.image_id, nonPlayable: true }))
+      return Object.entries(this.non_playable_cards)
+        .filter(([, c]) => c.category === "ship_upgrade" && c.ship_name === choice)
+        .map(([key, c]) => ({ image_id: c.image_id, nonPlayable: true, card_key: key }))
         .concat(cards.filter(c => c.category === "starting_card" && c.ship_name === choice));
     },
 
@@ -294,6 +312,8 @@ define([
             class: (card.nonPlayable ? "soh_non-playable-card-front" : "soh_playable-card-front") + " soh_panel_card_art",
             style: `width: 144px; height: 198px; background-position: -${(card.image_id % 6) * 144}px -${Math.floor(card.image_id / 6) * 198}px`,
           }, thumb);
+          if (card.nonPlayable) art.dataset.cardKey = card.card_key;
+          else art.dataset.cardType = card.card_type;
           this.setupCardPreview(art);
           if (card.count > 1) {
             domConstruct.create("span", { class: "soh_card_count", innerHTML: "&times;" + card.count }, thumb);
@@ -453,17 +473,17 @@ define([
           trading_post: _("Exchange up to 2 resources"),
           deep_cove: _("Scrap up to 2 cards from your hand or discard pile and gain their cost in resources"),
           market: _("Claim this card. You pay for it at the end of the Island Phase and add it to your hand"),
-          green_flag: _("Take the Purser's flag and gain 1 resource of your choice"),
-          tan_flag: _("Take the Bosun's flag and draw 1 card"),
-          red_flag: _("Take the Shipwright's flag and scrap 1 card from your hand or discard pile, gaining its cost"),
-          blue_flag: _("Take the Sailor's flag and place another skiff"),
+          green_flag: _("Take the Green Purser's flag and gain 1 resource of your choice"),
+          tan_flag: _("Take the Tan Bosun's flag and draw 1 card"),
+          red_flag: _("Take the Red Shipwright's flag and scrap 1 card from your hand or discard pile, gaining its cost"),
+          blue_flag: _("Take the Blue Sailor's flag and place another skiff"),
         },
         // Player panel token slots, keyed by data-tokenkey.
         panel_token: {
-          green_flag: _("Purser's flag: when you play a card showing this flag, you may gain 1 resource of your choice"),
-          tan_flag: _("Bosun's flag: when you play a card showing this flag, you may draw 1 card"),
-          red_flag: _("Shipwright's flag: when you play a card showing this flag, you may scrap a card from your hand or discard pile, including that card"),
-          blue_flag: _("Sailor's flag: when you play a card showing this flag, you may play another card immediately"),
+          green_flag: _("Green Purser's flag: when you play a card showing this flag, you may gain 1 resource of your choice"),
+          tan_flag: _("Tan Bosun's flag: when you play a card showing this flag, you may draw 1 card"),
+          red_flag: _("Red Shipwright's flag: when you play a card showing this flag, you may scrap a card from your hand or discard pile, including that card"),
+          blue_flag: _("Blue Sailor's flag: when you play a card showing this flag, you may play another card immediately"),
           first_player_token: _("First player: places the first skiff in the Island Phase and plays the first card in the Sea Phase"),
         },
         resource: {
@@ -478,6 +498,54 @@ define([
           gust: _("Gust: a ship on here after a card is resolved is pushed 1 space the way the gust blows, without changing heading"),
           shipwreck: _("Shipwreck: sail onto it to take its booty token"),
         },
+        card_text: {
+          pirate_queen: _("At the start of the Island Phase, gain 2 [infamy] if you control more flags than any other player."),
+          rebel: _("At the start of the Island Phase, draw 1 additional card then discard 1 card."),
+          admiral: _("Whenever you take the first player token from another player, draw a card. Whenever you take a flag from another player, gain 1 [infamy]."),
+          merchant: _("You may spend [doubloon] as [any] when purchasing cards from the Market."),
+          corsair: _("Once per Island Phase, you may place one of your [skiff] Skiffs on an occupied space. You only gain the resources shown there."),
+          treasure_seeker: _("Whenever a Shipwreck token is placed, you may adjust its location to a surrounding space."),
+          war_junk_rockets: _("When firing 1 cannon, you may instead fire a rocket. Range 3. After resolving a hit, rockets explode into all surrounding spaces. Score 1 [infamy] and deal 1 damage per piece hit by this explosion. Rockets also explode after hitting rocks."),
+          war_junk_bulwark: _("Immediately scrap any damage card you receive if you already have a damage card on top of your discard pile."),
+          xebec_lateen_rigging: _("You may make extended maneuvers without paying the [sail] cost."),
+          xebec_swift_hull: _("After resolving a sailing card (including its flag action), you may pay 1 [sail] to play another card immediately."),
+          sloop_of_war_chain_shot: _("When firing 1 cannon, you may instead fire chain shot. Range 2. After resolving a hit, opponents hit by chain shot also lose a resource of their choice."),
+          sloop_of_war_nimble_hull: _("Once per Sea Phase, you may resolve the maneuver on a sailing card twice. The card's flag action is only resolved once, after the maneuvers have been completed."),
+          brig_extra_rations: _("Once per Island Phase, you may pay 1 [any] to draw 1 card."),
+          brig_carronade: _("When firing 1 cannon, you may instead fire a carronade at no [cannonball] cost. Range 1."),
+          ship_of_the_line_double_gun_crews: _("When firing any number of cannon, you may choose to fire them from both sides of your ship, but at -1 Range each. This can be combined with Heavy Guns."),
+          ship_of_the_line_heavy_guns: _("When firing 1 cannon, you may instead pay 2 [cannonball] to fire heavy guns. Range 5. Heavy gun shots travel through ships, hitting any within range and earn +1 [infamy] when resolving each hit. Rocks still stop heavy gun shots."),
+          galleon_bow_and_stern_chasers: _("When firing 1 cannon, you may instead fire a bow or stern chaser. Range 3. Chasers fire forwards or backwards instead of from the sides of your ship."),
+          galleon_treasure_hold: _("You may have up to 2 booty tokens in your hold."),
+          rally_the_flags: _("Take a flag from the Island Board or a surrounding ship. Do not use its flag action. If you control more flags than any other player, gain 1 [infamy]."),
+          extortion: _("Use the action of each flag you control in any order."),
+          barter: _("You may make any one of the following exchanges in either direction once: 1 [sail] : 1 [infamy]; 1 [cannonball] : 2 [infamy]; 1 [doubloon] : 3 [infamy]."),
+          timely_trading: _("Choose One: Purchase a card from the Market paying its cost as usual. Add the card to your hand. Gain 2 [any]."),
+          boarding_party: _("Steal a booty token or a resource of your choice from a surrounding ship. If you do, gain 1 [infamy]."),
+          hunt_the_bounty: _("Declare a target ship. For the remainder of this Sea Phase, gain 1 [infamy] for each damage card you deal to it. You may play another card immediately."),
+          retaliation: _("Scrap a damage card from your hand or discard pile. If you do, you may fire 1 cannon, Range 3 (without spending [cannonball])."),
+          improvisation: _("Play this card as a copy of any SAILING, PIVOT, or FIRING card in your discard pile. If there are no such cards in your discard pile, draw 1 card instead."),
+          government_funding: _("Gain a resource of each type that you don't currently own. If you cannot do this, draw a card instead."),
+          inspire: _("If there are no damage cards in your discard pile, gain 1 [infamy] and draw 1 card. Otherwise, scrap a damage card from your discard pile."),
+          spyglass: _("Look at the top 3 cards of your deck and keep 1. Return the others on top of your deck in any order."),
+          unearth_riches: _("If there is a rock in a surrounding space, reveal a shipwreck token from the supply and gain its rewards immediately."),
+          damage: _("Repair: When you would play this card, scrap it instead."),
+        },
+        ability_name: {
+          rally_the_flags: _("Rally the Flags"),
+          extortion: _("Extortion"),
+          barter: _("Barter"),
+          timely_trading: _("Timely Trading"),
+          boarding_party: _("Boarding Party"),
+          hunt_the_bounty: _("Hunt the Bounty"),
+          retaliation: _("Retaliation"),
+          improvisation: _("Improvisation"),
+          government_funding: _("Government Funding"),
+          inspire: _("Inspire"),
+          spyglass: _("Spyglass"),
+          unearth_riches: _("Unearth Riches"),
+        },
+        card_type: { sailing: _("Sailing"), firing: _("Firing"), pivot: _("Pivot") },
         booty_token: _("Booty token: spend it whenever you pay resources, but it is spent whole - any resources left on it are lost"),
         row_button: _("Instead of playing a card you can Row by discarding two cards. This gives you a choice of sailing forward, left, right or <i>backwards</i>."),
       };
@@ -490,7 +558,7 @@ define([
       if (typeof text !== "string") {
         throw new Error(`No tooltip text for ${kind} ${key}`);
       }
-      return text;
+      return this.iconifyMarkers(text);
     },
 
     /** Player panel flags, first player token and resources. */

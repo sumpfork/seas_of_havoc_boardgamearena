@@ -201,9 +201,6 @@
 .soh_skiff_slot.soh_slot_unavailable:hover {
   outline: none;
   cursor: default;
-}
-.soh_skiff_slot.soh_slot_unavailable:hover {
-  outline: none;
   background-color: rgba(90, 90, 90, 0.14) !important;
 }
 .soh_skiff_slot.soh_corsair_selectable {
@@ -776,9 +773,62 @@ html[data-theme="dark"] .soh_cp_board .soh_resource {
   position: fixed;
   z-index: 10000;
   pointer-events: none;
+  display: flex;
   overflow: hidden;
   border-radius: 8px;
+  background: #fff;
+  color: #000;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.soh_card-hover-zoom > div:first-child {
+  flex: none;
+}
+.soh_card-hover-zoom_stacked {
+  flex-direction: column;
+  align-items: center;
+  width: min(304px, calc(100vw - 16px));
+  padding-top: 8px; /* The art's side margin, on top too. */
+}
+.soh_card_text {
+  box-sizing: border-box;
+  width: 240px;
+  padding: 10px 12px;
+  text-align: start;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.soh_card-hover-zoom_stacked .soh_card_text,
+.soh_card-zoom-dialog .soh_card_text {
+  width: 100%;
+}
+.soh_any_resource {
+  white-space: nowrap;
+}
+.soh_card_text h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.soh_card_kind {
+  font-weight: bold;
+  color: #6b5a3a;
+}
+.soh_card_text p {
+  margin: 8px 0 0;
+}
+/* Centred on digits and capitals: vertical-align: middle goes by the x-height and sits low. */
+.soh_card_text .soh_resource.soh_log_resource {
+  vertical-align: -4px;
+}
+/* 30px flag + gap = the width of a "1 [icon]: " cost, so the flag's text lines up with the text above it. */
+.soh_card_text .soh_tooltip_flag {
+  gap: 6.7px;
+  align-items: flex-start;
+}
+.soh_card_text .soh_flagish {
+  flex: none;
+  display: inline-block;
+  zoom: 0.6;
+  margin-top: 7px; /* 4px once zoomed: down to the top of the capitals, past the line's leading. */
 }
 #card_display_dialog {
   position: fixed;

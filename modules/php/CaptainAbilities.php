@@ -102,7 +102,7 @@ trait CaptainAbilities
                 2,
                 "captain",
                 clienttranslate(
-                    '${player_name}\'s Pirate Queen ability: gains 2 infamy for controlling the most flags',
+                    '${player_name}\'s Pirate Queen ability: gains 2 [infamy] for controlling the most flags',
                 ),
             );
         }
@@ -167,7 +167,7 @@ trait CaptainAbilities
                 $player_id,
                 1,
                 "captain",
-                clienttranslate('${player_name}\'s Admiral ability: gains 1 infamy for taking a flag'),
+                clienttranslate('${player_name}\'s Admiral ability: gains 1 [infamy] for taking a flag'),
             );
         }
     }
@@ -452,7 +452,7 @@ trait CaptainAbilities
                 $player_id,
                 1,
                 "captain",
-                clienttranslate('${player_name}\'s Inspire: gains 1 infamy'),
+                clienttranslate('${player_name}\'s Inspire: gains 1 [infamy]'),
             );
             $this->drawCardsAtSea($player_id);
         } else {
@@ -541,7 +541,7 @@ trait CaptainAbilities
                 $player_id,
                 1,
                 "captain",
-                clienttranslate('${player_name}\'s Rally the Flags: gains 1 infamy for controlling the most flags'),
+                clienttranslate('${player_name}\'s Rally the Flags: gains 1 [infamy] for controlling the most flags'),
             );
         }
 
@@ -680,7 +680,7 @@ trait CaptainAbilities
         if ($direction === "resource_to_infamy") {
             $this->payWithOptionalBooty((int) $player_id, [$resource => 1], $use_booty_card_id);
             $this->scoreInfamy($player_id, $infamy_amount, "captain",
-                clienttranslate('${player_name}\'s Barter: gains ${score_increment} infamy'),
+                clienttranslate('${player_name}\'s Barter: gains ${score_increment} [infamy]'),
             );
         } elseif ($direction === "infamy_to_resource") {
             $current_infamy = $this->getPlayerInfamy($player_id);
@@ -688,7 +688,7 @@ trait CaptainAbilities
                 throw new \Bga\GameFramework\UserException(clienttranslate("Not enough infamy for this exchange"));
             }
             $this->scoreInfamy($player_id, -$infamy_amount, "captain",
-                clienttranslate('${player_name}\'s Barter: spends infamy'),
+                clienttranslate('${player_name}\'s Barter: spends [infamy]'),
             );
             $this->playerGainResources($player_id, [$resource => 1]);
         } else {
@@ -878,7 +878,7 @@ trait CaptainAbilities
             $this->playerGainResources($target_player_id, [$item => -1]);
             $this->playerGainResources($player_id, [$item => 1]);
         }
-        $this->scoreInfamy($player_id, 1, "captain", clienttranslate('${player_name}\'s Boarding Party: gains 1 infamy'));
+        $this->scoreInfamy($player_id, 1, "captain", clienttranslate('${player_name}\'s Boarding Party: gains 1 [infamy]'));
         $this->bga->notify->all("log",
             clienttranslate('${player_name} uses Boarding Party and steals from ${target_name}'),
             [
@@ -958,7 +958,7 @@ trait CaptainAbilities
                 $player_id,
                 1,
                 "captain",
-                clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 infamy'),
+                clienttranslate('${player_name}\'s Hunt the Bounty: gains 1 [infamy]'),
             );
         }
     }

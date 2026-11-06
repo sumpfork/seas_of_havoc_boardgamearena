@@ -609,10 +609,10 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
             } else {
               // Up to six trades: pick the direction, then the resource.
               this.statusBar.addActionButton(_("Trade a resource for") + " " + this.resourceIcon("infamy"),
-                () => this.showBarStep(_("Sea Phase: ${you} may trade a resource for infamy"),
+                () => this.showBarStep(_("Sea Phase: ${you} may trade a resource for") + " " + this.resourceIcon("infamy"),
                   () => addTrades(toInfamy, "resource_to_infamy")));
               this.statusBar.addActionButton(_("Trade") + " " + this.resourceIcon("infamy") + " " + _("for a resource"),
-                () => this.showBarStep(_("Sea Phase: ${you} may trade infamy for a resource"),
+                () => this.showBarStep(_("Sea Phase: ${you} may trade") + " " + this.resourceIcon("infamy") + " " + _("for a resource"),
                   () => addTrades(fromInfamy, "infamy_to_resource")));
             }
             this.statusBar.addActionButton(_("Skip (No Exchange)"), () => this.bgaPerformAction("actSkipBarter", {}), {

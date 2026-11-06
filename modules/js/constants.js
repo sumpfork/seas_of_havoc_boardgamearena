@@ -50,13 +50,13 @@ define([], function () {
 
     /**
      * The decisions a card action accepts, as the server checks them (CardPlay::actionOptions). A
-     * choice offers its options by name (`choice` holds the option's action), fire each shot to each
-     * side, anything else itself. A cost makes the action optional: "skip".
+     * choice offers its options by name (`choice` holds the option's action, `cost` its option_cost),
+     * fire each shot to each side, anything else itself. A cost makes the action optional: "skip".
      */
     actionOptions: function (action) {
       let options;
       if (action.action === "choice") {
-        options = action.choices.map((choice) => ({ name: choice.name || choice.action, choice: choice }));
+        options = action.choices.map((choice) => ({ name: choice.name || choice.action, choice: choice, cost: choice.option_cost }));
       } else if (Object.hasOwn(FIRE_COUNTS, action.action)) {
         options = fireVariants(action).flatMap((variant) =>
           variant.sides.map((side) => ({ name: variant.name + " " + side, cost: variant.cost, range: variant.range })));

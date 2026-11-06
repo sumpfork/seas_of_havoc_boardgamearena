@@ -150,7 +150,6 @@ trait IslandPhase
         );
     }
 
-    /** Brig Extra Rations: once per Island Phase, pay 1 doubloon to draw 1 card. */
     /**
      * The market as a 5-slot list: index i is slot n(i+1), null where the slot is empty. A card's
      * location_arg is its slot number, so cards stay put under the skiffs that claimed them.

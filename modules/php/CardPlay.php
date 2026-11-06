@@ -98,7 +98,7 @@ trait CardPlay
                         $player_id,
                         1,
                         "rams",
-                        clienttranslate('${player_name} rams another ship and scores ${score_increment} infamy'),
+                        clienttranslate('${player_name} rams another ship and scores ${score_increment} [infamy]'),
                     );
                 }
                 $this->dealDamageCard($rammed_player_id);
@@ -117,9 +117,9 @@ trait CardPlay
 
     /**
      * The decisions a card action accepts, as [name, cost, choice] (mirrors actionOptions in
-     * constants.js). A choice offers its options by name, at the choice's cost, with the option's
-     * action as `choice`; fire offers each shot to each side; anything else offers itself. A cost
-     * makes the action optional: "skip".
+     * constants.js). A choice offers its options by name, at the choice's cost or the option's own
+     * option_cost, with the option's action as `choice`; fire offers each shot to each side; anything
+     * else offers itself. A cost makes the action optional: "skip".
      */
     public static function actionOptions(array $action): array
     {
@@ -128,7 +128,7 @@ trait CardPlay
         $options = [];
         if ($name === PrimitiveCardPlayAction::CHOICE->value) {
             foreach ($action["choices"] as $choice) {
-                $options[] = ["name" => $choice["name"] ?? ShipUpgrades::actionName($choice), "cost" => $cost, "choice" => $choice];
+                $options[] = ["name" => $choice["name"] ?? ShipUpgrades::actionName($choice), "cost" => $choice["option_cost"] ?? $cost, "choice" => $choice];
             }
         } elseif (isset(ShipUpgrades::FIRE_COUNTS[$name])) {
             foreach ($action["variants"] ?? ShipUpgrades::fireVariants($action, []) as $variant) {
@@ -192,7 +192,7 @@ trait CardPlay
                     if ($decision === self::NIMBLE_HULL_CHOICE) {
                         $this->useNimbleHull($this->getActivePlayerId());
                     }
-                    $outcome->absorb($this->processCardActionsWithDecisions([$chosen], $decisions), $cost);
+                    $outcome->absorb($this->processCardActionsWithDecisions([$chosen], $decisions), $options[$index]["cost"]);
                     break;
                 case PrimitiveCardPlayAction::LEFT:
                 case PrimitiveCardPlayAction::RIGHT:

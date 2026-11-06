@@ -458,10 +458,10 @@ define([
           if (option.name === "skip") return entry;
           if (option.choice) {
             entry.children = this._makeCardDependencyTree([option.choice], counter, false);
-            // A choice's cost is paid whichever option is taken. Otherwise an option carries its
-            // own cost only without children: a fire option's cost is re-declared on the shot rows
-            // it generates, and counting it here too doubles it.
-            const cost = action.cost !== undefined ? action.cost : entry.children.size === 0 ? option.choice.cost : undefined;
+            // An option_cost is paid for taking that option, a choice's cost whichever is taken.
+            // Otherwise an option carries its own cost only without children: a fire option's cost
+            // is re-declared on the shot rows it generates, and counting it here too doubles it.
+            const cost = option.cost ?? (action.cost !== undefined ? action.cost : entry.children.size === 0 ? option.choice.cost : undefined);
             if (cost !== undefined) entry.cost = cost;
             return entry;
           }

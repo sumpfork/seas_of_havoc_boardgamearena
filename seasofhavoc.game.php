@@ -917,15 +917,6 @@ class SeasOfHavoc extends Table
             }
         }
 
-        if ($this->getPlayerCaptain($first_player_token_owner) === "admiral") {
-            $this->playerGainResources($first_player_token_owner, ["doubloon" => 1]);
-            $this->bga->notify->all(
-                "log",
-                clienttranslate('${player_name}\'s Admiral ability: gains 1 doubloon for holding the first player token'),
-                ["player_name" => $this->getPlayerNameById($first_player_token_owner)],
-            );
-        }
-
         // A first player who scrapped their whole hand in the Island Phase has no turns: the next
         // player with cards starts, as stNextPlayerSeaPhase skips anyone with an empty hand.
         return $this->cards->countCardInLocation("hand", $first_player_token_owner) > 0 ? "" : STATE_NEXT_PLAYER_SEA_PHASE;

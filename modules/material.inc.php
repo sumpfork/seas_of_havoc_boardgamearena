@@ -72,7 +72,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Rockets"),
         "image_id" => 9,
         "category" => "ship_upgrade",
-        "ship_name" => "War Junk",
+        "ship_name" => clienttranslate("War Junk"),
         "cost" => ["cannonball" => 2, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -80,7 +80,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Watertight Bulkheads"),
         "image_id" => 10,
         "category" => "ship_upgrade",
-        "ship_name" => "War Junk",
+        "ship_name" => clienttranslate("War Junk"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -88,7 +88,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Lateen Rigging"),
         "image_id" => 13,
         "category" => "ship_upgrade",
-        "ship_name" => "Xebec",
+        "ship_name" => clienttranslate("Xebec"),
         "cost" => ["sail" => 2],
         "infamy" => 3,
     ],
@@ -96,7 +96,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Swift Hull"),
         "image_id" => 14,
         "category" => "ship_upgrade",
-        "ship_name" => "Xebec",
+        "ship_name" => clienttranslate("Xebec"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -104,7 +104,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Chain Shot"),
         "image_id" => 17,
         "category" => "ship_upgrade",
-        "ship_name" => "Sloop of War",
+        "ship_name" => clienttranslate("Sloop of War"),
         "cost" => ["cannonball" => 2, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -112,7 +112,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Nimble Hull"),
         "image_id" => 18,
         "category" => "ship_upgrade",
-        "ship_name" => "Sloop of War",
+        "ship_name" => clienttranslate("Sloop of War"),
         "cost" => ["sail" => 1, "doubloon" => 2],
         "infamy" => 3,
     ],
@@ -120,7 +120,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Extra Rations"),
         "image_id" => 21,
         "category" => "ship_upgrade",
-        "ship_name" => "Brig",
+        "ship_name" => clienttranslate("Brig"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -128,7 +128,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Carronade"),
         "image_id" => 22,
         "category" => "ship_upgrade",
-        "ship_name" => "Brig",
+        "ship_name" => clienttranslate("Brig"),
         "cost" => ["cannonball" => 1],
         "infamy" => 3,
     ],
@@ -136,7 +136,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Double Gun Crews"),
         "image_id" => 25,
         "category" => "ship_upgrade",
-        "ship_name" => "Ship-of-the-Line",
+        "ship_name" => clienttranslate("Ship-of-the-Line"),
         "cost" => ["cannonball" => 1, "doubloon" => 2],
         "infamy" => 3,
     ],
@@ -144,7 +144,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Heavy Guns"),
         "image_id" => 26,
         "category" => "ship_upgrade",
-        "ship_name" => "Ship-of-the-Line",
+        "ship_name" => clienttranslate("Ship-of-the-Line"),
         "cost" => ["cannonball" => 2, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -152,7 +152,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Bow and Stern Chasers"),
         "image_id" => 29,
         "category" => "ship_upgrade",
-        "ship_name" => "Galleon",
+        "ship_name" => clienttranslate("Galleon"),
         "cost" => ["cannonball" => 1, "doubloon" => 3],
         "infamy" => 3,
     ],
@@ -160,7 +160,7 @@ $this->non_playable_cards = [
         "name" => clienttranslate("Treasure Hold"),
         "image_id" => 30,
         "category" => "ship_upgrade",
-        "ship_name" => "Galleon",
+        "ship_name" => clienttranslate("Galleon"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "infamy" => 3,
     ],
@@ -175,7 +175,7 @@ $this->playable_cards = [
         "category" => "damage",
     ],
     [
-        "ship_name" => "Xebec",
+        "ship_name" => clienttranslate("Xebec"),
         "cost" => ["sail" => 1],
         "actions" => [
             ["action" => PrimitiveCardPlayAction::FORWARD->value],
@@ -186,7 +186,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Xebec",
+        "ship_name" => clienttranslate("Xebec"),
         "cost" => ["sail" => 1],
         "actions" => [
             [
@@ -202,7 +202,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Xebec",
+        "ship_name" => clienttranslate("Xebec"),
         "cost" => ["cannonball" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 2,
@@ -210,7 +210,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Ship-of-the-Line",
+        "ship_name" => clienttranslate("Ship-of-the-Line"),
         "cost" => ["cannonball" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 3,
@@ -218,7 +218,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Ship-of-the-Line",
+        "ship_name" => clienttranslate("Ship-of-the-Line"),
         "cost" => ["sail" => 1],
         "actions" => [
             [
@@ -234,7 +234,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Ship-of-the-Line",
+        "ship_name" => clienttranslate("Ship-of-the-Line"),
         "cost" => ["sail" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value]],
         "image_id" => 5,
@@ -242,7 +242,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Brig",
+        "ship_name" => clienttranslate("Brig"),
         "cost" => ["sail" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value]],
         "image_id" => 6,
@@ -250,7 +250,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Brig",
+        "ship_name" => clienttranslate("Brig"),
         "cost" => ["sail" => 1],
         "actions" => [
             [
@@ -266,7 +266,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Brig",
+        "ship_name" => clienttranslate("Brig"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             [
@@ -283,7 +283,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "War Junk",
+        "ship_name" => clienttranslate("War Junk"),
         "cost" => ["cannonball" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 9,
@@ -291,7 +291,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "War Junk",
+        "ship_name" => clienttranslate("War Junk"),
         "cost" => ["sail" => 1],
         "actions" => [
             [
@@ -307,7 +307,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "War Junk",
+        "ship_name" => clienttranslate("War Junk"),
         "cost" => ["doubloon" => 1],
         "actions" => [
             [
@@ -323,7 +323,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Sloop of War",
+        "ship_name" => clienttranslate("Sloop of War"),
         "cost" => ["cannonball" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 12,
@@ -331,7 +331,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Sloop of War",
+        "ship_name" => clienttranslate("Sloop of War"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             [
@@ -348,7 +348,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Sloop of War",
+        "ship_name" => clienttranslate("Sloop of War"),
         "cost" => ["sail" => 1],
         "actions" => [
             [
@@ -364,7 +364,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Galleon",
+        "ship_name" => clienttranslate("Galleon"),
         "cost" => ["cannonball" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FIRE->value, "range" => 3, "cost" => ["cannonball" => 1]]],
         "image_id" => 15,
@@ -372,7 +372,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Galleon",
+        "ship_name" => clienttranslate("Galleon"),
         "cost" => ["sail" => 1, "doubloon" => 1],
         "actions" => [
             [
@@ -389,7 +389,7 @@ $this->playable_cards = [
         "category" => "starting_card",
     ],
     [
-        "ship_name" => "Galleon",
+        "ship_name" => clienttranslate("Galleon"),
         "cost" => ["sail" => 1],
         "actions" => [["action" => PrimitiveCardPlayAction::FORWARD->value]],
         "image_id" => 17,
@@ -667,7 +667,7 @@ $this->playable_cards = [
                 "choices" => [
                     ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
                     ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
-                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value, "option_cost" => ["sail" => 1]],
                 ],
             ],
         ],
@@ -923,7 +923,7 @@ $this->playable_cards = [
                 "choices" => [
                     ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
                     ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
-                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value, "option_cost" => ["sail" => 1]],
                 ],
             ],
         ],
@@ -1179,7 +1179,7 @@ $this->playable_cards = [
                 "choices" => [
                     ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
                     ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
-                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value, "option_cost" => ["sail" => 1]],
                 ],
             ],
         ],
@@ -1435,7 +1435,7 @@ $this->playable_cards = [
                 "choices" => [
                     ["action" => PrimitiveCardPlayAction::PIVOT_LEFT->value],
                     ["action" => PrimitiveCardPlayAction::PIVOT_RIGHT->value],
-                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value],
+                    ["action" => PrimitiveCardPlayAction::PIVOT_AROUND->value, "option_cost" => ["sail" => 1]],
                 ],
             ],
         ],

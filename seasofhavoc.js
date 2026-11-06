@@ -93,21 +93,16 @@ define([
      */
     bgaFormatText: function (log, args) {
       try {
+        // Infamy markers are in the message itself, not its args.
+        if (log) log = this.iconifyMarkers(log);
         if (log && args && !args.processed) {
           args.processed = true;
           // [resource] markers become icons, including inside nested logs (resource_change is one).
           const keys = ["resource_change", "booty_usage", "resource_list", "resource"];
-          const iconify = (text) => text.replace(/\[(sail|cannonball|doubloon|skiff)\]/g, (match, res) => {
-            if (res === "skiff") {
-              return "<span class='soh_resource soh_log_resource soh_log_skiff' role='img' aria-label='" + _("skiff") + "'>" +
-                this.format_block("jstpl_skiff_svg", { player_color: "555555" }) + "</span>";
-            }
-            return "<span class='soh_resource soh_log_resource soh_" + res + "' role='img' aria-label='" + _(res) + "'></span>";
-          });
           const walk = (values) => {
             for (const key of Object.keys(values)) {
               if (typeof values[key] === "string" && keys.includes(key)) {
-                values[key] = iconify(values[key]);
+                values[key] = this.iconifyMarkers(values[key]);
               } else if (values[key] && typeof values[key] === "object") {
                 walk(values[key].args ?? values[key]);
               }
@@ -123,14 +118,11 @@ define([
             // Most cards have no printed name, so the alt text is the kind of card (and a market
             // card's printed type: sailing, firing, pivot).
             const card = this.playable_cards[args.card_image];
-            const typeNames = { sailing: _("Sailing"), firing: _("Firing"), pivot: _("Pivot") };
-            const unknownType = (card.type ?? []).find((t) => !typeNames[t]);
-            if (unknownType) throw new Error(`No log label for card type ${unknownType}`);
             const label =
               card.category === "captain"
                 ? _("${captain} card").replace("${captain}", _(this.gamedatas.non_playable_cards[card.captain_key].name))
                 : card.category === "market_card"
-                  ? _("${types} market card").replace("${types}", card.type.map((t) => typeNames[t]).join(" / "))
+                  ? _("${types} market card").replace("${types}", card.type.map((t) => this.tooltipText("card_type", t)).join(" / "))
                   : { starting_card: _("Starting card"), damage: _("Damage card"), rowing: _("Rowing card") }[card.category];
             if (label === undefined) throw new Error(`No log label for card category ${card.category}`);
             args.card_image = `<div class="soh_panel_card soh_log_card" role="img" aria-label="${label}">${art.outerHTML}</div>`;
@@ -466,6 +458,7 @@ define([
         let image_id = null;
         if (typeof card.type !== "undefined") {
           div.classList.add("soh_playable-card-front");
+          div.dataset.cardType = card.type;
           const cardData = this.playable_cards[card.type];
           image_id = cardData.image_id;
           if (image_id === null) {

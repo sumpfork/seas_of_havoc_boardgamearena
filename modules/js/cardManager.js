@@ -34,7 +34,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         !(face.classList.contains('soh_non-playable-card-back') && !face.classList.contains('upgrade-activated-face')) &&
         !!(face.closest('.soh_seasofhavoc-card[data-side="front"]') || face.classList.contains('soh_panel_card_art') ||
            face.classList.contains('upgrade-activated-face'));
-      // Mouse users get an enlarged copy on hover; touch users tap for the dialog below.
+      // Mouse users get the tooltip (enlarged copy and text) on hover; touch users on a tap.
       const hoverZoom = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
       if (hoverZoom) {
         face.addEventListener('mouseenter', () => {
@@ -44,12 +44,15 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       }
       face.addEventListener('click', event => {
         this.hideCardHoverZoom();
+        // Scrap and discard picks open no dialog with the card, so touch users get its text as they select.
+        const touchPick = !hoverZoom && face.closest('.soh_card_pick .bga-cards_selectable-stock');
         // Selectable stocks own clicks for playing, scrapping, and discarding.
-        if (face.closest('.bga-cards_selectable-stock') || !showsFront()) return;
-        // Draft cards never open the dialog: a click chooses their option (when it is a choice), and
-        // touch users get the enlarged copy until their next tap; tapping the same card just closes it.
-        if (face.closest('#soh_draft')) {
-          if (hoverZoom) return;
+        if ((face.closest('.bga-cards_selectable-stock') && !touchPick) || !showsFront()) return;
+        // A draft card's click also chooses its option (when it is a choice).
+        const inDraft = face.closest('#soh_draft');
+        if (!inDraft && !touchPick) event.stopPropagation();
+        // Touch users get the tooltip until their next tap; tapping the same card just closes it.
+        if (!hoverZoom) {
           if (this._tapZoomFace === face) {
             this._tapZoomFace = null;
             return;
@@ -62,14 +65,15 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
           }, { once: true }));
           return;
         }
-        event.stopPropagation();
+        if (inDraft) return;
+        // The keyboard's way to the card (Enter on a focused one).
         const previousFocus = document.activeElement;
         const dialog = document.createElement('dialog');
         dialog.className = 'soh_card-zoom-dialog';
         dialog.setAttribute('aria-label', _('Card preview'));
         const close = this.closeButton(() => dialog.close());
         const scale = Math.min(3, (window.innerWidth - 64) / 144, (window.innerHeight - 88) / 198);
-        dialog.append(this.cardArtCopy(face, scale), close);
+        dialog.append(this.cardArtCopy(face, scale), this.cardTextPanel(face), close);
         dialog.addEventListener('click', event => {
           if (event.target === dialog) dialog.close();
         });
@@ -100,25 +104,114 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       return frame;
     },
 
+    /** The card's wording as text, so it can be translated: see cardTextHtml. */
+    cardTextPanel: function (face) {
+      const { cardKey, cardType } = face.dataset;
+      if (cardKey === undefined && cardType === undefined) throw new Error("Card face without a card");
+      const panel = document.createElement('div');
+      panel.className = 'soh_card_text';
+      panel.innerHTML = cardKey !== undefined
+        ? this.nonPlayableCardTextHtml(this.non_playable_cards[cardKey], cardKey)
+        : this.playableCardTextHtml(this.playable_cards[cardType]);
+      return panel;
+    },
+
+    /** Heading, what kind of card it is, then its text lines. Cost and infamy are icons on the card. */
+    cardTextHtml: function (title, kind, lines) {
+      return (title ? `<h3>${title}</h3>` : '') + `<div class="soh_card_kind">${kind}</div>` +
+        lines.map((line) => `<p>${line}</p>`).join('');
+    },
+
+    costIcons: function (cost) {
+      return Object.entries(cost).map(([resource, n]) => `${n}${this.resourceIcon(resource)}`).join(' ');
+    },
+
+    /** A captain or a ship upgrade. */
+    nonPlayableCardTextHtml: function (card, cardKey) {
+      const kind = card.category === 'captain' ? _('Captain') : _('${ship} Upgrade').replace('${ship}', _(card.ship_name));
+      return this.cardTextHtml(_(card.name), kind, [this.tooltipText('card_text', cardKey)]);
+    },
+
+    playableCardTextHtml: function (card) {
+      if (card.category === 'rowing') return this.cardTextHtml(_('Rowing card'), _('Sailing'), [this.tooltipText('row_button')]);
+      if (card.category === 'damage') return this.cardTextHtml('', _('Damage card'), [this.tooltipText('card_text', 'damage')]);
+      if (card.category === 'captain') {
+        const ability = card.printed_actions[0].ability;
+        const captain = _(this.non_playable_cards[card.captain_key].name);
+        return this.cardTextHtml(this.tooltipText('ability_name', ability), _('${captain} ability').replace('${captain}', captain),
+          [this.tooltipText('card_text', ability)]);
+      }
+      const { types, lines } = this.printedCardLines(card.printed_actions);
+      const kind = (card.type ?? types).map((type) => this.tooltipText('card_type', type)).join(' / ');
+      if (card.flag) {
+        const flag = `${card.flag}_flag`;
+        lines.push(`<span class="soh_tooltip_flag"><span class="soh_flagish" data-tokenkey="${flag}"></span>` +
+          `<span>${this.tooltipText('panel_token', flag)}</span></span>`);
+      }
+      if (card.category === 'starting_card') lines.push(_('${ship} Starting Deck').replace('${ship}', _(card.ship_name)));
+      return this.cardTextHtml('', kind, lines);
+    },
+
     /**
-     * Enlarged card beside the hovered face, after a short delay so sweeping across the hand
-     * doesn't flash every card. Fixed positioning keeps it clear of panels that clip. The hovered
-     * card is outlined meanwhile, to show which one the zoom is of.
+     * The text a sailing, firing or pivot card prints, from what its actions do. Goes by the printed
+     * actions: upgrades rewrite the live ones (Lateen Rigging drops the extended maneuver's cost).
+     */
+    printedCardLines: function (actions) {
+      const flat = [];
+      const walk = (nodes) => nodes.forEach((node) => {
+        flat.push(node);
+        walk(node.choices ?? []);
+        walk(node.actions ?? []);
+      });
+      walk(actions);
+      const cannons = { fire: 1, '2 x fire': 2, '3 x fire': 3 };
+      const fires = flat.filter((node) => cannons[node.action]);
+      const lines = [];
+      for (const action of new Set(fires.map((node) => node.action))) {
+        const same = fires.filter((node) => node.action === action);
+        const cost = this.costIcons(same[0].cost) + (same.length > 1 ? ` ${_('each')}` : '');
+        lines.push(`${cost}: ` + _('Fire ${n} cannon. Range ${range}')
+          .replace('${n}', cannons[action]).replace('${range}', same[0].range));
+      }
+      const extended = flat.find((node) => node.cost && !cannons[node.action]);
+      if (extended) {
+        lines.push(`${this.costIcons(extended.cost)}: ` + (extended.action === 'forward'
+          ? _('Perform the extended maneuver as well.') : _('Perform the extended maneuver instead.')));
+      }
+      const around = flat.find((node) => node.action === 'pivot 180');
+      if (around) lines.push(`${this.costIcons(around.option_cost)}: ${_('Pivot 180°')}`);
+      const moves = ['forward', 'backward', 'left', 'right'];
+      const types = [];
+      if (flat.some((node) => moves.includes(node.action))) types.push('sailing');
+      if (fires.length) types.push('firing');
+      if (flat.some((node) => node.action.startsWith('pivot'))) types.push('pivot');
+      return { types, lines };
+    },
+
+    /**
+     * The card's tooltip: enlarged, with its text, beside the hovered face (below the card where the
+     * screen is too narrow), after a short delay so sweeping across the hand doesn't flash every
+     * card. Fixed positioning keeps it clear of panels that clip. The hovered card is outlined
+     * meanwhile, to show which one the zoom is of.
      */
     showCardHoverZoom: function (face) {
       this.hideCardHoverZoom();
       this._cardHoverTimer = setTimeout(() => {
         if (!face.isConnected) return;
-        const scale = Math.min(2, (window.innerHeight - 16) / 198);
-        const width = 144 * scale, height = 198 * scale;
-        const zoom = this.cardArtCopy(face, scale);
-        zoom.className = 'soh_card-hover-zoom';
+        const stacked = window.innerWidth < 2 * 144 + 240 + 16;
+        const scale = stacked
+          ? Math.min(2, (window.innerWidth - 16) / 144, window.innerHeight / 2 / 198)
+          : Math.min(2, (window.innerHeight - 16) / 198);
+        const zoom = document.createElement('div');
+        zoom.className = 'soh_card-hover-zoom' + (stacked ? ' soh_card-hover-zoom_stacked' : '');
+        zoom.append(this.cardArtCopy(face, scale), this.cardTextPanel(face));
+        document.body.append(zoom);
+        const { width, height } = zoom.getBoundingClientRect();
         const rect = face.getBoundingClientRect();
         const right = rect.right + 8;
         const left = right + width <= window.innerWidth ? right : Math.max(0, rect.left - 8 - width);
         const top = Math.min(Math.max(8, rect.top + rect.height / 2 - height / 2), window.innerHeight - height - 8);
         Object.assign(zoom.style, { left: `${left}px`, top: `${Math.max(0, top)}px` });
-        document.body.append(zoom);
         this._cardHoverZoom = zoom;
         // Thumbnails are scaled art in a clipping frame, so outline the frame.
         this._cardHoverSource = face.closest('.soh_panel_card, .soh_draft_card') || face;
@@ -140,6 +233,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
     setupNonPlayableCardHelper: function (card, div, side) {
       let image_id = null;
       const cardData = card.cardKey && this.non_playable_cards ? this.non_playable_cards[card.cardKey] : null;
+      if (cardData) div.dataset.cardKey = card.cardKey;
 
       if (side === "back" && cardData && cardData.category === "ship_upgrade") {
         // Ship upgrade cards flip to their activated (upgraded) side, stored 2 sprites after the front.
@@ -270,7 +364,7 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
       const cardData = this.non_playable_cards[thumb.dataset.cardkey];
       const image_id = cardData.image_id + (active ? 2 : 0);
       const position = `-${(image_id % 6) * 144}px -${Math.floor(image_id / 6) * 198}px`;
-      thumb.innerHTML = `<div class="soh_non-playable-card-front soh_panel_card_art" style="background-position: ${position}"></div>`;
+      thumb.innerHTML = `<div class="soh_non-playable-card-front soh_panel_card_art" data-card-key="${thumb.dataset.cardkey}" style="background-position: ${position}"></div>`;
       this.setupCardPreview(thumb.firstChild);
     },
 
