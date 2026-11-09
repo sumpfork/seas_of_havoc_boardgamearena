@@ -145,7 +145,8 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
         if (Constants.needsDecision(action)) {
           if (decisions.length === 0) { state.done = true; return; }
           decision = decisions.shift();
-          if (decision === "skip") continue;
+          // null: not chosen yet in the dialog. Draw nothing for it, as for a skip.
+          if (decision === "skip" || decision === null) continue;
         }
         switch (action.action) {
           case "sequence":

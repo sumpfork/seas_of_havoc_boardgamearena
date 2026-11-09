@@ -948,6 +948,10 @@ assert.equal(nodes.skip.checked, false);
     [[[1.65, 2], [1, 2], [0, 2], [-0.5, 2]], [[5.5, 2], [5, 2], [4.55, 2]]],
     "the shot line starts just outside the ship, breaks at the edge, and ends at the far edge of its range");
   assert.deepEqual(simulateCardPlay(fire, ["skip"], { x: 2, y: 2, heading: N }, open), [], "a skipped shot draws nothing");
+  marks = simulateCardPlay([{ action: "forward" }, { action: "forward", cost: { sail: 1 } }], [null],
+    { x: 2, y: 2, heading: N }, open);
+  assert.deepEqual(marks.find((m) => m.type === "ghost"), { type: "ghost", x: 2, y: 1, heading: N },
+    "an undecided paid forward is not drawn");
 
   const bothSides = [{ action: "2 x fire", range: 2, variants: [
     { name: "both sides", range: 1, count: 2, sides: ["left", "right"], both_sides: true },
