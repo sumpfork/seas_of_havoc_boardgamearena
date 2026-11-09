@@ -46,7 +46,7 @@ const notifications = loadModule("notifications.js");
   const copyGame = {
     player_id: "1",
     gamedatas: { playerinfo: { 1: { player_ship: "Brig", player_ship2: "Galleon" } } },
-    cleanupCardPlayDialog() {}, format_block: () => "dialog",
+    cleanupCardPlayDialog() {},
     _makeCardDependencyTree: () => [], _renderCardChoiceRows: () => [],
     _updateCardPlayControls() { this.updateCardPreview(); },
     _decisionSummary: () => ["fire left"],
@@ -298,7 +298,7 @@ const purchases = loadModule("purchases.js", {
 });
 const timelyGame = (bootyRes) => ({
   ...iconGame,
-  format_block: () => "",
+  purchaseButtonHtml: () => "",
   getPlayerResources: () => ({ sail: 1, cannonball: 1, doubloon: 5 }),
   getMyBootyTokenRes: () => bootyRes,
   getMyBootyTokenId: () => 7,
@@ -471,7 +471,6 @@ assert.equal(shownScraps, privateScraps.available_cards, "Red flag must use only
   }
 }
 let gameMethods;
-const templates = {};
 const scoreNodes = {};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../seasofhavoc.js"), "utf8"), {
   define: (dependencies, factory) => factory(...dependencies.map(name =>
@@ -482,7 +481,6 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../../seasofhavoc.js"),
   getLibUrl: name => name,
   g_gamethemeurl: "",
   ebg: { core: { gamegui: {} } },
-  window: templates,
   $: id => scoreNodes[id],
   _: text => text,
   console,
@@ -529,14 +527,13 @@ for (const [from, to, corners] of [[0, 44, [15, 30]], [44, 0, [30, 15]], [59, 61
   assert.deepEqual(Array.from(animations[0], frame => frame.translate), expected, "waypoints stay on the track");
   assert.equal(marker.parentNode, scoreNodes[gameMethods.scoreLocationId(to)]);
 }
-const formatBlock = (name, args) => templates[name].replace(/\$\{(\w+)\}/g, (_, key) => args[key]);
 const logArgs = { resource_change: "gains 3 [skiff]", booty_usage: "1 [cannonball]" };
-gameMethods.bgaFormatText.call({ format_block: formatBlock, iconifyMarkers: utils.iconifyMarkers, resourceIcon: utils.resourceIcon }, "resources", logArgs);
+gameMethods.bgaFormatText.call({ skiffSvgHtml: utils.skiffSvgHtml, iconifyMarkers: utils.iconifyMarkers, resourceIcon: utils.resourceIcon }, "resources", logArgs);
 assert.match(logArgs.resource_change, /<svg /);
 assert.match(logArgs.resource_change, /aria-label="skiff"/);
 assert.doesNotMatch(logArgs.resource_change, /\bid=/, "Repeated log icons must not duplicate DOM IDs");
 assert.match(logArgs.booty_usage, /soh_log_resource soh_cannonball/);
-assert.match(formatBlock("jstpl_skiff", { id: "board-skiff", player_color: "ff0000" }), /fill:#ff0000/);
+assert.match(utils.skiffHtml("board-skiff", "ff0000"), /fill:#ff0000/);
 console.log("Playtest UI regressions passed");
 
 const treasureSeeker = loadModule("treasureSeeker.js");
@@ -550,9 +547,6 @@ assert.equal(relocationCleaned, true, "Inactive players clear old relocation con
 // Card play dialog: rows must render in tree order, each followed by the rows its options unlock.
 const dialogGame = {
   resourceIcon: utils.resourceIcon,
-  format_block: (name, args) => Object.entries(args).reduce((html, [k, v]) => html.split("${" + k + "}").join(v),
-    name === "jstpl_card_choices_row" ? '<div class="soh_card_choices_row">${card_choices}</div>'
-      : '<input id="${id}" name="${name}" value="${value}"/><label>${label}</label>'),
   _makeCardDependencyTree: dialogs._makeCardDependencyTree,
   _renderCardChoiceRows: dialogs._renderCardChoiceRows,
   _rows: dialogs._rows,
@@ -838,7 +832,6 @@ seqNotifications.notif_cardPlayed.call({
   slideToObject: () => anim("slide"),
   getHeadingDegrees: () => 0,
   getObjectOnSeaboard: () => ({ heading: 1 }),
-  format_block: () => "<div></div>",
   _nextEffectId: () => 1,
   explosionAnimation: (x, y, extraClass) => anim(extraClass ? "blast:" + extraClass : "blast"),
   shotAnimation: () => anim("shot"),
@@ -1087,7 +1080,7 @@ assert.equal(nodes.skip.checked, false);
 
 // Card text and logs share their icon markers.
 {
-  const game = { ...utils, format_block: () => "<svg></svg>" };
+  const game = { ...utils, skiffSvgHtml: () => "<svg></svg>" };
   assert.equal(game.iconifyMarkers("pay 2 [cannonball]"), "pay 2 " + utils.resourceIcon("cannonball"));
   assert.match(game.iconifyMarkers("gain [any]"), /aria-label="any resource".*sail.*\/.*cannonball.*\/.*doubloon/);
   assert.match(game.iconifyMarkers("[skiff]"), /aria-label="skiff".*<svg>/);

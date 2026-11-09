@@ -338,7 +338,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       for (const shot of shots) {
         const [fx, fy] = toPixels(shot.from);
         const flash = domConstruct.place(
-          this.format_block("jstpl_cannon_fire", { id: "card_preview_flash_" + shots.indexOf(shot) }),
+          this.cannonFireHtml("card_preview_flash_" + shots.indexOf(shot)),
           board,
         );
         flash.classList.add("soh_card_preview_flash");
@@ -363,7 +363,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
           rotate = this.getHeadingDegrees(mark.heading);
         } else if (mark.type === "hit") {
           // The explosion the shot animation shows on a hit, held still.
-          html = this.format_block("jstpl_explosion", { id: "card_preview_hit_" + marks.indexOf(mark) });
+          html = this.explosionHtml("card_preview_hit_" + marks.indexOf(mark));
         } else {
           const glyph = { chevron: CHEVRON, collision: CROSS }[mark.type];
           html = `<div class="soh_card_preview_mark soh_card_preview_${mark.type}">${glyph}</div>`;

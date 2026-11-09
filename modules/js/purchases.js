@@ -120,7 +120,7 @@ define([
                 }
 
                 var cardIdValue = String(slot_card.id);
-                var purchase_button = this.format_block("jstpl_card_purchase_button", {
+                var purchase_button = this.purchaseButtonHtml({
                   id: button_id,
                   slotnumber: slotnum,
                   cardid: cardIdValue,
@@ -200,7 +200,7 @@ define([
         const withoutBooty = substitutions(cost);
         const slot_id = this.marketSlotMap[slot_card.id];
         const button = domConstruct.place(
-          this.format_block("jstpl_card_purchase_button", {
+          this.purchaseButtonHtml({
             id: "purchase_button_" + slot_id,
             slotnumber: slot_id.replace("market_slot_", ""),
             cardid: String(slot_card.id),

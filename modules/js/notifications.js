@@ -617,7 +617,7 @@ define([
       if (!g_archive_mode) {
         window.location.reload();
         // reload() is async: hold the queue so chooseHeading isn't entered with pre-draft gamedatas
-        // (no ship names yet -> format_block throws "null is not an object").
+        // (no ship names yet).
         return new Promise(() => {});
       }
     },

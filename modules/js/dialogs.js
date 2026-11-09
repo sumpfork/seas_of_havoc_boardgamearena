@@ -128,7 +128,16 @@ define([
       this.cleanupCardPlayDialog();
       this._captainCopyId = captainCopyId;
 
-      var dlg = this.format_block("jstpl_card_play_dialog");
+      var dlg = `<div id="card_display_dialog">
+          <div id="card_display"></div>
+          <div id="card_ship_choice"></div>
+          <div id="card_choices"></div>
+          <div id="card_play_buttons">
+            <span id="card_choices_remaining" role="status" aria-live="polite"></span>
+            <div id="pass_card_button" class="bgabutton bgabutton_gray pass_card_button">${_("Pass whole card")}</div>
+            <div id="play_card_button" class="bgabutton bgabutton_blue play_card_button">${_("Play card")}</div>
+          </div>
+          </div>`;
       // On the body, like the scrap dialog: the game area can be zoomed/transformed, which would
       // otherwise turn the panel's fixed positioning into positioning against that transform.
       domConstruct.place(dlg, document.body);
@@ -554,14 +563,10 @@ define([
      * @private
      */
     _renderCardChoiceRows: function (tree) {
-      return Array.from(this._rows(tree), ([choiceId, options]) => this.format_block("jstpl_card_choices_row", {
-        card_choices: options.map(option => this.format_block("jstpl_card_choice_radio", {
-          id: option.id,
-          name: choiceId,
-          value: option.name,
-          label: this._choiceLabelHtml(option),
-        })).join("\n"),
-      }));
+      return Array.from(this._rows(tree), ([choiceId, options]) =>
+        `<div class="soh_card_choices_row"><span class="soh_card_choice_hint">${_("Choose one")}</span>${options.map(option =>
+          `<div class="soh_card_choice_radio_container"><input type="radio" class="soh_card_choice_radio" id="${option.id}" name="${choiceId}" value="${option.name}"/><label class="soh_card_choice_chip" for="${option.id}">${this._choiceLabelHtml(option)}</label></div>`,
+        ).join("\n")}</div>`);
     },
 
     /**

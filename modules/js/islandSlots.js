@@ -139,10 +139,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/dom-style", "dojo/query", 
     renderSkiffInSlot: function (skiffSlot, slotName, slotNumber, playerId, players, isCorsairOverlay) {
       var suffix = isCorsairOverlay ? "_corsair" : "";
       var skiff_id = "skiff_p" + playerId + "_" + slotName + "_" + slotNumber + suffix;
-      var skiff = this.format_block("jstpl_skiff", {
-        player_color: players[playerId].color,
-        id: skiff_id,
-      });
+      var skiff = this.skiffHtml(skiff_id, players[playerId].color);
 
       domConstruct.place(skiff, skiffSlot);
       domClass.add(skiff_id, "skiff_placed");
