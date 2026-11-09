@@ -713,8 +713,17 @@ trait CardPlay
 
     function actResolveCardFlag(string $resource = '', ?int $card_id = null): int
     {
-        $flag = $this->argCardFlag()["flag"];
-        $player_id = $this->getActivePlayerId();
+        $this->applyFlagAction($this->getActivePlayerId(), $this->argCardFlag()["flag"], $resource, $card_id);
+        $this->setGameStateValue("pending_card_flag_type", 0);
+        return STATE_NEXT_PLAYER_SEA_PHASE;
+    }
+
+    /**
+     * A flag's action, for a card showing the flag or for Extortion. Blue's "take another turn"
+     * is handed out by stNextPlayerSeaPhase, once the current card has fully resolved.
+     */
+    function applyFlagAction(string $player_id, string $flag, string $resource = '', ?int $card_id = null): void
+    {
         switch ($flag) {
             case "green":
                 if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
@@ -732,13 +741,11 @@ trait CardPlay
                 $this->scrapCardAndRefund($card_id, $player_id);
                 break;
             case "blue":
+                $this->grantExtraTurn($player_id, "sea");
                 break;
             default:
-                throw new \Bga\GameFramework\SystemException("Unknown card flag: $flag");
+                throw new \Bga\GameFramework\SystemException("Unknown flag: $flag");
         }
-        $this->setGameStateValue("pending_card_flag_type", 0);
-        return $flag === "blue" && $this->cards->countCardInLocation("hand", $player_id) > 0
-            ? STATE_SEA_TURN : STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     function actSkipCardFlag(): int

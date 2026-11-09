@@ -8,6 +8,10 @@ require_once __DIR__ . '/RebelAndTreasureSeekerCardAbilityTest.php';
 class CardFlagUT extends RebelAndTreasureSeekerCardUT
 {
     public array $owners = [];
+    public array $extraTurns = [];
+    function grantExtraTurn(string $player_id, string $phase) { $this->extraTurns["$player_id/$phase"] = true; }
+    function hasExtraTurn(string $player_id, string $phase) { return isset($this->extraTurns["$player_id/$phase"]); }
+    function consumeExtraTurn(string $player_id, string $phase) { unset($this->extraTurns["$player_id/$phase"]); }
     public function getTokenOwner(string $token_key) { return $this->owners[$token_key] ?? null; }
     public function activeNextPlayer(): int|string { return 2; }
     public function giveExtraTime(int $playerId, ?int $specificTime = null): void {}
@@ -77,11 +81,14 @@ final class CardFlagActionTest extends TestCase
     }
 
     public function testBlueKeepsTurnOnlyWhenAnotherCardIsInHand(): void {
+        $this->game->addCard(1, 'hand', 2);
         $this->game->playFlag('blue');
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actResolveCardFlag());
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
         $this->game->addCard(1, 'hand');
         $this->game->playFlag('blue');
-        $this->assertSame(STATE_SEA_TURN, $this->game->actResolveCardFlag());
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actResolveCardFlag());
+        $this->assertSame(STATE_SEA_TURN, $this->game->stNextPlayerSeaPhase());
     }
 
     public function testBluePromptIsSkippedWhenHandIsEmpty(): void {
@@ -103,6 +110,16 @@ final class CardFlagActionTest extends TestCase
         $this->game->playFlag('blue');
         $this->game->actCollisionDiscardCard($last);
         $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+    }
+
+    public function testExtortionBlueExtraSeaTurnNeedsACardInHand(): void {
+        $this->game->addCard(1, 'hand', 2);
+        $this->game->grantExtraTurn('1', 'sea');
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+        $this->game->addCard(1, 'hand');
+        $this->game->grantExtraTurn('1', 'sea');
+        $this->assertSame(STATE_SEA_TURN, $this->game->stNextPlayerSeaPhase());
+        $this->assertSame([], $this->game->extraTurns);
     }
 
     public function testRedCanScrapThePlayedCardAndRefundItsCost(): void {

@@ -590,32 +590,16 @@ trait CaptainAbilities
     {
         $player_id = self::getActivePlayerId();
         $this->requirePendingExtortionFlag($flag);
-        switch ($flag) {
-            case "green":
-                if (!in_array($resource, ["sail", "cannonball", "doubloon"], true)) {
-                    throw new \Bga\GameFramework\UserException(clienttranslate("Choose a resource"));
-                }
-                $this->playerGainResources($player_id, [$resource => 1]);
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Purser\'s Flag)'), [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                    "resource" => "[$resource]", // shown as its icon
-                ]);
-                break;
-            case "tan":
-                $this->drawCardsAtSea($player_id, 1);
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: draws a card (Tan Bosun\'s Flag)'), [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                ]);
-                break;
-            case "blue":
-                $this->grantExtraTurn($player_id, "island");
-                $this->bga->notify->all("log", clienttranslate('${player_name}\'s Extortion: gains an extra island turn (Blue Sailor\'s Flag)'), [
-                    "player_name" => $this->getPlayerNameById($player_id),
-                ]);
-                break;
-            default:
-                throw new \Bga\GameFramework\UserException(clienttranslate("Choose a card to scrap for the Red Shipwright's Flag"));
-        }
+        $this->applyFlagAction($player_id, $flag, $resource);
+        $messages = [
+            "green" => clienttranslate('${player_name}\'s Extortion: gains 1 ${resource} (Green Purser\'s Flag)'),
+            "tan" => clienttranslate('${player_name}\'s Extortion: draws a card (Tan Bosun\'s Flag)'),
+            "blue" => clienttranslate('${player_name}\'s Extortion: takes another turn (Blue Sailor\'s Flag)'),
+        ];
+        $this->bga->notify->all("log", $messages[$flag], [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "resource" => "[$resource]", // shown as its icon
+        ]);
         return $this->clearExtortionFlag($flag);
     }
 
@@ -623,7 +607,7 @@ trait CaptainAbilities
     {
         $player_id = self::getActivePlayerId();
         $this->requirePendingExtortionFlag("red");
-        $this->scrapCardAndRefund($card_id, $player_id);
+        $this->applyFlagAction($player_id, "red", card_id: $card_id);
         return $this->clearExtortionFlag("red");
     }
 

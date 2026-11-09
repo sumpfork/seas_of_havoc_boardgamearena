@@ -944,6 +944,13 @@ class SeasOfHavoc extends Table
             }
             $this->setGameStateValue("pending_card_flag_type", 0);
         }
+        // Extortion's Blue Sailor's Flag: another sea turn if there is a card left to play.
+        if ($this->hasExtraTurn($this->getActivePlayerId(), "sea")) {
+            $this->consumeExtraTurn($this->getActivePlayerId(), "sea");
+            if ($this->cards->countCardInLocation("hand", $this->getActivePlayerId()) > 0) {
+                return STATE_SEA_TURN;
+            }
+        }
         // Xebec Swift Hull: after a sailing card (and its flag action) resolves, the player may
         // pay 1 sail to play another card immediately.
         if ($this->canUseSwiftHull($this->getActivePlayerId())) {

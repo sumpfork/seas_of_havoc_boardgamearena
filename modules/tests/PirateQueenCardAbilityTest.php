@@ -216,7 +216,7 @@ final class PirateQueenCardAbilityTest extends TestCase {
         $this->assertSame([], $this->game->extraTurns);
 
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actExtortionUseFlag("blue"));
-        $this->assertSame([["player_id" => "1", "phase" => "island"]], $this->game->extraTurns);
+        $this->assertSame([["player_id" => "1", "phase" => "sea"]], $this->game->extraTurns);
     }
 
     /** The card says "in any order", so the player picks which pending flag resolves next. */
