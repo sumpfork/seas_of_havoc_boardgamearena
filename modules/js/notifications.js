@@ -219,6 +219,14 @@ define([
       for (var card of args.scrapped || []) {
         this.scrapPile.addCard({ id: card.id, type: card.type, location: "scrap" });
       }
+      // An empty market deck took the scrapped market cards back. As for damage cards leaving the
+      // pile, recount without Deck's own update, which would put a fake card on top.
+      if (args.reshuffled && args.reshuffled.length > 0) {
+        for (var card of args.reshuffled) {
+          this.scrapPile.removeCard(card, { autoUpdateCardNumber: false });
+        }
+        this.scrapPile.setCardNumber(this.scrapPile.getCards().length, null);
+      }
 
       // Remove via the manager: Stock.removeCard skips elements that are mid-animation outside
       // the market div (e.g. replay fast-forward), orphaning them so the re-add below throws.

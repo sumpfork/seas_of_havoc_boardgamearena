@@ -9,6 +9,7 @@ class MarketRestockUT extends EndGameUT
     public array $claimed = [];
 
     public function getActivePlayerId(): string { return '1'; }
+    public function playable_cards_for_test(): array { return $this->playable_cards; }
     public function playerGainResources($player_id, $resources) {}
     public function getIslandSlots()
     {
@@ -52,6 +53,69 @@ final class MarketRestockTest extends TestCase
             $this->assertGreaterThan(10, $ids[$i], 'unclaimed slots get fresh cards');
         }
         $this->assertCount(4, $this->game->deck->getCardsInLocation('scrap'));
+    }
+
+    /** Empty the market deck and leave one scrapped card of each kind; returns the market card's id. */
+    private function emptyMarketDeckWithScrappedCards(): int
+    {
+        for ($i = 11; $i <= 20; $i++) {
+            $this->game->deck->moveCard($i, 'player_discard_1');
+        }
+        $categories = array_column($this->game->playable_cards_for_test(), 'category');
+        $this->game->deck->add(31, array_search('starting_card', $categories, true), 'scrap');
+        $this->game->deck->add(32, array_search('captain', $categories, true), 'scrap');
+        $this->game->deck->add(33, $this->game->damageCardType(), 'scrap');
+        $this->game->deck->add(34, $this->game->marketCardTypeWithInfamy(1), 'scrap');
+        return 34;
+    }
+
+    public function testEmptyMarketDeckTakesBackOnlyScrappedMarketCards(): void
+    {
+        $market_card = $this->emptyMarketDeckWithScrappedCards();
+        $this->game->deck->moveCard(1, 'hand', 1);
+
+        $reshuffled = $this->game->refillMarket();
+
+        $this->assertSame([$market_card], array_map(fn($c) => $c['id'], $reshuffled));
+        $this->assertSame($market_card, $this->marketIds()[0]);
+        $this->assertSame(['market_deck'], $this->game->deck->shuffled);
+        foreach ([31, 32, 33] as $other) {
+            $this->assertSame('scrap', $this->game->deck->getCard($other)['location']);
+        }
+        $this->assertCount(1, array_filter($this->game->bga->notify->sent, fn($n) => $n['type'] === 'message'));
+    }
+
+    public function testNoReshuffleWhileTheMarketIsFullOrTheDeckHasCards(): void
+    {
+        $this->game->deck->add(34, $this->game->marketCardTypeWithInfamy(1), 'scrap');
+        $this->assertSame([], $this->game->refillMarket(), 'the market is full');
+        $this->game->deck->moveCard(1, 'hand', 1);
+        $this->assertSame([], $this->game->refillMarket(), 'the deck still has cards');
+        $this->assertSame('scrap', $this->game->deck->getCard(34)['location']);
+        $this->assertSame([], $this->game->deck->shuffled);
+    }
+
+    public function testEmptyMarketSlotStaysEmptyWithNothingToReshuffle(): void
+    {
+        for ($i = 11; $i <= 20; $i++) {
+            $this->game->deck->moveCard($i, 'player_discard_1');
+        }
+        $this->game->deck->moveCard(1, 'hand', 1);
+        $this->assertSame([], $this->game->refillMarket());
+        $this->assertNull($this->game->getMarketSlots()[0]);
+    }
+
+    public function testRestockWithAnEmptyDeckCanDealTheCardsItJustScrapped(): void
+    {
+        for ($i = 11; $i <= 20; $i++) {
+            $this->game->deck->moveCard($i, 'player_discard_1');
+        }
+        $this->game->actRestockMarket();
+
+        $this->assertCount(5, array_filter($this->marketIds()), 'the market is full again');
+        $sent = array_values(array_filter($this->game->bga->notify->sent, fn($n) => $n['type'] === 'marketUpdated'));
+        $this->assertCount(5, $sent[0]['args']['scrapped']);
+        $this->assertCount(5, $sent[0]['args']['reshuffled'], 'the client takes them back out of its pile');
     }
 
     public function testNoRestockWhenEveryCardIsClaimed(): void

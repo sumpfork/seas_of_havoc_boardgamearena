@@ -56,6 +56,9 @@ class EndGameDeck
         }
     }
 
+    public array $shuffled = [];
+    public function shuffle(string $location): void { $this->shuffled[] = $location; }
+
     public function insertCardOnExtremePosition(int $card_id, string $location, bool $bOnTop): void
     {
         $this->moveCard($card_id, $location, (int) $this->cards[$card_id]["location_arg"]);

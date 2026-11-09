@@ -61,12 +61,14 @@ define([
     /**
      * Rowing: "Instead of passing or resolving a card, a player may instead row their ship by
      * discarding 2 cards." First the two discards are picked from the hand; picking the second
-     * opens the play dialog with rowing's maneuvers (see onCardSelectedPlayerHand).
+     * opens the play dialog with rowing's maneuvers (see onCardSelectedPlayerHand). The first card
+     * picked is left on top of the pile, which matters for Watertight Bulkheads.
      */
     startRowing: function () {
       this.cleanupCardPlayDialog();
       this.playerHand.unselectAll();
       this._rowing = true;
+      this._rowDiscards = [];
       this.playerHand.setSelectionMode("multiple");
       this.statusBar.setTitle(_("Sea Phase: ${you} must select 2 cards to discard for rowing"));
       this.statusBar.removeActionButtons();
@@ -80,6 +82,21 @@ define([
       this.updatePageTitle(); // the seaTurn title and buttons
     },
 
+    /** Keep rowing's discards in the order they were picked, top of the pile first. */
+    _syncRowDiscards: function () {
+      const selection = this.playerHand.getSelection();
+      const kept = this._rowDiscards.filter((card) => selection.some((s) => s.id === card.id));
+      this._rowDiscards = kept.concat(selection.filter((s) => !kept.some((card) => card.id === s.id)));
+      this._labelRowDiscards();
+    },
+
+    _labelRowDiscards: function () {
+      document.querySelectorAll("#myhand [data-row-order]").forEach((el) => delete el.dataset.rowOrder);
+      this._rowDiscards.forEach((card, i) => {
+        this.cardsManager.getCardElement(card).dataset.rowOrder = i === 0 ? _("1 - top of discard") : "2";
+      });
+    },
+
     showRowingDialog: function () {
       const card = Object.values(this.playable_cards).find((c) => c.category === "rowing");
       if (!card) throw new Error("No rowing card in playable_cards");
@@ -89,8 +106,9 @@ define([
     },
 
     _sendRow: function (decisions) {
-      const [first, second] = this.playerHand.getSelection();
-      const params = { discard_card_id_1: first.id, discard_card_id_2: second.id, decision: decisions[0] };
+      const [top, under] = this._rowDiscards;
+      // The server discards them in this order, so the last one lands on top.
+      const params = { discard_card_id_1: under.id, discard_card_id_2: top.id, decision: decisions[0] };
       const shipChoice = document.querySelector('input[name="card_ship"]:checked');
       if (shipChoice) {
         params.ship = Number(shipChoice.value);

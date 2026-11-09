@@ -354,7 +354,7 @@ trait ZombieMoves
                 $bought[] = $item;
             }
         }
-        $this->actCompletePurchases($bought);
+        $this->actCompletePurchases($bought, $player_id);
     }
 
     /** Sea Phase: a random card from the hand played with random affordable choices, or rowing. */

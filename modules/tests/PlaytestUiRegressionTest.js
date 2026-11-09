@@ -116,6 +116,26 @@ assert.equal(game.gamedatas.islandslots, cleared);
 notifications.notif_marketUpdated.call(game, { market: [] });
 assert.equal(renderedSlots, cleared, "Timely Trading must preserve slots when no slot update is sent");
 
+// A reshuffle takes cards out of the pile, after a restock has put its own there.
+const scrapPileCards = [{ id: 1 }, { id: 2 }];
+let scrapCount, scrapTop = "unset";
+game.scrapPile = {
+  getCards: () => scrapPileCards,
+  addCard(card) { scrapPileCards.push(card); },
+  removeCard(card, settings) {
+    assert.equal(settings.autoUpdateCardNumber, false, "no fake card on top of the pile");
+    scrapPileCards.splice(scrapPileCards.findIndex((c) => c.id === card.id), 1);
+  },
+  setCardNumber(count, top) { scrapCount = count; scrapTop = top; },
+};
+notifications.notif_marketUpdated.call(game, { market: [], scrapped: [{ id: 3 }], reshuffled: [{ id: 1 }, { id: 3 }] });
+assert.deepEqual(scrapPileCards.map((c) => c.id), [2], "reshuffled cards leave the scrap pile");
+assert.equal(scrapCount, 1, "the pile recounts");
+assert.equal(scrapTop, null);
+scrapCount = "untouched";
+notifications.notif_marketUpdated.call(game, { market: [], reshuffled: [] });
+assert.equal(scrapCount, "untouched", "no reshuffle leaves the pile alone");
+
 const discarded = [];
 let removed = 0;
 const discardGame = {
@@ -1025,6 +1045,44 @@ assert.equal(nodes.skip.checked, false);
   assert.deepEqual({ ...tap(".soh_card_pick .bga-cards_selectable-stock") }, { shown: true, stopped: false });
   assert.deepEqual({ ...tap(".bga-cards_selectable-stock") }, { shown: false, stopped: false });
   assert.deepEqual({ ...tap("none") }, { shown: true, stopped: true });
+}
+
+// Rowing labels its discards as they are picked, and the first one picked ends up on top.
+{
+  let selection = [{ id: 5 }];
+  let sent;
+  const handCards = {};
+  const labelled = () => Object.fromEntries(Object.entries(handCards).filter(([, el]) => "rowOrder" in el.dataset).map(([id, el]) => [id, el.dataset.rowOrder]));
+  const rowing = loadModule("dialogs.js", {}, {
+    document: {
+      querySelector: () => null,
+      querySelectorAll: () => Object.values(handCards).filter((el) => "rowOrder" in el.dataset),
+    },
+  });
+  const game = {
+    ...rowing,
+    _rowDiscards: [],
+    playerHand: { getSelection: () => selection },
+    cardsManager: { getCardElement: (card) => (handCards[card.id] ??= { dataset: {} }) },
+    cancelRowing() {},
+    bgaPerformAction: (name, args) => { sent = args; },
+  };
+  game._syncRowDiscards();
+  assert.deepEqual(labelled(), { 5: "1 - top of discard" });
+  selection = [{ id: 3 }, { id: 5 }];
+  game._syncRowDiscards();
+  assert.deepEqual(labelled(), { 5: "1 - top of discard", 3: "2" }, "the stock's own order doesn't matter");
+  selection = [{ id: 3 }];
+  game._syncRowDiscards();
+  assert.deepEqual(labelled(), { 3: "1 - top of discard" }, "unselecting renumbers");
+  selection = [{ id: 3 }, { id: 5 }];
+  game._syncRowDiscards();
+  assert.deepEqual(labelled(), { 3: "1 - top of discard", 5: "2" });
+  game._sendRow(["forward"]);
+  assert.deepEqual([sent.discard_card_id_1, sent.discard_card_id_2], [5, 3], "the server puts its second card on top");
+  game._rowDiscards = [];
+  game._labelRowDiscards();
+  assert.deepEqual(labelled(), {}, "labels go when rowing ends");
 }
 
 // Card text and logs share their icon markers.

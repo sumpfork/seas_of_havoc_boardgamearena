@@ -1402,6 +1402,24 @@ a.disabled {
   50% { box-shadow: 0 0 10px 4px #e8b930; }
 }
 
+/* Rowing: which of the two discards ends up on top of the pile. Above the card, as the next card
+   in the hand overlaps its right side; bga-cards lifts a selected card's face by a fifth of its height. */
+#myhand [data-row-order]::after {
+  content: attr(data-row-order);
+  position: absolute;
+  bottom: calc(100% + var(--bga-cards_card-height) / 5);
+  left: 50%;
+  transform: translate(-50%, -4px) translateZ(1px);
+  pointer-events: none;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #5a3a00;
+  color: #fdf6ec;
+  font-size: 13px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
 /* 2 Ship Variant: which ship a card is played with, shown as the ships' board sprites. */
 #card_ship_choice {
   display: flex;

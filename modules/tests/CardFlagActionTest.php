@@ -204,6 +204,13 @@ final class CardFlagActionTest extends TestCase
         $this->assertSame(0, $this->game->getGameStateValue('pending_card_flag_type'));
     }
 
+    public function testRowingLeavesTheSecondDiscardOnTop(): void {
+        $a = $this->game->addCard(1, 'hand');
+        $b = $this->game->addCard(2, 'hand');
+        $this->game->actRow($b, $a, 'forward');
+        $this->assertSame($a, (int) $this->game->deck->getCardOnTop('player_discard_1')['id']);
+    }
+
     public function testRowingNeedsTwoDifferentCardsFromHand(): void {
         $a = $this->game->addCard(1, 'hand');
         try {

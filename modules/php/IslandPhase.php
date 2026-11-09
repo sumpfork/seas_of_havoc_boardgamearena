@@ -167,14 +167,43 @@ trait IslandPhase
         return $slots;
     }
 
-    /** Deal a card from the market deck into every empty market slot. */
-    function refillMarket(): void
+    /**
+     * Deal a card from the market deck into every empty market slot.
+     * @return array the cards taken back out of the scrap pile for this, for the client's pile
+     */
+    function refillMarket(): array
     {
+        $reshuffled = [];
         foreach ($this->getMarketSlots() as $i => $card) {
             if ($card === null) {
+                if ($this->cards->countCardInLocation("market_deck") == 0) {
+                    $reshuffled = array_merge($reshuffled, $this->reshuffleScrappedMarketCards());
+                }
                 $this->cards->pickCardForLocation("market_deck", "market", $i + 1);
             }
         }
+        return $reshuffled;
+    }
+
+    /**
+     * Not in the rulebook: an empty market deck takes the scrapped market cards back. Without this,
+     * players who scrap everything are left with no cards to buy or play, and no way to end the game.
+     */
+    private function reshuffleScrappedMarketCards(): array
+    {
+        $cards = array_values(array_filter(
+            $this->cards->getCardsInLocation("scrap"),
+            fn($card) => $this->playable_cards[(int) $card["type"]]["category"] === "market_card",
+        ));
+        if (empty($cards)) {
+            return [];
+        }
+        foreach ($cards as $card) {
+            $this->cards->moveCard((int) $card["id"], "market_deck");
+        }
+        $this->cards->shuffle("market_deck");
+        $this->bga->notify->all("message", clienttranslate("The scrapped market cards are shuffled into a new market deck"), []);
+        return $cards;
     }
 
     /** True when the active player may restock the market: once, with an unclaimed card to replace. */
@@ -214,13 +243,14 @@ trait IslandPhase
                 $scrapped[] = $card;
             }
         }
-        $this->refillMarket();
+        $reshuffled = $this->refillMarket();
         $this->setGameStateValue("market_restocked", 1);
 
         $this->bga->notify->all("marketUpdated", clienttranslate('${player_name} restocks the Market'), [
             "player_name" => $this->getPlayerNameById($player_id),
             "market" => $this->getMarketSlots(),
             "scrapped" => $scrapped,
+            "reshuffled" => $reshuffled,
         ]);
         return STATE_ISLAND_TURN;
     }
@@ -689,9 +719,10 @@ trait IslandPhase
         return "islandTurnDone";
     }
 
-    function actCompletePurchases(#[JsonParam] array $cards_purchased)
+    /** $player_id is for zombie and debug play; a real request completes the current player's. */
+    function actCompletePurchases(#[JsonParam] array $cards_purchased, ?int $player_id = null)
     {
-        $player_id = $this->getCurrentPlayerId();
+        $player_id ??= (int) $this->getCurrentPlayerId();
         $this->mydump("cards_purchased", $cards_purchased);
 
         // Check if player has already completed purchases (is in pending_purchases table)
@@ -839,13 +870,14 @@ trait IslandPhase
 
         // Clear island slots and refill market
         $this->clearIslandSlots();
-        $this->refillMarket();
+        $reshuffled = $this->refillMarket();
 
         // Notify all players about the updated market
         $updated_market = $this->getMarketSlots();
         $this->bga->notify->all("marketUpdated", clienttranslate("Market has been refilled"), [
             "market" => $updated_market,
             "islandslots" => $this->getIslandSlots(),
+            "reshuffled" => $reshuffled,
         ]);
     }
 

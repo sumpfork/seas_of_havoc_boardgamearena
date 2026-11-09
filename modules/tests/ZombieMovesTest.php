@@ -63,7 +63,7 @@ class ZombiePurchasesUT extends ZombieMovesUT
         return [["id" => "11", "type" => $this->type], ["id" => "12", "type" => $this->type], ["id" => "13", "type" => $this->type], null, null];
     }
     function getGameResourcesHierarchical(?int $player_id = null) { return [1 => $this->resources]; }
-    function actCompletePurchases(array $cards_purchased) { $this->bought = $cards_purchased; }
+    function actCompletePurchases(array $cards_purchased, ?int $player_id = null) { $this->bought = $cards_purchased; }
 }
 
 final class ZombieMovesTest extends TestCase

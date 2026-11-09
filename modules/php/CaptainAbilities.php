@@ -779,7 +779,7 @@ trait CaptainAbilities
         $this->cards->moveCard($card_id, "hand", $player_id);
         $this->bga->playerStats->inc("cards_bought", 1, (int) $player_id);
 
-        $this->refillMarket();
+        $reshuffled = $this->refillMarket();
         $updated_market = $this->getMarketSlots();
 
         $this->bga->notify->all("cardsPurchased", clienttranslate('${player_name}\'s Timely Trading: purchases a card'), [
@@ -789,6 +789,7 @@ trait CaptainAbilities
         ]);
         $this->bga->notify->all("marketUpdated", clienttranslate("Market updated"), [
             "market" => $updated_market,
+            "reshuffled" => $reshuffled,
         ]);
         $card["location"] = "hand";
         $card["location_arg"] = (int) $player_id;

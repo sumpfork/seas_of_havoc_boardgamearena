@@ -153,6 +153,8 @@ define([
       // Don't use checkAction() here — it returns false during state transitions
       // because the BGA framework locks the interface. Instead check possibleactions directly.
       this._rowing = false;
+      this._rowDiscards = [];
+      this._labelRowDiscards();
       const possibleActions = this.gamedatas.gamestate.possibleactions || [];
       const canSelect = this.isCurrentPlayerActive() && possibleActions.indexOf("actPlayCard") !== -1;
       const selectionMode = canSelect ? "single" : "none";
@@ -1079,6 +1081,7 @@ define([
       }
       if (this._rowing) {
         // The hand is picking rowing's two discards; the maneuver dialog is up while there are two.
+        this._syncRowDiscards();
         if (this.playerHand.getSelection().length === 2) {
           this.showRowingDialog();
         } else {

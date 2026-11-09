@@ -1247,23 +1247,42 @@ class SeasOfHavoc extends Table
 
     /**
      * Studio only (debug_ functions aren't callable in production): play every seat with the zombie
-     * moves until a choice that is worth testing by hand comes up, or 300 moves have been made.
-     * Also stops at card purchases: playUntil can't play their private states (it plays the
-     * claimants in the parent state, which has no 'completedPurchases' transition).
+     * moves until someone could row with Watertight Bulkheads and a damage card to put on top, or
+     * the game ends. The first ship pick takes the War Junk, whose upgrade that is. playUntil can't
+     * play card purchases' private states (it plays the claimants in the parent state, which has no
+     * 'completedPurchases' transition), so it stops there and the zombie purchases are made here.
      */
     public function debug_playToTest(): void
     {
-        $stops = [
-            STATE_RALLY_THE_FLAGS, STATE_EXTORTION, STATE_BARTER, STATE_TIMELY_TRADING, STATE_BOARDING_PARTY,
-            STATE_HUNT_THE_BOUNTY, STATE_POST_COLLISION_FIRE, STATE_COLLISION_DISCARD, STATE_CARD_PURCHASES,
-        ];
-        // A scrap is only worth a look once the discard pile holds copies of a card (shown once, ×N).
-        $scrapWithCopies = function (): bool {
-            $types = array_column($this->getPlayerDiscard((int) $this->getActivePlayerId()), "type");
-            return count($types) !== count(array_unique($types));
-        };
-        $this->debug->playUntil(fn(int $count) => $count >= 300 ||
-            in_array($this->gamestate->getCurrentMainStateId(), $stops, true) ||
-            ($this->gamestate->getCurrentMainStateId() === STATE_SCRAP_CARD && $scrapWithCopies()));
+        $state = fn() => $this->gamestate->getCurrentMainStateId();
+        $warJunkFree = fn() => $state() === STATE_DRAFT_SHIP && in_array("War Junk", $this->argDraftShip()["ships"], true);
+        while (true) {
+            if ($warJunkFree()) {
+                $this->gamestate->jumpToState($this->actDraftShip("War Junk"));
+            } elseif ($state() === STATE_CARD_PURCHASES) {
+                foreach ($this->gamestate->getActivePlayerList() as $player_id) {
+                    $this->zombiePurchases((int) $player_id);
+                }
+                if ($state() === STATE_CARD_PURCHASES) {
+                    throw new \Bga\GameFramework\SystemException("Card purchases didn't finish after every seat completed them");
+                }
+            }
+            $this->debug->playUntil(fn(int $count) => $count >= 1000 || $warJunkFree() ||
+                $state() === STATE_CARD_PURCHASES || $this->debugCanRowDamageOntoBulkheads());
+            if (!$warJunkFree() && $state() !== STATE_CARD_PURCHASES) {
+                return;
+            }
+        }
+    }
+
+    function debugCanRowDamageOntoBulkheads(): bool
+    {
+        if ($this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN) {
+            return false;
+        }
+        $player_id = (int) $this->getActivePlayerId();
+        $hand = array_column($this->cards->getCardsInLocation("hand", $player_id), "type");
+        return count($hand) >= 2 && in_array($this->damageCardType(), array_map("intval", $hand), true) &&
+            $this->hasShipUpgrade($player_id, "war_junk_bulwark");
     }
 }
