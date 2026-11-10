@@ -1252,18 +1252,21 @@ class SeasOfHavoc extends Table
 
     /**
      * Studio only (debug_ functions aren't callable in production): play every seat with the zombie
-     * moves until someone could row with Watertight Bulkheads and a damage card to put on top, or
-     * the game ends. The first ship pick takes the War Junk, whose upgrade that is. playUntil can't
-     * play card purchases' private states (it plays the claimants in the parent state, which has no
-     * 'completedPurchases' transition), so it stops there and the zombie purchases are made here.
+     * moves until a sea turn where either the Pirate Queen holds Extortion, the Blue Sailor's Flag
+     * and another card (so Extortion's blue flag gives a turn), or someone holds a card with a paid
+     * move (its preview must not draw the move until it is ticked); or the Pirate Queen places a
+     * skiff (to take the flags by hand); or the game ends. The first
+     * captain pick takes the Pirate Queen. playUntil can't play card purchases' private states (it
+     * plays the claimants in the parent state, which has no 'completedPurchases' transition), so it
+     * stops there and the zombie purchases are made here.
      */
     public function debug_playToTest(): void
     {
         $state = fn() => $this->gamestate->getCurrentMainStateId();
-        $warJunkFree = fn() => $state() === STATE_DRAFT_SHIP && in_array("War Junk", $this->argDraftShip()["ships"], true);
+        $queenFree = fn() => $state() === STATE_DRAFT_CAPTAIN && in_array("pirate_queen", $this->argDraftCaptain()["captains"], true);
         while (true) {
-            if ($warJunkFree()) {
-                $this->gamestate->jumpToState($this->actDraftShip("War Junk"));
+            if ($queenFree()) {
+                $this->gamestate->jumpToState($this->actDraftCaptain("pirate_queen"));
             } elseif ($state() === STATE_CARD_PURCHASES) {
                 foreach ($this->gamestate->getActivePlayerList() as $player_id) {
                     $this->zombiePurchases((int) $player_id);
@@ -1272,22 +1275,48 @@ class SeasOfHavoc extends Table
                     throw new \Bga\GameFramework\SystemException("Card purchases didn't finish after every seat completed them");
                 }
             }
-            $this->debug->playUntil(fn(int $count) => $count >= 1000 || $warJunkFree() ||
-                $state() === STATE_CARD_PURCHASES || $this->debugCanRowDamageOntoBulkheads());
-            if (!$warJunkFree() && $state() !== STATE_CARD_PURCHASES) {
+            // $count > 0: pressed again at the Pirate Queen's skiff placement, it plays on from there.
+            $this->debug->playUntil(fn(int $count) => $count >= 1000 || $queenFree() ||
+                $state() === STATE_CARD_PURCHASES || $this->debugCanTestExtortionOrPaidMove() ||
+                ($count > 0 && $state() === STATE_ISLAND_TURN && $this->getPlayerCaptain($this->getActivePlayerId()) === "pirate_queen"));
+            if (!$queenFree() && $state() !== STATE_CARD_PURCHASES) {
                 return;
             }
         }
     }
 
-    function debugCanRowDamageOntoBulkheads(): bool
+    function debugCanTestExtortionOrPaidMove(): bool
     {
         if ($this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN) {
             return false;
         }
-        $player_id = (int) $this->getActivePlayerId();
-        $hand = array_column($this->cards->getCardsInLocation("hand", $player_id), "type");
-        return count($hand) >= 2 && in_array($this->damageCardType(), array_map("intval", $hand), true) &&
-            $this->hasShipUpgrade($player_id, "war_junk_bulwark");
+        $player_id = $this->getActivePlayerId();
+        $hand = array_map("intval", array_column($this->cards->getCardsInLocation("hand", $player_id), "type"));
+        foreach ($hand as $type) {
+            $actions = $this->playable_cards[$type]["actions"];
+            if (($actions[0]["ability"] ?? null) === "extortion" && count($hand) >= 2
+                && $this->getTokenOwner("blue_flag") == $player_id) {
+                return true;
+            }
+            if ($this->debugHasPaidMove($actions)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A move that costs something and so is optional: forward, rowing, left/right or a pivot. */
+    function debugHasPaidMove(array $actions): bool
+    {
+        foreach ($actions as $action) {
+            if (isset($action["cost"]) && in_array($action["action"],
+                ["forward", "backward", "left", "right", "pivot left", "pivot right", "pivot 180"], true)) {
+                return true;
+            }
+            if ($this->debugHasPaidMove($action["actions"] ?? $action["choices"] ?? [])) {
+                return true;
+            }
+        }
+        return false;
     }
 }
