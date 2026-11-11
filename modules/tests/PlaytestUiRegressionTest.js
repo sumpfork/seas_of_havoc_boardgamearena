@@ -122,12 +122,15 @@ let scrapCount, scrapTop = "unset";
 game.scrapPile = {
   getCards: () => scrapPileCards,
   addCard(card) { scrapPileCards.push(card); },
-  removeCard(card, settings) {
+  // Like bga-cards: the manager deletes the element wherever it is, then tells its stock.
+  cardRemoved(card, settings) {
     assert.equal(settings.autoUpdateCardNumber, false, "no fake card on top of the pile");
     scrapPileCards.splice(scrapPileCards.findIndex((c) => c.id === card.id), 1);
   },
   setCardNumber(count, top) { scrapCount = count; scrapTop = top; },
 };
+// Stock.removeCard would orphan a card still animating into the pile; only the manager removes it.
+game.cardsManager = { removeCard: (card, settings) => game.scrapPile.cardRemoved(card, settings) };
 notifications.notif_marketUpdated.call(game, { market: [], scrapped: [{ id: 3 }], reshuffled: [{ id: 1 }, { id: 3 }] });
 assert.deepEqual(scrapPileCards.map((c) => c.id), [2], "reshuffled cards leave the scrap pile");
 assert.equal(scrapCount, 1, "the pile recounts");

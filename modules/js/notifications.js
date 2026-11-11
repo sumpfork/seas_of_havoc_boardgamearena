@@ -220,10 +220,12 @@ define([
         this.scrapPile.addCard({ id: card.id, type: card.type, location: "scrap" });
       }
       // An empty market deck took the scrapped market cards back. As for damage cards leaving the
-      // pile, recount without Deck's own update, which would put a fake card on top.
+      // pile, recount without Deck's own update, which would put a fake card on top. Remove via
+      // the manager: the cards scrapped just above are still animating outside the pile's div,
+      // where Stock.removeCard leaves them orphaned and the market's addCard below throws.
       if (args.reshuffled && args.reshuffled.length > 0) {
         for (var card of args.reshuffled) {
-          this.scrapPile.removeCard(card, { autoUpdateCardNumber: false });
+          this.cardsManager.removeCard(card, { autoUpdateCardNumber: false });
         }
         this.scrapPile.setCardNumber(this.scrapPile.getCards().length, null);
       }

@@ -1271,21 +1271,22 @@ class SeasOfHavoc extends Table
 
     /**
      * Studio only (debug_ functions aren't callable in production): play every seat with the zombie
-     * moves until a sea turn where either the Pirate Queen holds Extortion, the Blue Sailor's Flag
-     * and another card (so Extortion's blue flag gives a turn), or someone holds a card with a paid
-     * move (its preview must not draw the move until it is ticked); or the Pirate Queen places a
-     * skiff (to take the flags by hand); or the game ends. The first
-     * captain pick takes the Pirate Queen. playUntil can't play card purchases' private states (it
-     * plays the claimants in the parent state, which has no 'completedPurchases' transition), so it
-     * stops there and the zombie purchases are made here.
+     * moves until a sea turn that tests the recent sea feature and firing fixes, or the game ends:
+     * the active player has a ship on a whirlpool or gust and holds a damage card (repair), a card
+     * whose flag they own (the flag resolves before the sea feature), or a captain card (the sea
+     * feature resolves after the ability, whatever it does); or the Rebel can play Retaliation with
+     * a damage card and an upgraded shot. Pressed again at such a turn, it plays on to the next one.
+     * The first captain pick takes the Rebel. playUntil can't play card purchases' private states
+     * (it plays the claimants in the parent state, which has no 'completedPurchases' transition), so
+     * it stops there and the zombie purchases are made here.
      */
     public function debug_playToTest(): void
     {
         $state = fn() => $this->gamestate->getCurrentMainStateId();
-        $queenFree = fn() => $state() === STATE_DRAFT_CAPTAIN && in_array("pirate_queen", $this->argDraftCaptain()["captains"], true);
+        $rebelFree = fn() => $state() === STATE_DRAFT_CAPTAIN && in_array("rebel", $this->argDraftCaptain()["captains"], true);
         while (true) {
-            if ($queenFree()) {
-                $this->gamestate->jumpToState($this->actDraftCaptain("pirate_queen"));
+            if ($rebelFree()) {
+                $this->gamestate->jumpToState($this->actDraftCaptain("rebel"));
             } elseif ($state() === STATE_CARD_PURCHASES) {
                 foreach ($this->gamestate->getActivePlayerList() as $player_id) {
                     $this->zombiePurchases((int) $player_id);
@@ -1294,48 +1295,116 @@ class SeasOfHavoc extends Table
                     throw new \Bga\GameFramework\SystemException("Card purchases didn't finish after every seat completed them");
                 }
             }
-            // $count > 0: pressed again at the Pirate Queen's skiff placement, it plays on from there.
-            $this->debug->playUntil(fn(int $count) => $count >= 1000 || $queenFree() ||
-                $state() === STATE_CARD_PURCHASES || $this->debugCanTestExtortionOrPaidMove() ||
-                ($count > 0 && $state() === STATE_ISLAND_TURN && $this->getPlayerCaptain($this->getActivePlayerId()) === "pirate_queen"));
-            if (!$queenFree() && $state() !== STATE_CARD_PURCHASES) {
+            // $count > 0: pressed again at a stop, it plays on from there.
+            $this->debug->playUntil(fn(int $count) => $count >= 1000 || $rebelFree() ||
+                $state() === STATE_CARD_PURCHASES || ($count > 0 && $this->debugCanTestSeaFeatureOrder()));
+            if (!$rebelFree() && $state() !== STATE_CARD_PURCHASES) {
                 return;
             }
         }
     }
 
-    function debugCanTestExtortionOrPaidMove(): bool
+    function debugCanTestSeaFeatureOrder(): bool
     {
         if ($this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN) {
             return false;
         }
         $player_id = $this->getActivePlayerId();
         $hand = array_map("intval", array_column($this->cards->getCardsInLocation("hand", $player_id), "type"));
+        $has_damage = in_array($this->damageCardType(), $hand, true);
         foreach ($hand as $type) {
-            $actions = $this->playable_cards[$type]["actions"];
-            if (($actions[0]["ability"] ?? null) === "extortion" && count($hand) >= 2
-                && $this->getTokenOwner("blue_flag") == $player_id) {
+            $card = $this->playable_cards[$type];
+            // Retaliation offering more than Fire 1 cannon to the left or right.
+            if (($card["actions"][0]["ability"] ?? null) === "retaliation" && $has_damage
+                && count(self::actionOptions($this->retaliationShot($player_id))) > 2) {
                 return true;
             }
-            if ($this->debugHasPaidMove($actions)) {
+        }
+
+        $ships = [(string) $player_id];
+        if ($this->hasSecondShip($player_id)) {
+            $ships[] = self::secondShipArg($player_id);
+        }
+        $on_feature = false;
+        foreach ($ships as $ship) {
+            $on_feature = $on_feature || $this->seaboard->isObjectOnWhirlpool("player_ship", $ship)
+                || $this->seaboard->getGustAtObjectLocation("player_ship", $ship) !== null;
+        }
+        if (!$on_feature) {
+            return false;
+        }
+        foreach ($hand as $type) {
+            $card = $this->playable_cards[$type];
+            if ($type === $this->damageCardType()
+                || (isset($card["flag"]) && $this->getTokenOwner($card["flag"] . "_flag") == $player_id)
+                || $card["actions"][0]["action"] === \Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction::CAPTAIN_ABILITY->value) {
                 return true;
             }
         }
         return false;
     }
 
-    /** A move that costs something and so is optional: forward, rowing, left/right or a pivot. */
-    function debugHasPaidMove(array $actions): bool
+    /**
+     * Studio only: set up the active player's sea turn to test whirlpools and gusts. Their ship goes
+     * on the whirlpool, and their hand gains a damage card, a card for each flag
+     * they own and their captain's cards.
+     */
+    public function debug_seaFeatureWhirlpool(): void
     {
-        foreach ($actions as $action) {
-            if (isset($action["cost"]) && in_array($action["action"],
-                ["forward", "backward", "left", "right", "pivot left", "pivot right", "pivot 180"], true)) {
-                return true;
-            }
-            if ($this->debugHasPaidMove($action["actions"] ?? $action["choices"] ?? [])) {
-                return true;
+        $this->debugSetUpSeaFeatureTurn("whirlpool");
+    }
+
+    /**
+     * As debug_seaFeatureWhirlpool, but on a gust with a rock just downwind, so the push collides.
+     * The client has no notification for moving a rock, so reload to see it.
+     */
+    public function debug_seaFeatureGustIntoRock(): void
+    {
+        $gust = $this->debugSetUpSeaFeatureTurn("gust");
+        $downwind = $this->seaboard->getForwardPosition($gust["x"], $gust["y"], $gust["heading"]);
+        $rock = $this->seaboard->findObject("rock", "0");
+        $this->seaboard->removeObject($rock["x"], $rock["y"], "rock", "0");
+        $this->seaboard->placeObject($downwind["x"], $downwind["y"], $rock["object"]);
+    }
+
+    /** Moves the active player's ship onto the first sea feature of $type and fills their hand; returns the feature. */
+    private function debugSetUpSeaFeatureTurn(string $type): array
+    {
+        if ($this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN) {
+            throw new \Bga\GameFramework\UserException("Only during a sea turn");
+        }
+        $player_id = $this->getActivePlayerId();
+        $features = array_values(array_filter($this->seaboard->getAllObjectsFlat(), fn($o) => $o["type"] === $type));
+        $feature = $features[0];
+        $ship = $this->seaboard->findObject("player_ship", $player_id);
+        $this->seaboard->removeObject($ship["x"], $ship["y"], "player_ship", $player_id);
+        $this->seaboard->placeObject($feature["x"], $feature["y"], $ship["object"]);
+        $this->bga->notify->all("cardPlayed", "", [
+            "player_id" => $player_id,
+            "ship" => $player_id,
+            "moveChain" => [["type" => "move", "new_x" => $feature["x"], "new_y" => $feature["y"]]],
+            "cost" => [],
+            "salvaged_shipwrecks" => [],
+        ]);
+
+        $types = [$this->damageCardType()];
+        $owned = array_keys(array_filter($this->getUniqueTokens(), fn($owner) => $owner == $player_id));
+        foreach ($this->playable_cards as $card_type => $card) {
+            $flag_owned = isset($card["flag"]) && in_array($card["flag"] . "_flag", $owned, true)
+                && !in_array($card["flag"], array_map(fn($t) => $this->playable_cards[$t]["flag"] ?? null, $types), true);
+            if ($flag_owned || ($card["captain_key"] ?? null) === $this->getPlayerCaptain($player_id)) {
+                $types[] = $card_type;
             }
         }
-        return false;
+        $before = array_keys($this->cards->getCardsInLocation("hand", $player_id));
+        $this->cards->createCards(array_map(fn($t) => ["type" => $t, "type_arg" => 0, "nbr" => 1], $types), "hand", $player_id);
+        $added = array_values(array_diff_key($this->cards->getCardsInLocation("hand", $player_id), array_flip($before)));
+        $this->bga->notify->player($player_id, "cardDrawn", "", [
+            "player_id" => $player_id,
+            "cards" => $added,
+            "num_cards" => count($added),
+            "deck_size" => $this->cards->countCardInLocation($this->playerDeckName($player_id)),
+        ]);
+        return $feature;
     }
 }
