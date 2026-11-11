@@ -74,6 +74,7 @@ final class NimbleHullTest extends TestCase
         $game->start('improvisation');
         $game->actResolveCaptainCard(['card_id' => $id], [SeasOfHavoc::NIMBLE_HULL_CHOICE, 'forward', 'skip', 'right']);
         $this->assertSame(['forward', 'forward', 'pivot right', 'forward'], $game->moves);
+        $game->resolvePendingSeafeatures();
         $this->assertSame(1, $game->seaEffects);
         $this->assertSame($type, (int) $game->getGameStateValue('pending_card_flag_type'));
     }

@@ -228,8 +228,9 @@ final class CorsairCardAbilityTest extends TestCase {
 
         $result = $this->game->actHuntTheBountyChooseTarget("2");
 
-        // "You may play another card immediately" - the player is asked, not forced.
-        $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $result);
+        // "You may play another card immediately" - queued until this card's whirlpool or gust
+        // has resolved; stNextPlayerSeaPhase then asks the player.
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
         // Verify stored target is retrievable
         $this->assertSame(2, (int) $this->game->getGameStateValue("hunt_the_bounty_target"));
     }
@@ -275,7 +276,7 @@ final class CorsairCardAbilityTest extends TestCase {
         $this->game->getMockCards()->locations["hand_1"] = [["id" => 1, "type" => 1]];
 
         $result = $this->game->actSkipHuntTheBounty();
-        $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $result);
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $result);
     }
 
     // The declaration is not itself a card play, so an empty hand has to end the turn rather than

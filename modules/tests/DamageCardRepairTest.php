@@ -42,6 +42,7 @@ final class DamageCardRepairTest extends TestCase
         $id = $this->game->addCard($type, 'hand');
 
         $this->game->actPlayCard($type, $id, []);
+        $this->game->resolvePendingSeafeatures();
 
         $this->assertSame(1, $this->game->seaEffects);
     }
@@ -51,6 +52,7 @@ final class DamageCardRepairTest extends TestCase
         $id = $this->game->addCard(1, 'hand');
 
         $this->game->actPlayCard(1, $id, ['pass']);
+        $this->game->resolvePendingSeafeatures();
 
         $this->assertSame(1, $this->game->seaEffects);
     }
@@ -62,6 +64,7 @@ final class DamageCardRepairTest extends TestCase
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
 
         $this->game->actRow($this->game->addCard(1, 'hand'), $this->game->addCard(1, 'hand'), 'forward');
+        $this->game->resolvePendingSeafeatures();
 
         $this->assertSame(1, $this->game->seaEffects);
     }

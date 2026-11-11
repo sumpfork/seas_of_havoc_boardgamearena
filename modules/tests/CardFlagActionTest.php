@@ -176,10 +176,66 @@ final class CardFlagActionTest extends TestCase
         $this->assertSame([], $this->game->gains);
         $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
         $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(0, $this->game->seaEffects, 'the flag action is part of the card');
+        $this->game->addCard(1, 'hand', 2);
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actResolveCardFlag('sail'));
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(1, $this->game->seaEffects, 'whirlpools and gusts resolve after it');
+    }
+
+    /** e.g. a red flag cannot scrap the damage card from the rock a gust is about to push you into. */
+    public function testFlagActionResolvesBeforeWhirlpoolsAndGusts(): void {
+        $this->game->addCard(1, 'hand', 2);
+        $this->game->playFlag('red');
+        $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(0, $this->game->seaEffects);
+        $this->game->actSkipCardFlag();
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
         $this->assertSame(1, $this->game->seaEffects);
     }
 
-    public function testShipwreckInterruptionRestoresCardPlayerBeforeFlagChoice(): void {
+    /** Blue's "take another turn" is queued: this card's whirlpool or gust comes before the next card. */
+    public function testBlueFlagExtraTurnWaitsForWhirlpoolsAndGusts(): void {
+        $this->game->addCard(1, 'hand');
+        $this->game->playFlag('blue');
+        $this->assertSame(STATE_CARD_FLAG, $this->game->stNextPlayerSeaPhase());
+        $this->game->actResolveCardFlag();
+        $this->assertSame(0, $this->game->seaEffects);
+        $this->assertSame(STATE_SEA_TURN, $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(1, $this->game->seaEffects);
+    }
+
+    /** Captain abilities that stop for the player's input still get their whirlpool or gust. */
+    public function testCaptainAbilityWaitingForInputStillResolvesWhirlpoolsAndGusts(): void {
+        $this->game->runEngine = true;
+        $type = array_key_first(array_filter($this->game->playable_cards, fn($c) => ($c['actions'][0]['ability'] ?? null) === 'barter'));
+        $this->assertSame(STATE_BARTER, $this->game->actPlayCard($type, $this->game->addCard($type, 'hand'), []));
+        $this->assertSame(0, $this->game->seaEffects);
+        $this->game->addCard(1, 'hand', 2);
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase()); // as when Barter is done
+        $this->assertSame(1, $this->game->seaEffects);
+    }
+
+    /** Every card played triggers them, even one whose ability turns out to do nothing. */
+    public function testCaptainAbilityThatDoesNothingStillResolvesWhirlpoolsAndGusts(): void {
+        $this->game->runEngine = true;
+        $this->game->owners = []; // Extortion with no flags to use
+        $type = array_key_first(array_filter($this->game->playable_cards, fn($c) => ($c['actions'][0]['ability'] ?? null) === 'extortion'));
+        $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $this->game->actPlayCard($type, $this->game->addCard($type, 'hand'), []));
+        $this->game->addCard(1, 'hand', 2);
+        $this->assertSame('nextPlayer', $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(1, $this->game->seaEffects);
+    }
+
+    public function testHuntTheBountyExtraPlayWaitsForWhirlpoolsAndGusts(): void {
+        $this->game->addCard(1, 'hand');
+        $this->game->setGameStateValue('seafeatures_pending', 1);
+        $this->game->grantExtraTurn('1', 'hunt_the_bounty');
+        $this->assertSame(STATE_HUNT_THE_BOUNTY_EXTRA_PLAY, $this->game->stNextPlayerSeaPhase());
+        $this->assertSame(1, $this->game->seaEffects);
+    }
+
+    public function testShipwreckInterruptionRestoresCardPlayerBeforeExtraTurn(): void {
         $game = new class extends CardFlagUT {
             public function getActivePlayerId(): string { return (string) $this->gamestate->getActivePlayerId(); }
             public function getTreasureSeekerPlayerId(): ?string { return '2'; }
@@ -193,14 +249,17 @@ final class CardFlagActionTest extends TestCase
             ->onlyMethods(['getObjectsOfTypes', 'placeObject'])->getMock();
         $board->method('getObjectsOfTypes')->willReturn([]);
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($game, $board);
-        $game->owners['green_flag'] = '1';
-        $this->assertSame('seaTurnDone', $game->playFlagActions('green', []));
+        $game->owners['blue_flag'] = '1';
+        $game->addCard(1, 'hand');
+        $this->assertSame('seaTurnDone', $game->playFlagActions('blue', []));
         $game->bga->globals->set('salvaged_shipwrecks', ['1']); // as collectShipwrecksAtPlayer() records it
-        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->stNextPlayerSeaPhase(), 'placed before the flag action');
+        $this->assertSame(STATE_CARD_FLAG, $game->stNextPlayerSeaPhase(), 'the flag is part of the card');
+        $game->actResolveCardFlag();
+        $this->assertSame(STATE_TREASURE_SEEKER_ADJUST, $game->stNextPlayerSeaPhase(), 'placed before the extra turn');
         $this->assertSame('2', $game->getActivePlayerId());
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $game->actSkipTreasureSeekerAdjust());
         $this->assertSame('1', $game->getActivePlayerId());
-        $this->assertSame(STATE_CARD_FLAG, $game->stNextPlayerSeaPhase());
+        $this->assertSame(STATE_SEA_TURN, $game->stNextPlayerSeaPhase());
     }
 
     public function testRowingDiscardsTwoCardsAndMovesBackward(): void {

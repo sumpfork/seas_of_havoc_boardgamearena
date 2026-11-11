@@ -46,8 +46,6 @@ final class CollisionGustTest extends TestCase
         $this->game->board->placeObject(1, 2, ['type' => 'player_ship', 'arg' => '1', 'heading' => Heading::EAST]);
         $this->game->board->placeObject(2, 2, ['type' => 'gust', 'arg' => '0', 'heading' => Heading::NORTH]);
         $this->game->board->placeObject(3, 2, ['type' => 'rock', 'arg' => '0', 'heading' => Heading::NO_HEADING]);
-        // A previous card already resolved its sea features.
-        $this->game->setGameStateValue('seafeature_effects_attempted', 1);
     }
 
     public function testCollisionOnGustPushesAfterDecliningPivot(): void
@@ -55,6 +53,8 @@ final class CollisionGustTest extends TestCase
         $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->sail());
         $this->assertSame(2, $this->game->board->findObject('player_ship', '1')['y']);
         $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
+        $this->assertSame(2, $this->game->board->findObject('player_ship', '1')['y'], 'the gust waits for the whole card');
+        $this->assertNull($this->game->resolvePendingSeafeatures());
 
         $ship = $this->game->board->findObject('player_ship', '1');
         $this->assertSame([2, 1, Heading::EAST], [$ship['x'], $ship['y'], $ship['object']['heading']]);
@@ -66,10 +66,10 @@ final class CollisionGustTest extends TestCase
     {
         $this->game->sail();
         $this->game->actPivotPickedInDialog('pivot right');
+        $this->game->resolvePendingSeafeatures();
 
         $ship = $this->game->board->findObject('player_ship', '1');
         $this->assertSame([2, 1, Heading::SOUTH], [$ship['x'], $ship['y'], $ship['object']['heading']]);
-        $this->assertSame(['turn', 'move'], array_column($this->game->debugLastNotif['args']['moveChain'], 'type'));
     }
 
     public function testSkippedPlayerStillResolvesGustAfterCollision(): void
@@ -77,6 +77,7 @@ final class CollisionGustTest extends TestCase
         $this->game->sail();
         $state = new ResolveCollision($this->game);
         $this->assertSame('collisionResolved', $state->zombie(1));
+        $this->game->resolvePendingSeafeatures();
 
         // The zombie's pivot is random; the gust pushes north whichever way the ship faces.
         $ship = $this->game->board->findObject('player_ship', '1');
@@ -87,9 +88,11 @@ final class CollisionGustTest extends TestCase
     {
         $this->game->board->placeObject(2, 1, ['type' => 'rock', 'arg' => '1', 'heading' => Heading::NO_HEADING]);
         $this->game->sail();
-        $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->actPivotPickedInDialog('no pivot'));
+        $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
+        $this->assertSame(STATE_RESOLVE_COLLISION, $this->game->resolvePendingSeafeatures());
         $this->assertSame(['1', '1'], $this->game->damaged);
         $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
+        $this->assertNull($this->game->resolvePendingSeafeatures());
         $this->assertSame(['1', '1'], $this->game->damaged);
         $this->assertSame(2, $this->game->board->findObject('player_ship', '1')['y']);
     }
@@ -98,7 +101,8 @@ final class CollisionGustTest extends TestCase
     {
         $this->game->board->placeObject(2, 1, ['type' => 'gust', 'arg' => '1', 'heading' => Heading::NORTH]);
         $this->game->sail();
-        $this->assertSame('collisionResolved', $this->game->actPivotPickedInDialog('no pivot'));
+        $this->game->actPivotPickedInDialog('no pivot');
+        $this->game->resolvePendingSeafeatures();
         $this->assertSame(1, $this->game->board->findObject('player_ship', '1')['y']);
     }
 }

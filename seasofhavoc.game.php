@@ -141,7 +141,6 @@ class SeasOfHavoc extends Table
         }
 
         self::initGameStateLabels([
-            "seafeature_effects_attempted" => 10,
             "pending_trading_post_player" => 11,
             "pending_trading_post_slot" => 12,
             "corsair_occupied_placement_used" => 13,
@@ -170,6 +169,8 @@ class SeasOfHavoc extends Table
             "last_sea_phase" => 36,
             // Where the Extra Rations prompt stands: EXTRA_RATIONS_OFFERED_* below.
             "extra_rations_offered" => 37,
+            // 1 from a card being played until its whirlpool or gust has been resolved.
+            "seafeatures_pending" => 38,
         ]);
 
         $this->cards = $this->deckFactory->createDeck("card");
@@ -930,11 +931,8 @@ class SeasOfHavoc extends Table
         if ($chain_shot !== null) {
             return $chain_shot;
         }
-        // The card, its sea features and any collisions have played out: salvaged shipwrecks go
-        // back on the board now, before the flag action (blue plays another card) or Swift Hull.
-        if ($this->tryBeginTreasureSeekerShipwreckAdjust($this->placeSalvagedShipwrecks())) {
-            return $this->startTreasureSeekerAdjust();
-        }
+        // The flag action is part of the card, so it resolves before whirlpools and gusts. Blue's
+        // "take another turn" only queues the turn; it is taken below.
         $type = (int) $this->getGameStateValue("pending_card_flag_type");
         if ($type !== 0) {
             $flag = $this->playable_cards[$type]["flag"];
@@ -944,11 +942,32 @@ class SeasOfHavoc extends Table
             }
             $this->setGameStateValue("pending_card_flag_type", 0);
         }
-        // Extortion's Blue Sailor's Flag: another sea turn if there is a card left to play.
+        $collision = $this->resolvePendingSeafeatures();
+        if ($collision !== null) {
+            return $collision;
+        }
+        // A gust can salvage a shipwreck or overflow booty too, so these come after it.
+        $overflow = $this->bootyOverflowState(STATE_NEXT_PLAYER_SEA_PHASE);
+        if ($overflow !== null) {
+            return $overflow;
+        }
+        // The card, its sea features and any collisions have played out: salvaged shipwrecks go
+        // back on the board now, before any extra card play.
+        if ($this->tryBeginTreasureSeekerShipwreckAdjust($this->placeSalvagedShipwrecks())) {
+            return $this->startTreasureSeekerAdjust();
+        }
+        // Extortion's or a card's Blue Sailor's Flag: another sea turn if there is a card left to play.
         if ($this->hasExtraTurn($this->getActivePlayerId(), "sea")) {
             $this->consumeExtraTurn($this->getActivePlayerId(), "sea");
             if ($this->cards->countCardInLocation("hand", $this->getActivePlayerId()) > 0) {
                 return STATE_SEA_TURN;
+            }
+        }
+        // Hunt the Bounty: "You may play another card immediately."
+        if ($this->hasExtraTurn($this->getActivePlayerId(), "hunt_the_bounty")) {
+            $this->consumeExtraTurn($this->getActivePlayerId(), "hunt_the_bounty");
+            if ($this->cards->countCardInLocation("hand", $this->getActivePlayerId()) > 0) {
+                return STATE_HUNT_THE_BOUNTY_EXTRA_PLAY;
             }
         }
         // Xebec Swift Hull: after a sailing card (and its flag action) resolves, the player may

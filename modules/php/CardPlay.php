@@ -391,6 +391,45 @@ trait CardPlay
         return $outcome;
     }
 
+    /**
+     * "A player resolves whirlpools and gusts their ship is located on after each card they play
+     * (this includes rowing and passing by discarding a card, but not passing when out of cards)."
+     * Called by stNextPlayerSeaPhase once the card has fully resolved - its actions, any collision
+     * and the shot after it, and its flag action - and before any extra card play it granted.
+     * Returns the collision state when a gust pushes the ship into something, else null.
+     */
+    function resolvePendingSeafeatures(): ?int
+    {
+        if ($this->getGameStateValue("seafeatures_pending") == 0) {
+            return null;
+        }
+        $this->setGameStateValue("seafeatures_pending", 0);
+        $player_id = $this->getActivePlayerId();
+        // A gust collision is not the card's: there is no next ship outline to fire from.
+        $this->clearNextActionOnCard((int) $player_id);
+
+        $seafeature = $this->applySeafeatureEffects($player_id);
+        if (empty($seafeature->actionChain)) {
+            return null;
+        }
+        $this->bga->notify->all(
+            "cardPlayed",
+            $seafeature->actionChain[0]["type"] === "turn"
+                ? clienttranslate('${player_name} is rotated by the whirlpool')
+                : clienttranslate('${player_name} is pushed by the gust'),
+            [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+                "ship" => $this->activeShipArg($player_id),
+                "moveChain" => $seafeature->actionChain,
+                "cost" => [],
+                "salvaged_shipwrecks" => $seafeature->shipwreckEvents,
+            ],
+        );
+        $this->notifyBootyCollected($player_id, $seafeature->bootyCards);
+        return $seafeature->collisionOccurred ? $this->collisionPenaltyState() : null;
+    }
+
     function actPlayCard(int $card_type, int $card_id, #[JsonParam] $decisions, ?int $use_booty_card_id = null, int $ship = 1)
     {
         $held = $this->cards->getCard($card_id);
@@ -454,6 +493,8 @@ trait CardPlay
     private function resolvePlayedCardNow(int $card_type, ?int $card_id, array $decisions, ?int $use_booty_card_id, ?array $actions)
     {
         $this->setGameStateValue("pending_card_flag_type", isset($this->playable_cards[$card_type]["flag"]) ? $card_type : 0);
+        // Resolved by stNextPlayerSeaPhase once everything on the card, its flag included, has.
+        $this->setGameStateValue("seafeatures_pending", 1);
         $this->setGameStateValue(
             "swift_hull_card_type",
             ShipUpgrades::isSailingCard($this->playable_cards[$card_type]) ? $card_type : 0,
@@ -470,24 +511,19 @@ trait CardPlay
         // Damage card, "Repair: When you would play this card, scrap it instead." The repair is
         // the whole play - no maneuver, no flag action, and the card leaves the deck for good.
         // It is still a card played, so whirlpools and gusts resolve after it.
-        $is_repair = in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true);
-
-        // Check if this is a "pass" play (playing card without executing actions)
-        $is_pass = !empty($decisions) && $decisions[0] === "pass";
-        $rowing = $card_id === null;
-
-        if ($is_repair) {
+        if (in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true)) {
             $this->bga->notify->all("log", clienttranslate('${player_name} has played a card ${card_image}'), [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "card_image" => $card_type,
             ]);
             $this->scrapCardAndRefund($card_id, $player_id);
-            // Scrapped, not discarded; cardScrapped has already taken it out of the client's hand.
-            $card_id = null;
-            $hand_card_id = null;
-            $outcome = new CardActionOutcome();
-            $notification_message = null;
-        } elseif ($is_pass) {
+            return "seaTurnDone";
+        }
+
+        // Check if this is a "pass" play (playing card without executing actions)
+        $is_pass = !empty($decisions) && $decisions[0] === "pass";
+
+        if ($is_pass) {
             // A passed card resolves no maneuver, so Swift Hull does not trigger.
             $this->setGameStateValue("swift_hull_card_type", 0);
             // Pass: skip all actions, but still discard the card
@@ -523,55 +559,26 @@ trait CardPlay
             }
 
             // Rowing is not a card play; the rowing card image still shows the maneuver.
-            $notification_message = $rowing
+            $notification_message = $card_id === null
                 ? clienttranslate('${player_name} has rowed ${card_image}')
                 : clienttranslate('${player_name} has played a card ${card_image}');
-        }
-
-        // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
-        $this->setGameStateValue("seafeature_effects_attempted", 0);
-
-        // "A player resolves whirlpools and gusts their ship is located on after each card they play
-        // (this includes rowing and passing by discarding a card)." They apply now unless the card
-        // collided; then they apply once the collision is resolved (actPivotPickedInDialog).
-        if (!$outcome->collisionOccurred) {
-            $seafeature = $this->applySeafeatureEffects($player_id);
-            $this->setGameStateValue("seafeature_effects_attempted", 1);
-            // Appended to the moveChain for sequential animation
-            $outcome->absorb($seafeature);
-
-            if (!empty($seafeature->actionChain)) {
-                $whirlpool = $seafeature->actionChain[0]["type"] === "turn";
-                $notification_message = match (true) {
-                    // The repair already logged the card itself.
-                    $is_repair && $whirlpool => clienttranslate('${player_name} is rotated by the whirlpool'),
-                    $is_repair => clienttranslate('${player_name} is pushed by the gust'),
-                    $rowing && $whirlpool => clienttranslate('${player_name} has rowed and is rotated by the whirlpool ${card_image}'),
-                    $rowing => clienttranslate('${player_name} has rowed and is pushed by the gust ${card_image}'),
-                    $whirlpool => clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}'),
-                    default => clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}'),
-                };
-            }
         }
 
         if ($card_id !== null) {
             $this->discardCardToPlayer($card_id, $player_id);
         }
 
-        // A repair on open water has nothing left to show.
-        if ($notification_message !== null) {
-            $this->bga->notify->all("cardPlayed", $notification_message, [
-                "player_name" => $this->getPlayerNameById($player_id),
-                "player_id" => $player_id,
-                "ship" => $this->activeShipArg($player_id),
-                "card_id" => $hand_card_id, // null when rowing
-                "card_type" => $card_type,
-                "card_image" => $card_type,
-                "moveChain" => $outcome->actionChain,
-                "cost" => $outcome->cost,
-                "salvaged_shipwrecks" => $outcome->shipwreckEvents,
-            ]);
-        }
+        $this->bga->notify->all("cardPlayed", $notification_message, [
+            "player_name" => $this->getPlayerNameById($player_id),
+            "player_id" => $player_id,
+            "ship" => $this->activeShipArg($player_id),
+            "card_id" => $hand_card_id, // null when rowing
+            "card_type" => $card_type,
+            "card_image" => $card_type,
+            "moveChain" => $outcome->actionChain,
+            "cost" => $outcome->cost,
+            "salvaged_shipwrecks" => $outcome->shipwreckEvents,
+        ]);
 
         $this->notifyBootyCollected($player_id, $outcome->bootyCards);
 
@@ -632,67 +639,21 @@ trait CardPlay
         $this->mytrace("actPivotPickedInDialog");
         $player_id = $this->getActivePlayerId();
 
-        // The pivot is part of resolving the collision; whirlpools and gusts resolve after it, like
-        // after any card. Doing it the other way round still produced the right final heading for a
-        // rotation, but each move carried headings from the opposite order to the one the client
-        // animates them in, so the ship was drawn facing the wrong way until the next reload.
-        $outcome = new CardActionOutcome();
+        // The pivot is part of resolving the collision; whirlpools and gusts resolve after the
+        // whole card (resolvePendingSeafeatures).
         if ($direction != "no pivot") {
-            $typed_action = PrimitiveCardPlayAction::from($direction);
-            $outcome = $this->processCardActions([["action" => $typed_action]], []);
+            $outcome = $this->processCardActions([["action" => PrimitiveCardPlayAction::from($direction)]], []);
             $this->mydump("final pivot outcome", $outcome);
-
-            // Pay the cost for pivot actions (pivots are free, but just in case)
-            if (!empty($outcome->cost)) {
-                $this->payWithOptionalBooty($player_id, $outcome->cost);
-            }
-        }
-
-        // Only apply seafeature effects if they haven't been attempted yet (once per card play)
-        $seafeature = new CardActionOutcome();
-        if ($this->getGameStateValue("seafeature_effects_attempted") == 0) {
-            $seafeature = $this->applySeafeatureEffects($player_id);
-            $this->setGameStateValue("seafeature_effects_attempted", 1);
-        } else {
-            $this->mytrace("Seafeature effects already attempted, skipping");
-        }
-        // Pivot moves, then seafeature moves, for sequential animation
-        $outcome->absorb($seafeature);
-        // The seafeature move, if any, is either the whirlpool's turn or the gust's push.
-        $feature = empty($seafeature->actionChain)
-            ? null
-            : ($seafeature->actionChain[0]["type"] === "turn" ? "whirlpool" : "gust");
-        $pivoted = $direction != "no pivot";
-
-        $notification_message = match (true) {
-            $pivoted && $feature === "whirlpool" => clienttranslate('${player_name} pivots and is rotated by the whirlpool'),
-            $pivoted && $feature === "gust" => clienttranslate('${player_name} pivots and is pushed by the gust'),
-            $pivoted => clienttranslate('${player_name} pivots'),
-            $feature === "whirlpool" => clienttranslate('${player_name} is rotated by the whirlpool'),
-            $feature === "gust" => clienttranslate('${player_name} is pushed by the gust'),
-            default => null,
-        };
-
-        // With no pivot and no whirlpool or gust there is nothing to show.
-        if ($notification_message !== null) {
-            $this->bga->notify->all("cardPlayed", $notification_message, [
+            $this->bga->notify->all("cardPlayed", clienttranslate('${player_name} pivots'), [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "player_id" => $player_id,
                 "ship" => $this->activeShipArg($player_id),
                 "moveChain" => $outcome->actionChain,
-                "cost" => $outcome->cost,
-                "salvaged_shipwrecks" => $outcome->shipwreckEvents,
+                "cost" => [],
+                "salvaged_shipwrecks" => [],
             ]);
         }
 
-        $this->notifyBootyCollected($player_id, $outcome->bootyCards);
-
-        // If gust push caused another collision, stay in collision resolution state
-        // Note: Seafeature effects are only applied once per card play, so this can only happen
-        // when resolving a collision from the initial card play (gust push after collision resolution)
-        if ($seafeature->collisionOccurred) {
-            return $this->collisionPenaltyState();
-        }
         return $this->postCollisionFireState() ?? "collisionResolved";
     }
 

@@ -1,5 +1,6 @@
 <?php declare(strict_types=1);
 
+use Bga\Games\SeasOfHavoc\CardActionOutcome;
 use Bga\Games\SeasOfHavoc\SeaBoard;
 use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/SeasOfHavocTest.php';
@@ -14,6 +15,14 @@ class PostCollisionFireUT extends SeasOfHavocUT
     public array $bootyUsed = [];
     public array $damaged = [];
     public array $infamy = [];
+    /** What resolved, in order: "fire" for a shot, "seafeature" for whirlpools and gusts. */
+    public array $events = [];
+
+    public function applySeafeatureEffects($player_id): CardActionOutcome
+    {
+        $this->events[] = 'seafeature';
+        return new CardActionOutcome();
+    }
 
     public function dealDamageCard(string $hit_player_id): void { $this->damaged[] = $hit_player_id; }
     public function scoreInfamy(string $player_id, int $amount, string $source, string $message = ""): void
@@ -83,6 +92,7 @@ final class PostCollisionFireTest extends TestCase
     protected function setUp(): void
     {
         $this->game = new PostCollisionFireUT();
+        $this->game->setGameStateValue('seafeatures_pending', 1);
     }
 
     /** A board whose forward move always collides, so card resolution stops at the first action. */
@@ -93,7 +103,10 @@ final class PostCollisionFireTest extends TestCase
         $board->method('moveObjectForward')->willReturn(
             ['type' => 'collision', 'colliders' => $this->colliders],
         );
-        $board->method('resolveCannonFire')->willReturn(['type' => 'fire_miss']);
+        $board->method('resolveCannonFire')->willReturnCallback(function () {
+            $this->game->events[] = 'fire';
+            return ['type' => 'fire_miss'];
+        });
         (new ReflectionProperty(SeasOfHavoc::class, 'seaboard'))->setValue($this->game, $board);
     }
 
@@ -185,5 +198,18 @@ final class PostCollisionFireTest extends TestCase
         $this->assertSame(STATE_NEXT_PLAYER_SEA_PHASE, $resume);
         $this->assertSame([], $this->game->paid);
         $this->assertNull($this->game->stored);
+    }
+
+    /** Whirlpools and gusts resolve after everything on the card, including the shot after a collision. */
+    public function testSeaFeaturesWaitForTheShotAfterTheCollision(): void
+    {
+        $this->collidingBoard();
+        $this->game->processCardActions([['action' => 'forward'], self::FIRE], ['skip']);
+
+        $this->assertSame(STATE_POST_COLLISION_FIRE, $this->game->actPivotPickedInDialog('no pivot'));
+        $this->game->actPostCollisionFire('fire left');
+        $this->assertSame(['fire'], $this->game->events);
+        $this->game->resolvePendingSeafeatures();
+        $this->assertSame(['fire', 'seafeature'], $this->game->events);
     }
 }

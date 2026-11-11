@@ -61,14 +61,25 @@ final class CollisionPivotOrderTest extends TestCase
     protected function setUp(): void
     {
         $this->game = new PivotOrderUT();
-        $this->game->setGameStateValue('seafeature_effects_attempted', 0);
+        $this->game->setGameStateValue('seafeatures_pending', 1);
+    }
+
+    /** The pivot's moves, then the whirlpool's, in the order the client animates them. */
+    private function pivotThenSeafeatures(string $direction): array
+    {
+        $this->game->bga->notify->sent = [];
+        $this->game->actPivotPickedInDialog($direction);
+        $this->game->resolvePendingSeafeatures();
+        return array_merge(...array_map(
+            fn($n) => $n['args']['moveChain'],
+            array_filter($this->game->bga->notify->sent, fn($n) => $n['type'] === 'cardPlayed'),
+        ));
     }
 
     public function testPivotResolvesBeforeTheWhirlpool(): void
     {
-        $this->game->actPivotPickedInDialog('pivot left');
+        $chain = $this->pivotThenSeafeatures('pivot left');
 
-        $chain = $this->game->debugLastNotif['args']['moveChain'];
         $this->assertCount(2, $chain);
         $this->assertSame(
             [PivotBoard::WEST, PivotBoard::SOUTH],
@@ -86,10 +97,8 @@ final class CollisionPivotOrderTest extends TestCase
      *  client draws the ship facing somewhere the server never put it. */
     public function testEveryMoveStartsWhereTheLastOneEnded(): void
     {
-        $this->game->actPivotPickedInDialog('pivot right');
-
         $heading = PivotBoard::WEST;
-        foreach ($this->game->debugLastNotif['args']['moveChain'] as $move) {
+        foreach ($this->pivotThenSeafeatures('pivot right') as $move) {
             $this->assertSame($heading, $move['old_heading']);
             $heading = $move['new_heading'];
         }
@@ -98,9 +107,8 @@ final class CollisionPivotOrderTest extends TestCase
 
     public function testDecliningThePivotStillResolvesTheWhirlpool(): void
     {
-        $this->game->actPivotPickedInDialog('no pivot');
+        $chain = $this->pivotThenSeafeatures('no pivot');
 
-        $chain = $this->game->debugLastNotif['args']['moveChain'];
         $this->assertCount(1, $chain);
         $this->assertSame(PivotBoard::WEST, $chain[0]['old_heading']);
         $this->assertSame(PivotBoard::SOUTH, $chain[0]['new_heading']);

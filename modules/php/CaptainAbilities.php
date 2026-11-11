@@ -960,14 +960,13 @@ trait CaptainAbilities
     }
 
     /**
-     * "You may play another card immediately." - the player is asked, rather than pushed straight
-     * back into a sea turn, and is not asked at all with an empty hand.
+     * "You may play another card immediately." - queued, so this card's whirlpool or gust resolves
+     * first; stNextPlayerSeaPhase then asks the player, unless their hand is empty.
      */
     private function huntTheBountyDone(string $player_id): int
     {
-        return $this->cards->countCardInLocation("hand", $player_id) > 0
-            ? STATE_HUNT_THE_BOUNTY_EXTRA_PLAY
-            : STATE_NEXT_PLAYER_SEA_PHASE;
+        $this->grantExtraTurn($player_id, "hunt_the_bounty");
+        return STATE_NEXT_PLAYER_SEA_PHASE;
     }
 
     function actHuntTheBountyPlayAnother(): int

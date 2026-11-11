@@ -175,6 +175,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
             $this->game->start('improvisation');
 
             $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $id], ['fire left'], null, $ship));
+            $this->game->resolvePendingSeafeatures();
 
             $this->assertSame([$shipArg], $this->game->seaEffectShips);
             $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
@@ -247,11 +248,13 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->game->start('retaliation');
         $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $damage, 'fire' => 'fire left']));
         $this->assertSame([], $this->game->paid);
+        $this->game->resolvePendingSeafeatures();
         $this->assertSame(1, $this->game->seaEffects);
         $firing = $this->game->addCard(3, 'player_discard');
         $this->game->start('improvisation');
         $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['card_id' => $firing], ['fire left']));
         $this->assertSame([['cannonball' => 1]], $this->game->paid);
+        $this->game->resolvePendingSeafeatures();
         $this->assertSame(2, $this->game->seaEffects);
     }
 
@@ -391,6 +394,7 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame(0, $this->game->seaEffects);
         $this->assertSame([$kept], array_column($this->game->argCaptainCard()['_private'][1]['available_cards'], 'id'));
         $this->assertSame('seaTurnDone', $this->game->actResolveCaptainCard(['order' => [$kept]]));
+        $this->game->resolvePendingSeafeatures();
         $this->assertSame(1, $this->game->seaEffects);
         $this->assertSame('player_discard_1', $this->game->deck->getCard($id)['location']);
     }
