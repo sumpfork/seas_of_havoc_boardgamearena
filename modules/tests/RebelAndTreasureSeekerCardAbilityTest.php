@@ -18,6 +18,7 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
     public array $seaEffectShips = [];
     public bool $secondShip = false;
     public array $paid = [];
+    public array $upgrades = [];
 
     public function __construct()
     {
@@ -35,6 +36,7 @@ class RebelAndTreasureSeekerCardUT extends SeasOfHavocUT
     public function scoreInfamy(string $player_id, int $amount, string $source, string $message = "") { $this->infamy[] = [$player_id, $amount]; }
     public function playerGainResources($player_id, $resources) { $this->gains[] = $resources; }
     public function getActivePlayerId(): string { return '1'; }
+    public function getActiveShipUpgrades($player_id): array { return $this->upgrades; }
     public function hasSecondShip($player_id): bool { return $this->secondShip; }
     public function getPlayerNameById(int $player_id): string { return 'Player'; }
     public function payWithOptionalBooty(int $player_id, array $cost, ?int $use_booty_card_id = null, ?string $booty_choice = null): void { $this->paid[] = $cost; }
@@ -78,6 +80,23 @@ final class RebelAndTreasureSeekerCardAbilityTest extends TestCase
         $this->assertSame('scrap', $this->game->deck->getCard($id)['location']);
         $this->assertSame([['action' => 'fire', 'range' => 3]], $this->game->resolved['actions']);
         $this->assertSame(['fire left'], $this->game->resolved['decisions']);
+    }
+
+    /** Retaliation's shot is a 1-cannon fire, so shot upgrades like Bow and Stern Chasers apply. */
+    public function testRetaliationOffersUpgradedShots(): void {
+        $this->game->upgrades = ['galleon_bow_and_stern_chasers' => true];
+        $this->game->addCard(0, 'hand');
+        $this->game->start('retaliation');
+        $this->game->actResolveCaptainCard(['fire' => 'chaser fore']);
+        $this->assertSame('chaser', $this->game->resolved['actions'][0]['variants'][1]['name']);
+        $this->assertSame(['chaser fore'], $this->game->resolved['decisions']);
+    }
+
+    public function testRetaliationRejectsShotsWithoutTheUpgrade(): void {
+        $this->game->addCard(0, 'hand');
+        $this->game->start('retaliation');
+        $this->expectException(\Bga\GameFramework\UserException::class);
+        $this->game->actResolveCaptainCard(['fire' => 'chaser fore']);
     }
 
     /** Damage cards are all the same card, so Retaliation does not ask which one to scrap. */

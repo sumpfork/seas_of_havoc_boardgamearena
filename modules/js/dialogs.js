@@ -437,6 +437,31 @@ define([
     /**
      * A collision ends the maneuver, but the cannon at the next ship outline may still be fired.
      */
+    /**
+     * A status bar button per affordable shot of `fireAction`: each upgrade variant to each side,
+     * previewed on the board. With many shots, pick the weapon first, then the side.
+     */
+    addFireShotButtons: function (fireAction, ship, fire) {
+      const shots = Constants.fireVariants(fireAction).flatMap((variant) => variant.sides.map((side) => (
+        { weapon: variant, name: variant.name + " " + side, cost: variant.cost, range: variant.range })));
+      const affordable = shots.filter((shot) => this.canPlayerAfford(shot.cost, true, false));
+      const addShot = (shot) => this.addPreviewedActionButton(
+        this._choiceLabelHtml(shot),
+        () => fire(shot),
+        { actions: [fireAction], decisions: [shot.name], ship },
+      );
+      if (affordable.length <= 3) {
+        affordable.forEach(addShot);
+      } else {
+        for (const weapon of new Set(affordable.map((shot) => shot.weapon))) {
+          this.statusBar.addActionButton(this._choiceLabelHtml(weapon), () => this.showBarStep(
+            _("Sea Phase: ${you} may fire to one side"),
+            () => affordable.filter((shot) => shot.weapon === weapon).forEach(addShot),
+          ));
+        }
+      }
+    },
+
     fireAfterCollision: function (shot) {
       this._sendWithOptionalBooty(
         shot.cost || {},
@@ -722,15 +747,10 @@ define([
       if (ability === "retaliation") {
         // Every damage card is identical, so there is nothing to pick between: go straight to the shot.
         this.statusBar.setTitle(_("Sea Phase: Retaliation: scrap a damage card, then you may fire."));
-        // The free shot the server resolves (see actResolveCaptainCard), previewed on the board.
-        const shot = [{ action: "fire", range: 3 }];
-        ["left", "right"].forEach((side) =>
-          this.addPreviewedActionButton(
-            side === "left" ? _("Fire left (free, range 3)") : _("Fire right (free, range 3)"),
-            () => send({ fire: "fire " + side }),
-            { actions: shot, decisions: ["fire " + side], ship: args.ship },
-          ),
-        );
+        // The free shot, or any shot the ship's upgrades put in its place (see argCaptainCard).
+        this.addFireShotButtons(args.shot, args.ship, (shot) => this.payWithOptionalBooty(shot.cost, "actResolveCaptainCard", {
+          choices: JSON.stringify({ fire: shot.name }), decisions: JSON.stringify([]),
+        }));
         button(_("Scrap without firing"), () => send({ fire: "skip" }), "secondary");
         return;
       }

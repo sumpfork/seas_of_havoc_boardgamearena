@@ -318,35 +318,7 @@ define(["dojo/dom-class", "dojo/dom-construct", "dojo/query", g_gamethemeurl + "
 
           case "postCollisionFire": {
             // The collision ended the maneuver, but the outline after it still shows a cannon.
-            const fireAction = args.action || {};
-            const shots = [];
-            if (fireAction.variants) {
-              fireAction.variants.forEach((variant) => variant.sides.forEach((side) => shots.push(
-                { weapon: variant, name: variant.name + " " + side, cost: variant.cost, range: variant.range },
-              )));
-            } else {
-              const weapon = { name: fireAction.action, cost: fireAction.cost, range: fireAction.range };
-              ["left", "right"].forEach((side) => shots.push(
-                { weapon, name: fireAction.action + " " + side, cost: fireAction.cost, range: fireAction.range },
-              ));
-            }
-            const affordable = shots.filter((shot) => this.canPlayerAfford(shot.cost, true, false));
-            const addShot = (shot) => this.addPreviewedActionButton(
-              this._choiceLabelHtml(shot),
-              () => { this.fireAfterCollision(shot); },
-              { actions: [fireAction], decisions: [shot.name], ship: args.ship },
-            );
-            if (affordable.length <= 3) {
-              affordable.forEach(addShot);
-            } else {
-              // An upgraded ship has a side for each weapon: pick the weapon, then the side.
-              for (const weapon of new Set(affordable.map((shot) => shot.weapon))) {
-                this.statusBar.addActionButton(this._choiceLabelHtml(weapon), () => this.showBarStep(
-                  _("Sea Phase: ${you} may fire to one side"),
-                  () => affordable.filter((shot) => shot.weapon === weapon).forEach(addShot),
-                ));
-              }
-            }
+            this.addFireShotButtons(args.action, args.ship, (shot) => this.fireAfterCollision(shot));
             this.statusBar.addActionButton(
               _("Don't fire"),
               () => { this.bgaPerformAction("actPostCollisionFire", { decision: "skip" }); },

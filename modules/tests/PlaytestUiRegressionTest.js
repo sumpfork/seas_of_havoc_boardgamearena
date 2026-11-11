@@ -189,6 +189,7 @@ const iconGame = {
   resourceIcon: utils.resourceIcon,
   addResourceButtons: utils.addResourceButtons,
   showBarStep: utils.showBarStep,
+  addFireShotButtons: loadModule("dialogs.js").addFireShotButtons,
   addCountChoice: handlers.addCountChoice,
   addMerchantSubstituteChoices: handlers.addMerchantSubstituteChoices,
   addBoardingPartyChoices: handlers.addBoardingPartyChoices,
@@ -265,6 +266,25 @@ assert.deepEqual(previewed.map((b) => b.label), ["fire left", "fire right"]);
 assert.equal(previewed[1].preview.actions[0], fireAction);
 assert.equal(previewed[1].preview.decisions[0], "fire right");
 assert.equal(previewed[1].preview.ship, "7_2", "the preview is drawn for the ship that fires");
+// Retaliation's free shot offers the ship's shot upgrades too, e.g. Bow and Stern Chasers.
+previewed.length = 0;
+buttons.length = 0;
+const retaliationShot = { action: "fire", range: 3, variants: [
+  { name: "fire", range: 3, cost: [], count: 1, shot: "cannon", sides: ["left", "right"], both_sides: false },
+  { name: "chaser", range: 3, cost: [], count: 1, shot: "cannon", sides: ["fore", "aft"], both_sides: false },
+] };
+loadModule("dialogs.js").setupCaptainCardSelection.call({
+  ...iconGame,
+  cleanupCaptainCardSelection() {},
+  canPlayerAfford: () => true,
+  _choiceLabelHtml: (shot) => shot.name,
+  addPreviewedActionButton: (label, callback, preview) => previewed.push({ label, preview }),
+  statusBar: { ...iconGame.statusBar, setTitle() {} },
+}, { ability: "retaliation", ship: "7", shot: retaliationShot, _private: { available_cards: [] } });
+assert.deepEqual(buttons.map((b) => b.label), ["fire", "chaser", "Scrap without firing"], "weapon first: four shots overflow the bar");
+buttons[1].callback();
+assert.deepEqual(previewed.map((b) => b.label), ["chaser fore", "chaser aft"]);
+buttons.length = 0;
 
 buttons.length = 0;
 // Timely Trading: the two resources one at a time; purchases are buttons on the market cards.

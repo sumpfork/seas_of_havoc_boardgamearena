@@ -327,7 +327,17 @@ trait CaptainAbilities
             $private["resources"] = $this->getBootyTokenConfigByTypeArg((int) $options[0]["type_arg"])["resources"];
         }
         // Which ship acts, for the client's board preview (Retaliation's shot).
-        return ["ability" => $ability, "ship" => $this->activeShipArg($player_id), "_private" => [$player_id => $private]];
+        $args = ["ability" => $ability, "ship" => $this->activeShipArg($player_id), "_private" => [$player_id => $private]];
+        if ($ability === "retaliation") {
+            $args["shot"] = $this->retaliationShot($player_id);
+        }
+        return $args;
+    }
+
+    /** Retaliation's free cannon, with every shot the player's ship upgrades allow in its place. */
+    private function retaliationShot($player_id): array
+    {
+        return ShipUpgrades::rewriteActions([["action" => "fire", "range" => 3]], $this->getActiveShipUpgrades($player_id))[0];
     }
 
     function actResolveCaptainCard(array $choices, array $decisions = [], ?int $use_booty_card_id = null, ?int $ship = null): mixed
@@ -351,12 +361,13 @@ trait CaptainAbilities
             $chosen = $by_id[$selected];
             if ($ability === "retaliation") {
                 $fire = $choices["fire"] ?? null;
-                if (!in_array($fire, ["fire left", "fire right", "skip"], true)) {
+                $shot = $args["shot"];
+                if ($fire !== "skip" && !in_array($fire, array_column(self::actionOptions($shot), "name"), true)) {
                     throw new \Bga\GameFramework\UserException(clienttranslate("Choose a firing side or skip firing"));
                 }
                 $this->scrapCardAndRefund($selected, $player_id);
                 if ($fire !== "skip") {
-                    $actions = [["action" => "fire", "range" => 3]];
+                    $actions = [$shot];
                     $decisions = [$fire];
                 }
             } else {
