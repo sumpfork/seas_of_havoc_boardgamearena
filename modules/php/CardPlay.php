@@ -363,7 +363,10 @@ trait CardPlay
         ]);
     }
 
-    /** Whirlpool rotation first, then the gust push, which can collide. */
+    /**
+     * The whirlpool's turn or the gust's push, which can collide. Sea features never share a square,
+     * so a ship is on at most one.
+     */
     function applySeafeatureEffects($player_id): CardActionOutcome
     {
         $outcome = new CardActionOutcome();
@@ -371,6 +374,7 @@ trait CardPlay
         $turn = $this->applyWhirlpoolRotation($player_id);
         if ($turn !== null) {
             $outcome->actionChain[] = $turn;
+            return $outcome;
         }
 
         $push = $this->applyGustPush($player_id);
@@ -465,19 +469,25 @@ trait CardPlay
 
         // Damage card, "Repair: When you would play this card, scrap it instead." The repair is
         // the whole play - no maneuver, no flag action, and the card leaves the deck for good.
-        if (in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true)) {
+        // It is still a card played, so whirlpools and gusts resolve after it.
+        $is_repair = in_array(PrimitiveCardPlayAction::SCRAP_SELF->value, array_column($card["actions"], "action"), true);
+
+        // Check if this is a "pass" play (playing card without executing actions)
+        $is_pass = !empty($decisions) && $decisions[0] === "pass";
+        $rowing = $card_id === null;
+
+        if ($is_repair) {
             $this->bga->notify->all("log", clienttranslate('${player_name} has played a card ${card_image}'), [
                 "player_name" => $this->getPlayerNameById($player_id),
                 "card_image" => $card_type,
             ]);
             $this->scrapCardAndRefund($card_id, $player_id);
-            return "seaTurnDone";
-        }
-
-        // Check if this is a "pass" play (playing card without executing actions)
-        $is_pass = !empty($decisions) && $decisions[0] === "pass";
-
-        if ($is_pass) {
+            // Scrapped, not discarded; cardScrapped has already taken it out of the client's hand.
+            $card_id = null;
+            $hand_card_id = null;
+            $outcome = new CardActionOutcome();
+            $notification_message = null;
+        } elseif ($is_pass) {
             // A passed card resolves no maneuver, so Swift Hull does not trigger.
             $this->setGameStateValue("swift_hull_card_type", 0);
             // Pass: skip all actions, but still discard the card
@@ -513,37 +523,34 @@ trait CardPlay
             }
 
             // Rowing is not a card play; the rowing card image still shows the maneuver.
-            $rowing = $card_id === null;
             $notification_message = $rowing
                 ? clienttranslate('${player_name} has rowed ${card_image}')
                 : clienttranslate('${player_name} has played a card ${card_image}');
+        }
 
-            // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
-            $this->setGameStateValue("seafeature_effects_attempted", 0);
+        // Track whether seafeature effects have been attempted (to prevent applying them multiple times)
+        $this->setGameStateValue("seafeature_effects_attempted", 0);
 
-            // Whirlpools and gusts apply now unless the card collided; then they apply once the
-            // collision is resolved (actPivotPickedInDialog).
-            if (!$outcome->collisionOccurred) {
-                $seafeature = $this->applySeafeatureEffects($player_id);
-                $this->setGameStateValue("seafeature_effects_attempted", 1);
-                // Appended to the moveChain for sequential animation
-                $outcome->absorb($seafeature);
+        // "A player resolves whirlpools and gusts their ship is located on after each card they play
+        // (this includes rowing and passing by discarding a card)." They apply now unless the card
+        // collided; then they apply once the collision is resolved (actPivotPickedInDialog).
+        if (!$outcome->collisionOccurred) {
+            $seafeature = $this->applySeafeatureEffects($player_id);
+            $this->setGameStateValue("seafeature_effects_attempted", 1);
+            // Appended to the moveChain for sequential animation
+            $outcome->absorb($seafeature);
 
-                if (count($seafeature->actionChain) == 2) {
-                    $notification_message = $rowing
-                        ? clienttranslate('${player_name} has rowed and is affected by the whirlpool and gust ${card_image}')
-                        : clienttranslate(
-                            '${player_name} has played a card and is affected by the whirlpool and gust ${card_image}',
-                        );
-                } elseif (!empty($seafeature->actionChain)) {
-                    $whirlpool = $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id));
-                    $notification_message = match (true) {
-                        $rowing && $whirlpool => clienttranslate('${player_name} has rowed and is rotated by the whirlpool ${card_image}'),
-                        $rowing => clienttranslate('${player_name} has rowed and is pushed by the gust ${card_image}'),
-                        $whirlpool => clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}'),
-                        default => clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}'),
-                    };
-                }
+            if (!empty($seafeature->actionChain)) {
+                $whirlpool = $seafeature->actionChain[0]["type"] === "turn";
+                $notification_message = match (true) {
+                    // The repair already logged the card itself.
+                    $is_repair && $whirlpool => clienttranslate('${player_name} is rotated by the whirlpool'),
+                    $is_repair => clienttranslate('${player_name} is pushed by the gust'),
+                    $rowing && $whirlpool => clienttranslate('${player_name} has rowed and is rotated by the whirlpool ${card_image}'),
+                    $rowing => clienttranslate('${player_name} has rowed and is pushed by the gust ${card_image}'),
+                    $whirlpool => clienttranslate('${player_name} has played a card and is rotated by the whirlpool ${card_image}'),
+                    default => clienttranslate('${player_name} has played a card and is pushed by the gust ${card_image}'),
+                };
             }
         }
 
@@ -551,17 +558,20 @@ trait CardPlay
             $this->discardCardToPlayer($card_id, $player_id);
         }
 
-        $this->bga->notify->all("cardPlayed", $notification_message, [
-            "player_name" => $this->getPlayerNameById($player_id),
-            "player_id" => $player_id,
-            "ship" => $this->activeShipArg($player_id),
-            "card_id" => $hand_card_id, // null when rowing
-            "card_type" => $card_type,
-            "card_image" => $card_type,
-            "moveChain" => $outcome->actionChain,
-            "cost" => $outcome->cost,
-            "salvaged_shipwrecks" => $outcome->shipwreckEvents,
-        ]);
+        // A repair on open water has nothing left to show.
+        if ($notification_message !== null) {
+            $this->bga->notify->all("cardPlayed", $notification_message, [
+                "player_name" => $this->getPlayerNameById($player_id),
+                "player_id" => $player_id,
+                "ship" => $this->activeShipArg($player_id),
+                "card_id" => $hand_card_id, // null when rowing
+                "card_type" => $card_type,
+                "card_image" => $card_type,
+                "moveChain" => $outcome->actionChain,
+                "cost" => $outcome->cost,
+                "salvaged_shipwrecks" => $outcome->shipwreckEvents,
+            ]);
+        }
 
         $this->notifyBootyCollected($player_id, $outcome->bootyCards);
 
@@ -648,30 +658,20 @@ trait CardPlay
         }
         // Pivot moves, then seafeature moves, for sequential animation
         $outcome->absorb($seafeature);
-        $seafeature_moves = count($seafeature->actionChain);
-        // A single seafeature move is either the whirlpool's turn or the gust's push.
-        $on_whirlpool = $seafeature_moves == 1
-            && $this->seaboard->isObjectOnWhirlpool("player_ship", $this->activeShipArg($player_id));
+        // The seafeature move, if any, is either the whirlpool's turn or the gust's push.
+        $feature = empty($seafeature->actionChain)
+            ? null
+            : ($seafeature->actionChain[0]["type"] === "turn" ? "whirlpool" : "gust");
+        $pivoted = $direction != "no pivot";
 
-        $notification_message = null;
-        if ($direction != "no pivot") {
-            $notification_message = clienttranslate('${player_name} pivots');
-            if ($seafeature_moves == 2) {
-                $notification_message = clienttranslate(
-                    '${player_name} pivots and is affected by the whirlpool and gust',
-                );
-            } elseif ($seafeature_moves == 1) {
-                $notification_message = $on_whirlpool
-                    ? clienttranslate('${player_name} pivots and is rotated by the whirlpool')
-                    : clienttranslate('${player_name} pivots and is pushed by the gust');
-            }
-        } elseif ($seafeature_moves == 2) {
-            $notification_message = clienttranslate('${player_name} is affected by the whirlpool and gust');
-        } elseif ($seafeature_moves == 1) {
-            $notification_message = $on_whirlpool
-                ? clienttranslate('${player_name} is rotated by the whirlpool')
-                : clienttranslate('${player_name} is pushed by the gust');
-        }
+        $notification_message = match (true) {
+            $pivoted && $feature === "whirlpool" => clienttranslate('${player_name} pivots and is rotated by the whirlpool'),
+            $pivoted && $feature === "gust" => clienttranslate('${player_name} pivots and is pushed by the gust'),
+            $pivoted => clienttranslate('${player_name} pivots'),
+            $feature === "whirlpool" => clienttranslate('${player_name} is rotated by the whirlpool'),
+            $feature === "gust" => clienttranslate('${player_name} is pushed by the gust'),
+            default => null,
+        };
 
         // With no pivot and no whirlpool or gust there is nothing to show.
         if ($notification_message !== null) {
