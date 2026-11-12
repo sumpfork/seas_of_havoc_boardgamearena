@@ -396,6 +396,7 @@ trait CaptainAbilities
                 "player_id" => $player_id, "cards" => [$kept], "num_cards" => 1,
                 "deck_size" => $this->cards->countCardInLocation($this->playerDeckName($player_id)),
             ]);
+            $this->notifyPileCounts();
         } elseif ($ability === "unearth_riches") {
             $resources = $args["_private"][$player_id]["resources"];
             if (isset($resources["choice"])) {

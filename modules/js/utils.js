@@ -1009,6 +1009,19 @@ define([
       }
     },
 
+    /** Other players' decks and discards on their boards, from the server's per-location counts. */
+    updateOpponentPiles: function (counts, discardTops) {
+      for (const [player_id, piles] of Object.entries(this.opponentPiles)) {
+        piles.deck.setCardNumber(counts[`player_deck_${player_id}`] ?? 0);
+        const top = discardTops[player_id];
+        // A display id, so the copy doesn't pull the real card out of another stock.
+        piles.discard.setCardNumber(
+          counts[`player_discard_${player_id}`] ?? 0,
+          top && { id: 30000 + Number(top.id), type: top.type },
+        );
+      }
+    },
+
     /**
      * Update deck card count display
      */

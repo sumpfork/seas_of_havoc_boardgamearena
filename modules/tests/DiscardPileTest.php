@@ -108,9 +108,10 @@ final class DiscardPileTest extends TestCase
 
         $this->game->drawCards("1", 2);
 
-        // cardDrawn is the last notification; the reshuffle is announced before it.
-        $this->assertSame("cardDrawn", $this->game->debugLastNotif["type"]);
-        $this->assertSame(2, $this->game->debugLastNotif["num_cards"]);
+        // The reshuffle is announced before the draw, and everyone then gets the new counts.
+        $sent = $this->game->bga->notify->sent;
+        $this->assertSame(["deckReshuffled", "cardDrawn", "pileCounts"], array_column(array_slice($sent, -3), "type"));
+        $this->assertSame(2, $sent[count($sent) - 2]["num_cards"]);
     }
 
     public function testDrawingFromAnEmptyDeckAndDiscardDrawsNothing(): void

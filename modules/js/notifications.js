@@ -34,7 +34,10 @@ define([
       console.log("notifications subscriptions setup");
       this.bgaSetupPromiseNotifications({
         // The server attaches hand_counts to every game notification (see the decorator in the game constructor).
-        onEnd: (notifName, msg, args) => args.hand_counts && this.updateHandCounts(args.hand_counts),
+        onEnd: (notifName, msg, args) => {
+          if (args.hand_counts) this.updateHandCounts(args.hand_counts);
+          if (args.location_counts) this.updateOpponentPiles(args.location_counts, args.discard_tops);
+        },
       });
     },
 
@@ -615,7 +618,7 @@ define([
 
     /** Snake draft over: player colours, ships, decks and hands all changed, so start from a fresh page. */
     notif_draftComplete: function () {
-      // ponytail: a replay can't reload, so it keeps the pre-draft board; rebuild in place if replays matter.
+      // A replay can't reload, so it keeps the pre-draft board; rebuild in place if replays matter.
       if (!g_archive_mode) {
         window.location.reload();
         // reload() is async: hold the queue so chooseHeading isn't entered with pre-draft gamedatas
@@ -633,6 +636,9 @@ define([
     /**
      * Deck reshuffled notification
      */
+    /** Nothing to do: the counts it carries are applied for every notification (see setupNotifications). */
+    notif_pileCounts: function () {},
+
     notif_deckReshuffled: function (args) {
       console.log("notify deck reshuffled");
       let player_id = args.player_id;
@@ -642,8 +648,9 @@ define([
       if (player_id == this.player_id) {
         this.updateDeckCount(deck_size);
         // Wait for the discard pile to empty: the draw that follows adds some of these same cards
-        // to the hand, and their old elements must be gone by then.
-        return this.playerDiscard.removeAll();
+        // to the hand, and their old elements must be gone by then. Cards still arriving are let
+        // land first (see discardArrivals).
+        return Promise.all(this.discardArrivals).then(() => this.playerDiscard.removeAll());
       }
     },
   };

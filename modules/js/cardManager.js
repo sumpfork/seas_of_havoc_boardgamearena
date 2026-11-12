@@ -12,7 +12,7 @@
  * Card setup helpers and card-related UI management
  */
 
-define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function (domStyle, Constants) {
+define(["dojo/dom-style", getLibUrl("bga-cards", "1.x"), g_gamethemeurl + "modules/js/constants.js"], function (domStyle, BgaCards, Constants) {
   // Debug logging only in Studio (see constants.js).
   const console = Constants.console;
 
@@ -320,8 +320,8 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
     /**
      * The player's ships, as drawn on the board, at the end of their panel's flag row: in the
      * 2 Ship Variant this is how you tell whose second ship is whose, since each ship type has its
-     * own colour. Other players also get a board under mine with their captain and upgrades
-     * (mine are the full cards in #myship).
+     * own colour. Other players also get a board under mine with their captain, upgrades, deck and
+     * discard (mine are the full cards in #myship and the piles in #mycards).
      */
     addPlayerPanelCards: function (player) {
       const info = this.gamedatas.playerinfo[player.id];
@@ -336,17 +336,30 @@ define(["dojo/dom-style", g_gamethemeurl + "modules/js/constants.js"], function 
         "beforeend",
         `<div class="whiteblock soh_player_board">
            <h3 style="color: #${player.color}">${player.name}</h3>
-           <div id="player_panel_cards_p${player.id}" class="soh_player_panel_cards"><div class="soh_board_ships">${ships}</div></div>
+           <div id="player_panel_cards_p${player.id}" class="soh_player_panel_cards"></div>
          </div>`,
       );
       const row = $(`player_panel_cards_p${player.id}`);
+      // Each part under a heading, as on my board.
+      // bga-cards names a pile's face-down top card after the pile's element id, so piles need one.
+      const group = (label, classes = "", id = "") => {
+        row.insertAdjacentHTML("beforeend", `<div class="soh_board_group"><h3>${label}</h3><div ${id && `id="${id}"`} class="${classes}"></div></div>`);
+        return row.lastElementChild.lastElementChild;
+      };
+      group(_("Ship"), "soh_board_ships").innerHTML = ships;
       // No captain yet while the snake draft runs.
       if (player.captain) {
-        this.addPanelCard(row, `panel_captain_p${player.id}`, player.captain, false);
+        this.addPanelCard(group(_("Captain")), `panel_captain_p${player.id}`, player.captain, false);
       }
+      const upgrades = group(_("Ship Upgrades"), "soh_board_upgrades");
       for (const upgrade of player.ship_upgrades) {
-        this.addPanelCard(row, `panel_upgrade_p${player.id}_${upgrade.upgrade_key}`, upgrade.upgrade_key, upgrade.is_activated == 1);
+        this.addPanelCard(upgrades, `panel_upgrade_p${player.id}_${upgrade.upgrade_key}`, upgrade.upgrade_key, upgrade.is_activated == 1);
       }
+      // Their deck and discard as mine are shown, but not clickable: only the top discard is known here.
+      this.opponentPiles[player.id] = {
+        deck: new BgaCards.Deck(this.cardsManager, group(_("Deck"), "soh_board_pile", `deck_p${player.id}`), { cardNumber: 0, counter: { hideWhenEmpty: true } }),
+        discard: new BgaCards.Deck(this.cardsManager, group(_("Discard"), "soh_board_pile", `discard_p${player.id}`), { cardNumber: 0, counter: { hideWhenEmpty: true } }),
+      };
     },
 
     addPanelCard: function (row, id, cardKey, active) {

@@ -43,6 +43,16 @@ trait Decks
         $this->cards->insertCardOnExtremePosition($card_id, $this->playerDiscardName($player_id), true);
     }
 
+    /** Each player's top discard card (null when empty), shown on their pile on others' screens. */
+    function discardTops(): array
+    {
+        $tops = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $player_id) {
+            $tops[$player_id] = $this->cards->getCardOnTop($this->playerDiscardName($player_id));
+        }
+        return $tops;
+    }
+
     /** A player's discard pile, bottom card first. */
     function getPlayerDiscard($player_id): array
     {
@@ -190,6 +200,17 @@ trait Decks
                 "deck_size" => $this->cards->countCardInLocation($deck_name),
             ],
         );
+        $this->notifyPileCounts();
+    }
+
+    /**
+     * A silent notification to everyone after a private one moved cards (a draw): the counts the
+     * decorator attaches would otherwise reach only that player, leaving the others' hand counts
+     * and piles for them out of date.
+     */
+    function notifyPileCounts(): void
+    {
+        $this->bga->notify->all("pileCounts", "", []);
     }
 
     function discardCards(string $player_id, array $card_ids)

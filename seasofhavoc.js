@@ -510,6 +510,17 @@ define([
         },
       });
 
+      // Cards still sliding in, for the reshuffle to wait on: emptying the pile mid-slide leaves the
+      // card's element behind, outside any stock, and drawing that card again then throws.
+      this.discardArrivals = new Set();
+      const addToDiscard = this.playerDiscard.addCard.bind(this.playerDiscard);
+      this.playerDiscard.addCard = (...args) => {
+        const arrival = addToDiscard(...args);
+        this.discardArrivals.add(arrival);
+        arrival.finally(() => this.discardArrivals.delete(arrival));
+        return arrival;
+      };
+
       // Same as the discard.
       this.scrapPile = new BgaCards.Deck(this.cardsManager, $("scrap"), {
         autoRemovePreviousCards: false,
@@ -702,6 +713,7 @@ define([
       console.log("Player board setup complete!");
 
       // Setting up player boards
+      this.opponentPiles = {};
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];
         console.log(`player color: ${player.color}`);
@@ -744,6 +756,7 @@ define([
 
       this.updateResources(gamedatas.resources);
       this.updateHandCounts(gamedatas.hand_counts);
+      this.updateOpponentPiles(gamedatas.location_counts, gamedatas.discard_tops);
       this.updateIslandSlots(gamedatas.islandslots, gamedatas.players);
       this.updateUniqueTokens(gamedatas.unique_tokens);
       this.updateMyBootyToken();
