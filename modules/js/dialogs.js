@@ -996,7 +996,10 @@ define([
       if (originalLocation === "hand") {
         this.playerHand.removeCard({ id: card.id });
       } else if (originalLocation === "player_discard") {
-        this.playerDiscard.removeCard({ id: card.id });
+        // Deck's own count update on removal counts the card twice and puts a fake (face-down)
+        // card on top, so recount without it, as for the scrap pile.
+        this.playerDiscard.removeCard({ id: card.id }, { autoUpdateCardNumber: false });
+        this.playerDiscard.setCardNumber(this.playerDiscard.getCards().length, null);
       }
     },
 
