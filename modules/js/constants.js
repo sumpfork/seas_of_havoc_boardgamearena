@@ -25,6 +25,8 @@ define([], function () {
   const FIRE_COUNTS = { fire: 1, "2 x fire": 2, "3 x fire": 3 };
 
   /** A fire action's shots. Without ship upgrades the server sends none: just the plain shot. */
+  /** The decision string for firing a variant to a side, as ShipUpgrades::shotName builds it. */
+  const shotName = (variant, side) => (variant.both_sides ? variant.name : variant.name + " " + side);
   const fireVariants = (action) => action.variants || [{
     name: action.action, range: action.range, cost: action.cost, count: FIRE_COUNTS[action.action],
     shot: "cannon", sides: ["left", "right"], both_sides: false,
@@ -47,6 +49,7 @@ define([], function () {
 
     FIRE_COUNTS: FIRE_COUNTS,
     fireVariants: fireVariants,
+    shotName: shotName,
 
     /**
      * The decisions a card action accepts, as the server checks them (CardPlay::actionOptions). A
@@ -59,7 +62,7 @@ define([], function () {
         options = action.choices.map((choice) => ({ name: choice.name || choice.action, choice: choice, cost: choice.option_cost }));
       } else if (Object.hasOwn(FIRE_COUNTS, action.action)) {
         options = fireVariants(action).flatMap((variant) =>
-          variant.sides.map((side) => ({ name: variant.name + " " + side, cost: variant.cost, range: variant.range })));
+          variant.sides.map((side) => ({ name: shotName(variant, side), cost: variant.cost, range: variant.range })));
       } else {
         options = [{ name: action.name || action.action, cost: action.cost, range: action.range }];
       }

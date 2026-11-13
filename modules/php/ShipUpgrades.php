@@ -108,12 +108,17 @@ class ShipUpgrades
         }
         if (!empty($active["ship_of_the_line_double_gun_crews"])) {
             // Double Gun Crews: every cannon fires out of both sides, at -1 range, for the same cost.
-            $variants[] = self::variant("both sides", max(1, $range - 1), $cost, $count, ["both_sides" => true]);
+            // There is no side to choose, so one option (see shotName); "left" is just where shotSides starts.
+            // A range 1 shot (3 x fire) would have no range left, so it can't fire out of both sides.
+            if ($range > 1) {
+                $variants[] = self::variant("both sides", $range - 1, $cost, $count, ["both_sides" => true, "sides" => ["left"]]);
+            }
             // Heavy Guns fire 1 cannon only, so they combine with it only on a single shot.
             if ($count === 1 && !empty($active["ship_of_the_line_heavy_guns"])) {
                 $variants[] = self::variant("heavy guns both sides", 4, ["cannonball" => 2], 1, [
                     "shot" => "heavy",
                     "both_sides" => true,
+                    "sides" => ["left"],
                 ]);
             }
         }
@@ -143,12 +148,18 @@ class ShipUpgrades
         $variants = $action["variants"] ?? self::fireVariants($action, []);
         foreach ($variants as $variant) {
             foreach ($variant["sides"] as $side) {
-                if ($decision === $variant["name"] . " " . $side) {
+                if ($decision === self::shotName($variant, $side)) {
                     return [$variant, $side];
                 }
             }
         }
         throw new \Bga\GameFramework\SystemException("Invalid firing choice: " . $decision);
+    }
+
+    /** The decision string for firing a variant to a side: "chain shot left", or just "both sides". */
+    public static function shotName(array $variant, string $side): string
+    {
+        return $variant["both_sides"] ? $variant["name"] : $variant["name"] . " " . $side;
     }
 
     /** The sides each of a variant's shots is fired to, in order. */

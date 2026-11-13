@@ -347,6 +347,28 @@ final class ShipUpgradeFiringTest extends TestCase
         $this->assertSame(0, (int) $this->game->getGameStateValue("pending_chain_shot_victims"));
     }
 
+    public function testChainShotVictimWithNoResourcesLosesTheirLeastValuableBootyToken(): void
+    {
+        $this->game->resources["2"] = ["sail" => 0, "cannonball" => 0, "doubloon" => 0, "skiff" => 2];
+        (new ReflectionProperty(SeasOfHavoc::class, "booty_tokens"))->setValue($this->game, [
+            ["image_id" => 1, "resources" => ["sail" => 1]],
+            ["image_id" => 2, "resources" => ["doubloon" => 3]],
+        ]);
+        foreach ([2, 1] as $type_arg) {
+            $this->game->deck->createCards([["type" => "booty", "type_arg" => $type_arg, "nbr" => 1]], "booty_player", 2);
+        }
+        $this->game->setGameStateValue("pending_chain_shot_victims", 2); // player_no 2
+
+        $state = (new ReflectionMethod(SeasOfHavoc::class, "nextChainShotLossState"))->invoke($this->game);
+
+        $this->assertNull($state, "no choice to make");
+        $kept = array_values($this->game->deck->getCardsInLocation("booty_player", 2));
+        $this->assertCount(1, $kept);
+        $this->assertSame(2, (int) $kept[0]["type_arg"], "the 3 doubloon token is kept");
+        $this->assertCount(1, $this->game->deck->getCardsInLocation("booty_discard"));
+        $this->assertSame([], $this->game->gains, "no resource taken");
+    }
+
     public function testChainShotVictimChoosesAmongTheResourcesTheyHave(): void
     {
         $this->game->resources["2"] = ["sail" => 0, "cannonball" => 3, "doubloon" => 2, "skiff" => 3];
@@ -384,7 +406,7 @@ final class ShipUpgradeFiringTest extends TestCase
     {
         $this->game->fireResults = array_fill(0, 4, ["type" => "fire_miss"]);
 
-        $this->fire("both sides left", ["ship_of_the_line_double_gun_crews"], [
+        $this->fire("both sides", ["ship_of_the_line_double_gun_crews"], [
             "action" => "2 x fire",
             "range" => 2,
             "cost" => ["cannonball" => 2],

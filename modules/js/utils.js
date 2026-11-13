@@ -568,7 +568,7 @@ define([
           war_junk_bulwark: _("Immediately scrap any damage card you receive if you already have a damage card on top of your discard pile."),
           xebec_lateen_rigging: _("You may make extended maneuvers without paying the [sail] cost."),
           xebec_swift_hull: _("After resolving a sailing card (including its flag action), you may pay 1 [sail] to play another card immediately."),
-          sloop_of_war_chain_shot: _("When firing 1 cannon, you may instead fire chain shot. Range 2. After resolving a hit, opponents hit by chain shot also lose a resource of their choice."),
+          sloop_of_war_chain_shot: _("When firing 1 cannon, you may instead fire chain shot. Range 2. After resolving a hit, opponents hit by chain shot also lose a resource of their choice (a booty token if they have no resources)."),
           sloop_of_war_nimble_hull: _("Once per Sea Phase, you may resolve the maneuver on a sailing card twice. The card's flag action is only resolved once, after the maneuvers have been completed."),
           brig_extra_rations: _("Once per Island Phase, you may pay 1 [any] to draw 1 card."),
           brig_carronade: _("When firing 1 cannon, you may instead fire a carronade at no [cannonball] cost. Range 1."),

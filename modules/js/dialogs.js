@@ -443,7 +443,7 @@ define([
      */
     addFireShotButtons: function (fireAction, ship, fire) {
       const shots = Constants.fireVariants(fireAction).flatMap((variant) => variant.sides.map((side) => (
-        { weapon: variant, name: variant.name + " " + side, cost: variant.cost, range: variant.range })));
+        { weapon: variant, name: Constants.shotName(variant, side), cost: variant.cost, range: variant.range })));
       const affordable = shots.filter((shot) => this.canPlayerAfford(shot.cost, true, false));
       const addShot = (shot) => this.addPreviewedActionButton(
         this._choiceLabelHtml(shot),
@@ -545,6 +545,7 @@ define([
         pass: "\u2715",
       };
       if (Object.hasOwn(moves, name)) return moves[name];
+      if (name.endsWith("both sides")) return sides.left + sides.right;
       var side = name.split(" ").pop();
       return Object.hasOwn(sides, side) ? sides[side] : "";
     },
@@ -994,11 +995,14 @@ define([
       }
 
       if (originalLocation === "hand") {
-        this.playerHand.removeCard({ id: card.id });
+        // Via the manager: a card still sliding into place (the hand re-laying out after an
+        // earlier removal) is outside the hand's div, where Stock.removeCard leaves it orphaned
+        // and the discard's addCard then throws.
+        this.cardsManager.removeCard({ id: card.id });
       } else if (originalLocation === "player_discard") {
         // Deck's own count update on removal counts the card twice and puts a fake (face-down)
         // card on top, so recount without it, as for the scrap pile.
-        this.playerDiscard.removeCard({ id: card.id }, { autoUpdateCardNumber: false });
+        this.cardsManager.removeCard({ id: card.id }, { autoUpdateCardNumber: false });
         this.playerDiscard.setCardNumber(this.playerDiscard.getCards().length, null);
       }
     },

@@ -976,10 +976,10 @@ assert.equal(nodes.skip.checked, false);
   assert.deepEqual(marks.find((m) => m.type === "ghost"), { type: "ghost", x: 2, y: 1, heading: N },
     "an undecided paid forward is not drawn");
 
-  const bothSides = [{ action: "2 x fire", range: 2, variants: [
-    { name: "both sides", range: 1, count: 2, sides: ["left", "right"], both_sides: true },
+  const bothSides = [{ action: "2 x fire", range: 2, cost: { cannonball: 2 }, variants: [
+    { name: "both sides", range: 1, count: 2, sides: ["left"], both_sides: true },
   ] }];
-  marks = simulateCardPlay(bothSides, ["both sides left"], { x: 2, y: 2, heading: N }, open);
+  marks = simulateCardPlay(bothSides, ["both sides"], { x: 2, y: 2, heading: N }, open);
   assert.deepEqual(only(marks, "chevron"), [[1, 2, W], [3, 2, E]], "both sides fires one shot each way");
 
   // Shots stop at what they hit, as SeaBoard::resolveCannonFire and Firing::resolveOneShot do.

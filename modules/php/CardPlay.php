@@ -133,7 +133,7 @@ trait CardPlay
         } elseif (isset(ShipUpgrades::FIRE_COUNTS[$name])) {
             foreach ($action["variants"] ?? ShipUpgrades::fireVariants($action, []) as $variant) {
                 foreach ($variant["sides"] as $side) {
-                    $options[] = ["name" => $variant["name"] . " " . $side, "cost" => $variant["cost"], "choice" => null];
+                    $options[] = ["name" => ShipUpgrades::shotName($variant, $side), "cost" => $variant["cost"], "choice" => null];
                 }
             }
         } else {

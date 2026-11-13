@@ -203,7 +203,8 @@ trait Firing
 
     /**
      * Hand the turn to the next queued chain shot victim, or return null once none are left. A
-     * victim with nothing, or only one kind of resource, has no choice to make and is settled here.
+     * victim with only one kind of resource, or none (they lose a booty token instead, if they hold
+     * one), has no choice to make and is settled here.
      */
     private function nextChainShotLossState(): ?int
     {
@@ -223,6 +224,8 @@ trait Firing
             $this->setGameStateValue("pending_chain_shot_victims", intdiv($queue, 10));
             if (count($options) === 1) {
                 $this->loseChainShotResource($victim_id, $options[0]);
+            } elseif (count($options) === 0) {
+                $this->loseChainShotBooty($victim_id);
             }
         }
         return null;
@@ -253,6 +256,26 @@ trait Firing
         $options = $this->chainShotLossOptions($player_id);
         usort($options, fn($a, $b) => $resources[$b] <=> $resources[$a]);
         return $this->actChainShotLose($options[0]);
+    }
+
+    /**
+     * House rule: a chain shot victim with no resources loses a booty token instead. With two (Treasure
+     * Hold) the least valuable goes, which is the one they would pick.
+     */
+    private function loseChainShotBooty(int $player_id): void
+    {
+        $held = $this->getBootyTokensForPlayer($player_id);
+        if (empty($held)) {
+            return;
+        }
+        usort($held, fn($a, $b) => $this->bootyTokenValue($a) <=> $this->bootyTokenValue($b));
+        $this->cards->moveCard((int) $held[0]["id"], "booty_discard");
+        $this->bga->notify->all(
+            "log",
+            clienttranslate('${player_name} has no resources and loses a booty token to chain shot'),
+            ["player_name" => $this->getPlayerNameById($player_id), "player_id" => $player_id],
+        );
+        $this->notifyBootyTokensChanged($player_id);
     }
 
     private function loseChainShotResource(int $player_id, string $resource): void

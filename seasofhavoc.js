@@ -404,8 +404,10 @@ define([
         domStyle.set(div, "background-position", `-${spriteX}px -${spriteY}px`);
       };
 
-      // Create the animation manager for BGA Cards
-      this.animationManager = new BgaAnimations.Manager(this);
+      // Create the animation manager for BGA Cards. No animations in a background tab (or a fast
+      // replay): there they stall, and one that finishes after its card was removed re-attaches
+      // the deleted element to its old stock.
+      this.animationManager = new BgaAnimations.Manager({ animationsActive: () => this.bgaAnimationsActive() });
 
       // Create CardManager for BGA Cards library
       this.cardsManager = new BgaCards.Manager({

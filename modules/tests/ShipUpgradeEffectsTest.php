@@ -86,16 +86,25 @@ final class ShipUpgradeEffectsTest extends TestCase
             ["ship_of_the_line_double_gun_crews" => true],
         )[0];
 
-        [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "both sides left");
+        [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "both sides");
         $this->assertSame(1, $variant["range"]); // 2 - 1
         $this->assertSame(["cannonball" => 2], $variant["cost"]);
         $this->assertSame(["left", "left", "right", "right"], ShipUpgrades::shotSides($variant, $side));
 
         // A single cannon can fire out of both sides too (a forward-and-shoot card).
         $one = ShipUpgrades::rewriteActions([self::FIRE], ["ship_of_the_line_double_gun_crews" => true])[0];
-        [$single, $single_side] = ShipUpgrades::parseFireDecision($one, "both sides right");
+        [$single, $single_side] = ShipUpgrades::parseFireDecision($one, "both sides");
         $this->assertSame(2, $single["range"]); // 3 - 1
-        $this->assertSame(["right", "left"], ShipUpgrades::shotSides($single, $single_side));
+        $this->assertSame(["left", "right"], ShipUpgrades::shotSides($single, $single_side));
+        // No side to choose: one option, not one per side.
+        $this->assertSame(["left"], $single["sides"]);
+
+        // A range 1 shot would drop to range 0, so it gets no both-sides option.
+        $three = ShipUpgrades::rewriteActions(
+            [["action" => "3 x fire", "range" => 1, "cost" => ["cannonball" => 3]]],
+            ["ship_of_the_line_double_gun_crews" => true],
+        )[0];
+        $this->assertArrayNotHasKey("variants", $three);
     }
 
     public function testDoubleGunCrewsCombinesWithHeavyGunsOnASingleCannon(): void
@@ -103,7 +112,7 @@ final class ShipUpgradeEffectsTest extends TestCase
         $both = ["ship_of_the_line_double_gun_crews" => true, "ship_of_the_line_heavy_guns" => true];
         $rewritten = ShipUpgrades::rewriteActions([self::FIRE], $both)[0];
 
-        [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "heavy guns both sides left");
+        [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "heavy guns both sides");
         $this->assertSame("heavy", $variant["shot"]);
         $this->assertSame(["cannonball" => 2], $variant["cost"]);
         $this->assertSame(4, $variant["range"]); // 5 - 1
@@ -223,7 +232,7 @@ final class ShipUpgradeEffectsTest extends TestCase
                     // This is exactly the string the play dialog builds.
                     [$parsed, $parsed_side] = ShipUpgrades::parseFireDecision(
                         $rewritten,
-                        $variant["name"] . " " . $side,
+                        ShipUpgrades::shotName($variant, $side),
                     );
                     $this->assertSame($variant, $parsed);
                     $this->assertSame($side, $parsed_side);
