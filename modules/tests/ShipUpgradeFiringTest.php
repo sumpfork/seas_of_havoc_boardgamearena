@@ -333,6 +333,20 @@ final class ShipUpgradeFiringTest extends TestCase
         $this->assertSame([], $this->game->gains, 'nothing is taken until the victim chooses');
     }
 
+    public function testChainShotOnYourOwnOtherShipTakesNoResource(): void
+    {
+        $this->game->fireResults = [self::hit(2, 2, 1, SeasOfHavoc::secondShipArg("1"), Heading::EAST)];
+
+        $this->fire("chain shot left", ["sloop_of_war_chain_shot"], [
+            "action" => "fire",
+            "range" => 3,
+            "cost" => ["cannonball" => 1],
+        ]);
+
+        $this->assertSame(["1"], $this->game->damaged);
+        $this->assertSame(0, (int) $this->game->getGameStateValue("pending_chain_shot_victims"));
+    }
+
     public function testChainShotVictimChoosesAmongTheResourcesTheyHave(): void
     {
         $this->game->resources["2"] = ["sail" => 0, "cannonball" => 3, "doubloon" => 2, "skiff" => 3];

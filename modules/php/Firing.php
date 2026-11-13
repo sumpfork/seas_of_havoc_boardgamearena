@@ -104,8 +104,10 @@ trait Firing
                 }
                 $this->applyShipHit($player_id, $collider, $outcome["fire_heading"], $shot === "heavy" ? 1 : 0);
                 $hit_a_ship = true;
-                if ($shot === "chain") {
-                    $this->applyChainShotLoss($player_id, self::shipOwner($collider["arg"]));
+                // "Opponents hit by chain shot": not your own other ship in the 2 Ship Variant.
+                $hit_player_id = self::shipOwner($collider["arg"]);
+                if ($shot === "chain" && (int) $hit_player_id !== (int) $player_id) {
+                    $this->applyChainShotLoss($player_id, $hit_player_id);
                 }
             }
 
