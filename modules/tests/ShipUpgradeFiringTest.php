@@ -368,7 +368,7 @@ final class ShipUpgradeFiringTest extends TestCase
 
     public function testDoubleGunCrewsFiresOutOfBothSidesAtReducedRange(): void
     {
-        $this->game->fireResults = [["type" => "fire_miss"], ["type" => "fire_miss"]];
+        $this->game->fireResults = array_fill(0, 4, ["type" => "fire_miss"]);
 
         $this->fire("both sides left", ["ship_of_the_line_double_gun_crews"], [
             "action" => "2 x fire",
@@ -376,8 +376,9 @@ final class ShipUpgradeFiringTest extends TestCase
             "cost" => ["cannonball" => 2],
         ]);
 
-        $this->assertSame([Turn::LEFT, Turn::RIGHT], array_column($this->game->fireCalls, "direction"));
-        $this->assertSame([1, 1], array_column($this->game->fireCalls, "distance"));
+        // Every cannon fires out of each side.
+        $this->assertSame([Turn::LEFT, Turn::LEFT, Turn::RIGHT, Turn::RIGHT], array_column($this->game->fireCalls, "direction"));
+        $this->assertSame([1, 1, 1, 1], array_column($this->game->fireCalls, "distance"));
     }
 
     public function testPlainMultiCannonShotFiresOncePerCannon(): void

@@ -79,7 +79,7 @@ final class ShipUpgradeEffectsTest extends TestCase
         $this->assertArrayNotHasKey("variants", $rewritten);
     }
 
-    public function testDoubleGunCrewsSplitsShotsAcrossBothSidesAtMinusOneRange(): void
+    public function testDoubleGunCrewsFiresEveryCannonOutOfBothSidesAtMinusOneRange(): void
     {
         $rewritten = ShipUpgrades::rewriteActions(
             [self::FIRE2],
@@ -88,28 +88,30 @@ final class ShipUpgradeEffectsTest extends TestCase
 
         [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "both sides left");
         $this->assertSame(1, $variant["range"]); // 2 - 1
-        $this->assertSame(["left", "right"], ShipUpgrades::shotSides($variant, $side));
+        $this->assertSame(["cannonball" => 2], $variant["cost"]);
+        $this->assertSame(["left", "left", "right", "right"], ShipUpgrades::shotSides($variant, $side));
 
-        // An odd number of cannon puts the extra shot on the chosen side.
-        $three = ShipUpgrades::rewriteActions(
-            [["action" => "3 x fire", "range" => 3, "cost" => ["cannonball" => 3]]],
-            ["ship_of_the_line_double_gun_crews" => true],
-        )[0];
-        [$odd] = ShipUpgrades::parseFireDecision($three, "both sides right");
-        $this->assertSame(["right", "right", "left"], ShipUpgrades::shotSides($odd, "right"));
+        // A single cannon can fire out of both sides too (a forward-and-shoot card).
+        $one = ShipUpgrades::rewriteActions([self::FIRE], ["ship_of_the_line_double_gun_crews" => true])[0];
+        [$single, $single_side] = ShipUpgrades::parseFireDecision($one, "both sides right");
+        $this->assertSame(2, $single["range"]); // 3 - 1
+        $this->assertSame(["right", "left"], ShipUpgrades::shotSides($single, $single_side));
     }
 
-    public function testDoubleGunCrewsCombinesWithHeavyGuns(): void
+    public function testDoubleGunCrewsCombinesWithHeavyGunsOnASingleCannon(): void
     {
-        $rewritten = ShipUpgrades::rewriteActions(
-            [self::FIRE2],
-            ["ship_of_the_line_double_gun_crews" => true, "ship_of_the_line_heavy_guns" => true],
-        )[0];
+        $both = ["ship_of_the_line_double_gun_crews" => true, "ship_of_the_line_heavy_guns" => true];
+        $rewritten = ShipUpgrades::rewriteActions([self::FIRE], $both)[0];
 
-        [$variant] = ShipUpgrades::parseFireDecision($rewritten, "heavy guns both sides left");
+        [$variant, $side] = ShipUpgrades::parseFireDecision($rewritten, "heavy guns both sides left");
         $this->assertSame("heavy", $variant["shot"]);
-        $this->assertSame(["cannonball" => 4], $variant["cost"]); // 2 cannonballs per cannon
-        $this->assertSame(4, $variant["range"]);
+        $this->assertSame(["cannonball" => 2], $variant["cost"]);
+        $this->assertSame(4, $variant["range"]); // 5 - 1
+        $this->assertSame(["left", "right"], ShipUpgrades::shotSides($variant, $side));
+
+        // Heavy Guns fire 1 cannon only.
+        $two = ShipUpgrades::rewriteActions([self::FIRE2], $both)[0];
+        $this->assertNotContains("heavy guns both sides", array_column($two["variants"], "name"));
     }
 
     public function testPlainShotFiresEveryCannonToTheChosenSide(): void
@@ -225,7 +227,7 @@ final class ShipUpgradeEffectsTest extends TestCase
                     );
                     $this->assertSame($variant, $parsed);
                     $this->assertSame($side, $parsed_side);
-                    $this->assertCount($variant["count"], ShipUpgrades::shotSides($variant, $side));
+                    $this->assertCount($variant["count"] * ($variant["both_sides"] ? 2 : 1), ShipUpgrades::shotSides($variant, $side));
                 }
             }
         }

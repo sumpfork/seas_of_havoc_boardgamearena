@@ -93,7 +93,7 @@ define(["dojo/dom", "dojo/dom-construct", g_gamethemeurl + "modules/js/constants
       for (const variant of Constants.fireVariants(action)) {
         for (const side of variant.sides) {
           if (decision !== variant.name + " " + side) continue;
-          // The server's ShipUpgrades::shotSides: both-sides shots split across the two sides.
+          // The server's ShipUpgrades::shotSides: both-sides cannon fire out of each side.
           const sides = variant.both_sides ? [side, OPPOSITE[side]] : [side];
           for (const shotSide of sides) {
             const turn = SIDE_TURN[shotSide];

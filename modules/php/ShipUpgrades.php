@@ -105,12 +105,13 @@ class ShipUpgrades
             if (!empty($active["galleon_bow_and_stern_chasers"])) {
                 $variants[] = self::variant("chaser", 3, $cost, 1, ["sides" => self::SIDES_CHASER]);
             }
-        } elseif (!empty($active["ship_of_the_line_double_gun_crews"])) {
-            // Double Gun Crews: split the cannon between both sides at -1 range. The chosen side
-            // gets the extra shot when the count is odd.
+        }
+        if (!empty($active["ship_of_the_line_double_gun_crews"])) {
+            // Double Gun Crews: every cannon fires out of both sides, at -1 range, for the same cost.
             $variants[] = self::variant("both sides", max(1, $range - 1), $cost, $count, ["both_sides" => true]);
-            if (!empty($active["ship_of_the_line_heavy_guns"])) {
-                $variants[] = self::variant("heavy guns both sides", 4, ["cannonball" => 2 * $count], $count, [
+            // Heavy Guns fire 1 cannon only, so they combine with it only on a single shot.
+            if ($count === 1 && !empty($active["ship_of_the_line_heavy_guns"])) {
+                $variants[] = self::variant("heavy guns both sides", 4, ["cannonball" => 2], 1, [
                     "shot" => "heavy",
                     "both_sides" => true,
                 ]);
@@ -157,11 +158,7 @@ class ShipUpgrades
         if (!$variant["both_sides"]) {
             return array_fill(0, $count, $side);
         }
-        $on_chosen_side = intdiv($count + 1, 2);
-        return array_merge(
-            array_fill(0, $on_chosen_side, $side),
-            array_fill(0, $count - $on_chosen_side, self::oppositeSide($side)),
-        );
+        return array_merge(array_fill(0, $count, $side), array_fill(0, $count, self::oppositeSide($side)));
     }
 
     public static function oppositeSide(string $side): string
