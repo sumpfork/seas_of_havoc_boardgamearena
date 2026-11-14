@@ -185,6 +185,11 @@ final class ShipUpgradeFiringTest extends TestCase
 
         $this->assertCount(3, $this->game->fireCalls);
         $this->assertSame([0, 1, 2], array_column($this->game->fireCalls, "from"));
+        // Each leg after the first goes on from the ship the last one hit, which the client draws it from.
+        $this->assertSame(
+            [null, ["x" => 2, "y" => 2], ["x" => 2, "y" => 1]],
+            array_map(fn($outcome) => $outcome["from"] ?? null, $result->actionChain),
+        );
         $this->assertSame([5, 5, 5], array_column($this->game->fireCalls, "distance"));
         // 2 for a broadside hit, +1 from heavy guns, for each of the two ships passed through.
         $this->assertSame([3, 3], array_column($this->game->infamy, "amount"));

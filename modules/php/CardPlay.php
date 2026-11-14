@@ -559,9 +559,10 @@ trait CardPlay
             }
 
             // Rowing is not a card play; the rowing card image still shows the maneuver.
+            // A captain card's second resolution was already logged when it was played.
             $notification_message = $card_id === null
                 ? clienttranslate('${player_name} has rowed ${card_image}')
-                : clienttranslate('${player_name} has played a card ${card_image}');
+                : ($hand_card_id === null ? "" : clienttranslate('${player_name} has played a card ${card_image}'));
         }
 
         if ($card_id !== null) {

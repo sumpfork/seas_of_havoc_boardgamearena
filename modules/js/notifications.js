@@ -222,15 +222,9 @@ define([
       for (var card of args.scrapped || []) {
         this.scrapPile.addCard({ id: card.id, type: card.type, location: "scrap" });
       }
-      // An empty market deck took the scrapped market cards back. As for damage cards leaving the
-      // pile, recount without Deck's own update, which would put a fake card on top. Remove via
-      // the manager: the cards scrapped just above are still animating outside the pile's div,
-      // where Stock.removeCard leaves them orphaned and the market's addCard below throws.
+      // An empty market deck took the scrapped market cards back, some still sliding into the pile.
       if (args.reshuffled && args.reshuffled.length > 0) {
-        for (var card of args.reshuffled) {
-          this.cardsManager.removeCard(card, { autoUpdateCardNumber: false });
-        }
-        this.scrapPile.setCardNumber(this.scrapPile.getCards().length, null);
+        this.removeFromPile(this.scrapPile, args.reshuffled);
       }
 
       // Remove via the manager: Stock.removeCard skips elements that are mid-animation outside
@@ -443,7 +437,7 @@ define([
           }
           case "fire_miss": {
             // A shot that hits nothing still has to read as a shot: it falls at the end of its range.
-            let shot = this.shotAnimation(shipid, move.fire_heading, move.miss_x, move.miss_y);
+            let shot = this.shotAnimation(shipid, move.fire_heading, move.miss_x, move.miss_y, move.from);
             let splash = this.explosionAnimation(move.miss_x, move.miss_y, "soh_splash");
             anims.push(splash ? fx.chain([shot, splash]) : shot);
             break;
@@ -452,7 +446,7 @@ define([
             // Queued, not played: a card that moves and then fires has to show the shot after the
             // move, and each shot of a multi-cannon card after the one before it. The blast lands
             // while the cannon is still smoking, as it did when both fired at once.
-            let shot = this.shotAnimation(shipid, move.fire_heading, move.hit_x, move.hit_y);
+            let shot = this.shotAnimation(shipid, move.fire_heading, move.hit_x, move.hit_y, move.from);
             let hit = this.explosionAnimation(move.hit_x, move.hit_y);
             anims.push(hit ? fx.chain([shot, hit]) : shot);
             break;
@@ -495,11 +489,9 @@ define([
       let damage_card = args.damage_card;
       let player_id = args.player_id;
       var shipid = "player_ship_" + args.player_id;
-      // With the damage deck empty the card comes from the scrap pile. Deck's own count update on
-      // removal would put a fake (face-down) card on top, so take it out and recount without one.
+      // With the damage deck empty the card comes from the scrap pile.
       if (this.scrapPile.contains(damage_card)) {
-        this.scrapPile.removeCard(damage_card, { autoUpdateCardNumber: false });
-        this.scrapPile.setCardNumber(this.scrapPile.getCards().length, null);
+        this.removeFromPile(this.scrapPile, [damage_card]);
       }
       if (player_id == this.player_id) {
         // addCard takes the card, not (type, id): passing the type alone left the stock holding a

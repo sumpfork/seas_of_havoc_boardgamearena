@@ -1037,7 +1037,8 @@ a.disabled {
   filter: drop-shadow(0 0 6px rgba(255, 170, 40, 0.9));
 }
 .soh_explosion {
-  position: relative;
+  /* Absolute: two explosions in one square (both sides of a heavy gun shot) overlap, not stack. */
+  position: absolute;
   left: -32px;
   top: -32px;
   z-index: 5;

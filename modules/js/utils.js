@@ -403,6 +403,18 @@ define([
       this.hideCardHoverZoom();
     },
 
+    /**
+     * Take cards out of a face-up pile (discard, scrap) and recount it. bga-cards' Deck.removeCard
+     * counts the card twice and puts a fake face-down card on top. Removed via the manager: a card
+     * still sliding into the pile is outside its div, where Stock.removeCard leaves it orphaned.
+     */
+    removeFromPile: function (pile, cards) {
+      for (const card of cards) {
+        this.cardsManager.removeCard(card, { autoUpdateCardNumber: false });
+      }
+      pile.setCardNumber(pile.getCards().length, null);
+    },
+
     getObjectOnSeaboard: function (object_type, arg) {
       for (const entry of this.seaboard) {
         if (entry.type == object_type && entry.arg == arg) {
@@ -887,8 +899,14 @@ define([
       return anim;
     },
 
-    /** Muzzle flash, then the tracer flying out to where the shot lands. */
-    shotAnimation: function (shipId, fireHeading, x, y) {
+    /**
+     * Muzzle flash, then the tracer flying out to where the shot lands. A heavy gun shot going on
+     * through a ship it hit (`from`) flies on from that ship, with no new flash.
+     */
+    shotAnimation: function (shipId, fireHeading, x, y, from) {
+      if (from) {
+        return this.tracerAnimation("seaboardlocation_" + from.x + "_" + from.y, fireHeading, x, y);
+      }
       const flash = this.muzzleFlashAnimation(shipId, fireHeading);
       const tracer = this.tracerAnimation(shipId, fireHeading, x, y);
       return tracer ? fx.chain([flash, tracer]) : flash;

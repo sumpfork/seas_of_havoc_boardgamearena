@@ -131,6 +131,7 @@ game.scrapPile = {
 };
 // Stock.removeCard would orphan a card still animating into the pile; only the manager removes it.
 game.cardsManager = { removeCard: (card, settings) => game.scrapPile.cardRemoved(card, settings) };
+game.removeFromPile = bannerUtils.removeFromPile;
 notifications.notif_marketUpdated.call(game, { market: [], scrapped: [{ id: 3 }], reshuffled: [{ id: 1 }, { id: 3 }] });
 assert.deepEqual(scrapPileCards.map((c) => c.id), [2], "reshuffled cards leave the scrap pile");
 assert.equal(scrapCount, 1, "the pile recounts");
@@ -816,9 +817,12 @@ const scrapCalls = [];
 notifications.notif_damageReceived.call({
   player_id: "1",
   playerDiscard: { addCard() {} },
+  cardsManager: {
+    removeCard(card, settings) { scrapCalls.push(["remove", settings]); scrapCards = scrapCards.filter(c => c.id != card.id); },
+  },
+  removeFromPile: bannerUtils.removeFromPile,
   scrapPile: {
     contains: card => scrapCards.some(c => c.id == card.id),
-    removeCard(card, settings) { scrapCalls.push(["remove", settings]); scrapCards = scrapCards.filter(c => c.id != card.id); },
     getCards: () => scrapCards,
     setCardNumber(n, top) { scrapCalls.push(["count", n, top]); },
   },

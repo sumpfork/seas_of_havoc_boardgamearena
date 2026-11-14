@@ -81,6 +81,7 @@ trait Firing
         $chain = [];
         $from_distance = 0;
         $hit_a_ship = false;
+        $from = null;
         $this->bga->playerStats->inc("shots_fired", 1, (int) $player_id);
 
         while (true) {
@@ -91,6 +92,10 @@ trait Firing
                 ["rock", "player_ship"],
                 $from_distance,
             );
+            if ($from !== null) {
+                // A heavy gun shot going on through what it hit: the client draws it from there.
+                $outcome["from"] = $from;
+            }
             $chain[] = $outcome;
             if ($outcome["type"] != "fire_hit") {
                 break;
@@ -124,6 +129,7 @@ trait Firing
                 break;
             }
             $from_distance = $outcome["hit_distance"];
+            $from = ["x" => $outcome["hit_x"], "y" => $outcome["hit_y"]];
         }
 
         if (!$hit_a_ship) {
