@@ -19,6 +19,7 @@
 
 use Bga\GameFramework\Table;
 use Bga\Games\SeasOfHavoc\Heading;
+use Bga\Games\SeasOfHavoc\PrimitiveCardPlayAction;
 use Bga\Games\SeasOfHavoc\SeaBoard;
 use Bga\Games\SeasOfHavoc\Resources;
 use Bga\Games\SeasOfHavoc\Decks;
@@ -902,6 +903,8 @@ class SeasOfHavoc extends Table
     {
         $this->mytrace("stSeaPhaseSetup");
         $this->setGameStateValue("phase_number", $this->getGameStateValue("phase_number") + 1);
+        // For game progression: the phase ends when the hands are played out.
+        $this->bga->globals->set("sea_phase_hand_cards", $this->cards->countCardInLocation("hand"));
 
         // Set the first player token holder as the active player for the sea phase
         $first_player_token_owner = $this->getFirstPlayerTokenOwner();
@@ -1155,18 +1158,70 @@ class SeasOfHavoc extends Table
     function getGameProgression()
     {
         $target = $this->infamyTarget();
-        if ($target !== null) {
-            return max(0, min(100, intdiv(100 * $this->bga->playerScore->getMax(), $target)));
-        }
-        $totalDamageCards = $this->calculateNumDamageCards();
-        $remainingDamageCards = $this->cards->countCardInLocation("damage_deck");
+        $done = $target !== null
+            ? $this->bga->playerScore->getMax() / $target
+            : 1 - $this->cards->countCardInLocation("damage_deck") / $this->calculateNumDamageCards();
+        $phase_number = $this->getGameStateValue("phase_number");
+        return self::estimateProgression($done, $phase_number, $this->phaseProgress($phase_number), $this->getPlayersNumber());
+    }
 
-        if ($totalDamageCards <= 0) {
-            return 0;
+    /** How far into the current phase (0 to 1): setup decisions made, skiffs placed, or Sea Phase cards played. */
+    function phaseProgress(int $phase_number): float
+    {
+        if ($phase_number === 0) {
+            $players = array_keys($this->getPlayerInfo());
+            $made = 0;
+            $decisions = 0;
+            if ($this->bga->tableOptions->get(self::OPTION_CAPTAINS_AND_SHIPS) === self::ASSIGN_DRAFT) {
+                $made += count($this->draftedCaptains()) + count($this->draftedShips());
+                $decisions += 2 * count($players);
+            }
+            // Ships only reach the board once the draft is over.
+            foreach ($players as $player_id) {
+                foreach ([(string) $player_id, self::secondShipArg($player_id)] as $arg) {
+                    $ship = $this->seaboard->findObject("player_ship", $arg);
+                    $made += $ship !== null && $ship["object"]["heading"] !== Heading::NO_HEADING ? 1 : 0;
+                }
+            }
+            $decisions += count($players) * ($this->bga->tableOptions->get(self::OPTION_TWO_SHIPS) === 2 ? 2 : 1);
+            return $made / $decisions;
         }
+        if ($phase_number % 2 === 1) {
+            $skiffs_left = array_sum(array_map(fn($r) => $r["skiff"] ?? 0, $this->getGameResourcesHierarchical()));
+            return 1 - $skiffs_left / (3 * $this->getPlayersNumber());
+        }
+        // Tables already in a Sea Phase when this was deployed have no count: call it halfway.
+        $hand_cards = $this->bga->globals->get("sea_phase_hand_cards");
+        if ($hand_cards === null) {
+            return 0.5;
+        }
+        // Cards drawn during the phase can push the hands above their starting size.
+        return $hand_cards > 0 ? max(0.0, 1 - $this->cards->countCardInLocation("hand") / $hand_cards) : 1.0;
+    }
 
-        $progression = (int) round(100 * (1 - $remainingDamageCards / $totalDamageCards));
-        return max(0, min(100, $progression));
+    /**
+     * Time played out of the time the game is expected to last, counting setup and each Island and
+     * Sea Phase as one phase-length. The end condition ($done: share of the damage deck dealt or of
+     * the infamy target reached) only moves in Sea Phases; the Sea Phases still to come are projected
+     * from the pace so far, starting from a typical game length worth a few Sea Phases of evidence.
+     */
+    static function estimateProgression(float $done, int $phase_number, float $phase_progress, int $players): int
+    {
+        $done = max(0.0, min(1.0, $done));
+        if ($done >= 1) {
+            return 100;
+        }
+        // phase_number: 0 during setup, 1 in the first Island Phase, 2 in the first Sea Phase, ...
+        $elapsed = $phase_number + $phase_progress;
+        $seas_played = intdiv(max(0, $phase_number - 1), 2) + ($phase_number > 0 && $phase_number % 2 === 0 ? $phase_progress : 0);
+        // Median rounds in simulated games
+        $expected_seas = [2 => 19, 3 => 13, 4 => 11][$players] ?? 9;
+        $prior_weight = 3;
+        $pace = ($done + $prior_weight / $expected_seas) / ($seas_played + $prior_weight);
+        $seas_left = (1 - $done) / $pace;
+        // Setup, then an Island and a Sea Phase per round; the game ends after a Sea Phase.
+        $total = 1 + 2 * ($seas_played + $seas_left);
+        return min(99, (int) round(100 * $elapsed / $total));
     }
 
     function getPlayerInfo(?int $player_id = null)
@@ -1306,6 +1361,65 @@ class SeasOfHavoc extends Table
             if ($state() !== STATE_CARD_PURCHASES) {
                 return;
             }
+        }
+    }
+
+    /**
+     * Studio only: a firing range for the heavy gun / double gun crew displays. Plays on to the next
+     * sea turn, gives the active player both Ship of the Line upgrades, cannonballs and the fire / 2 x
+     * fire / 3 x fire market card, and lines every ship up on row 2 broadside to it, nearest first,
+     * alternating left and right. Rewrites state without notifications: reload the page afterwards.
+     */
+    public function debug_firingRange(): void
+    {
+        for ($i = 0; $i < 3 && $this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN; $i++) {
+            $this->debug_playToEndOfPhase();
+        }
+        if ($this->gamestate->getCurrentMainStateId() !== STATE_SEA_TURN) {
+            throw new \Bga\GameFramework\SystemException("No sea turn to set the firing range up in");
+        }
+        $player_id = (int) $this->getActivePlayerId();
+        $ship_arg = $this->activeShipArg($player_id);
+        $targets = array_values(array_filter(
+            $this->seaboard->getAllObjectsFlat(),
+            fn($o) => $o["type"] === "player_ship" && $o["arg"] != $ship_arg,
+        ));
+        if (count($targets) < 2) {
+            throw new \Bga\GameFramework\SystemException("The firing range needs a ship on each side: play with 3+ players");
+        }
+
+        foreach (["ship_of_the_line_heavy_guns", "ship_of_the_line_double_gun_crews"] as $upgrade_key) {
+            self::DbQuery("REPLACE INTO player_ship_upgrades (player_id, upgrade_key, is_activated) VALUES ('$player_id', '$upgrade_key', 1)");
+        }
+        $this->playerSetResourceCount($player_id, "cannonball", 10);
+
+        $fire_card_type = null;
+        foreach ($this->playable_cards as $card_type => $card) {
+            $choices = $card["actions"][0]["choices"] ?? [];
+            if (in_array(PrimitiveCardPlayAction::FIRE3->value, array_column($choices, "action"), true)) {
+                $fire_card_type = $card_type;
+            }
+        }
+        $fire_cards = $this->cards->getCardsOfType($fire_card_type);
+        if ($fire_card_type === null || count($fire_cards) === 0) {
+            throw new \Bga\GameFramework\SystemException("No fire / 2 x fire / 3 x fire card to hand out");
+        }
+        $this->cards->moveCard((int) reset($fire_cards)["id"], "hand", $player_id);
+
+        // Shots stop at rocks; on row 2 they would hide the ships behind them.
+        foreach ($this->seaboard->getAllObjectsFlat() as $o) {
+            if ($o["y"] == 2 && $o["type"] === "rock") {
+                $this->seaboard->removeObject($o["x"], $o["y"], $o["type"], $o["arg"]);
+            }
+        }
+        $ship = $this->seaboard->findObject("player_ship", $ship_arg);
+        $this->seaboard->removeObject($ship["x"], $ship["y"], "player_ship", $ship_arg);
+        $this->seaboard->placeObject(2, 2, ["type" => "player_ship", "arg" => $ship_arg, "heading" => Heading::NORTH]);
+        $squares = [[1, 2], [3, 2], [0, 2], [4, 2], [5, 2]];
+        foreach ($targets as $i => $target) {
+            $this->seaboard->removeObject($target["x"], $target["y"], "player_ship", $target["arg"]);
+            [$x, $y] = $squares[$i];
+            $this->seaboard->placeObject($x, $y, ["type" => "player_ship", "arg" => $target["arg"], "heading" => Heading::NORTH]);
         }
     }
 }

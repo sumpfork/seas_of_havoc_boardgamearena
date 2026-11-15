@@ -270,13 +270,41 @@ final class SeasOfHavocTest extends TestCase
         $deck = new MockCardDeck();
         (new ReflectionProperty(SeasOfHavoc::class, "cards"))->setValue($game, $deck);
 
-        // 3 players: 25 damage cards in total.
+        // 3 players: 25 damage cards in total. First Sea Phase, half the hands played.
+        $game->setGameStateValue("phase_number", 2);
+        $game->bga->globals->set("sea_phase_hand_cards", 12);
+        $deck->locations["hand"] = array_fill(0, 6, []);
         $deck->locations["damage_deck"] = array_fill(0, 25, []);
-        $this->assertSame(0, $game->getGameProgression());
+        $this->assertSame(SeasOfHavoc::estimateProgression(0, 2, 0.5, 3), $game->getGameProgression());
         $deck->locations["damage_deck"] = array_fill(0, 17, []);
-        $this->assertSame(32, $game->getGameProgression());
+        $this->assertSame(SeasOfHavoc::estimateProgression(8 / 25, 2, 0.5, 3), $game->getGameProgression());
         $deck->locations["damage_deck"] = [];
         $this->assertSame(100, $game->getGameProgression());
+    }
+
+    public function testEstimateProgressionCreditsSetupAndIslandPhasesAndFollowsThePace(): void
+    {
+        $this->assertSame(0, SeasOfHavoc::estimateProgression(0, 0, 0, 3), 'start of setup');
+        $after_setup = SeasOfHavoc::estimateProgression(0, 0, 1, 3);
+        $this->assertGreaterThan(0, $after_setup);
+        $this->assertSame($after_setup, SeasOfHavoc::estimateProgression(0, 1, 0, 3), 'setup ends where the Island Phase starts');
+        $this->assertGreaterThan($after_setup, SeasOfHavoc::estimateProgression(0, 1, 0.5, 3), 'skiffs placed');
+        $this->assertSame(
+            SeasOfHavoc::estimateProgression(0.1, 2, 1, 3),
+            SeasOfHavoc::estimateProgression(0.1, 3, 0, 3),
+            'a Sea Phase ends where the next Island Phase starts'
+        );
+        $this->assertGreaterThan(
+            SeasOfHavoc::estimateProgression(0, 1, 1, 3),
+            SeasOfHavoc::estimateProgression(0, 2, 1, 3),
+            'a first Sea Phase without hits still moves progress forward'
+        );
+        $this->assertGreaterThan(
+            SeasOfHavoc::estimateProgression(0.2, 5, 0, 3),
+            SeasOfHavoc::estimateProgression(0.5, 5, 0, 3),
+            'a faster pace means fewer rounds left'
+        );
+        $this->assertSame(99, SeasOfHavoc::estimateProgression(0.999, 20, 1, 3), 'only an empty deck is 100');
     }
 
     /** A card that moves twice can salvage a wreck, sail onto where it was placed again, and salvage it again. */
