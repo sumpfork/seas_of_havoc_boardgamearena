@@ -1215,7 +1215,7 @@ class SeasOfHavoc extends Table
         $elapsed = $phase_number + $phase_progress;
         $seas_played = intdiv(max(0, $phase_number - 1), 2) + ($phase_number > 0 && $phase_number % 2 === 0 ? $phase_progress : 0);
         // Median rounds in simulated games
-        $expected_seas = [2 => 19, 3 => 13, 4 => 11][$players] ?? 9;
+        $expected_seas = [2 => 10, 3 => 6, 4 => 5][$players] ?? 4;
         $prior_weight = 3;
         $pace = ($done + $prior_weight / $expected_seas) / ($seas_played + $prior_weight);
         $seas_left = (1 - $done) / $pace;
