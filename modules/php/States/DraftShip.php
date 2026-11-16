@@ -28,6 +28,7 @@ class DraftShip extends GameState
             description: clienttranslate('${actplayer} must pick a ship'),
             descriptionMyTurn: clienttranslate('${you} must pick a ship'),
             transitions: [],
+            updateGameProgression: true,
         );
     }
 

@@ -28,6 +28,7 @@ class ChooseHeading extends GameState
             description: clienttranslate('${actplayer} must choose a direction for their ship'),
             descriptionMyTurn: clienttranslate('${you} must choose a direction for your ship'),
             transitions: [],
+            updateGameProgression: true,
         );
     }
 

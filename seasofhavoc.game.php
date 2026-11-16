@@ -1005,6 +1005,8 @@ class SeasOfHavoc extends Table
                 return STATE_FINAL_SCORING;
             }
             // Sea Phase cleanup: everyone draws a new hand of 4 for the next Island Phase.
+            // Those hands no longer count against the Sea Phase in game progression.
+            $this->bga->globals->set("sea_phase_hand_cards", 0);
             foreach (array_keys($this->getPlayerInfo()) as $player_id) {
                 $this->drawCards((string) $player_id, 4);
             }
@@ -1153,7 +1155,7 @@ class SeasOfHavoc extends Table
         100 (= the game is finished or almost finished).
     
         This method is called each time we are in a game state with the "updateGameProgression" property set to true 
-        (see modules/php/States/)
+        (DraftCaptain, DraftShip, ChooseHeading and the next-player states)
     */
     function getGameProgression()
     {
@@ -1162,7 +1164,14 @@ class SeasOfHavoc extends Table
             ? $this->bga->playerScore->getMax() / $target
             : 1 - $this->cards->countCardInLocation("damage_deck") / $this->calculateNumDamageCards();
         $phase_number = $this->getGameStateValue("phase_number");
-        return self::estimateProgression($done, $phase_number, $this->phaseProgress($phase_number), $this->getPlayersNumber());
+        $estimate = self::estimateProgression($done, $phase_number, $this->phaseProgress($phase_number), $this->getPlayersNumber());
+        // The estimate can dip (a Sea Phase without hits, cards drawn mid-phase); the bar never does.
+        $shown = $this->bga->globals->get("max_progression", 0);
+        if ($estimate > $shown) {
+            $this->bga->globals->set("max_progression", $estimate);
+            return $estimate;
+        }
+        return $shown;
     }
 
     /** How far into the current phase (0 to 1): setup decisions made, skiffs placed, or Sea Phase cards played. */

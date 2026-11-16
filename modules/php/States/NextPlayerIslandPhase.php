@@ -25,6 +25,7 @@ class NextPlayerIslandPhase extends GameState
             name: 'nextPlayerIslandPhase',
             description: '',
             transitions: ['islandPhaseDone' => STATE_CARD_PURCHASES, 'nextPlayer' => STATE_ISLAND_TURN],
+            updateGameProgression: true,
         );
     }
 

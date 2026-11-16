@@ -25,6 +25,7 @@ class NextPlayerSeaPhase extends GameState
             name: 'nextPlayerSeaPhase',
             description: '',
             transitions: ['seaPhaseDone' => STATE_ISLAND_PHASE_SETUP, 'nextPlayer' => STATE_SEA_TURN],
+            updateGameProgression: true,
         );
     }
 

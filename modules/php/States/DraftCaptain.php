@@ -28,6 +28,7 @@ class DraftCaptain extends GameState
             description: clienttranslate('${actplayer} must pick a captain'),
             descriptionMyTurn: clienttranslate('${you} must pick a captain'),
             transitions: [],
+            updateGameProgression: true,
         );
     }
 

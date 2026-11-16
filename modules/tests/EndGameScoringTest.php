@@ -225,7 +225,7 @@ final class EndGameScoringTest extends TestCase
         $game->bga->playerScore->set(2, 44);
         $game->setGameStateValue("phase_number", 20);
         $this->assertSame('seaPhaseDone', $game->stNextPlayerSeaPhase(), 'an empty damage deck no longer ends it');
-        $this->assertSame(99, $game->getGameProgression());
+        $this->assertSame(98, $game->getGameProgression());
 
         $game->bga->playerScore->set(2, 45);
         $this->assertSame(STATE_FINAL_SCORING, $game->stNextPlayerSeaPhase());
